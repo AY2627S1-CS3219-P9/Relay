@@ -1,4 +1,7 @@
 services:
+  # Each domain owns a frontend remote and, when implemented, its own API.
+  # Keep the API private to this Compose network with `expose`, rather than
+  # publishing its port. The shell gateway is the browser-facing API boundary.
   shell:
     build:
       context: .
@@ -19,6 +22,10 @@ services:
       dockerfile: supplier-service/frontend/Dockerfile
     ports:
       - "5001:80"
+    # When supplier-api is added, replace this comment with:
+    # depends_on:
+    #   supplier-api:
+    #     condition: service_healthy
 
   user-frontend:
     build:
@@ -26,6 +33,7 @@ services:
       dockerfile: user-service/frontend/Dockerfile
     ports:
       - "5002:80"
+    # Add a health-checked user-api dependency when its API exists.
 
   order-frontend:
     build:
@@ -33,6 +41,7 @@ services:
       dockerfile: order-service/frontend/Dockerfile
     ports:
       - "5003:80"
+    # Add a health-checked order-api dependency when its API exists.
 
   credit-frontend:
     build:
@@ -40,3 +49,42 @@ services:
       dockerfile: credit-service/frontend/Dockerfile
     ports:
       - "5004:80"
+    # Add a health-checked credit-api dependency when its API exists.
+
+  # Backend service templates
+  #
+  # Copy and adapt one of these stanzas when implementing a service API.
+  # Do not expose API ports to the host: other containers can reach an API by
+  # its Compose service name (for example, http://supplier-api:3000).
+  # Add the corresponding /api/<service>/ proxy route to shell/nginx.conf so
+  # browser code can use a relative URL such as /api/supplier/shops.
+  #
+  # supplier-api:
+  #   build:
+  #     context: ./supplier-service/backend
+  #   expose:
+  #     - "3000"
+  #   environment:
+  #     PORT: "3000"
+  #     # DATABASE_URL: postgres://supplier-db/relay
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+  #
+  # user-api:
+  #   build:
+  #     context: ./user-service/backend
+  #   expose: ["3000"]
+  #   # Use the same healthcheck shape as supplier-api.
+  #
+  # order-api:
+  #   build:
+  #     context: ./order-service/backend
+  #   expose: ["3000"]
+  #
+  # credit-api:
+  #   build:
+  #     context: ./credit-service/backend
+  #   expose: ["3000"]
