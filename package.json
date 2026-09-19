@@ -1,0 +1,20 @@
+{
+  "name": "relay",
+  "private": true,
+  "workspaces": [
+    "shell",
+    "supplier-service/frontend",
+    "user-service/frontend",
+    "order-service/frontend",
+    "credit-service/frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

@@ -1,0 +1,42 @@
+services:
+  shell:
+    build:
+      context: .
+      dockerfile: shell/Dockerfile
+    ports:
+      - "8080:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - supplier-frontend
+      - user-frontend
+      - order-frontend
+      - credit-frontend
+
+  supplier-frontend:
+    build:
+      context: .
+      dockerfile: supplier-service/frontend/Dockerfile
+    ports:
+      - "5001:80"
+
+  user-frontend:
+    build:
+      context: .
+      dockerfile: user-service/frontend/Dockerfile
+    ports:
+      - "5002:80"
+
+  order-frontend:
+    build:
+      context: .
+      dockerfile: order-service/frontend/Dockerfile
+    ports:
+      - "5003:80"
+
+  credit-frontend:
+    build:
+      context: .
+      dockerfile: credit-service/frontend/Dockerfile
+    ports:
+      - "5004:80"
