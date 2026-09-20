@@ -1,3 +1,5 @@
+import type { SessionId } from './models'
+
 export type RegisterRequest = {
   email: string
   password: string
@@ -10,7 +12,7 @@ export type LoginRequest = {
 }
 
 export type SubmitOtpRequest = {
-  sessionId: import('./models').SessionId
+  sessionId: SessionId
   otp: string
 }
 
