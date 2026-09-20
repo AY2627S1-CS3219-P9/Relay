@@ -1,3 +1,5 @@
+import '@relay/ui/styles.css'
+
 export default function App() {
-  return <h1>Hello, World</h1>
+  return <div className="relay-design-system"><h1>Hello, World</h1></div>
 }

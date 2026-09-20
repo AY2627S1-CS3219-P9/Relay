@@ -15,3 +15,5 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
   order: { id: 'order', label: 'Order service', description: 'Create, accept, and track campus errand requests.', path: '/orders' },
   credit: { id: 'credit', label: 'Credit service', description: 'View your balance and closed-economy transactions.', path: '/credits' },
 }
+
+export * from './user'
