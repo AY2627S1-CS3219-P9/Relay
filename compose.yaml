@@ -1,20 +1,31 @@
 services:
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
-  # publishing its port. The shell gateway is the browser-facing API boundary.
-  shell:
+  # publishing its port. The host is the browser-facing API boundary.
+  host:
     build:
       context: .
-      dockerfile: shell/Dockerfile
+      dockerfile: host/Dockerfile
     ports:
       - "8080:80"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
-      - supplier-frontend
-      - user-frontend
-      - order-frontend
-      - credit-frontend
+      supplier-frontend:
+        condition: service_healthy
+      user-frontend:
+        condition: service_healthy
+      order-frontend:
+        condition: service_healthy
+      credit-frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+    # TODO(kubernetes): Create a Deployment, Service, and external ingress or
+    # LoadBalancer for this container. Add readiness/liveness probes using
+    # /healthz and set resource requests/limits.
 
   supplier-frontend:
     build:
@@ -22,6 +33,13 @@ services:
       dockerfile: supplier-service/frontend/Dockerfile
     ports:
       - "5001:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # TODO(kubernetes): Create a Deployment and ClusterIP Service. Replicas
+    # can scale independently behind that Service.
     # When supplier-api is added, replace this comment with:
     # depends_on:
     #   supplier-api:
@@ -33,6 +51,12 @@ services:
       dockerfile: user-service/frontend/Dockerfile
     ports:
       - "5002:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked user-api dependency when its API exists.
 
   order-frontend:
@@ -41,6 +65,12 @@ services:
       dockerfile: order-service/frontend/Dockerfile
     ports:
       - "5003:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked order-api dependency when its API exists.
 
   credit-frontend:
@@ -49,6 +79,12 @@ services:
       dockerfile: credit-service/frontend/Dockerfile
     ports:
       - "5004:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked credit-api dependency when its API exists.
 
   # Backend service templates
@@ -56,7 +92,7 @@ services:
   # Copy and adapt one of these stanzas when implementing a service API.
   # Do not expose API ports to the host: other containers can reach an API by
   # its Compose service name (for example, http://supplier-api:3000).
-  # Add the corresponding /api/<service>/ proxy route to shell/nginx.conf so
+  # Add the corresponding /api/<service>/ proxy route to host/nginx.conf so
   # browser code can use a relative URL such as /api/supplier/shops.
   #
   # supplier-api:

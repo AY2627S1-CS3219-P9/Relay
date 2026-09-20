@@ -48,7 +48,7 @@ microservice (`user-service/`, `supplier-service/`, `order-service/`,
 
 ## Microfrontend development
 
-`shell` is the Relay host application. It renders the homepage
+`host` is the Relay host application. It renders the homepage
 and loads one independently deployed React microfrontend for each service.
 The remotes live inside their service folders and expose only `./App` through Module
 Federation.
@@ -59,12 +59,12 @@ For a Dockerized local environment, run:
 docker compose up --build
 ```
 
-Open `http://localhost:8080`. The shell container serves the host and routes
+Open `http://localhost:8080`. The host container serves the host and routes
 all remotes through one origin using `/remotes/supplier/`, `/remotes/user/`,
 `/remotes/order/`, and `/remotes/credit/`.
 
 The remotes are available on host ports `5001`–`5004` for Docker's internal
-host-gateway fallback. The application itself loads them through the shell's
+Docker Compose service names. The application itself loads them through the host's
 single public route on port `8080`.
 
 | Service | Local URL | Remote entry |
@@ -94,5 +94,22 @@ npm run dev --workspace=@relay/host
 The host uses stable same-origin remote paths, so no per-machine remote URL
 environment variables are required. The host deployment must rewrite client-side
 paths such as `/suppliers` and `/orders` to its `index.html`.
+
+## Deployment preparation
+
+The Docker Compose setup is also the local reference topology for a future
+Kubernetes deployment. Frontends communicate through stable service names, and
+each container exposes `/healthz` for orchestration health checks.
+
+The following items are intentionally left for the Kubernetes deployment step:
+
+- TODO: Create a `Deployment` and `Service` for `host` and each frontend.
+- TODO: Add an `Ingress` or `LoadBalancer` for the public host entry point.
+- TODO: Configure readiness/liveness probes using `/healthz`.
+- TODO: Add CPU/memory requests and limits, replica counts, and autoscaling policy.
+- TODO: Decide how frontend image versions and Module Federation remote entries
+  are promoted together to avoid mixed releases.
+- TODO: Add API Deployments and Services when backend implementations exist.
+- TODO: Externalize databases, secrets, sessions, and other state from pods.
 
 ---
