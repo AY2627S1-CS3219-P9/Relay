@@ -16,10 +16,7 @@ export type IsVerifiedResponse = {
 
 export type GetUserResponse = UserProfile
 
-export type UpdateUserResponse = Pick<
-  UserProfile,
-  'email' | 'username' | 'profilePictureUrl'
->
+export type UpdateUserResponse = Pick<UserProfile, 'email' | 'username' | 'profilePictureUrl'>
 
 export type SessionResponse = {
   sessionId: SessionId

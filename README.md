@@ -12,12 +12,12 @@ withdrawn, or exchanged for money, and only circulate within the platform.
 
 ## Team Members
 
-| Name | Role |
-| ----- | ----- |
-| Ryan | Your ownership |
-| Javier | Your ownership |
+| Name      | Role           |
+| --------- | -------------- |
+| Ryan      | Your ownership |
+| Javier    | Your ownership |
 | Rong Kang | Your ownership |
-| Zhouxuan | Your ownership |
+| Zhouxuan  | Your ownership |
 
 ---
 
@@ -67,12 +67,12 @@ The remotes are available on host ports `5001`–`5004` for Docker's internal
 Docker Compose service names. The application itself loads them through the host's
 single public route on port `8080`.
 
-| Service | Local URL | Remote entry |
-| --- | --- | --- |
+| Service  | Local URL            | Remote entry                       |
+| -------- | -------------------- | ---------------------------------- |
 | Supplier | `/remotes/supplier/` | `/remotes/supplier/remoteEntry.js` |
-| User | `/remotes/user/` | `/remotes/user/remoteEntry.js` |
-| Order | `/remotes/order/` | `/remotes/order/remoteEntry.js` |
-| Credit | `/remotes/credit/` | `/remotes/credit/remoteEntry.js` |
+| User     | `/remotes/user/`     | `/remotes/user/remoteEntry.js`     |
+| Order    | `/remotes/order/`    | `/remotes/order/remoteEntry.js`    |
+| Credit   | `/remotes/credit/`   | `/remotes/credit/remoteEntry.js`   |
 
 Install all workspace dependencies once from the repository root:
 

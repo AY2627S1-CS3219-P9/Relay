@@ -5,11 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    react(),
-    babel({ presets: [reactCompilerPreset()] }),
-  ],
+  plugins: [tailwindcss(), react(), babel({ presets: [reactCompilerPreset()] })],
   // Mirror the production Nginx routes while developing. Keeping the host's
   // remote URLs relative means the same federation configuration works in
   // Docker, locally, and through a Codespaces forwarded port.

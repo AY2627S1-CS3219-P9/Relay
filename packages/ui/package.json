@@ -8,6 +8,10 @@
     "./styles.css": "./src/styles.css",
     "./styles/*": "./src/styles/*"
   },
-  "peerDependencies": { "react": "^19.0.0" },
-  "dependencies": { "@relay/contracts": "*" }
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@relay/contracts": "*"
+  }
 }

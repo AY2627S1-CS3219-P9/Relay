@@ -7,9 +7,9 @@ services:
       context: .
       dockerfile: host/Dockerfile
     ports:
-      - "8080:80"
+      - '8080:80'
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     depends_on:
       supplier-frontend:
         condition: service_healthy
@@ -20,7 +20,7 @@ services:
       credit-frontend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -34,9 +34,9 @@ services:
       context: .
       dockerfile: supplier-service/frontend/Dockerfile
     ports:
-      - "5001:80"
+      - '5001:80'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -52,9 +52,9 @@ services:
       context: .
       dockerfile: user-service/frontend/Dockerfile
     ports:
-      - "5002:80"
+      - '5002:80'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -66,9 +66,9 @@ services:
       context: .
       dockerfile: order-service/frontend/Dockerfile
     ports:
-      - "5003:80"
+      - '5003:80'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -80,9 +80,9 @@ services:
       context: .
       dockerfile: credit-service/frontend/Dockerfile
     ports:
-      - "5004:80"
+      - '5004:80'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
       timeout: 3s
       retries: 5

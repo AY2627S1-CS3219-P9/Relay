@@ -1,4 +1,11 @@
-import { Component, lazy, Suspense, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react'
+import {
+  Component,
+  lazy,
+  Suspense,
+  type ComponentType,
+  type LazyExoticComponent,
+  type ReactNode,
+} from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
 import { loadServiceRemote } from './RemoteLoader'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
@@ -48,7 +55,13 @@ export function RemotePage({ service, serviceLabel }: RemotePageProps) {
   return (
     <section className="remote-page" aria-label={serviceLabel}>
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-        <Suspense fallback={<section className="remote-state"><p>Loading {serviceLabel}…</p></section>}>
+        <Suspense
+          fallback={
+            <section className="remote-state">
+              <p>Loading {serviceLabel}…</p>
+            </section>
+          }
+        >
           <RemoteApp />
         </Suspense>
       </RemoteFailureBoundary>

@@ -16,14 +16,16 @@
     "test": "npm run test:workspaces && npm run test:services",
     "test:workspaces": "npm run test --workspaces --if-present",
     "test:services": "npm run test:services:frontend",
-    "test:services:frontend": "node --test tests/frontend/*.test.mjs"
+    "test:services:frontend": "node --test tests/frontend/*.test.mjs",
+    "format": "prettier . --write"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "prettier": "^3.9.8"
   },
   "overrides": {
     "adm-zip": "0.6.1"

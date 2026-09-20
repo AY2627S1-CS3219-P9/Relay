@@ -16,18 +16,37 @@
   --glass-shadow: rgba(0, 0, 0, 0.1);
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   min-height: 100dvh;
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-body { margin: 0; background: #fff; }
-#root, .relay-app-shell { position: relative; height: 100dvh; min-height: 100dvh; }
-.relay-app-shell { width: 100%; }
-* { -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  background: #fff;
+}
+#root,
+.relay-app-shell {
+  position: relative;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+.relay-app-shell {
+  width: 100%;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}
 
 .relay-design-system h1 {
   color: #4c1d95;
@@ -39,10 +58,12 @@ body { margin: 0; background: #fff; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
