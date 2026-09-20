@@ -25,5 +25,6 @@ export interface UserApi {
   getUser(sessionId: SessionId): Promise<GetUserResponse>
   updateUser(sessionId: SessionId, request: UpdateUserRequest): Promise<UpdateUserResponse>
   changePassword(sessionId: SessionId, request: ChangePasswordRequest): Promise<void>
+  logout(sessionId: SessionId): Promise<void>
   deleteUser(sessionId: SessionId, confirmation: string): Promise<void>
 }

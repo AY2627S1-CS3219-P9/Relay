@@ -14,6 +14,7 @@ import type {
   UserApi,
   UserProfile,
 } from '@relay/contracts'
+import { passwordErrors } from '../user/validation'
 
 type Account = UserProfile & { password: string }
 type PendingSession = { email: string; otp: string; issuedAt: number }
@@ -121,7 +122,20 @@ export const mockUserApi: UserApi = {
     }
   },
 
-  async changePassword() {},
+  async changePassword(sessionId, request) {
+    const account = userSession(sessionId)
+    if (account.password !== request.currentPassword)
+      error('INVALID_CREDENTIALS', 'The current password is incorrect.')
+    if (passwordErrors(request.newPassword).length)
+      error('INVALID_REQUEST', 'The new password does not meet the requirements.')
+    if (request.newPassword !== request.newPasswordConfirmation)
+      error('INVALID_REQUEST', 'The new passwords must match exactly.')
+    account.password = request.newPassword
+  },
+  async logout(sessionId) {
+    userSession(sessionId)
+    sessions.delete(sessionId)
+  },
   async deleteUser(sessionId: SessionId) {
     const account = userSession(sessionId)
     accounts.delete(account.email)

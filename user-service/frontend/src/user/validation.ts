@@ -1,3 +1,6 @@
+// IMPORTANT: BACKEND MUST ENSURE THESE REQUIREMENTS.
+// FOR USER CONVENIENCE ONLY.
+
 export const passwordRequirements = [
   'At least 8 characters',
   'One lowercase letter',

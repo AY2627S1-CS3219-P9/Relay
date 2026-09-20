@@ -18,7 +18,6 @@ export function ImageUploadComponent({
     const validationError = imageFileError(file)
     if (validationError) {
       setErrorMessage(validationError)
-      onChange(undefined)
       return
     }
 
@@ -27,7 +26,6 @@ export function ImageUploadComponent({
       onChange((await fileToDataUrl(file)) as ImageDataUrl)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to read the image.')
-      onChange(undefined)
     }
   }
 

@@ -14,8 +14,9 @@ import { RegisterForm } from './user/RegisterForm'
 import { UserApiProvider } from './user/UserApiProvider'
 import { mockUserApi, mockVerificationCode } from './mockUserApi/mockUserApi'
 import { VerificationForm } from './user/VerificationForm'
+import { AccountView } from './user/AccountView'
 
-type View = 'login' | 'register' | 'verify' | 'profile' | 'complete'
+type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
 export default function App({ api = mockUserApi }: { api?: UserApi }) {
   const [view, setView] = useState<View>('register')
@@ -35,8 +36,9 @@ export default function App({ api = mockUserApi }: { api?: UserApi }) {
   }
 
   /* Verification Completion */
-  function finishLogin(_response: LoginResponse) {
-    setView('complete')
+  function finishLogin(response: LoginResponse) {
+    setSessionId(response.sessionId)
+    setView('account')
   }
 
   return (
@@ -80,6 +82,12 @@ export default function App({ api = mockUserApi }: { api?: UserApi }) {
                 Continue to login
               </button>
             </div>
+          )}
+          {view === 'account' && sessionId && (
+            <AccountView sessionId={sessionId} onLoggedOut={() => {
+              setSessionId(undefined)
+              setView('login')
+            }} />
           )}
         </section>
         <p className="user-footer">Secure account access for the Relay community.</p>

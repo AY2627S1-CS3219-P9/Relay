@@ -165,6 +165,32 @@ body {
   text-align: center;
   font-size: 0.85rem;
 }
+.account-view {
+  display: grid;
+  gap: 20px;
+}
+.account-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.account-header h1 {
+  margin: 6px 0 0;
+  color: #221a35;
+  font-size: 2rem;
+}
+.account-section {
+  display: grid;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid #eee8f8;
+}
+.account-section h2 {
+  margin: 0;
+  color: #33264b;
+  font-size: 1.1rem;
+}
 .user-link {
   min-height: 0 !important;
   padding: 0 !important;
