@@ -1,4 +1,4 @@
-import type { SessionId } from './models'
+import type { ImageDataUrl, SessionId } from './models'
 
 export type RegisterRequest = {
   email: string
@@ -18,7 +18,7 @@ export type SubmitOtpRequest = {
 
 export type UpdateUserRequest = {
   username?: string
-  profilePicture?: string
+  profilePicture?: ImageDataUrl
 }
 
 export type ChangePasswordRequest = {
