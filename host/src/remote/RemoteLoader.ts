@@ -4,25 +4,18 @@ import * as ReactDOMClient from 'react-dom/client'
 import { init, loadRemote } from '@module-federation/runtime'
 import type { ComponentType } from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
+import { REMOTE_REGISTRY } from './RemoteRegistry'
 
 type RemoteModule = { default: ComponentType<RemoteAppProps> }
 
-const remoteIds: Record<ServiceId, string> = {
-  supplier: 'supplierFrontend/App',
-  user: 'userFrontend/App',
-  order: 'orderFrontend/App',
-  credit: 'creditFrontend/App',
-}
-
-// Runtime registration never fetches a remote during host startup.
+// configure Module Federation to find components in the registry
 init({
   name: 'relayHost',
-  remotes: [
-    { name: 'supplierFrontend', type: 'module', entry: '/remotes/supplier/remoteEntry.js' },
-    { name: 'userFrontend', type: 'module', entry: '/remotes/user/remoteEntry.js' },
-    { name: 'orderFrontend', type: 'module', entry: '/remotes/order/remoteEntry.js' },
-    { name: 'creditFrontend', type: 'module', entry: '/remotes/credit/remoteEntry.js' },
-  ],
+  remotes: Object.values(REMOTE_REGISTRY).map(({ name, entry }) => ({
+    name,
+    type: 'module' as const,
+    entry,
+  })),
   shared: {
     react: {
       version: '19.2.8',
@@ -43,7 +36,8 @@ init({
 })
 
 export async function loadServiceRemote(service: ServiceId): Promise<RemoteModule> {
-  const remote = await loadRemote<RemoteModule>(remoteIds[service])
+  const { name, exposedModule } = REMOTE_REGISTRY[service]
+  const remote = await loadRemote<RemoteModule>(`${name}/${exposedModule.replace('./', '')}`)
   if (!remote) throw new Error(`${service} frontend returned no application.`)
   return remote
 }

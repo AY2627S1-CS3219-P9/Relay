@@ -16,7 +16,7 @@
     "test": "npm run test:workspaces && npm run test:services",
     "test:workspaces": "npm run test --workspaces --if-present",
     "test:services": "npm run test:services:frontend",
-    "test:services:frontend": "node --test tests/services/frontend/*.test.mjs"
+    "test:services:frontend": "node --test tests/frontend/*.test.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
