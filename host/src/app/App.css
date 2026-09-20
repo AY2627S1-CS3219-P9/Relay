@@ -1,12 +1,6 @@
-.home {
-  width: min(1080px, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 4rem 0;
+.remote-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  padding: 1rem;
 }
-
-.home header { max-width: 700px; }
-.eyebrow { color: #6d28d9; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.lede { font-size: 1.1rem; max-width: 620px; }
-.remote-grid { display: grid; gap: 1.5rem; margin-top: 2.5rem; }
-.remote-page { background: #fff; border: 1px solid #ded7f5; border-radius: 1rem; box-shadow: 0 8px 24px rgba(30, 20, 70, .06); padding: 1.25rem; }
-.remote-state { background: #faf8ff; border: 1px dashed #a78bfa; border-radius: 1rem; padding: 2rem; }
