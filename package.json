@@ -5,6 +5,7 @@
     "host",
     "supplier-service/frontend",
     "user-service/frontend",
+    "user-service/backend",
     "order-service/frontend",
     "credit-service/frontend",
     "packages/*"
