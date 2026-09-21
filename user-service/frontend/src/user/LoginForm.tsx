@@ -8,9 +8,11 @@ import { ErrorMessage } from '@relay/ui'
 export function LoginForm({
   onLoggedIn,
   onRegister,
+  notice,
 }: {
   onLoggedIn: (response: LoginResponse) => void
   onRegister: () => void
+  notice?: string
 }) {
   const api = useUserApi()
 
@@ -48,6 +50,7 @@ export function LoginForm({
       </div>
       <EmailField value={email} onChange={setEmail} />
       <PasswordField value={password} onChange={setPassword} autoComplete="current-password" />
+      <ErrorMessage message={notice ?? ''} variant="success" />
       <ErrorMessage message={errorMessage} />
       <button className="glass-btn-primary user-submit" disabled={loading}>
         {loading ? 'Logging in…' : 'Log in'}

@@ -13,6 +13,8 @@ import { REMOTE_REGISTRY } from './RemoteRegistry'
 type RemotePageProps = {
   service: ServiceId
   serviceLabel: string
+  visible: boolean
+  appProps?: RemoteAppProps
 }
 
 type RemoteComponent = LazyExoticComponent<ComponentType<RemoteAppProps>>
@@ -49,11 +51,15 @@ class RemoteFailureBoundary extends Component<
   }
 }
 
-export function RemotePage({ service, serviceLabel }: RemotePageProps) {
+export function RemotePage({ service, serviceLabel, visible, appProps }: RemotePageProps) {
   const RemoteApp = remoteApps[service]
 
   return (
-    <section className="remote-page" aria-label={serviceLabel}>
+    <section
+      className="remote-page"
+      aria-label={serviceLabel}
+      style={{ display: visible ? undefined : 'none' }}
+    >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
         <Suspense
           fallback={
@@ -62,7 +68,7 @@ export function RemotePage({ service, serviceLabel }: RemotePageProps) {
             </section>
           }
         >
-          <RemoteApp />
+          <RemoteApp {...appProps} />
         </Suspense>
       </RemoteFailureBoundary>
     </section>

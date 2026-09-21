@@ -7,6 +7,7 @@ import type {
   SessionId,
   SubmitOtpResponse,
   UserApi,
+  RemoteAppProps,
 } from '@relay/contracts'
 import { LoginForm } from './user/LoginForm'
 import { ProfileSetupForm } from './user/ProfileSetupForm'
@@ -18,10 +19,11 @@ import { AccountView } from './user/AccountView'
 
 type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
-export default function App({ api = mockUserApi }: { api?: UserApi }) {
+export default function App({ api = mockUserApi, onNavigate }: { api?: UserApi } & RemoteAppProps) {
   const [view, setView] = useState<View>('register')
   const [sessionId, setSessionId] = useState<SessionId>()
   const [email, setEmail] = useState('')
+  const [loginNotice, setLoginNotice] = useState('')
 
   /* Verification */
   function startVerification(response: RegisterResponse, registeredEmail: string) {
@@ -39,6 +41,7 @@ export default function App({ api = mockUserApi }: { api?: UserApi }) {
   function finishLogin(response: LoginResponse) {
     setSessionId(response.sessionId)
     setView('account')
+    onNavigate?.('supplier')
   }
 
   return (
@@ -58,7 +61,11 @@ export default function App({ api = mockUserApi }: { api?: UserApi }) {
             />
           )}
           {view === 'login' && (
-            <LoginForm onLoggedIn={finishLogin} onRegister={() => setView('register')} />
+            <LoginForm
+              onLoggedIn={finishLogin}
+              onRegister={() => setView('register')}
+              notice={loginNotice}
+            />
           )}
           {view === 'verify' && sessionId && (
             <VerificationForm
@@ -84,10 +91,18 @@ export default function App({ api = mockUserApi }: { api?: UserApi }) {
             </div>
           )}
           {view === 'account' && sessionId && (
-            <AccountView sessionId={sessionId} onLoggedOut={() => {
-              setSessionId(undefined)
-              setView('login')
-            }} />
+            <AccountView
+              sessionId={sessionId}
+              onLoggedOut={() => {
+                setSessionId(undefined)
+                setView('login')
+              }}
+              onDeleted={() => {
+                setSessionId(undefined)
+                setLoginNotice('Your account was deleted successfully.')
+                setView('login')
+              }}
+            />
           )}
         </section>
         <p className="user-footer">Secure account access for the Relay community.</p>

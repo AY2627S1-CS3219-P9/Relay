@@ -165,6 +165,19 @@ body {
   text-align: center;
   font-size: 0.85rem;
 }
+.role-switch {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 9px !important;
+  color: #6f6680 !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+}
+.role-switch input {
+  width: 16px !important;
+  min-height: 16px !important;
+  accent-color: #6d28d9;
+}
 .account-view {
   display: grid;
   gap: 20px;
@@ -190,6 +203,29 @@ body {
   margin: 0;
   color: #33264b;
   font-size: 1.1rem;
+}
+.account-danger-zone {
+  border-top-color: #f4c4cc;
+}
+.account-danger-zone h2 {
+  color: #a22843;
+}
+.account-danger-zone p {
+  margin: 7px 0 0;
+  color: #6f6680;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.glass-btn-red {
+  min-height: 46px;
+  border-radius: 12px;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+}
+.glass-btn-red:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .user-link {
   min-height: 0 !important;

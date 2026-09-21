@@ -5,14 +5,18 @@ import { ImageUploadComponent } from '../components/ImageUploadComponent'
 import { PasswordField } from '../components/PasswordField'
 import { UsernameField } from '../components/UsernameField'
 import { useUserApi } from './UserApiProvider'
+import { DeleteAccountForm } from './DeleteAccountForm'
 import { passwordErrors, passwordRequirements, usernameError } from './validation'
 
+// Prototype only. Will be replaced by another microfrontend.
 export function AccountView({
   sessionId,
   onLoggedOut,
+  onDeleted,
 }: {
   sessionId: SessionId
   onLoggedOut: () => void
+  onDeleted: () => void
 }) {
   const api = useUserApi()
   
@@ -154,6 +158,9 @@ export function AccountView({
         </button>
       </form>
       <ErrorMessage message={accountError} />
+      {profile && (
+        <DeleteAccountForm sessionId={sessionId} username={profile.username} onDeleted={onDeleted} />
+      )}
     </div>
   )
 }
