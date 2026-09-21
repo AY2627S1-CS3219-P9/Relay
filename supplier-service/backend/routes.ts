@@ -1,10 +1,10 @@
 import express from 'express'
 import { getSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier } from './db'
 import type { Location, OperatingHours, ServiceType } from '@relay/contracts/supplier'
+import type { UserApi, SessionId } from '@relay/contracts/user'
 
 const router = express.Router()
 
-// Helper to convert DB rows to Supplier type
 function normalizeSupplier(row: any): {
   id: string
   name: string
@@ -23,33 +23,28 @@ function normalizeSupplier(row: any): {
   }
 }
 
-function parseSessionId(req: express.Request, res: express.Response): string | null {
-  const sessionId = req.query.sessionId as string
+// Helper to validate user is authenticated (for public routes)
+async function validateAuthenticated(sessionId: SessionId): Promise<void> {
+  // Call UserApi.isAuthenticated(sessionId)
+  // For now, this is a placeholder
+}
+
+// Helper to validate user is admin (for admin routes)
+async function validateAdmin(sessionId: SessionId): Promise<void> {
+  // Call UserApi.isAdmin(sessionId)
+  // For now, this is a placeholder
+}
+
+// GET /api/supplier - Get all suppliers (public)
+router.get('/', async (req, res) => {
+  const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
     res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
-    return null
+    return
   }
-  return sessionId
-}
-
-async function validateAdmin(sessionId: string): Promise<void> {
-  // TODO:
-  // - Call UserApi.isVerified(sessionId) from @relay/contracts/user
-  // - Parse response to get { isVerified: boolean, role: 'admin' | 'user' }
-  // - If not isVerified, return 401
-  // - If role !== 'admin', return 403
-  // For now, admin validation is disabled - any sessionId is accepted
-  // This will be implemented in F6 when User Service is ready
-}
-
-// GET /api/supplier - Get all suppliers (admin only)
-router.get('/', async (req, res) => {
-  const sessionId = parseSessionId(req, res)
-  if (!sessionId) return
 
   try {
-    await validateAdmin(sessionId)
-
+    await validateAuthenticated(sessionId)
     const suppliers = await getSuppliers()
     res.json({ suppliers: suppliers.map(normalizeSupplier) })
   } catch (err) {
@@ -58,14 +53,16 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET /api/supplier/:id - Get single supplier (admin only)
+// GET /api/supplier/:id - Get single supplier (public)
 router.get('/:id', async (req, res) => {
-  const sessionId = parseSessionId(req, res)
-  if (!sessionId) return
+  const sessionId = req.query.sessionId as SessionId
+  if (!sessionId) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    return
+  }
 
   try {
-    await validateAdmin(sessionId)
-
+    await validateAuthenticated(sessionId)
     const supplier = await getSupplierById(req.params.id)
     if (!supplier) {
       return res.status(404).json({ code: 'NOT_FOUND', message: 'Supplier not found' })
@@ -79,8 +76,11 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/supplier - Create supplier (admin only)
 router.post('/', async (req, res) => {
-  const sessionId = parseSessionId(req, res)
-  if (!sessionId) return
+  const sessionId = req.query.sessionId as SessionId
+  if (!sessionId) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    return
+  }
 
   try {
     await validateAdmin(sessionId)
@@ -120,8 +120,11 @@ router.post('/', async (req, res) => {
 
 // PUT /api/supplier/:id - Update supplier (admin only)
 router.put('/:id', async (req, res) => {
-  const sessionId = parseSessionId(req, res)
-  if (!sessionId) return
+  const sessionId = req.query.sessionId as SessionId
+  if (!sessionId) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    return
+  }
 
   try {
     await validateAdmin(sessionId)
@@ -153,8 +156,11 @@ router.put('/:id', async (req, res) => {
 
 // DELETE /api/supplier/:id - Delete supplier (admin only)
 router.delete('/:id', async (req, res) => {
-  const sessionId = parseSessionId(req, res)
-  if (!sessionId) return
+  const sessionId = req.query.sessionId as SessionId
+  if (!sessionId) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    return
+  }
 
   try {
     await validateAdmin(sessionId)
