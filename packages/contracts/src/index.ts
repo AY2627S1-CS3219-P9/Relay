@@ -7,7 +7,10 @@ export type ServiceMetadata = {
   path: string
 }
 
-export type RemoteAppProps = { onNavigateHome?: () => void }
+export type RemoteAppProps = {
+  onNavigateHome?: () => void
+  onNavigate?: (service: ServiceId) => void
+}
 
 export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
   supplier: {
@@ -37,3 +40,4 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
 }
 
 export * from './user'
+export * from './supplier'
