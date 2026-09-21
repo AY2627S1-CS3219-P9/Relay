@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --ios-blue: #007aff;
+  --ios-blue-dark: #0051d5;
+  --ios-green: #34c759;
+  --ios-red: #ff3b30;
+  --ios-orange: #ff9500;
+  --ios-purple: #af52de;
+  --ios-gray: #8e8e93;
+  --ios-gray2: #aeaeb2;
+  --ios-gray5: #e5e5ea;
+  --ios-gray6: #f2f2f7;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: rgba(0, 0, 0, 0.1);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+}
+#root,
+.relay-app-shell {
+  position: relative;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+.relay-app-shell {
+  width: 100%;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.relay-design-system h1 {
+  color: #4c1d95;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
