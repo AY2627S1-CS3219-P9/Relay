@@ -5,12 +5,15 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@relay/contracts": ["../../packages/contracts/src/index.ts"],
+      "@relay/contracts/*": ["../../packages/contracts/src/*"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["../node_modules", "../../dist"]

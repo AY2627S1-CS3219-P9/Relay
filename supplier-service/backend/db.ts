@@ -17,9 +17,9 @@ export async function getSuppliers(): Promise<any[]> {
   return query('SELECT * FROM suppliers ORDER BY name')
 }
 
-export async function getSupplierById(id: string): Promise<any[] | undefined> {
+export async function getSupplierById(id: string): Promise<any[] | null> {
   const rows = await query('SELECT * FROM suppliers WHERE id = $1', [id])
-  return rows.length > 0 ? rows : undefined
+  return rows.length > 0 ? rows : null
 }
 
 export async function createSupplier(

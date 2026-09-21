@@ -23,6 +23,5 @@ BEFORE UPDATE ON suppliers
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
--- Seed data for suppliers table (development/testing only)
--- Comment out for production
+-- To seed the database with test data, uncomment the line below and rebuild:
 -- \\ir supplier-seed.sql
