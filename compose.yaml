@@ -13,6 +13,8 @@ services:
     depends_on:
       supplier-frontend:
         condition: service_healthy
+      supplier-api:
+        condition: service_healthy
       user-frontend:
         condition: service_healthy
       order-frontend:
@@ -89,6 +91,21 @@ services:
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked credit-api dependency when its API exists.
 
+  # Database services
+  supplier-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: relay
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./supplier-service/backend/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # Backend service templates
   #
   # Copy and adapt one of these stanzas when implementing a service API.
@@ -97,19 +114,27 @@ services:
   # Add the corresponding /api/<service>/ proxy route to host/nginx.conf so
   # browser code can use a relative URL such as /api/supplier/shops.
   #
-  # supplier-api:
-  #   build:
-  #     context: ./supplier-service/backend
-  #   expose:
-  #     - "3000"
-  #   environment:
-  #     PORT: "3000"
-  #     # DATABASE_URL: postgres://supplier-db/relay
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 5
+  supplier-api:
+    build:
+      context: .
+      dockerfile: supplier-service/backend/Dockerfile
+    expose:
+      - "3000"
+    environment:
+      PORT: "3000"
+      DB_HOST: supplier-db
+      DB_PORT: "5432"
+      DB_NAME: relay
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      supplier-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
   #
   # user-api:
   #   build:
