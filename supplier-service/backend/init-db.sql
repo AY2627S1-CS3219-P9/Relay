@@ -22,3 +22,7 @@ CREATE TRIGGER update_updated_at_trigger
 BEFORE UPDATE ON suppliers
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
+
+-- Seed data for suppliers table (development/testing only)
+-- Comment out for production
+-- \\ir supplier-seed.sql

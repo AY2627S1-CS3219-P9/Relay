@@ -13,8 +13,6 @@ export async function query<T>(text: string, params?: any[]): Promise<T[]> {
   return result.rows as T[]
 }
 
-// ponytail: Using any[] for now - type mapping from DB (snake_case, raw numbers) to
-// contracts (camelCase, branded types) requires more work. Keep for future.
 export async function getSuppliers(): Promise<any[]> {
   return query('SELECT * FROM suppliers ORDER BY name')
 }
