@@ -23,5 +23,4 @@ BEFORE UPDATE ON suppliers
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at();
 
--- To seed the database with test data, uncomment the line below and rebuild:
--- \\ir supplier-seed.sql
+-- Seed data is in: seed/data.sql
