@@ -1,4 +1,20 @@
 services:
+  user-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: relay
+    ports:
+      - '5432:5432'
+    volumes:
+      - user-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
   # publishing its port. The host is the browser-facing API boundary.
@@ -126,3 +142,6 @@ services:
   #   build:
   #     context: ./credit-service/backend
   #   expose: ["3000"]
+
+volumes:
+  user-postgres-data:
