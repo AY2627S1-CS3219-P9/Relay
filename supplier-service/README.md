@@ -63,38 +63,25 @@ supplier-service/
 └── backend/            # Express.js backend
     ├── app.ts          # Server entry
     ├── db.ts           # PostgreSQL helpers
-    ├── routes.ts       # API routes
+    ├── routes.ts       # API routes with session validation
+    ├── tsconfig.json   # TypeScript config
+    ├── Dockerfile      # Backend container definition
+    ├── schema.sql      # Database schema + seed data
     └── package.json
 ```
 
 ## Database Schema
 
-```sql
-CREATE TABLE suppliers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  location JSONB NOT NULL,
-  is_operational BOOLEAN NOT NULL DEFAULT true,
-  operating_hours JSONB NOT NULL,
-  service_types INTEGER[] NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
+See `backend/schema.sql` for the complete schema including:
+
+- `suppliers` table
+- `update_updated_at` trigger
 
 ## Seed Data
 
-To initialise database with seed data (for development):
+Seed data is in `backend/schema.sql` (not committed to repo).
 
-1. Uncomment `\\ir supplier-seed.sql` in `backend/init-db.sql`
+To enable seeding on docker compose up, do the following:
+
+1. Edit `backend/schema.sql` and uncomment the `INSERT INTO suppliers` statement (lines 44-65)
 2. Rebuild: `docker compose up -d --build supplier-db supplier-api`
-
-## Contract Types
-
-As defined in `packages/contracts/src/supplier/`:
-
-- `Location` - lat, lng, buildingName, floorNumber
-- `ServiceType` - Food(0), Drink(1), Shopping(2), Printing(3), Parcel(4)
-- `Day` - Monday(0) through Sunday(6)
-- `OperatingHours` - openingTime, closingTime, daysOfWeek
-- `Supplier` - Full supplier record with all fields
