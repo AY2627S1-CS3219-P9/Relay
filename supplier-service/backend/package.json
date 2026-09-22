@@ -1,0 +1,23 @@
+{
+  "name": "@relay/supplier-backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsc --noEmit && tsx --watch app.ts",
+    "build": "tsc --noEmit && esbuild app.ts --bundle --platform=node --format=esm --outdir=../../dist/backend --outbase=.",
+    "start": "node ../../dist/backend/app.js"
+  },
+  "dependencies": {
+    "@relay/contracts": "*",
+    "express": "^4.18.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.3",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.7.0",
+    "typescript": "~6.0.2"
+  }
+}
