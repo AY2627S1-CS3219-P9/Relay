@@ -1,16 +1,21 @@
-import type { SessionId } from '../user'
-import type { AddSupplierRequest, UpdateSupplierRequest } from './requests'
-import type { Supplier, SupplierId } from './models'
+import type { CreateSupplierRequest, UpdateSupplierRequest } from './requests'
+import type {
+  GetSuppliersResponse,
+  GetSupplierResponse,
+  CreateSupplierResponse,
+  UpdateSupplierResponse,
+} from './responses'
 
-/** Async boundary implemented by an HTTP adapter in the Supplier UI. */
+/** Async boundary implemented by an HTTP adapter in the Supplier UI */
 export interface SupplierApi {
-  getSuppliers(sessionId: SessionId): Promise<Supplier[]>
-  getSupplier(sessionId: SessionId, supplierId: SupplierId): Promise<Supplier>
-  addSupplier(sessionId: SessionId, request: AddSupplierRequest): Promise<Supplier>
-  updateSupplier(
-    sessionId: SessionId,
-    supplierId: SupplierId,
-    request: UpdateSupplierRequest,
-  ): Promise<Supplier>
-  removeSupplier(sessionId: SessionId, supplierId: SupplierId): Promise<void>
+  /** Get all suppliers (public) */
+  getSuppliers(): Promise<GetSuppliersResponse>
+  /** Get a single supplier by ID (public) */
+  getSupplier(id: string): Promise<GetSupplierResponse>
+  /** Add a new supplier (admin only - validated via SessionId) */
+  addSupplier(request: CreateSupplierRequest): Promise<CreateSupplierResponse>
+  /** Update an existing supplier (admin only - validated via SessionId) */
+  updateSupplier(id: string, request: UpdateSupplierRequest): Promise<UpdateSupplierResponse>
+  /** Remove a supplier (admin only - validated via SessionId) */
+  removeSupplier(id: string): Promise<void>
 }

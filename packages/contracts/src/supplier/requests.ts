@@ -1,7 +1,7 @@
-import type { Location, OperatingHours, ServiceType, SupplierId } from './models'
+import type { Location, ServiceType, OperatingHours } from './models'
 
-/** Required fields for creating or replacing a supplier record. */
-export type SupplierInput = {
+/** Request to create a new supplier (admin only) */
+export interface CreateSupplierRequest {
   name: string
   location: Location
   isOperational: boolean
@@ -9,14 +9,11 @@ export type SupplierInput = {
   serviceTypes: ServiceType[]
 }
 
-export type AddSupplierRequest = SupplierInput
-
-export type UpdateSupplierRequest = SupplierInput
-
-export type GetSupplierRequest = {
-  supplierId: SupplierId
-}
-
-export type RemoveSupplierRequest = {
-  supplierId: SupplierId
+/** Request to update an existing supplier (admin only) */
+export interface UpdateSupplierRequest {
+  name?: string
+  location?: Location
+  isOperational?: boolean
+  operatingHours?: OperatingHours
+  serviceTypes?: ServiceType[]
 }
