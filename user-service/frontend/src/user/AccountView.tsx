@@ -19,7 +19,7 @@ export function AccountView({
   onDeleted: () => void
 }) {
   const api = useUserApi()
-  
+
   const [profile, setProfile] = useState<UserProfile>()
   const [username, setUsername] = useState('')
   const [picture, setPicture] = useState<ImageDataUrl>()
@@ -159,7 +159,11 @@ export function AccountView({
       </form>
       <ErrorMessage message={accountError} />
       {profile && (
-        <DeleteAccountForm sessionId={sessionId} username={profile.username} onDeleted={onDeleted} />
+        <DeleteAccountForm
+          sessionId={sessionId}
+          username={profile.username}
+          onDeleted={onDeleted}
+        />
       )}
     </div>
   )

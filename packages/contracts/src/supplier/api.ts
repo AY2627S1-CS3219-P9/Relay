@@ -1,8 +1,5 @@
 import type { SessionId } from '../user'
-import type {
-  AddSupplierRequest,
-  UpdateSupplierRequest,
-} from './requests'
+import type { AddSupplierRequest, UpdateSupplierRequest } from './requests'
 import type { Supplier, SupplierId } from './models'
 
 /** Async boundary implemented by an HTTP adapter in the Supplier UI. */

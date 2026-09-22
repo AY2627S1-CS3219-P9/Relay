@@ -81,7 +81,12 @@ export function VerificationComponent({
       <button className="glass-btn-primary user-submit" disabled={loading || seconds === 0}>
         {loading ? 'Verifying…' : 'Verify email'}
       </button>
-      <button type="button" className="user-link" onClick={() => void resend()} disabled={resending}>
+      <button
+        type="button"
+        className="user-link"
+        onClick={() => void resend()}
+        disabled={resending}
+      >
         {resending ? 'Sending…' : 'Send a new code'}
       </button>
       {onBack && (

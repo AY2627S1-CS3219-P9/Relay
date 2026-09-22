@@ -1,27 +1,330 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
   color: #221a35;
-  background: #f8f7fc;
+  background: #dbe8ee;
 }
 body {
   margin: 0;
 }
-.service-remote {
-  background: white;
-  border: 1px solid #ded7f5;
-  border-radius: 1rem;
-  padding: 2rem;
-}
-.service-remote h1 {
-  margin: 0.4rem 0;
-}
-.service-remote button {
-  background: #6d28d9;
-  border: 0;
-  border-radius: 0.5rem;
-  color: white;
-  cursor: pointer;
+button,
+select,
+input {
   font: inherit;
-  margin-top: 1rem;
-  padding: 0.65rem 0.9rem;
+}
+.supplier-app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+.supplier-top-controls {
+  position: absolute;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+.supplier-top-controls > * {
+  pointer-events: auto;
+}
+.mock-control {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 12px 18px;
+  color: #221a35;
+  font-weight: 700;
+}
+.mock-control-group {
+  pointer-events: auto;
+}
+.profile-chip {
+  white-space: nowrap;
+}
+.filter-action {
+  position: absolute;
+  z-index: 500;
+  top: 50%;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 24px;
+  color: #221a35;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+.map-stub-controls {
+  position: absolute;
+  z-index: 500;
+  right: 24px;
+  bottom: 126px;
+  display: grid;
+  gap: 10px;
+}
+.map-control-button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: #221a35;
+  font-size: 22px;
+}
+.supplier-bottom-controls {
+  position: absolute;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+.supplier-bottom-controls > * {
+  pointer-events: auto;
+}
+.updates-action,
+.new-request-action {
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 28px;
+  font-weight: 700;
+}
+.updates-action b {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 0.75rem;
+}
+.new-request-action {
+  color: #fff;
+}
+.supplier-marker {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 6px;
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  color: #fff;
+  font-size: 23px;
+  transform: rotate(-45deg);
+}
+.supplier-marker b {
+  transform: rotate(45deg);
+}
+.supplier-filter-panel,
+.supplier-detail-card {
+  position: absolute;
+  z-index: 700;
+  top: 92px;
+  left: 24px;
+  width: min(360px, calc(100vw - 48px));
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 46px rgba(41, 30, 65, 0.2);
+  backdrop-filter: blur(22px);
+}
+.supplier-detail-card {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.filter-panel-header,
+.supplier-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.supplier-filter-panel h2,
+.supplier-detail-card h2 {
+  margin: 5px 0 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+.supplier-kicker {
+  color: #6d28d9;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.icon-button {
+  width: 32px;
+  height: 32px;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: rgba(118, 118, 128, 0.1) !important;
+  box-shadow: none !important;
+  border-radius: 50%;
+  font-size: 1.25rem;
+}
+.filter-label,
+fieldset {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  color: #33264b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.filter-label select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ded7f5;
+  border-radius: 10px;
+  background: #fff;
+}
+fieldset {
+  padding: 0;
+  border: 0;
+}
+legend {
+  padding: 0;
+}
+.filter-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.filter-check input {
+  accent-color: #6d28d9;
+}
+.supplier-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 18px;
+  color: #6f6680;
+  font-size: 0.85rem;
+}
+.supplier-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.is-open {
+  background: #dcfce7;
+  color: #16834b;
+}
+.is-closed {
+  background: #fff0f2;
+  color: #a22843;
+}
+.supplier-hours {
+  color: #6f6680;
+  font-size: 0.9rem;
+}
+.service-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.service-chip {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #f1ebff;
+  color: #6d28d9;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.errand-placeholder {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #eee8f8;
+}
+.errand-placeholder p {
+  margin: 8px 0 0;
+  color: #6f6680;
+  font-size: 0.9rem;
+}
+.supplier-error {
+  position: absolute;
+  z-index: 800;
+  top: 100px;
+  left: 50%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff0f2;
+  color: #a22843;
+  transform: translateX(-50%);
+}
+.return-account-button {
+  position: absolute;
+  z-index: 500;
+  top: 92px;
+  right: 24px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #6d28d9;
+  font-weight: 700;
+}
+@media (max-width: 700px) {
+  .supplier-top-controls {
+    right: 16px;
+    left: 16px;
+    gap: 8px;
+  }
+  .mock-control {
+    padding: 10px 12px;
+  }
+  .mock-control-group {
+    position: absolute;
+    top: 62px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .filter-action {
+    top: auto;
+    right: 16px;
+    bottom: 104px;
+    transform: none;
+  }
+  .map-stub-controls {
+    right: 16px;
+    bottom: 170px;
+  }
+  .supplier-bottom-controls {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    gap: 8px;
+  }
+  .updates-action,
+  .new-request-action {
+    min-height: 48px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+  }
+  .supplier-filter-panel,
+  .supplier-detail-card {
+    top: auto;
+    right: 16px;
+    bottom: 92px;
+    left: 16px;
+    width: auto;
+    transform: none;
+  }
+  .return-account-button {
+    top: 70px;
+    right: 16px;
+  }
 }

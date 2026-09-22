@@ -24,7 +24,12 @@ export function ErrorMessage({
         <span>{message}</span>
       </div>
       {onDismiss && (
-        <button type="button" className="relay-message-dismiss" onClick={onDismiss} aria-label="Dismiss message">
+        <button
+          type="button"
+          className="relay-message-dismiss"
+          onClick={onDismiss}
+          aria-label="Dismiss message"
+        >
           ×
         </button>
       )}

@@ -39,7 +39,7 @@ export function ProfileSetupForm({
       setLoading(false)
     }
   }
-  
+
   return (
     <form className="user-form" onSubmit={submit}>
       <div className="user-form-heading">
