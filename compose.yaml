@@ -42,12 +42,11 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    depends_on:
+      supplier-api:
+        condition: service_healthy
     # TODO(kubernetes): Create a Deployment and ClusterIP Service. Replicas
     # can scale independently behind that Service.
-    # When supplier-api is added, replace this comment with:
-    # depends_on:
-    #   supplier-api:
-    #     condition: service_healthy
 
   user-frontend:
     build:
@@ -94,6 +93,8 @@ services:
   # Database services
   supplier-db:
     image: postgres:16-alpine
+    ports:
+      - '5432:5432'
     environment:
       POSTGRES_DB: relay
       POSTGRES_USER: postgres

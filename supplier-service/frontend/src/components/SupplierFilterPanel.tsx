@@ -1,14 +1,16 @@
-import type { ServiceType } from '@relay/contracts'
+import { ServiceType } from '@relay/contracts'
+import { GlassCard, IconButton } from '@relay/ui'
 
 export type SupplierFilters = {
   status: 'all' | 'operational' | 'not-operational'
   serviceTypes: ServiceType[]
 }
 const serviceOptions: Array<{ value: ServiceType; label: string }> = [
-  { value: 'food-and-beverage', label: 'Food & beverage' },
-  { value: 'pick-ups', label: 'Pick-ups' },
-  { value: 'product-purchasing', label: 'Product purchasing' },
-  { value: 'printing', label: 'Printing' },
+  { value: ServiceType.Food, label: 'Food' },
+  { value: ServiceType.Drink, label: 'Drink' },
+  { value: ServiceType.Shopping, label: 'Shopping' },
+  { value: ServiceType.Printing, label: 'Printing' },
+  { value: ServiceType.Parcel, label: 'Parcel' },
 ]
 
 export function SupplierFilterPanel({
@@ -31,15 +33,15 @@ export function SupplierFilterPanel({
     onChange({ ...filters, serviceTypes })
   }
   return (
-    <aside className="supplier-filter-panel" aria-label="Supplier filters">
+    <GlassCard as="aside" className="supplier-filter-panel" aria-label="Supplier filters">
       <div className="filter-panel-header">
         <div>
           <span className="supplier-kicker">Explore</span>
           <h2>Filter suppliers</h2>
         </div>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Close filters">
+        <IconButton className="icon-button" label="Close filters" onClick={onClose}>
           ×
-        </button>
+        </IconButton>
       </div>
       <label className="filter-label">
         Operational status
@@ -74,6 +76,6 @@ export function SupplierFilterPanel({
           <option value="service-type">Service type</option>
         </select>
       </label>
-    </aside>
+    </GlassCard>
   )
 }

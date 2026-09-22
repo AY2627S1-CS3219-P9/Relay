@@ -37,21 +37,34 @@ function MapSizeController() {
   return null
 }
 
+function MapReadyController({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap()
+
+  useEffect(() => {
+    onReady(map)
+  }, [map, onReady])
+
+  return null
+}
+
 export function SupplierMap({
   center,
   suppliers,
   userLocation,
   onSelect,
+  onMapReady,
 }: {
   center: MapPoint
   suppliers: Supplier[]
   userLocation?: MapPoint
   onSelect: (supplier: Supplier) => void
+  onMapReady: (map: L.Map) => void
 }) {
   return (
-    <MapContainer className="relay-map" center={center} zoom={16} zoomControl>
+    <MapContainer className="relay-map" center={center} zoom={16} zoomControl={false}>
       <MapCenterController center={center} />
       <MapSizeController />
+      <MapReadyController onReady={onMapReady} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -60,7 +73,7 @@ export function SupplierMap({
         <CircleMarker
           center={userLocation}
           radius={8}
-          pathOptions={{ color: '#fff', fillColor: '#2563eb', fillOpacity: 1, weight: 3 }}
+          pathOptions={{ color: '#fff', fillColor: '#007aff', fillOpacity: 1, weight: 3 }}
         />
       )}
       {suppliers.map((supplier) => (

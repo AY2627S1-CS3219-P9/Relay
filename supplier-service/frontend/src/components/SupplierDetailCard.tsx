@@ -1,20 +1,23 @@
-import type { Day, ServiceType, Supplier } from '@relay/contracts'
+import { Day, ServiceType } from '@relay/contracts'
+import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
+import type { Supplier } from '@relay/contracts'
 
 const serviceLabels: Record<ServiceType, string> = {
-  'food-and-beverage': 'Food & beverage',
-  'pick-ups': 'Pick-ups',
-  'product-purchasing': 'Product purchasing',
-  printing: 'Printing',
+  [ServiceType.Food]: 'Food',
+  [ServiceType.Drink]: 'Drink',
+  [ServiceType.Shopping]: 'Shopping',
+  [ServiceType.Printing]: 'Printing',
+  [ServiceType.Parcel]: 'Parcel',
 }
 
 const dayLabels: Record<Day, string> = {
-  monday: 'Mon',
-  tuesday: 'Tue',
-  wednesday: 'Wed',
-  thursday: 'Thu',
-  friday: 'Fri',
-  saturday: 'Sat',
-  sunday: 'Sun',
+  [Day.Monday]: 'Mon',
+  [Day.Tuesday]: 'Tue',
+  [Day.Wednesday]: 'Wed',
+  [Day.Thursday]: 'Thu',
+  [Day.Friday]: 'Fri',
+  [Day.Saturday]: 'Sat',
+  [Day.Sunday]: 'Sun',
 }
 
 export function SupplierDetailCard({
@@ -25,27 +28,22 @@ export function SupplierDetailCard({
   onClose: () => void
 }) {
   return (
-    <aside className="supplier-detail-card" aria-label={`${supplier.name} details`}>
+    <GlassCard as="aside" className="supplier-detail-card" aria-label={`${supplier.name} details`}>
       <div className="supplier-card-header">
         <div>
           <span className="supplier-kicker">Supplier</span>
           <h2>{supplier.name}</h2>
         </div>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={onClose}
-          aria-label="Close supplier details"
-        >
+        <IconButton className="icon-button" label="Close supplier details" onClick={onClose}>
           ×
-        </button>
+        </IconButton>
       </div>
       <div className="supplier-status-row">
-        <span className={`supplier-status ${supplier.isOperational ? 'is-open' : 'is-closed'}`}>
+        <StatusBadge tone={supplier.isOperational ? 'success' : 'danger'}>
           {supplier.isOperational ? 'Operational' : 'Not operational'}
-        </span>
+        </StatusBadge>
         <span>
-          {supplier.location.buildingName} · Level {supplier.location.floorNum}
+          {supplier.location.buildingName} · Level {supplier.location.floorNumber}
         </span>
       </div>
       <p className="supplier-hours">
@@ -63,6 +61,6 @@ export function SupplierDetailCard({
         <span className="supplier-kicker">Available errands</span>
         <p>No errands are available for this supplier yet.</p>
       </div>
-    </aside>
+    </GlassCard>
   )
 }

@@ -1,6 +1,6 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
-  color: #221a35;
+  color: var(--relay-text);
   background: #dbe8ee;
 }
 body {
@@ -32,28 +32,19 @@ input {
 .mock-control {
   border: 1px solid rgba(255, 255, 255, 0.7);
   padding: 12px 18px;
-  color: #221a35;
+  color: var(--relay-text);
   font-weight: 700;
 }
 .mock-control-group {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  width: min(520px, 62vw);
   pointer-events: auto;
+  transform: translateX(-50%);
 }
 .profile-chip {
   white-space: nowrap;
-}
-.filter-action {
-  position: absolute;
-  z-index: 500;
-  top: 50%;
-  right: 24px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 12px 16px;
-  border-radius: 24px;
-  color: #221a35;
-  font-weight: 700;
-  transform: translateY(-50%);
 }
 .map-stub-controls {
   position: absolute;
@@ -71,7 +62,7 @@ input {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  color: #221a35;
+  color: var(--relay-text);
   font-size: 22px;
 }
 .supplier-bottom-controls {
@@ -114,7 +105,7 @@ input {
   place-items: center;
   border: 2px solid #fff;
   border-radius: 50% 50% 50% 6px;
-  background: #2563eb;
+  background: var(--relay-blue);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
   color: #fff;
   font-size: 23px;
@@ -131,11 +122,7 @@ input {
   left: 24px;
   width: min(360px, calc(100vw - 48px));
   padding: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 46px rgba(41, 30, 65, 0.2);
-  backdrop-filter: blur(22px);
 }
 .supplier-detail-card {
   top: 50%;
@@ -155,7 +142,7 @@ input {
   letter-spacing: -0.03em;
 }
 .supplier-kicker {
-  color: #6d28d9;
+  color: var(--relay-blue-dark);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -177,14 +164,14 @@ fieldset {
   display: grid;
   gap: 8px;
   margin-top: 20px;
-  color: #33264b;
+  color: var(--relay-text);
   font-size: 0.88rem;
   font-weight: 700;
 }
 .filter-label select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #ded7f5;
+  border: 1px solid rgba(0, 122, 255, 0.2);
   border-radius: 10px;
   background: #fff;
 }
@@ -202,7 +189,7 @@ legend {
   font-weight: 500;
 }
 .filter-check input {
-  accent-color: #6d28d9;
+  accent-color: var(--relay-blue);
 }
 .supplier-status-row {
   display: flex;
@@ -210,25 +197,11 @@ legend {
   gap: 8px;
   align-items: center;
   margin-top: 18px;
-  color: #6f6680;
+  color: var(--relay-text-muted);
   font-size: 0.85rem;
 }
-.supplier-status {
-  padding: 5px 9px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-.is-open {
-  background: #dcfce7;
-  color: #16834b;
-}
-.is-closed {
-  background: #fff0f2;
-  color: #a22843;
-}
 .supplier-hours {
-  color: #6f6680;
+  color: var(--relay-text-muted);
   font-size: 0.9rem;
 }
 .service-chip-row {
@@ -239,19 +212,19 @@ legend {
 .service-chip {
   padding: 6px 9px;
   border-radius: 999px;
-  background: #f1ebff;
-  color: #6d28d9;
+  background: var(--relay-blue-tint);
+  color: var(--relay-blue-dark);
   font-size: 0.75rem;
   font-weight: 700;
 }
 .errand-placeholder {
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px solid #eee8f8;
+  border-top: 1px solid rgba(0, 122, 255, 0.14);
 }
 .errand-placeholder p {
   margin: 8px 0 0;
-  color: #6f6680;
+  color: var(--relay-text-muted);
   font-size: 0.9rem;
 }
 .supplier-error {
@@ -261,21 +234,9 @@ legend {
   left: 50%;
   padding: 10px 14px;
   border-radius: 10px;
-  background: #fff0f2;
-  color: #a22843;
+  background: var(--relay-red-bg);
+  color: var(--relay-red-dark);
   transform: translateX(-50%);
-}
-.return-account-button {
-  position: absolute;
-  z-index: 500;
-  top: 92px;
-  right: 24px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #6d28d9;
-  font-weight: 700;
 }
 @media (max-width: 700px) {
   .supplier-top-controls {
@@ -287,16 +248,8 @@ legend {
     padding: 10px 12px;
   }
   .mock-control-group {
-    position: absolute;
-    top: 62px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  .filter-action {
-    top: auto;
-    right: 16px;
-    bottom: 104px;
-    transform: none;
+    width: calc(100vw - 32px);
+    min-width: 0;
   }
   .map-stub-controls {
     right: 16px;
@@ -322,9 +275,5 @@ legend {
     left: 16px;
     width: auto;
     transform: none;
-  }
-  .return-account-button {
-    top: 70px;
-    right: 16px;
   }
 }

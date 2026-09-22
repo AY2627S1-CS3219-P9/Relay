@@ -106,18 +106,20 @@ export function AccountView({
   return (
     <div className="account-view">
       <div className="account-header">
-        <div>
-          <span className="user-eyebrow">Account</span>
-          <h1>Your profile</h1>
-        </div>
         <button type="button" className="user-link" onClick={() => void logout()}>
           Log out
         </button>
       </div>
       <ErrorMessage message={profileError} />
       {profile && (
-        <form className="account-section" onSubmit={saveProfile}>
-          <p>Email: {profile.email}</p>
+        <form className="account-section account-profile-section" onSubmit={saveProfile}>
+          <div className="account-section-heading">
+            <h2>Personal details</h2>
+          </div>
+          <p className="account-email">
+            <span>Email</span>
+            {profile.email}
+          </p>
           <UsernameField value={username} onChange={setUsername} />
           <ImageUploadComponent value={picture} onChange={setPicture} />
           <button className="glass-btn-primary" disabled={savingProfile}>

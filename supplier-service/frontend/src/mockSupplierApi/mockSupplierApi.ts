@@ -1,13 +1,12 @@
+import { Day, ServiceType } from '@relay/contracts'
 import type {
-  AddSupplierRequest,
-  SessionId,
+  CreateSupplierRequest,
   Supplier,
   SupplierApi,
-  SupplierId,
   UpdateSupplierRequest,
 } from '@relay/contracts'
 
-const id = (value: string) => value as SupplierId
+const id = (value: string) => value
 
 const seed: Array<
   [string, string, number, number, number, string, string, boolean, Supplier['serviceTypes']]
@@ -21,7 +20,7 @@ const seed: Array<
     '09:00',
     '18:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'NUS Co-op',
@@ -32,21 +31,21 @@ const seed: Array<
     '09:00',
     '16:00',
     true,
-    ['product-purchasing'],
+    [ServiceType.Shopping],
   ],
-  ['Printer @ Com 2', 'Com 2', 1, 1.2938347, 103.7744572, '00:00', '23:59', true, ['printing']],
-  ['Cool Spot', 'Com 2', 1, 1.2940156, 103.7738478, '09:00', '21:30', true, ['food-and-beverage']],
   [
-    'InstaChef',
-    'Terrace',
+    'Printer @ Com 2',
+    'Com 2',
     1,
-    1.2938898,
-    103.7736305,
+    1.2938347,
+    103.7744572,
     '00:00',
     '23:59',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Printing],
   ],
+  ['Cool Spot', 'Com 2', 1, 1.2940156, 103.7738478, '09:00', '21:30', true, [ServiceType.Food]],
+  ['InstaChef', 'Terrace', 1, 1.2938898, 103.7736305, '00:00', '23:59', true, [ServiceType.Food]],
   [
     'Cafe+ Robot Cafe',
     'Central Library',
@@ -56,7 +55,7 @@ const seed: Array<
     '00:00',
     '23:59',
     false,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'A Hot Hideout',
@@ -67,7 +66,7 @@ const seed: Array<
     '11:00',
     '21:30',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Arise and Shine',
@@ -78,7 +77,7 @@ const seed: Array<
     '08:00',
     '18:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Bakehaus / Aurea',
@@ -89,7 +88,7 @@ const seed: Array<
     '08:00',
     '21:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Central Square @ YIH',
@@ -100,7 +99,7 @@ const seed: Array<
     '08:00',
     '20:00',
     false,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Pasta Express',
@@ -111,7 +110,7 @@ const seed: Array<
     '09:30',
     '19:30',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'TOMORO COFFEE',
@@ -122,7 +121,7 @@ const seed: Array<
     '08:15',
     '18:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Octobox',
@@ -133,9 +132,9 @@ const seed: Array<
     '00:00',
     '23:59',
     false,
-    ['product-purchasing'],
+    [ServiceType.Shopping],
   ],
-  ['Smooy', 'COM3', 1, 1.2948308, 103.7716305, '11:00', '21:00', true, ['food-and-beverage']],
+  ['Smooy', 'COM3', 1, 1.2948308, 103.7716305, '11:00', '21:00', true, [ServiceType.Food]],
   [
     'Goh Bros E-Print Pte Ltd',
     'Yusof Ishak House',
@@ -145,7 +144,7 @@ const seed: Array<
     '09:00',
     '18:00',
     true,
-    ['printing'],
+    [ServiceType.Printing],
   ],
   [
     'Cheers Unmanned Convenience Store',
@@ -156,7 +155,7 @@ const seed: Array<
     '00:00',
     '23:59',
     true,
-    ['product-purchasing'],
+    [ServiceType.Shopping],
   ],
   [
     'Nami',
@@ -167,7 +166,7 @@ const seed: Array<
     '08:00',
     '17:30',
     false,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Supersnacks',
@@ -178,7 +177,7 @@ const seed: Array<
     '11:00',
     '02:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'Good Day Cafe',
@@ -189,7 +188,7 @@ const seed: Array<
     '07:30',
     '18:30',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'The Coffee Roaster',
@@ -200,7 +199,7 @@ const seed: Array<
     '08:00',
     '17:30',
     false,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
   [
     'he by He Brews',
@@ -211,7 +210,7 @@ const seed: Array<
     '08:00',
     '17:00',
     true,
-    ['food-and-beverage'],
+    [ServiceType.Food],
   ],
 ]
 
@@ -222,12 +221,12 @@ const seedSuppliers: Supplier[] = seed.map(
   ) => ({
     id: id(`supplier-${index + 1}`),
     name,
-    location: { lat, lng, buildingName, floorNum },
+    location: { lat, lng, buildingName, floorNumber: floorNum },
     isOperational,
     operatingHours: {
       openingTime,
       closingTime,
-      daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      daysOfWeek: [Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday],
     },
     serviceTypes,
   }),
@@ -246,34 +245,28 @@ function cloneSupplier(supplier: Supplier): Supplier {
 }
 
 export const mockSupplierApi: SupplierApi = {
-  async getSuppliers(_sessionId: SessionId) {
-    return seedSuppliers.map(cloneSupplier)
+  async getSuppliers() {
+    return { suppliers: seedSuppliers.map(cloneSupplier) }
   },
-  async getSupplier(_sessionId: SessionId, supplierId: SupplierId) {
+  async getSupplier(supplierId: string) {
     const supplier = seedSuppliers.find((candidate) => candidate.id === supplierId)
     if (!supplier) throw new Error('Supplier not found.')
-    return cloneSupplier(supplier)
+    return { supplier: cloneSupplier(supplier) }
   },
-  async addSupplier(_sessionId: SessionId, request: AddSupplierRequest) {
+  async addSupplier(request: CreateSupplierRequest) {
     const supplier: Supplier = { ...request, id: id(`supplier-${crypto.randomUUID()}`) }
     seedSuppliers.push(supplier)
-    return cloneSupplier(supplier)
+    return { supplier: cloneSupplier(supplier) }
   },
-  async updateSupplier(
-    _sessionId: SessionId,
-    supplierId: SupplierId,
-    request: UpdateSupplierRequest,
-  ) {
+  async updateSupplier(supplierId: string, request: UpdateSupplierRequest) {
     const index = seedSuppliers.findIndex((candidate) => candidate.id === supplierId)
     if (index < 0) throw new Error('Supplier not found.')
-    seedSuppliers[index] = { ...request, id: supplierId }
-    return cloneSupplier(seedSuppliers[index])
+    seedSuppliers[index] = { ...seedSuppliers[index], ...request, id: supplierId }
+    return { supplier: cloneSupplier(seedSuppliers[index]) }
   },
-  async removeSupplier(_sessionId: SessionId, supplierId: SupplierId) {
+  async removeSupplier(supplierId: string) {
     const index = seedSuppliers.findIndex((candidate) => candidate.id === supplierId)
     if (index < 0) throw new Error('Supplier not found.')
     seedSuppliers.splice(index, 1)
   },
 }
-
-export const mockSessionId = 'supplier-demo-session' as SessionId

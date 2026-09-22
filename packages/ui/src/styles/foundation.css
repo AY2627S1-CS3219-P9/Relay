@@ -1,8 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --ios-blue: #007aff;
-  --ios-blue-dark: #0051d5;
+  --relay-blue: #007aff;
+  --relay-blue-dark: #0051d5;
+  --relay-blue-tint: rgba(0, 122, 255, 0.18);
+  --relay-blue-shadow: rgba(0, 122, 255, 0.3);
+  --relay-text: #1c1c1e;
+  --relay-text-muted: #6f6f76;
+  --relay-text-on-accent: #fff;
+  --relay-red: #ff3b30;
+  --relay-red-bg: #fff0f2;
+  --relay-red-dark: #a22843;
+  --relay-red-shadow: rgba(255, 59, 48, 0.24);
+  --relay-green-bg: #e7f8ed;
+  --relay-green-dark: #16834b;
+  --relay-orange-bg: #fff4db;
+  --relay-orange-dark: #805b0b;
+  --relay-gray-bg: #f2f2f7;
+  --relay-gray-text: #6f6f76;
+  --relay-glass-bg: rgba(255, 255, 255, 0.28);
+  --relay-glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --relay-glass-border: rgba(255, 255, 255, 0.62);
+  --relay-glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
+  --relay-control-bg: rgba(118, 118, 128, 0.1);
+  --relay-control-bg-hover: rgba(118, 118, 128, 0.18);
+  --ios-blue: var(--relay-blue);
+  --ios-blue-dark: var(--relay-blue-dark);
   --ios-green: #34c759;
   --ios-red: #ff3b30;
   --ios-orange: #ff9500;
@@ -33,7 +56,7 @@ body,
 
 body {
   margin: 0;
-  background: #fff;
+  background: var(--relay-gray-bg);
 }
 #root,
 .relay-app-shell {
@@ -49,7 +72,7 @@ body {
 }
 
 .relay-design-system h1 {
-  color: #4c1d95;
+  color: var(--relay-text);
   font-family: Inter, system-ui, sans-serif;
   font-size: 2rem;
   font-weight: 700;

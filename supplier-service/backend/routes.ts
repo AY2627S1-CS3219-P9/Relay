@@ -23,12 +23,6 @@ function normalizeSupplier(row: any): {
   }
 }
 
-// Helper to validate user is authenticated (for public routes)
-async function validateAuthenticated(sessionId: SessionId): Promise<void> {
-  // Call UserApi.isAuthenticated(sessionId)
-  // For now, this is a placeholder
-}
-
 // Helper to validate user is admin (for admin routes)
 async function validateAdmin(sessionId: SessionId): Promise<void> {
   // Call UserApi.isAdmin(sessionId)
@@ -37,14 +31,7 @@ async function validateAdmin(sessionId: SessionId): Promise<void> {
 
 // GET /api/supplier - Get all suppliers (public)
 router.get('/', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
-    return
-  }
-
   try {
-    await validateAuthenticated(sessionId)
     const suppliers = await getSuppliers()
     res.json({ suppliers: suppliers.map(normalizeSupplier) })
   } catch (err) {
@@ -55,14 +42,7 @@ router.get('/', async (req, res) => {
 
 // GET /api/supplier/:id - Get single supplier (public)
 router.get('/:id', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
-    return
-  }
-
   try {
-    await validateAuthenticated(sessionId)
     const supplier = await getSupplierById(req.params.id)
     if (!supplier) {
       return res.status(404).json({ code: 'NOT_FOUND', message: 'Supplier not found' })
