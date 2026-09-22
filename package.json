@@ -4,6 +4,7 @@
   "workspaces": [
     "host",
     "supplier-service/frontend",
+    "supplier-service/backend",
     "user-service/frontend",
     "user-service/backend",
     "order-service/frontend",
@@ -30,5 +31,8 @@
   },
   "overrides": {
     "adm-zip": "0.6.1"
+  },
+  "allowScripts": {
+    "esbuild@0.24.2": true
   }
 }
