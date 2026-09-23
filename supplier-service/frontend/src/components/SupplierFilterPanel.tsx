@@ -39,7 +39,7 @@ export function SupplierFilterPanel({
           <span className="supplier-kicker">Explore</span>
           <h2>Filter suppliers</h2>
         </div>
-        <IconButton className="icon-button" label="Close filters" onClick={onClose}>
+        <IconButton scale={1.5} className="icon-button" label="Close filters" onClick={onClose}>
           ×
         </IconButton>
       </div>

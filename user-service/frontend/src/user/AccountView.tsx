@@ -1,6 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import type { ImageDataUrl, SessionId, UserProfile } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 import { ImageUploadComponent } from '../components/ImageUploadComponent'
 import { PasswordField } from '../components/PasswordField'
 import { UsernameField } from '../components/UsernameField'
@@ -106,9 +106,9 @@ export function AccountView({
   return (
     <div className="account-view">
       <div className="account-header">
-        <button type="button" className="user-link" onClick={() => void logout()}>
+        <TextButton onClick={() => void logout()}>
           Log out
-        </button>
+        </TextButton>
       </div>
       <ErrorMessage message={profileError} />
       {profile && (

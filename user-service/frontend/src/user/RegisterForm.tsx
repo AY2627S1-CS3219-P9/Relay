@@ -4,7 +4,7 @@ import { isNusEmail, passwordErrors, passwordRequirements } from './validation'
 import type { RegisterResponse } from '@relay/contracts'
 import { EmailField } from '../components/EmailField'
 import { PasswordField } from '../components/PasswordField'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function RegisterForm({
   onRegistered,
@@ -85,9 +85,9 @@ export function RegisterForm({
       </button>
       <p className="user-switch">
         Already registered?{' '}
-        <button type="button" className="user-link" onClick={onLogin}>
-          Log in
-        </button>
+        <TextButton onClick={onLogin}>
+          Login
+        </TextButton>
       </p>
     </form>
   )

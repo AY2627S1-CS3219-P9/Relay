@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import type { ServiceType, Supplier, SupplierApi } from '@relay/contracts'
-import { SlidingSegmentedControl } from '@relay/ui'
+import { RelayButton, SlidingSegmentedControl } from '@relay/ui'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
 import { SupplierMap, type MapPoint } from './components/SupplierMap'
@@ -105,15 +105,17 @@ export default function App({
         onMapReady={handleMapReady}
       />
       <div className="supplier-top-controls map-top-menu">
-        <button
-          type="button"
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="glass-pill glass-control mock-control"
           aria-label="Credits"
         >
           ⚡ 0 cr
-        </button>
+        </RelayButton>
         <SlidingSegmentedControl
           className="mock-control-group"
+          scale={1}
           ariaLabel="Supplier view"
           options={[
             { value: 'explore', label: 'Explore' },
@@ -122,56 +124,61 @@ export default function App({
           value={activeMode}
           onChange={setActiveMode}
         />
-        <button
-          type="button"
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="glass-pill glass-control profile-chip mock-control"
           aria-label="Profile"
           onClick={(event) => openProfile(event.currentTarget)}
         >
           ◉ Alex
-        </button>
+        </RelayButton>
       </div>
       <div className="map-stub-controls">
-        <button
-          type="button"
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="map-control-button filter-map-control"
           onClick={() => setShowFilters(true)}
           aria-label="Open supplier filters"
         >
           ☷
-        </button>
-        <button
-          type="button"
+        </RelayButton>
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="map-control-button"
           aria-label="Center map"
           onClick={() => map?.setView(userLocation ?? center)}
         >
           ⌖
-        </button>
-        <button
-          type="button"
+        </RelayButton>
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="map-control-button"
           aria-label="Zoom in"
           onClick={() => map?.zoomIn()}
         >
           +
-        </button>
-        <button
-          type="button"
+        </RelayButton>
+        <RelayButton
+          variant="secondary"
+          scale={1.25}
           className="map-control-button"
           aria-label="Zoom out"
           onClick={() => map?.zoomOut()}
         >
           −
-        </button>
+        </RelayButton>
       </div>
       <div className="supplier-bottom-controls map-bottom-menu">
-        <button type="button" className="updates-action glass-pill">
+        <RelayButton variant="secondary" scale={1.5} className="updates-action glass-pill">
           ♟ Updates <b>1</b>
-        </button>
-        <button type="button" className="new-request-action glass-btn-primary">
+        </RelayButton>
+        <RelayButton variant="primary" scale={1.5} className="new-request-action glass-btn-primary">
           ＋ New request
-        </button>
+        </RelayButton>
       </div>
       {showFilters && (
         <SupplierFilterPanel

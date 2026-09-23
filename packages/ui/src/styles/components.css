@@ -1,14 +1,15 @@
 .relay-button {
   display: inline-flex;
-  min-height: 44px;
+  min-height: calc(44px * var(--relay-button-scale, 1));
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: calc(8px * var(--relay-button-scale, 1));
+  padding: calc(10px * var(--relay-button-scale, 1)) calc(16px * var(--relay-button-scale, 1));
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--relay-button-scale, 1));
   color: var(--relay-text-on-accent);
   font: inherit;
+  font-size: calc(1em * var(--relay-button-scale, 1));
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -53,10 +54,46 @@
   color: var(--relay-blue-dark);
   box-shadow: none;
 }
+.relay-text-button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--relay-blue-dark);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.16s ease, text-decoration-color 0.16s ease;
+}
+.relay-text-button:hover:not(:disabled) {
+  color: var(--relay-blue);
+  text-decoration: underline;
+}
+.relay-text-button:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--relay-blue);
+  outline-offset: 3px;
+}
+.relay-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.relay-text-button-bouncy {
+  transition:
+    color 0.16s ease,
+    text-decoration-color 0.16s ease,
+    transform 0.16s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+.relay-text-button-bouncy:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.relay-text-button-bouncy:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
 .relay-icon-button {
   display: inline-grid;
-  width: 34px;
-  height: 34px;
+  width: calc(34px * var(--relay-icon-button-scale, 1));
+  height: calc(34px * var(--relay-icon-button-scale, 1));
   box-sizing: border-box;
   min-height: 0;
   padding: 0;
@@ -66,7 +103,7 @@
   background: var(--relay-control-bg);
   color: var(--relay-text);
   font: inherit;
-  font-size: 1.25rem;
+  font-size: calc(1.25rem * var(--relay-icon-button-scale, 1));
   cursor: pointer;
   transition:
     transform 0.16s ease,

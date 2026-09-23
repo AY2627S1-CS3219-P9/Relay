@@ -27,7 +27,7 @@ export default function App({
   onCloseProfile,
   presentation = 'full',
 }: { api?: UserApi } & RemoteAppProps) {
-  const [view, setView] = useState<View>('register')
+  const [view, setView] = useState<View>('login')
   const [sessionId, setSessionId] = useState<SessionId>()
   const [email, setEmail] = useState('')
   const [loginNotice, setLoginNotice] = useState('')
@@ -99,15 +99,13 @@ export default function App({
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
-            <span className="user-eyebrow">You’re all set</span>
-            <h1>Welcome to Relay</h1>
-            <p>Your account is ready to use.</p>
+            <h1>Welcome!</h1>
             <RelayButton
               variant="primary"
               className="glass-btn-primary user-submit"
               onClick={completeRegistration}
             >
-              Let's begin!
+              Continue 
             </RelayButton>
           </div>
         )}
@@ -142,7 +140,7 @@ export default function App({
       <UserApiProvider api={api}>
         <div className="user-profile-content">
           <div className="user-profile-card-header">
-            <span className="user-eyebrow">Profile</span>
+            <h1>Profile</h1>
             <IconButton label="Close profile" onClick={onCloseProfile}>
               ×
             </IconButton>

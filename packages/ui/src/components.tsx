@@ -5,17 +5,37 @@ export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
 
 export function RelayButton({
   variant = 'secondary',
+  scale = 1,
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: RelayButtonVariant
+  scale?: number
   children: ReactNode
 }) {
   return (
     <button
       {...props}
+      style={{ ...props.style, '--relay-button-scale': scale } as CSSProperties}
       className={`relay-button relay-button-${variant}${className ? ` ${className}` : ''}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function TextButton({
+  className = '',
+  children,
+  withBounce = true,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; withBounce?: boolean }) {
+  return (
+    <button
+      {...props}
+      type={props.type ?? 'button'}
+      className={`relay-text-button${withBounce ? ' relay-text-button-bouncy' : ''}${className ? ` ${className}` : ''}`}
     >
       {children}
     </button>
@@ -24,17 +44,20 @@ export function RelayButton({
 
 export function IconButton({
   label,
+  scale = 1,
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
+  scale?: number
   children: ReactNode
 }) {
   return (
     <button
       {...props}
       type={props.type ?? 'button'}
+      style={{ ...props.style, '--relay-icon-button-scale': scale } as CSSProperties}
       className={`relay-icon-button${className ? ` ${className}` : ''}`}
       aria-label={label}
     >
@@ -146,12 +169,14 @@ export function SlidingSegmentedControl<T extends string | number>({
   value,
   onChange,
   ariaLabel = 'Options',
+  scale = 1,
   className = '',
 }: {
   options: ReadonlyArray<{ value: T; label: ReactNode }>
   value: T
   onChange: (value: T) => void
   ariaLabel?: string
+  scale?: number
   className?: string
 }) {
   const activeIndex = Math.max(
@@ -168,6 +193,7 @@ export function SlidingSegmentedControl<T extends string | number>({
         {
           '--relay-segment-count': options.length,
           '--relay-segment-index': activeIndex,
+          '--relay-segment-scale': scale,
         } as CSSProperties
       }
     >

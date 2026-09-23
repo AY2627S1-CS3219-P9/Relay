@@ -3,7 +3,7 @@ import { useUserApi } from './UserApiProvider'
 import type { LoginResponse } from '@relay/contracts'
 import { EmailField } from '../components/EmailField'
 import { PasswordField } from '../components/PasswordField'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function LoginForm({
   onLoggedIn,
@@ -52,13 +52,13 @@ export function LoginForm({
       <ErrorMessage message={notice ?? ''} variant="success" />
       <ErrorMessage message={errorMessage} />
       <button className="glass-btn-primary user-submit" disabled={loading}>
-        {loading ? 'Logging in…' : 'Log in'}
+        {loading ? 'Logging in…' : 'Login'}
       </button>
       <p className="user-switch">
         Need an account?&nbsp;
-        <button type="button" className="user-link" onClick={onRegister}>
+        <TextButton onClick={onRegister}>
           Register
-        </button>
+        </TextButton>
       </p>
     </form>
   )

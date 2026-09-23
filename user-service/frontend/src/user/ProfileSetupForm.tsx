@@ -43,7 +43,6 @@ export function ProfileSetupForm({
   return (
     <form className="user-form" onSubmit={submit}>
       <div className="user-form-heading">
-        <span className="user-eyebrow">One last step</span>
         <h1>Set up your profile</h1>
         <p>Choose how other Relay users will see you.</p>
       </div>

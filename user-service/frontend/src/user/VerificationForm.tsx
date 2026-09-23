@@ -17,7 +17,6 @@ export function VerificationForm({
   return (
     <div className="user-form">
       <div className="user-form-heading">
-        <span className="user-eyebrow">Email verification</span>
         <h1>Check your inbox</h1>
         <p>
           We sent a 6-digit code to <strong>{email}</strong>.

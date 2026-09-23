@@ -13,6 +13,7 @@ export {
   SlidingSegmentedControl,
   Spinner,
   StatusBadge,
+  TextButton,
 } from './components'
 export type { RelayButtonVariant } from './components'
 

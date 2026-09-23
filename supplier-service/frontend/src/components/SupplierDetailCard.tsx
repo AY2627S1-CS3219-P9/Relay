@@ -34,7 +34,7 @@ export function SupplierDetailCard({
           <span className="supplier-kicker">Supplier</span>
           <h2>{supplier.name}</h2>
         </div>
-        <IconButton className="icon-button" label="Close supplier details" onClick={onClose}>
+        <IconButton scale={1.5} className="icon-button" label="Close supplier details" onClick={onClose}>
           ×
         </IconButton>
       </div>
