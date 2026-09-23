@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import type { ServiceType, Supplier, SupplierApi } from '@relay/contracts'
-import { RelayButton, SlidingSegmentedControl } from '@relay/ui'
+import { FilterIcon, LocationIcon, RelayButton, SlidingSegmentedControl } from '@relay/ui'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
 import { SupplierMap, type MapPoint } from './components/SupplierMap'
@@ -142,7 +142,7 @@ export default function App({
           onClick={() => setShowFilters(true)}
           aria-label="Open supplier filters"
         >
-          ☷
+          <FilterIcon className="filter-icon" />
         </RelayButton>
         <RelayButton
           variant="secondary"
@@ -151,7 +151,7 @@ export default function App({
           aria-label="Center map"
           onClick={() => map?.setView(userLocation ?? center)}
         >
-          ⌖
+          <LocationIcon className="location-icon" />
         </RelayButton>
         <RelayButton
           variant="secondary"

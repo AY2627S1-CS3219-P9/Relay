@@ -67,6 +67,14 @@ input {
   color: var(--relay-text);
   font-size: calc(22px * var(--relay-button-scale, 1));
 }
+.filter-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+.location-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
 .supplier-bottom-controls {
   position: absolute;
   z-index: 500;

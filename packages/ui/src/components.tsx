@@ -66,6 +66,45 @@ export function IconButton({
   )
 }
 
+export function FilterIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 512 512"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M32 48H480L304 272V432L208 480V272L32 48Z"
+        stroke="currentColor"
+        strokeWidth="44"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function LocationIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 192 192"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M32 76L156 18C166 13 176 23 171 33L113 157C108 168 92 165 92 153V101H32C20 101 14 84 32 76Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 export function StatusBadge({
   children,
   tone = 'neutral',

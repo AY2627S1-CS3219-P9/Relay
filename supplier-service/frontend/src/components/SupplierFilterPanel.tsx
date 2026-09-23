@@ -36,7 +36,6 @@ export function SupplierFilterPanel({
     <GlassCard as="aside" className="supplier-filter-panel" aria-label="Supplier filters">
       <div className="filter-panel-header">
         <div>
-          <span className="supplier-kicker">Explore</span>
           <h2>Filter suppliers</h2>
         </div>
         <IconButton scale={1.5} className="icon-button" label="Close filters" onClick={onClose}>

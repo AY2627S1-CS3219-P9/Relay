@@ -238,7 +238,7 @@ body {
 .account-header {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 16px;
 }
 .account-header h1 {

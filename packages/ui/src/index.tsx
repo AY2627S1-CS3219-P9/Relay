@@ -4,10 +4,12 @@ export { ErrorMessage } from './ErrorMessage'
 export type { MessageVariant } from './ErrorMessage'
 export {
   CardView,
+  FilterIcon,
   GlassCard,
   GlassWindow,
   IconButton,
   LoadingState,
+  LocationIcon,
   RelayBrand,
   RelayButton,
   SlidingSegmentedControl,
