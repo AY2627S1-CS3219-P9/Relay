@@ -1,7 +1,7 @@
 import '@relay/ui/styles.css'
 import './styles.css'
 import { useState } from 'react'
-import { GlassCard, GlassWindow, IconButton, RelayButton } from '@relay/ui'
+import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
 import type {
   LoginResponse,
   RegisterResponse,
@@ -67,10 +67,7 @@ export default function App({
 
   const userContent = (
     <div className="user-content-column">
-      <div className="user-brand">
-        <span className="user-brand-mark">R</span>
-        <span>Relay</span>
-      </div>
+      <RelayBrand />
       <section className={`user-panel${view === 'account' ? ' account-panel' : ''}`}>
         {view === 'register' && (
           <RegisterForm
@@ -110,7 +107,7 @@ export default function App({
               className="glass-btn-primary user-submit"
               onClick={completeRegistration}
             >
-              Continue to Supplier
+              Let's begin!
             </RelayButton>
           </div>
         )}
@@ -128,9 +125,17 @@ export default function App({
           </GlassCard>
         )}
       </section>
-      <p className="user-footer">Secure account access for the Relay community.</p>
+      <p className="user-footer">Restricted to NUS Students and Staff (for now).</p>
     </div>
   )
+  const renderedUserContent =
+    view === 'complete' ? (
+      <CardView className="user-complete-card" withGlow>
+        {userContent}
+      </CardView>
+    ) : (
+      userContent
+    )
 
   if (presentation === 'card') {
     return (
@@ -164,9 +169,14 @@ export default function App({
   return (
     <UserApiProvider api={api}>
       {showAuthMap ? (
-        <GlassWindow background={<NusMapPanel />}>{userContent}</GlassWindow>
+        <GlassWindow
+          background={<NusMapPanel />}
+          withGlow={view === 'login' || view === 'register'}
+        >
+          {userContent}
+        </GlassWindow>
       ) : (
-        <main className="user-app-shell">{userContent}</main>
+        <main className="user-app-shell">{renderedUserContent}</main>
       )}
     </UserApiProvider>
   )

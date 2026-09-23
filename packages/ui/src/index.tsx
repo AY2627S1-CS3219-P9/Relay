@@ -3,10 +3,12 @@ import type { ServiceMetadata } from '@relay/contracts'
 export { ErrorMessage } from './ErrorMessage'
 export type { MessageVariant } from './ErrorMessage'
 export {
+  CardView,
   GlassCard,
   GlassWindow,
   IconButton,
   LoadingState,
+  RelayBrand,
   RelayButton,
   SlidingSegmentedControl,
   Spinner,

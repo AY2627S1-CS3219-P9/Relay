@@ -13,7 +13,7 @@ body {
   justify-content: center;
   box-sizing: border-box;
   padding: 32px 20px;
-  background: radial-gradient(circle at 10% 0%, #eee6ff 0, transparent 38%), #f8f7fc;
+  background: var(--relay-gray-bg);
 }
 .user-content-column {
   display: flex;
@@ -24,7 +24,7 @@ body {
   box-sizing: border-box;
   padding: 32px 20px;
 }
-.user-content-column .user-brand,
+.user-content-column .relay-brand,
 .user-content-column .user-panel,
 .user-content-column .user-footer {
   width: min(100%, 460px);
@@ -63,25 +63,6 @@ body {
   border: 0;
   object-fit: cover;
 }
-.user-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  color: var(--relay-text);
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-.user-brand-mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 11px;
-  background: var(--relay-blue);
-  color: white;
-  box-shadow: 0 6px 16px var(--relay-blue-shadow);
-}
 .user-panel {
   width: min(100%, 460px);
   box-sizing: border-box;
@@ -89,8 +70,23 @@ body {
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(58, 34, 99, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 122, 255, 0.12);
   backdrop-filter: blur(20px);
+}
+.user-complete-card {
+  width: min(100%, 460px);
+  box-sizing: border-box;
+  border-radius: 24px;
+}
+.user-complete-card .user-content-column {
+  padding: 36px;
+}
+.user-complete-card .user-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 .account-panel {
   padding: 0;
@@ -549,6 +545,12 @@ body {
   .user-panel {
     padding: 26px 20px;
     border-radius: 18px;
+  }
+  .user-complete-card {
+    border-radius: 18px;
+  }
+  .user-complete-card .user-content-column {
+    padding: 26px 20px;
   }
   .account-glass-card {
     padding: 24px 20px;

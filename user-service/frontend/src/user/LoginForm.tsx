@@ -44,9 +44,8 @@ export function LoginForm({
   return (
     <form className="user-form" onSubmit={submit}>
       <div className="user-form-heading">
-        <span className="user-eyebrow">Welcome back</span>
-        <h1>Log in to Relay</h1>
-        <p>Continue managing your account.</p>
+        <h1>Login</h1>
+        <p>Welcome back!</p>
       </div>
       <EmailField value={email} onChange={setEmail} />
       <PasswordField value={password} onChange={setPassword} autoComplete="current-password" />
@@ -56,7 +55,7 @@ export function LoginForm({
         {loading ? 'Logging in…' : 'Log in'}
       </button>
       <p className="user-switch">
-        Need an account?
+        Need an account?&nbsp;
         <button type="button" className="user-link" onClick={onRegister}>
           Register
         </button>

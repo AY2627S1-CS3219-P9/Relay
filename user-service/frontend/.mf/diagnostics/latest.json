@@ -1,10 +1,10 @@
 {
   "latestErrorEvent": {
     "code": "TYPE-001",
-    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"/usr/local/share/nvm/versions/node/v24.21.0/bin/node /workspaces/Relay/node_modules/typescript/bin/tsc --project /workspaces/Relay/user-service/frontend/node_modules/.federation/tsconfig.bc7f83b731e6c610114d4c8776911eaa.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"/opt/homebrew/Cellar/node/26.5.0_1/bin/node /Users/ryantoh/Documents/GitHub/Relay/node_modules/typescript/bin/tsc --project /Users/ryantoh/Documents/GitHub/Relay/user-service/frontend/node_modules/.federation/tsconfig.aea7508e22a9bf8a70a646557800a6f2.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
     "args": {
-      "cmd": "/usr/local/share/nvm/versions/node/v24.21.0/bin/node /workspaces/Relay/node_modules/typescript/bin/tsc --project /workspaces/Relay/user-service/frontend/node_modules/.federation/tsconfig.bc7f83b731e6c610114d4c8776911eaa.json"
+      "cmd": "/opt/homebrew/Cellar/node/26.5.0_1/bin/node /Users/ryantoh/Documents/GitHub/Relay/node_modules/typescript/bin/tsc --project /Users/ryantoh/Documents/GitHub/Relay/user-service/frontend/node_modules/.federation/tsconfig.aea7508e22a9bf8a70a646557800a6f2.json"
     },
-    "timestamp": 1789909087568
+    "timestamp": 1790128900269
   }
 }

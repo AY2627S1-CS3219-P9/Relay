@@ -53,8 +53,7 @@ export function RegisterForm({
   return (
     <form className="user-form" onSubmit={submit}>
       <div className="user-form-heading">
-        <span className="user-eyebrow">New account</span>
-        <h1>Create your Relay account</h1>
+        <h1>Create your account</h1>
         <p>Use your NUS email to get started.</p>
       </div>
       <EmailField value={email} onChange={setEmail} />

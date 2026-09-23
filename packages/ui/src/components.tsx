@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
+import relayHandoffLogo from './assets/relay-handoff.png'
 
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
 
@@ -64,19 +65,56 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
   )
 }
 
+export function RelayBrand({ className = '' }: { className?: string }) {
+  return (
+    <div className={`relay-brand${className ? ` ${className}` : ''}`}>
+      <span className="relay-brand-icon" aria-hidden="true">
+        <img className="relay-brand-icon-art" src={relayHandoffLogo} alt="" />
+      </span>
+      <span>Relay</span>
+    </div>
+  )
+}
+
+export function CardView({
+  as = 'section',
+  children,
+  className = '',
+  withGlow = false,
+  ...props
+}: HTMLAttributes<HTMLElement> & {
+  as?: 'div' | 'aside' | 'section'
+  children: ReactNode
+  withGlow?: boolean
+}) {
+  const Element = as
+  return (
+    <Element
+      {...props}
+      className={`relay-card-view glass-card${withGlow ? ' relay-card-view-with-glow' : ''}${className ? ` ${className}` : ''}`}
+    >
+      {children}
+    </Element>
+  )
+}
+
 export function GlassWindow({
   children,
   background,
   className = '',
+  withGlow = false,
 }: {
   children: ReactNode
   background?: ReactNode
   className?: string
+  withGlow?: boolean
 }) {
   return (
     <div className={`relay-glass-window${className ? ` ${className}` : ''}`}>
       {background && <div className="relay-glass-window-background">{background}</div>}
-      <section className="relay-glass-window-panel glass-card">{children}</section>
+      <CardView as="section" className="relay-glass-window-panel" withGlow={withGlow}>
+        {children}
+      </CardView>
     </div>
   )
 }
