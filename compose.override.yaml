@@ -1,17 +1,22 @@
 services:
   floci:
-    image: floci/floci:latest
+    build: ./floci/
     ports:
       - "4566:4566"
+    env_file:
+      - .env.development
     volumes:
-      - floci-data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/data/cognito-ready && /usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
   user-api:
+    env_file:
+      - .env.development
     environment:
-      NODE_ENV: development
-      AWS_ENDPOINT_URL: http://host.docker.internal:4566
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-volumes:
-  floci-data:
+      PORT: 3000
+    depends_on:
+      floci:
+        condition: service_healthy
