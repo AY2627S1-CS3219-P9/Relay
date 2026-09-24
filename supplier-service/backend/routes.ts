@@ -1,5 +1,6 @@
 import express from 'express'
 import { getSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier } from './db'
+import { SupplierErrors } from '@relay/contracts/supplier'
 import type { Location, OperatingHours, ServiceType } from '@relay/contracts/supplier'
 import type { UserApi, SessionId } from '@relay/contracts/user'
 
@@ -23,12 +24,6 @@ function normalizeSupplier(row: any): {
   }
 }
 
-// Helper to validate user is authenticated (for public routes)
-async function validateAuthenticated(sessionId: SessionId): Promise<void> {
-  // Call UserApi.isAuthenticated(sessionId)
-  // For now, this is a placeholder
-}
-
 // Helper to validate user is admin (for admin routes)
 async function validateAdmin(sessionId: SessionId): Promise<void> {
   // Call UserApi.isAdmin(sessionId)
@@ -37,14 +32,7 @@ async function validateAdmin(sessionId: SessionId): Promise<void> {
 
 // GET /api/supplier - Get all suppliers (public)
 router.get('/', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
-    return
-  }
-
   try {
-    await validateAuthenticated(sessionId)
     const suppliers = await getSuppliers()
     res.json({ suppliers: suppliers.map(normalizeSupplier) })
   } catch (err) {
@@ -55,14 +43,7 @@ router.get('/', async (req, res) => {
 
 // GET /api/supplier/:id - Get single supplier (public)
 router.get('/:id', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
-    return
-  }
-
   try {
-    await validateAuthenticated(sessionId)
     const supplier = await getSupplierById(req.params.id)
     if (!supplier) {
       return res.status(404).json({ code: 'NOT_FOUND', message: 'Supplier not found' })
@@ -78,7 +59,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
@@ -88,19 +69,19 @@ router.post('/', async (req, res) => {
     const { name, location, isOperational, operatingHours, serviceTypes } = req.body
 
     if (!name || typeof name !== 'string') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'Name is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'Name is required' })
     }
     if (!location || typeof location !== 'object') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'Location is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'Location is required' })
     }
     if (typeof isOperational !== 'boolean') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'isOperational is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'isOperational is required' })
     }
     if (!operatingHours || typeof operatingHours !== 'object') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'OperatingHours is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'OperatingHours is required' })
     }
     if (!Array.isArray(serviceTypes) || serviceTypes.length === 0) {
-      return res.status(400).json({ code: 'VALIDATION', message: 'serviceTypes is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'serviceTypes is required' })
     }
 
     const result = await createSupplier(
@@ -122,7 +103,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
@@ -158,7 +139,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 

@@ -57,7 +57,7 @@ export const mockUserApi: UserApi = {
       username: null,
       profilePictureUrl: null,
       emailVerified: false,
-      role: 'user',
+      role: request.role ?? 'user',
       password: request.password,
     })
     const sessionId = crypto.randomUUID()
@@ -136,8 +136,10 @@ export const mockUserApi: UserApi = {
     userSession(sessionId)
     sessions.delete(sessionId)
   },
-  async deleteUser(sessionId: SessionId) {
+  async deleteUser(sessionId: SessionId, confirmation: string) {
     const account = userSession(sessionId)
+    if (!account.username || confirmation !== account.username)
+      error('INVALID_REQUEST', 'Enter your username to confirm account deletion.')
     accounts.delete(account.email)
     sessions.delete(sessionId)
   },

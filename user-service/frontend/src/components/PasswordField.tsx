@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TextButton } from '@relay/ui'
 
 export function PasswordField({
   value,
@@ -26,14 +27,14 @@ export function PasswordField({
           autoComplete={autoComplete}
           required={required}
         />
-        <button
-          type="button"
+        <TextButton
           className="password-toggle"
+          withBounce={false}
           onClick={() => setVisible((isVisible) => !isVisible)}
           aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
         >
           {visible ? 'Hide' : 'Show'}
-        </button>
+        </TextButton>
       </span>
     </label>
   )

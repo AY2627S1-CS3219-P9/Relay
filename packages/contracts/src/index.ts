@@ -7,7 +7,22 @@ export type ServiceMetadata = {
   path: string
 }
 
-export type RemoteAppProps = { onNavigateHome?: () => void }
+export type RemoteAppProps = {
+  onNavigateHome?: () => void
+  onNavigate?: (service: ServiceId) => void
+  onOpenProfile?: (anchor: ProfileAnchor) => void
+  onCloseProfile?: () => void
+  presentation?: 'full' | 'card'
+}
+
+export type ProfileAnchor = {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+  height: number
+}
 
 export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
   supplier: {

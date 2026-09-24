@@ -22,6 +22,18 @@ npm run build
 npm run test
 ```
 
+### Supplier frontend data source
+
+The Supplier frontend uses the backend by default. To work with seeded browser-only data,
+copy `frontend/.env.example` to `frontend/.env.local` and set:
+
+```env
+VITE_SUPPLIER_API_MODE=mock
+```
+
+Set it back to `backend` (or remove the setting) to call `/api/supplier` through the Host
+or frontend proxy. Restart the Supplier Vite server after changing an environment file.
+
 ## Docker Deployment
 
 ```bash

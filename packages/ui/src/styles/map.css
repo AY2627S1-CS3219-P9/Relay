@@ -167,19 +167,19 @@
     gap: 10px;
   }
   .updates-action {
-    height: 56px !important;
-    padding-inline: 14px !important;
-    gap: 8px !important;
-    font-size: 17px !important;
+    height: calc(56px * var(--relay-button-scale, 1)) !important;
+    padding-inline: calc(14px * var(--relay-button-scale, 1)) !important;
+    gap: calc(8px * var(--relay-button-scale, 1)) !important;
+    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
   }
   .updates-action svg {
     width: 21px !important;
     height: 21px !important;
   }
   .new-request-action {
-    height: 56px !important;
-    padding-inline: 17px !important;
-    font-size: 17px !important;
+    height: calc(56px * var(--relay-button-scale, 1)) !important;
+    padding-inline: calc(17px * var(--relay-button-scale, 1)) !important;
+    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
   }
   .new-request-action > span {
     font-size: 24px !important;
