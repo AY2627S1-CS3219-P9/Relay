@@ -1,21 +1,25 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import type { ImageDataUrl, SessionId, UserProfile } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 import { ImageUploadComponent } from '../components/ImageUploadComponent'
 import { PasswordField } from '../components/PasswordField'
 import { UsernameField } from '../components/UsernameField'
 import { useUserApi } from './UserApiProvider'
+import { DeleteAccountForm } from './DeleteAccountForm'
 import { passwordErrors, passwordRequirements, usernameError } from './validation'
 
+// Prototype only. Will be replaced by another microfrontend.
 export function AccountView({
   sessionId,
   onLoggedOut,
+  onDeleted,
 }: {
   sessionId: SessionId
   onLoggedOut: () => void
+  onDeleted: () => void
 }) {
   const api = useUserApi()
-  
+
   const [profile, setProfile] = useState<UserProfile>()
   const [username, setUsername] = useState('')
   const [picture, setPicture] = useState<ImageDataUrl>()
@@ -102,18 +106,20 @@ export function AccountView({
   return (
     <div className="account-view">
       <div className="account-header">
-        <div>
-          <span className="user-eyebrow">Account</span>
-          <h1>Your profile</h1>
-        </div>
-        <button type="button" className="user-link" onClick={() => void logout()}>
+        <TextButton onClick={() => void logout()}>
           Log out
-        </button>
+        </TextButton>
       </div>
       <ErrorMessage message={profileError} />
       {profile && (
-        <form className="account-section" onSubmit={saveProfile}>
-          <p>Email: {profile.email}</p>
+        <form className="account-section account-profile-section" onSubmit={saveProfile}>
+          <div className="account-section-heading">
+            <h2>Personal details</h2>
+          </div>
+          <p className="account-email">
+            <span>Email</span>
+            {profile.email}
+          </p>
           <UsernameField value={username} onChange={setUsername} />
           <ImageUploadComponent value={picture} onChange={setPicture} />
           <button className="glass-btn-primary" disabled={savingProfile}>
@@ -154,6 +160,13 @@ export function AccountView({
         </button>
       </form>
       <ErrorMessage message={accountError} />
+      {profile && (
+        <DeleteAccountForm
+          sessionId={sessionId}
+          username={profile.username}
+          onDeleted={onDeleted}
+        />
+      )}
     </div>
   )
 }

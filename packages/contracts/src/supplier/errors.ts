@@ -3,7 +3,9 @@ export const SupplierErrors = {
   NOT_FOUND: 'NOT_FOUND',
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
-  VALIDATION: 'VALIDATION',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 
 export type SupplierErrorCode = typeof SupplierErrors[keyof typeof SupplierErrors]

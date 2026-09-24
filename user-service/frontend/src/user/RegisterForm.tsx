@@ -4,7 +4,7 @@ import { isNusEmail, passwordErrors, passwordRequirements } from './validation'
 import type { RegisterResponse } from '@relay/contracts'
 import { EmailField } from '../components/EmailField'
 import { PasswordField } from '../components/PasswordField'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function RegisterForm({
   onRegistered,
@@ -17,6 +17,7 @@ export function RegisterForm({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
+  const [administrator, setAdministrator] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const errors = passwordErrors(password)
@@ -30,7 +31,12 @@ export function RegisterForm({
     setErrorMessage('')
     try {
       onRegistered(
-        await api.register({ email, password, passwordConfirmation: confirmation }),
+        await api.register({
+          email,
+          password,
+          passwordConfirmation: confirmation,
+          role: administrator ? 'admin' : undefined,
+        }),
         email,
       )
     } catch (error) {
@@ -47,8 +53,7 @@ export function RegisterForm({
   return (
     <form className="user-form" onSubmit={submit}>
       <div className="user-form-heading">
-        <span className="user-eyebrow">New account</span>
-        <h1>Create your Relay account</h1>
+        <h1>Create your account</h1>
         <p>Use your NUS email to get started.</p>
       </div>
       <EmailField value={email} onChange={setEmail} />
@@ -66,15 +71,23 @@ export function RegisterForm({
         onChange={setConfirmation}
         autoComplete="new-password"
       />
+      <label className="role-switch">
+        <input
+          type="checkbox"
+          checked={administrator}
+          onChange={(event) => setAdministrator(event.target.checked)}
+        />
+        Register as administrator
+      </label>
       <ErrorMessage message={errorMessage} />
       <button className="glass-btn-primary user-submit" disabled={loading}>
         {loading ? 'Creating account…' : 'Create account'}
       </button>
       <p className="user-switch">
         Already registered?{' '}
-        <button type="button" className="user-link" onClick={onLogin}>
-          Log in
-        </button>
+        <TextButton onClick={onLogin}>
+          Login
+        </TextButton>
       </p>
     </form>
   )

@@ -15,6 +15,7 @@ export default defineConfig({
       shared: {
         react: { singleton: true, requiredVersion: '^19.2.8' },
         'react-dom': { singleton: true, requiredVersion: '^19.2.8' },
+        'react-dom/client': { singleton: true, requiredVersion: '^19.2.8' },
       },
       dev: { disableDynamicRemoteTypeHints: true },
     }),

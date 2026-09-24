@@ -3,16 +3,23 @@ import {
   lazy,
   Suspense,
   type ComponentType,
+  type CSSProperties,
   type LazyExoticComponent,
   type ReactNode,
 } from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
+import { GlassCard, LoadingState } from '@relay/ui'
 import { loadServiceRemote } from './RemoteLoader'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
 
 type RemotePageProps = {
   service: ServiceId
   serviceLabel: string
+  visible: boolean
+  appProps?: RemoteAppProps
+  overlay?: boolean
+  card?: boolean
+  cardStyle?: CSSProperties
 }
 
 type RemoteComponent = LazyExoticComponent<ComponentType<RemoteAppProps>>
@@ -49,21 +56,33 @@ class RemoteFailureBoundary extends Component<
   }
 }
 
-export function RemotePage({ service, serviceLabel }: RemotePageProps) {
+export function RemotePage({
+  service,
+  serviceLabel,
+  visible,
+  appProps,
+  overlay,
+  card,
+  cardStyle,
+}: RemotePageProps) {
   const RemoteApp = remoteApps[service]
 
   return (
-    <section className="remote-page" aria-label={serviceLabel}>
+    <section
+      className={`remote-page${overlay ? ' remote-page-overlay' : ''}`}
+      aria-label={serviceLabel}
+      style={{ display: visible ? undefined : 'none' }}
+    >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-        <Suspense
-          fallback={
-            <section className="remote-state">
-              <p>Loading {serviceLabel}…</p>
-            </section>
-          }
+        <GlassCard
+          variant={card ? 'glass' : 'plain'}
+          className={card ? 'remote-profile-card' : ''}
+          style={card ? cardStyle : undefined}
         >
-          <RemoteApp />
-        </Suspense>
+          <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
+            <RemoteApp {...appProps} />
+          </Suspense>
+        </GlassCard>
       </RemoteFailureBoundary>
     </section>
   )

@@ -1,9 +1,10 @@
-import type { ImageDataUrl, SessionId } from './models'
+import type { ImageDataUrl, SessionId, UserRole } from './models'
 
 export type RegisterRequest = {
   email: string
   password: string
   passwordConfirmation: string
+  role?: UserRole
 }
 
 export type LoginRequest = {

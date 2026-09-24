@@ -1,6 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import type { SessionId, SubmitOtpResponse } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
 import { useUserApi } from '../user/UserApiProvider'
 
@@ -81,9 +81,12 @@ export function VerificationComponent({
       <button className="glass-btn-primary user-submit" disabled={loading || seconds === 0}>
         {loading ? 'Verifying…' : 'Verify email'}
       </button>
-      <button type="button" className="user-link" onClick={() => void resend()} disabled={resending}>
+      <TextButton
+        onClick={() => void resend()}
+        disabled={resending}
+      >
         {resending ? 'Sending…' : 'Send a new code'}
-      </button>
+      </TextButton>
       {onBack && (
         <button type="button" className="user-secondary" onClick={onBack}>
           Back to registration
