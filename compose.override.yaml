@@ -6,5 +6,12 @@ services:
     volumes:
       - floci-data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
+  user-api:
+    environment:
+      NODE_ENV: development
+      AWS_ENDPOINT_URL: http://host.docker.internal:4566
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
 volumes:
   floci-data:
