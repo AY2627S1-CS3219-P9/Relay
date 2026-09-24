@@ -2,6 +2,7 @@
 set -eu
 
 # 1. Create user pool and client
+# TODO: Add more fine-grained schema matching AWS user pool config
 pool_id=$(aws cognito-idp create-user-pool \
   --pool-name "$COGNITO_USER_POOL_NAME" \
   --username-attributes email \
@@ -25,7 +26,12 @@ test "$client_id" = "$COGNITO_CLIENT_ID"
 
 echo "Cognito initialized with pool id: $pool_id and client_id: $client_id"
 
-# TODO: 2. Create s3 bucket for user profile pictures
+# 2. Create s3 bucket for user profile pictures
+aws s3api create-bucket --bucket "$S3_USER_IMAGE_BUCKET"
+aws s3api put-public-access-block \
+  --bucket "$S3_USER_IMAGE_BUCKET" \
+  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+echo "S3 Bucket initialized with name: $S3_USER_IMAGE_BUCKET"
 
 # Marks container to be ready
-touch /app/data/cognito-ready
+touch /app/data/ready
