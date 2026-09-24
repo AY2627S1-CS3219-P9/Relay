@@ -1,3 +1,4 @@
+import { SupplierErrors } from '@relay/contracts'
 import type {
   CreateSupplierRequest,
   CreateSupplierResponse,
@@ -6,13 +7,21 @@ import type {
   SupplierApi,
   UpdateSupplierRequest,
   UpdateSupplierResponse,
+  SupplierError,
+  SupplierErrorCode,
 } from '@relay/contracts'
 
 const supplierApiBaseUrl = import.meta.env.VITE_SUPPLIER_API_URL ?? '/api/supplier'
 
-type ApiError = {
-  code?: string
-  message?: string
+export class SupplierApiError extends Error {
+  constructor(
+    public readonly code: SupplierErrorCode,
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = 'SupplierApiError'
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -25,13 +34,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    let error: ApiError = {}
+    let error: Partial<SupplierError> = {}
     try {
-      error = (await response.json()) as ApiError
+      error = (await response.json()) as Partial<SupplierError>
     } catch {
       // Use the HTTP status when the backend has not returned JSON.
     }
-    throw new Error(error.message || `Supplier service request failed (${response.status}).`)
+    throw new SupplierApiError(
+      error.code ?? SupplierErrors.INTERNAL_ERROR,
+      error.message || `Supplier service request failed (${response.status}).`,
+      response.status,
+    )
   }
 
   if (response.status === 204) return undefined as T

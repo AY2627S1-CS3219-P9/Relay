@@ -1,5 +1,6 @@
 import express from 'express'
 import { getSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier } from './db'
+import { SupplierErrors } from '@relay/contracts/supplier'
 import type { Location, OperatingHours, ServiceType } from '@relay/contracts/supplier'
 import type { UserApi, SessionId } from '@relay/contracts/user'
 
@@ -58,7 +59,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
@@ -68,19 +69,19 @@ router.post('/', async (req, res) => {
     const { name, location, isOperational, operatingHours, serviceTypes } = req.body
 
     if (!name || typeof name !== 'string') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'Name is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'Name is required' })
     }
     if (!location || typeof location !== 'object') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'Location is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'Location is required' })
     }
     if (typeof isOperational !== 'boolean') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'isOperational is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'isOperational is required' })
     }
     if (!operatingHours || typeof operatingHours !== 'object') {
-      return res.status(400).json({ code: 'VALIDATION', message: 'OperatingHours is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'OperatingHours is required' })
     }
     if (!Array.isArray(serviceTypes) || serviceTypes.length === 0) {
-      return res.status(400).json({ code: 'VALIDATION', message: 'serviceTypes is required' })
+      return res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'serviceTypes is required' })
     }
 
     const result = await createSupplier(
@@ -102,7 +103,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
@@ -138,7 +139,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const sessionId = req.query.sessionId as SessionId
   if (!sessionId) {
-    res.status(401).json({ code: 'UNAUTHORIZED', message: 'SessionId required' })
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
