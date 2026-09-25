@@ -1,0 +1,22 @@
+services:
+  floci:
+    build: ./floci/
+    ports:
+      - "4566:4566"
+    env_file:
+      - .env.development
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /app/data/ready && /usr/local/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  user-api:
+    env_file:
+      - .env.development
+    environment:
+      PORT: 3000
+    depends_on:
+      floci:
+        condition: service_healthy
