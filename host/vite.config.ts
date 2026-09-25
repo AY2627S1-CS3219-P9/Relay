@@ -31,7 +31,6 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      '/api/supplier': { target: 'http://localhost:3000', changeOrigin: true },
     },
   },
   build: { target: 'esnext' },

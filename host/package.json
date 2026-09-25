@@ -10,17 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@module-federation/runtime": "^0.21.6",
     "@relay/contracts": "*",
     "@relay/ui": "*",
-    "@module-federation/runtime": "^0.21.6",
+    "aws-amplify": "^6.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@eslint/js": "^10.0.1",
-    "@rolldown/plugin-babel": "^0.2.3",
     "@module-federation/vite": "^1.11.2",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

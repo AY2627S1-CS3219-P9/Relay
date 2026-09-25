@@ -12,6 +12,9 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+  host:
+    env_file:
+      - .env.development
   user-api:
     env_file:
       - .env.development
