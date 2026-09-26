@@ -28,7 +28,7 @@ export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Ses
 
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
-  nagivateHome?: () => void
+  navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void
   closeProfile?: () => void

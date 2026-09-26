@@ -2,7 +2,6 @@ import { useEffect, useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
 import { useUserApi } from '../user/UserApiProvider'
-import { Session, SubmitOtpAndLoginResponse } from '@relay/contracts'
 
 export function VerificationComponent({
   email,
