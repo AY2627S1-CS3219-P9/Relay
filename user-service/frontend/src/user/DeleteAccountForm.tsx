@@ -1,14 +1,12 @@
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage } from '@relay/ui'
-import type { SessionId } from '@relay/contracts'
+import type { Session } from '@relay/contracts'
 import { useUserApi } from './UserApiProvider'
 
 export function DeleteAccountForm({
-  sessionId,
   username,
   onDeleted,
 }: {
-  sessionId: SessionId
   username: string | null
   onDeleted: () => void
 }) {
@@ -19,24 +17,24 @@ export function DeleteAccountForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
-    if (!username) {
-      setErrorMessage('Set a username before deleting your account.')
-      return
-    }
-    if (confirmation !== username) {
-      setErrorMessage('Enter your username exactly as shown to continue.')
-      return
-    }
-    setLoading(true)
-    setErrorMessage('')
-    try {
-      await api.deleteUser(sessionId, confirmation)
-      onDeleted()
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
-    } finally {
-      setLoading(false)
-    }
+    // if (!username) {
+    //   setErrorMessage('Set a username before deleting your account.')
+    //   return
+    // }
+    // if (confirmation !== username) {
+    //   setErrorMessage('Enter your username exactly as shown to continue.')
+    //   return
+    // }
+    // setLoading(true)
+    // setErrorMessage('')
+    // try {
+    //   await api.deleteUser(sessionId, confirmation)
+    //   onDeleted()
+    // } catch (error) {
+    //   setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
+    // } finally {
+    //   setLoading(false)
+    // }
   }
 
   return (

@@ -7,11 +7,31 @@ export type ServiceMetadata = {
   path: string
 }
 
+export type Session = {
+  token: string // raw JWT string to pass to backend
+  userData: {
+    id: string
+    email: string
+    emailVerified: boolean
+    isAdmin: boolean
+  };
+}
+
+export type SessionError = {
+  code: 'SESSION INVALIDATED',
+  message: string
+}
+
+type FetchSessionOptions = { forceRefresh?: boolean; }
+
+export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Session>
+
 export type RemoteAppProps = {
-  onNavigateHome?: () => void
-  onNavigate?: (service: ServiceId) => void
-  onOpenProfile?: (anchor: ProfileAnchor) => void
-  onCloseProfile?: () => void
+  fetchSession?: FetchSessionHandler
+  navigateHome?: () => void
+  navigateTo?: (service: ServiceId) => void
+  openProfile?: (anchor: ProfileAnchor) => void
+  closeProfile?: () => void
   presentation?: 'full' | 'card'
 }
 

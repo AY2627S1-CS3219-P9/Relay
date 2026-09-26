@@ -1,16 +1,15 @@
 import { useState, type SubmitEvent } from 'react'
-import type { ImageDataUrl, SessionId } from '@relay/contracts'
+import type { ImageDataUrl, Session } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
 import { ImageUploadComponent } from '../components/ImageUploadComponent'
 import { UsernameField } from '../components/UsernameField'
 import { useUserApi } from './UserApiProvider'
-import { usernameError } from './validation'
+import { usernameError } from '../validation/validation'
 
 export function ProfileSetupForm({
-  sessionId,
   onComplete,
 }: {
-  sessionId: SessionId
+  validateSession: () => Promise<Session>
   onComplete: () => void
 }) {
   const api = useUserApi()
@@ -22,22 +21,23 @@ export function ProfileSetupForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
-    const validationError = usernameError(username)
-    if (validationError) return setErrorMessage(validationError)
-    setLoading(true)
-    setErrorMessage('')
-    try {
-      await api.updateUser(sessionId, { username, profilePicture: picture })
-      /* TODO: notify Credit Service that the account is ready. */ onComplete()
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : ((error as { message?: string }).message ?? 'Profile setup failed.'),
-      )
-    } finally {
-      setLoading(false)
-    }
+    // const validationError = usernameError(username)
+    // if (validationError) return setErrorMessage(validationError)
+    // setLoading(true)
+    // setErrorMessage('')
+    // try {
+    //   await api.updateUser(sessionId, { username, profilePicture: picture })
+    //   /* TODO: notify Credit Service that the account is ready. */
+    //   onComplete()
+    // } catch (error) {
+    //   setErrorMessage(
+    //     error instanceof Error
+    //       ? error.message
+    //       : ((error as { message?: string }).message ?? 'Profile setup failed.'),
+    //   )
+    // } finally {
+    //   setLoading(false)
+    // }
   }
 
   return (

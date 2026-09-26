@@ -1,3 +1,4 @@
+import * as Amplify from 'aws-amplify'
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import * as ReactDOMClient from 'react-dom/client'
@@ -17,6 +18,16 @@ init({
     entry,
   })),
   shared: {
+    'aws-amplify': {
+      version: '6.22.0',
+      lib: () => Amplify,
+      shareConfig: { singleton: true, requiredVersion: '^6.22.0' },
+    },
+    'aws-amplify/auth': {
+      version: '6.22.0',
+      lib: () => import('aws-amplify/auth'),
+      shareConfig: { singleton: true, requiredVersion: '^6.22.0' },
+    },
     react: {
       version: '19.2.8',
       lib: () => React,
