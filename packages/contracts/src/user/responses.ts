@@ -1,23 +1,18 @@
-import type { Session, SessionId, UserProfile } from './models'
+import type { LoginError, RegisterError, ResendOtpError, SubmitOtpAndLoginError, UserApiError } from './errors'
 
-export type RegisterResponse = Session & {
-  verificationRequired: boolean
+type RegisterResponseData = never
+type ResendOtpResponseData = never
+export type LoginResponseData = {
+  emailVerified: boolean
+  profileCreated: boolean
 }
 
-export type LoginResponse = Session
+export type UserApiResponse<T, E extends UserApiError> =
+  | ([T] extends [never] ? { success: true } : { success: true; data: T })
+  | { success: false; error: E }
 
-export type SubmitOtpResponse = Session & {
-  requiresProfileSetup: boolean
-}
+export type RegisterResponse = UserApiResponse<RegisterResponseData, RegisterError>
+export type ResendOtpResponse = UserApiResponse<ResendOtpResponseData, ResendOtpError>
+export type SubmitOtpAndLoginResponse = UserApiResponse<LoginResponseData, SubmitOtpAndLoginError>
+export type LoginResponse = UserApiResponse<LoginResponseData, LoginError>
 
-export type IsVerifiedResponse = {
-  isVerified: boolean
-}
-
-export type GetUserResponse = UserProfile
-
-export type UpdateUserResponse = Pick<UserProfile, 'email' | 'username' | 'profilePictureUrl'>
-
-export type SessionResponse = {
-  sessionId: SessionId
-}

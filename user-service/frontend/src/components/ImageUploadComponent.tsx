@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
 import type { ImageDataUrl } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
-import { fileToDataUrl, imageFileError } from '../user/validation'
+import { fileToDataUrl, imageFileError } from '../validation/validation'
 
 export function ImageUploadComponent({
   value,

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
-import { SERVICE_METADATA, type ProfileAnchor, type ServiceId } from '@relay/contracts'
+import { SERVICE_METADATA, type FetchSessionHandler, type ProfileAnchor, type ServiceId, type SessionError } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
+import { fetchAuthSession } from 'aws-amplify/auth'
 
 function App() {
   /*
@@ -31,6 +32,26 @@ function App() {
   const [activeService, setActiveService] = useState<ServiceId>('user')
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
+
+  const fetchSession: FetchSessionHandler = async (options) => {
+    const authResult = await fetchAuthSession(options);
+    const tokens = authResult.tokens;
+    if (!tokens || !tokens.idToken) {
+      // User not authenticated, or token expired
+      const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No Active Session!' }
+      throw error
+    }
+    const userGroups = (tokens.accessToken.payload['cognito:groups'] as Array<String> ?? []);
+    return {
+      token: tokens.accessToken.toString(),
+      userData: {
+        id: tokens.idToken.payload['sub']!,
+        email: tokens.idToken.payload['email'] as string,
+        emailVerified: tokens.idToken.payload['email_verified'] as boolean,
+        isAdmin: userGroups.includes('Admin'), // TODO: use env variable for admin user group
+      }
+    }
+  }
 
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
@@ -80,9 +101,10 @@ function App() {
             card={id === 'user' && profileOpen}
             cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
             appProps={{
-              onNavigate: navigateTo,
-              onOpenProfile: id === 'supplier' ? openProfile : undefined,
-              onCloseProfile: id === 'user' ? closeProfile : undefined,
+              fetchSession,
+              navigateTo,
+              openProfile: id === 'supplier' ? openProfile : undefined,
+              closeProfile: id === 'user' ? closeProfile : undefined,
               presentation: id === 'user' && profileOpen ? 'card' : 'full',
             }}
           />

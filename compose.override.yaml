@@ -5,6 +5,7 @@ services:
       - "4566:4566"
     env_file:
       - .env.development
+    user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

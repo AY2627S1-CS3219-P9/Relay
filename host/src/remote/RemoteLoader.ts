@@ -23,6 +23,11 @@ init({
       lib: () => Amplify,
       shareConfig: { singleton: true, requiredVersion: '^6.22.0' },
     },
+    'aws-amplify/auth': {
+      version: '6.22.0',
+      lib: () => import('aws-amplify/auth'),
+      shareConfig: { singleton: true, requiredVersion: '^6.22.0' },
+    },
     react: {
       version: '19.2.8',
       lib: () => React,

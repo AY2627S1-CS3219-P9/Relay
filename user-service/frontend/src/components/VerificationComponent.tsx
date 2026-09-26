@@ -1,22 +1,22 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
-import type { SessionId, SubmitOtpResponse } from '@relay/contracts'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
 import { useUserApi } from '../user/UserApiProvider'
+import { Session, SubmitOtpAndLoginResponse } from '@relay/contracts'
 
 export function VerificationComponent({
-  sessionId,
-  demoCode,
+  email,
+  password,
   onVerified,
   onBack,
 }: {
-  sessionId: SessionId
-  demoCode?: string
-  onVerified: (response: SubmitOtpResponse) => void
+  email: string
+  password: string
+  onVerified: (profileCreated: boolean) => void
   onBack?: () => void
 }) {
   const api = useUserApi()
-  const [otp, setOtp] = useState('')
+  const [code, setCode] = useState('')
   const [seconds, setSeconds] = useState(300)
   const [errorMessage, setErrorMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,17 +34,13 @@ export function VerificationComponent({
     setLoading(true)
     setErrorMessage('')
 
-    try {
-      onVerified(await api.submitOtp({ sessionId, otp }))
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : ((error as { message?: string }).message ?? 'Verification failed.'),
-      )
-    } finally {
-      setLoading(false)
+    const response = await api.submitOtpAndLogin({ email, password, code })
+    if (response.success) {
+      onVerified(true); // TODO: Add check for profile creation
+    } else {
+      setErrorMessage(response.error.message)
     }
+    setLoading(false)
   }
 
   async function resend() {
@@ -52,9 +48,9 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      await api.requestOtp(sessionId)
+      await api.resendOtp(email)
       setSeconds(300)
-      setOtp('')
+      setCode('')
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -68,15 +64,10 @@ export function VerificationComponent({
 
   return (
     <form className="verification-component" onSubmit={submit}>
-      <VerificationCodeField value={otp} onChange={setOtp} />
+      <VerificationCodeField value={code} onChange={setCode} />
       <p className="otp-timer">
         Code expires in {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
       </p>
-      {demoCode && (
-        <p className="demo-hint">
-          Local demo code: <strong>{demoCode}</strong>
-        </p>
-      )}
       <ErrorMessage message={errorMessage} />
       <button className="glass-btn-primary user-submit" disabled={loading || seconds === 0}>
         {loading ? 'Verifying…' : 'Verify email'}

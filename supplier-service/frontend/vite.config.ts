@@ -13,7 +13,6 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: { './App': './src/App.tsx' },
       shared: {
-        'aws-amplify': { singleton: true, requiredVersion: '^6.22.0' },
         react: { singleton: true, requiredVersion: '^19.2.8' },
         'react-dom': { singleton: true, requiredVersion: '^19.2.8' },
         'react-dom/client': { singleton: true, requiredVersion: '^19.2.8' },
@@ -21,12 +20,6 @@ export default defineConfig({
       dev: { disableDynamicRemoteTypeHints: true },
     }),
   ],
-  server: {
-    port: 5001,
-    strictPort: true,
-    proxy: {
-      '/api/supplier': { target: 'http://localhost:3000', changeOrigin: true },
-    },
-  },
+  server: { port: 5001, strictPort: true },
   build: { target: 'esnext' },
 })

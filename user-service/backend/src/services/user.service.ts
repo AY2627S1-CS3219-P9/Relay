@@ -1,4 +1,4 @@
-import type { UserProfile } from '@relay/contracts'
+import type { User } from '@relay/contracts'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
 import { UserServiceError } from '../types/user.types.js'
@@ -32,7 +32,7 @@ export class UserService {
     private readonly identityGateway: IdentityGateway,
   ) {}
 
-  async getUser(user: AuthenticatedUser): Promise<UserProfile> {
+  async getUser(user: AuthenticatedUser): Promise<User> {
     const profile = await this.repository.findByCognitoSub(user.sub)
     if (!profile) {
       throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
@@ -43,7 +43,7 @@ export class UserService {
   async updateUser(
     user: AuthenticatedUser,
     input: ProfileUpdateRequest,
-  ): Promise<Pick<UserProfile, 'email' | 'username' | 'profilePictureUrl'>> {
+  ): Promise<Pick<User, 'email' | 'username' | 'profilePictureUrl'>> {
     if (!user.emailVerified) {
       throw new UserServiceError(
         'EMAIL_NOT_VERIFIED',
@@ -125,8 +125,10 @@ export class UserService {
     await this.identityGateway.deleteAccount(user)
   }
 
-  private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): UserProfile {
+  private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {
     return {
+      id: 'xxxx' as any, // TODO: match backend user service to new contract
+      profileCreated: true,
       email: user.email,
       username: profile.username,
       profilePictureUrl: profile.profilePictureKey

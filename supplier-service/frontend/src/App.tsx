@@ -18,8 +18,8 @@ const defaultSupplierApi =
   import.meta.env.VITE_SUPPLIER_API_MODE === 'mock' ? mockSupplierApi : httpSupplierApi
 
 export default function App({
-  onNavigate,
-  onOpenProfile,
+  navigateTo,
+  openProfile,
   api = defaultSupplierApi,
 }: RemoteAppProps & { api?: SupplierApi }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -36,18 +36,18 @@ export default function App({
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
 
   function returnToAccount() {
-    if (onNavigate) {
-      onNavigate('user')
+    if (navigateTo) {
+      navigateTo('user')
       return
     }
     if (window.history.length > 1) window.history.back()
   }
 
-  function openProfile(button: HTMLButtonElement) {
-    if (onOpenProfile) {
+  function openProfileCard(button: HTMLButtonElement) {
+    if (openProfile) {
       const { top, left, right, bottom, width, height } = button.getBoundingClientRect()
       const anchor: ProfileAnchor = { top, left, right, bottom, width, height }
-      onOpenProfile(anchor)
+      openProfile(anchor)
       return
     }
     returnToAccount()
@@ -129,7 +129,7 @@ export default function App({
           scale={1.25}
           className="glass-pill glass-control profile-chip mock-control"
           aria-label="Profile"
-          onClick={(event) => openProfile(event.currentTarget)}
+          onClick={(event) => openProfileCard(event.currentTarget)}
         >
           ◉ Alex
         </RelayButton>

@@ -2,7 +2,6 @@ import express from 'express'
 import { getSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier } from './db'
 import { SupplierErrors } from '@relay/contracts/supplier'
 import type { Location, OperatingHours, ServiceType } from '@relay/contracts/supplier'
-import type { UserApi, SessionId } from '@relay/contracts/user'
 
 const router = express.Router()
 
@@ -24,9 +23,9 @@ function normalizeSupplier(row: any): {
   }
 }
 
-// Helper to validate user is admin (for admin routes)
-async function validateAdmin(sessionId: SessionId): Promise<void> {
-  // Call UserApi.isAdmin(sessionId)
+// TODO: Helper to validate user is admin (for admin routes)
+async function validateAdmin(sessionTokenString: string): Promise<void> {
+  // Call UserApi.isAdmin(session.token)
   // For now, this is a placeholder
 }
 
@@ -57,14 +56,14 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/supplier - Create supplier (admin only)
 router.post('/', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
-    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
+  const sessionTokenString = req.query.session as string
+  if (!sessionTokenString) {
+    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'Authentication required' })
     return
   }
 
   try {
-    await validateAdmin(sessionId)
+    await validateAdmin(sessionTokenString)
 
     const { name, location, isOperational, operatingHours, serviceTypes } = req.body
 
@@ -101,14 +100,14 @@ router.post('/', async (req, res) => {
 
 // PUT /api/supplier/:id - Update supplier (admin only)
 router.put('/:id', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
+  const sessionTokenString = req.query.session as string
+  if (!sessionTokenString) {
     res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
   try {
-    await validateAdmin(sessionId)
+    await validateAdmin(sessionTokenString)
 
     const { name, location, isOperational, operatingHours, serviceTypes } = req.body
     const id = req.params.id
@@ -137,14 +136,14 @@ router.put('/:id', async (req, res) => {
 
 // DELETE /api/supplier/:id - Delete supplier (admin only)
 router.delete('/:id', async (req, res) => {
-  const sessionId = req.query.sessionId as SessionId
-  if (!sessionId) {
+  const sessionTokenString = req.query.session as string
+  if (!sessionTokenString) {
     res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
     return
   }
 
   try {
-    await validateAdmin(sessionId)
+    await validateAdmin(sessionTokenString)
 
     const deleted = await deleteSupplier(req.params.id)
     if (!deleted) {
