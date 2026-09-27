@@ -157,3 +157,9 @@ export function requireAuthenticatedUser(req: Request): AuthenticatedUser {
   }
   return req.user
 }
+
+export function requireBearerToken(req: Request): string {
+  const token = req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
+  if (!token) throw new UserServiceError('SESSION_EXPIRED', 'A bearer token is required.', 401)
+  return token
+}

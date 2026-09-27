@@ -1,4 +1,6 @@
 import type { User, UserId } from '@relay/contracts'
+import { CognitoIdentityProviderClient, DeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider'
+import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
 import { UserServiceError } from '../types/user.types.js'
@@ -10,13 +12,29 @@ import {
 } from '../validators/user.validator.js'
 
 export interface IdentityGateway {
-  deleteAccount(user: AuthenticatedUser): Promise<void>
+  deleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
 }
 
 /** Temporary gateway. Can replace this with Cognito deletion later. */
 export class MockIdentityGateway implements IdentityGateway {
-  async deleteAccount(_user: AuthenticatedUser): Promise<void> {
+  async deleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
     return
+  }
+}
+
+export class CognitoIdentityGateway implements IdentityGateway {
+  private readonly client: CognitoIdentityProviderClient
+
+  constructor() {
+    const env = getEnv()
+    this.client = new CognitoIdentityProviderClient({
+      region: env.awsRegion,
+      endpoint: env.awsEndpointUrl,
+    })
+  }
+
+  async deleteAccount(_user: AuthenticatedUser, accessToken: string): Promise<void> {
+    await this.client.send(new DeleteUserCommand({ AccessToken: accessToken }))
   }
 }
 
@@ -110,7 +128,7 @@ export class UserService {
     }
   }
 
-  async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<void> {
+  async deleteUser(user: AuthenticatedUser, confirmation: unknown, accessToken: string): Promise<void> {
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
       throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
@@ -121,7 +139,7 @@ export class UserService {
       await this.imageStorage.delete(existing.profilePictureKey)
     }
     await this.repository.deleteProfile(user.sub)
-    await this.identityGateway.deleteAccount(user)
+    await this.identityGateway.deleteAccount(user, accessToken)
   }
 
   private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {

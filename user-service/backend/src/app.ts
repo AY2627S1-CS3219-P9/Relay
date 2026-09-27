@@ -2,13 +2,16 @@ import express, { type ErrorRequestHandler } from 'express'
 import { UserController } from './controllers/user.controller.js'
 import { prisma, UserRepository } from './repositories/user.repository.js'
 import { createUserRouter } from './routes/user.routes.js'
-import { MockIdentityGateway, UserService } from './services/user.service.js'
+import { CognitoIdentityGateway, MockIdentityGateway, UserService } from './services/user.service.js'
+import { getEnv } from './config/env.js'
 import { LocalImageStorage } from './storage/local-image-storage.js'
 import { UserServiceError } from './types/user.types.js'
 
 const repository = new UserRepository()
 const imageStorage = new LocalImageStorage()
-const identityGateway = new MockIdentityGateway()
+const identityGateway = getEnv().authMode === 'cognito'
+  ? new CognitoIdentityGateway()
+  : new MockIdentityGateway()
 const userService = new UserService(repository, imageStorage, identityGateway)
 const userController = new UserController(userService)
 

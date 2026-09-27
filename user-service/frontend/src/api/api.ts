@@ -228,5 +228,6 @@ export const userApi: UserApi = {
       method: 'DELETE',
       body: JSON.stringify({ confirmation }),
     })
+    await signOut()
   },
 }
