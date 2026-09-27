@@ -22,6 +22,7 @@ export default function App({
   fetchSession,
   navigateTo,
   closeProfile,
+  refreshUserProfile,
   presentation = 'full',
 }: { api?: UserApi } & RemoteAppProps) {
   const [view, setView] = useState<View>('login')
@@ -111,7 +112,10 @@ export default function App({
         {/* {view === 'profile' && (
           <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
         )} */}
-        {view === 'profile' && <ProfileSetupForm onComplete={() => setView('complete')} />}
+        {view === 'profile' && <ProfileSetupForm onComplete={() => {
+          void refreshUserProfile?.()
+          setView('complete')
+        }} />}
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
@@ -147,7 +151,7 @@ export default function App({
         )} */}
         {view === 'account' && (
           <GlassCard className="account-glass-card">
-            <AccountView onLoggedOut={finishLogout} onDeleted={() => {
+            <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
             }} />
@@ -190,7 +194,7 @@ export default function App({
           ) : (
             <p className="user-profile-card-empty">Sign in to view your profile.</p>
           )} */}
-          <AccountView onLoggedOut={finishLogout} onDeleted={() => {
+          <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
               closeProfile?.()

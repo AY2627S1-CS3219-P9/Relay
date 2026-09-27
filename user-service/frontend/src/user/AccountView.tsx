@@ -181,7 +181,7 @@ import { useUserApi } from './UserApiProvider'
 import { DeleteAccountForm } from './DeleteAccountForm'
 import { ProfileSetupForm } from './ProfileSetupForm'
 
-export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => void; onDeleted: () => void }) {
+export function AccountView({ onLoggedOut, onDeleted, onUpdated }: { onLoggedOut: () => void; onDeleted: () => void; onUpdated?: () => void }) {
   const api = useUserApi()
   const [profile, setProfile] = useState<User | null>(null)
   const [username, setUsername] = useState('')
@@ -218,6 +218,7 @@ export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => voi
       setProfile(next)
       setUsername(next.username ?? '')
       setPicture(undefined)
+      onUpdated?.()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save your profile.')
     } finally {

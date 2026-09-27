@@ -82,6 +82,19 @@ function App() {
     }
   }, [])
 
+  async function refreshUserProfile() {
+    try {
+      const session = await fetchSession({ forceRefresh: true })
+      const response = await fetch('/api/user/me', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      if (response.ok) setUserProfile((await response.json()) as User)
+      else if (response.status === 404) setUserProfile(null)
+    } catch {
+      setUserProfile(null)
+    }
+  }
+
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
@@ -132,6 +145,7 @@ function App() {
             appProps={{
               fetchSession,
               userProfile,
+              refreshUserProfile,
               navigateTo,
               openProfile: id === 'supplier' ? openProfile : undefined,
               closeProfile: id === 'user' ? closeProfile : undefined,
