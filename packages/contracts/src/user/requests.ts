@@ -32,3 +32,11 @@ export type ChangePasswordRequest = {
   newPassword: string
   newPasswordConfirmation: string
 }
+
+export type IsAuthenticatedRequest = {
+  session: Session
+}
+
+export type IsAdminRequest = {
+  session: Session
+}

@@ -28,3 +28,11 @@ export type SubmitOtpAndLoginError =
   | (UserApiError & {
       code: 'EMAIL_IS_VERIFIED' | 'CODE_MISMATCH' | 'CODE_EXPIRED'
     })
+
+export type IsAuthenticatedError = UserApiError & {
+  code: 'INVALID_SESSION' | 'UNKNOWN_ERROR'
+}
+
+export type IsAdminError = UserApiError & {
+  code: 'INVALID_SESSION' | 'UNKNOWN_ERROR'
+}

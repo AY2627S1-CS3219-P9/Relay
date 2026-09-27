@@ -1,10 +1,14 @@
 import type {
   ChangePasswordRequest,
+  IsAdminRequest,
+  IsAuthenticatedRequest,
   LoginRequest,
   RegisterRequest,
   SubmitOtpAndLoginRequest,
 } from './requests'
 import type {
+  IsAdminResponse,
+  IsAuthenticatedResponse,
   LoginResponse,
   RegisterResponse,
   ResendOtpResponse,
@@ -19,5 +23,6 @@ export interface UserApi {
   login(request: LoginRequest): Promise<LoginResponse>
   changePassword(request: ChangePasswordRequest): Promise<void>
   logout(): Promise<void>
-  // TODO: Add other api functions
+  isAuthenticated(request: IsAuthenticatedRequest): Promise<IsAuthenticatedResponse>
+  isAdmin(request: IsAdminRequest): Promise<IsAdminResponse>
 }
