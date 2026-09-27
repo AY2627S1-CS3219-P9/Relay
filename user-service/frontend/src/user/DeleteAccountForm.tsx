@@ -17,6 +17,20 @@ export function DeleteAccountForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
+    if (!username || confirmation !== username) {
+      setErrorMessage('Enter your username exactly as shown to continue.')
+      return
+    }
+    setLoading(true)
+    setErrorMessage('')
+    try {
+      await api.deleteUser(confirmation)
+      onDeleted()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
+    } finally {
+      setLoading(false)
+    }
     // if (!username) {
     //   setErrorMessage('Set a username before deleting your account.')
     //   return

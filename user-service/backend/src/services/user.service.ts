@@ -111,12 +111,11 @@ export class UserService {
   }
 
   async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<void> {
-    validateDeletionConfirmation(confirmation)
-
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
       throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
     }
+    validateDeletionConfirmation(confirmation, existing.username)
 
     if (existing.profilePictureKey) {
       await this.imageStorage.delete(existing.profilePictureKey)

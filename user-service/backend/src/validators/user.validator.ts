@@ -3,8 +3,6 @@ import type { ImageContentType, ImageUpload } from '../storage/image-storage.js'
 import { UserServiceError } from '../types/user.types.js'
 
 export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
-export const ACCOUNT_DELETION_CONFIRMATION = 'DELETE'
-
 export const usernameSchema = z
   .string()
   .regex(/^[a-zA-Z0-9]{3,50}$/, 'Username must contain 3–50 alphanumeric characters.')
@@ -63,10 +61,10 @@ export function validateProfileImage(dataUrl: string): ImageUpload {
   return { body, contentType, extension }
 }
 
-export function validateDeletionConfirmation(value: unknown): void {
-  if (value !== ACCOUNT_DELETION_CONFIRMATION) {
+export function validateDeletionConfirmation(value: unknown, username: string | null): void {
+  if (!username || value !== username) {
     throw new UserServiceError('INVALID_REQUEST', 'Deletion confirmation is invalid.', 400, {
-      confirmation: `Type ${ACCOUNT_DELETION_CONFIRMATION} to confirm account deletion.`,
+      confirmation: 'Enter your username exactly as shown to confirm account deletion.',
     })
   }
 }
