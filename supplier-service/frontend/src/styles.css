@@ -47,6 +47,14 @@ input {
 .profile-chip {
   white-space: nowrap;
 }
+.profile-chip-avatar {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+}
 .map-stub-controls {
   position: absolute;
   z-index: 500;

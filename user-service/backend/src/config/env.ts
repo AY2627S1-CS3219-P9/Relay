@@ -13,6 +13,7 @@ export type UserServiceEnv = {
   mockJwtIssuer: string
   mockJwtAudience: string
   s3Endpoint: string
+  s3PublicEndpoint: string
   s3Region: string
   s3AccessKeyId: string
   s3SecretAccessKey: string
@@ -48,6 +49,7 @@ export function getEnv(): UserServiceEnv {
     mockJwtIssuer: required('MOCK_JWT_ISSUER', 'relay-user-service'),
     mockJwtAudience: required('MOCK_JWT_AUDIENCE', 'relay-user-frontend'),
     s3Endpoint: required('S3_ENDPOINT', 'http://localhost:4566'),
+    s3PublicEndpoint: required('S3_PUBLIC_ENDPOINT', process.env.S3_ENDPOINT ?? 'http://localhost:4566'),
     s3Region: required('S3_REGION', 'us-east-1'),
     s3AccessKeyId: required('S3_ACCESS_KEY_ID', 'test'),
     s3SecretAccessKey: required('S3_SECRET_ACCESS_KEY', 'test'),
