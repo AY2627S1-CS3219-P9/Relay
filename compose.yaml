@@ -136,11 +136,11 @@ services:
       context: .
       dockerfile: supplier-service/backend/Dockerfile
     expose:
-      - "3000"
+      - '3000'
     environment:
-      PORT: "3000"
-      DB_HOST: localhost
-      DB_PORT: "5433"
+      PORT: '3000'
+      DB_HOST: supplier-db
+      DB_PORT: '5432'
       DB_NAME: relay
       DB_USER: postgres
       DB_PASSWORD: postgres
@@ -148,7 +148,7 @@ services:
       supplier-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
       interval: 10s
       timeout: 3s
       retries: 5
