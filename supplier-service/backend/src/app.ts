@@ -1,5 +1,13 @@
 import express from 'express'
-import supplierRoutes from './routes'
+import { SupplierController } from './controllers/supplier.controller'
+import { SupplierService } from './services/supplier.service'
+import { SupplierRepository } from './repositories/supplier.repository'
+import { createSupplierRouter } from './routes/supplier.routes'
+
+const repository = new SupplierRepository()
+const service = new SupplierService(repository)
+const controller = new SupplierController(service)
+const supplierRouter = createSupplierRouter(controller)
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -12,7 +20,7 @@ app.get('/health', (req, res) => {
 })
 
 // API routes
-app.use('/api/supplier', supplierRoutes)
+app.use('/api/supplier', supplierRouter)
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
