@@ -14,6 +14,6 @@
       "@relay/contracts/*": ["../../packages/contracts/src/*"]
     }
   },
-  "include": ["**/*.ts"],
-  "exclude": ["../node_modules", "../../dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
