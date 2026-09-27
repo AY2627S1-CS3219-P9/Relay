@@ -1,5 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage } from '@relay/ui'
+import type { Session } from '@relay/contracts'
 import { useUserApi } from './UserApiProvider'
 
 export function DeleteAccountForm({
@@ -16,20 +17,24 @@ export function DeleteAccountForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
-    if (confirmation !== 'DELETE') {
-      setErrorMessage('Enter DELETE exactly to continue.')
-      return
-    }
-    setLoading(true)
-    setErrorMessage('')
-    try {
-      await api.deleteUser(confirmation)
-      onDeleted()
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
-    } finally {
-      setLoading(false)
-    }
+    // if (!username) {
+    //   setErrorMessage('Set a username before deleting your account.')
+    //   return
+    // }
+    // if (confirmation !== username) {
+    //   setErrorMessage('Enter your username exactly as shown to continue.')
+    //   return
+    // }
+    // setLoading(true)
+    // setErrorMessage('')
+    // try {
+    //   await api.deleteUser(sessionId, confirmation)
+    //   onDeleted()
+    // } catch (error) {
+    //   setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
+    // } finally {
+    //   setLoading(false)
+    // }
   }
 
   return (
@@ -40,11 +45,11 @@ export function DeleteAccountForm({
       </div>
       {username ? (
         <label>
-          Type DELETE to confirm
+          Enter your username to confirm
           <input
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
-            placeholder="DELETE"
+            placeholder={username}
             autoComplete="off"
             required
           />
