@@ -42,9 +42,9 @@ export class SupplierService {
 
     return await this.repository.create({
       name: data.name,
-      location: JSON.stringify(data.location),
+      location: data.location,
       isOperational: data.isOperational,
-      operatingHours: JSON.stringify(data.operatingHours),
+      operatingHours: data.operatingHours,
       serviceTypes: data.serviceTypes,
     })
   }
@@ -64,9 +64,9 @@ export class SupplierService {
 
     return await this.repository.update(id, {
       name: data.name,
-      location: data.location !== undefined ? JSON.stringify(data.location) : undefined,
+      location: data.location,
       isOperational: data.isOperational,
-      operatingHours: data.operatingHours !== undefined ? JSON.stringify(data.operatingHours) : undefined,
+      operatingHours: data.operatingHours,
       serviceTypes: data.serviceTypes,
     })
   }

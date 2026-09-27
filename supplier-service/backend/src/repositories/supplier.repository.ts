@@ -7,65 +7,82 @@ import {
 } from '../db'
 import type { Supplier } from '@relay/contracts/supplier'
 
-function toSupplier(row: any): Supplier {
-  return {
-    id: row.id,
-    name: row.name,
-    location: row.location,
-    isOperational: row.is_operational,
-    operatingHours: row.operating_hours,
-    serviceTypes: row.service_types,
-  }
-}
-
 export class SupplierRepository {
   async findAll(): Promise<Supplier[]> {
     const rows = await getSuppliers()
-    return rows.map(toSupplier)
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      location: row.location,
+      isOperational: row.is_operational,
+      operatingHours: row.operating_hours,
+      serviceTypes: row.service_types,
+    }))
   }
 
   async findById(id: string): Promise<Supplier | null> {
     const rows = await getSupplierById(id)
     if (!rows || rows.length === 0) return null
-    return toSupplier(rows[0])
+    return {
+      id: rows[0].id,
+      name: rows[0].name,
+      location: rows[0].location,
+      isOperational: rows[0].is_operational,
+      operatingHours: rows[0].operating_hours,
+      serviceTypes: rows[0].service_types,
+    }
   }
 
   async create(data: {
     name: string
-    location: string
+    location: Supplier['location']
     isOperational: boolean
-    operatingHours: string
-    serviceTypes: number[]
+    operatingHours: Supplier['operatingHours']
+    serviceTypes: Supplier['serviceTypes']
   }): Promise<Supplier> {
     const row = await createSupplier(
       data.name,
-      data.location,
+      JSON.stringify(data.location),
       data.isOperational,
-      data.operatingHours,
+      JSON.stringify(data.operatingHours),
       data.serviceTypes,
     )
-    return toSupplier(row)
+    return {
+      id: row[0].id,
+      name: row[0].name,
+      location: row[0].location,
+      isOperational: row[0].is_operational,
+      operatingHours: row[0].operating_hours,
+      serviceTypes: row[0].service_types,
+    }
   }
 
   async update(
     id: string,
     data: {
       name?: string
-      location?: string
+      location?: Supplier['location']
       isOperational?: boolean
-      operatingHours?: string
-      serviceTypes?: number[]
+      operatingHours?: Supplier['operatingHours']
+      serviceTypes?: Supplier['serviceTypes']
     },
   ): Promise<Supplier> {
     const row = await updateSupplier(
       id,
       data.name,
-      data.location,
+      data.location ? JSON.stringify(data.location) : undefined,
       data.isOperational,
-      data.operatingHours,
+      data.operatingHours ? JSON.stringify(data.operatingHours) : undefined,
       data.serviceTypes,
     )
-    return toSupplier(row)
+    return {
+      id: row[0].id,
+      name: row[0].name,
+      location: row[0].location,
+      isOperational: row[0].is_operational,
+      operatingHours: row[0].operating_hours,
+      serviceTypes: row[0].service_types,
+    }
   }
 
   async delete(id: string): Promise<boolean> {
