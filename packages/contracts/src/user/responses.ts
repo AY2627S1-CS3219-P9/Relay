@@ -1,4 +1,12 @@
-import type { IsAuthenticatedError, IsAdminError, LoginError, RegisterError, ResendOtpError, SubmitOtpAndLoginError, UserApiError } from './errors'
+import type {
+  CheckAuthError,
+  LoginError,
+  RegisterError,
+  ResendOtpError,
+  SubmitOtpAndLoginError,
+  UserApiError,
+} from './errors'
+import { UserRole } from './models'
 
 type RegisterResponseData = never
 type ResendOtpResponseData = never
@@ -16,14 +24,8 @@ export type ResendOtpResponse = UserApiResponse<ResendOtpResponseData, ResendOtp
 export type SubmitOtpAndLoginResponse = UserApiResponse<LoginResponseData, SubmitOtpAndLoginError>
 export type LoginResponse = UserApiResponse<LoginResponseData, LoginError>
 
-export type IsAuthenticatedResponseData = {
-  isAuthenticated: boolean
+export type CheckAuthResponseData = {
+  role: UserRole
 }
 
-export type IsAdminResponseData = {
-  isAdmin: boolean
-}
-
-export type IsAuthenticatedResponse = UserApiResponse<IsAuthenticatedResponseData, IsAuthenticatedError>
-export type IsAdminResponse = UserApiResponse<IsAdminResponseData, IsAdminError>
-
+export type CheckAuthResponse = UserApiResponse<CheckAuthResponseData, CheckAuthError>

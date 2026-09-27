@@ -33,10 +33,6 @@ export type ChangePasswordRequest = {
   newPasswordConfirmation: string
 }
 
-export type IsAuthenticatedRequest = {
-  sessionToken: string
-}
-
-export type IsAdminRequest = {
+export type CheckAuthRequest = {
   sessionToken: string
 }
