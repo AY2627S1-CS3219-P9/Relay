@@ -2,6 +2,7 @@ import express from 'express'
 import { getSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier } from './db'
 import { SupplierErrors } from '@relay/contracts/supplier'
 import type { Location, OperatingHours, ServiceType } from '@relay/contracts/supplier'
+import { checkAuthenticated, checkAdmin } from './user-api-client'
 
 const router = express.Router()
 
@@ -23,14 +24,33 @@ function normalizeSupplier(row: any): {
   }
 }
 
-// TODO: Helper to validate user is admin (for admin routes)
 async function validateAdmin(sessionTokenString: string): Promise<void> {
-  // Call UserApi.isAdmin(session.token)
-  // For now, this is a placeholder
+  if (!sessionTokenString || sessionTokenString.trim() === '') {
+    throw new Error('UNAUTHORIZED')
+  }
+
+  const [isAuth, isAdminStatus] = await Promise.all([
+    checkAuthenticated(sessionTokenString),
+    checkAdmin(sessionTokenString),
+  ])
+
+  if (!isAuth) {
+    throw new Error('UNAUTHORIZED')
+  }
+
+  if (!isAdminStatus) {
+    throw new Error('FORBIDDEN')
+  }
 }
 
-// GET /api/supplier - Get all suppliers (public)
+// GET /api/supplier - Get all suppliers (authenticated users only)
 router.get('/', async (req, res) => {
+  const sessionTokenString = req.query.session as string
+  if (!sessionTokenString || !await checkAuthenticated(sessionTokenString)) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
+    return
+  }
+
   try {
     const suppliers = await getSuppliers()
     res.json({ suppliers: suppliers.map(normalizeSupplier) })
@@ -40,8 +60,14 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET /api/supplier/:id - Get single supplier (public)
+// GET /api/supplier/:id - Get single supplier (authenticated users only)
 router.get('/:id', async (req, res) => {
+  const sessionTokenString = req.query.session as string
+  if (!sessionTokenString || !await checkAuthenticated(sessionTokenString)) {
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
+    return
+  }
+
   try {
     const supplier = await getSupplierById(req.params.id)
     if (!supplier) {
@@ -58,7 +84,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const sessionTokenString = req.query.session as string
   if (!sessionTokenString) {
-    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'Authentication required' })
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
     return
   }
 
@@ -102,7 +128,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const sessionTokenString = req.query.session as string
   if (!sessionTokenString) {
-    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
     return
   }
 
@@ -138,7 +164,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const sessionTokenString = req.query.session as string
   if (!sessionTokenString) {
-    res.status(401).json({ code: SupplierErrors.SESSION_EXPIRED, message: 'SessionId required' })
+    res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
     return
   }
 
