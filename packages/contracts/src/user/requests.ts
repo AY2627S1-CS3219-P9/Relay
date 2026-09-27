@@ -1,4 +1,3 @@
-import type { Session } from '..'
 import type { ImageDataUrl } from './models'
 
 export type RegisterRequest = {
@@ -21,13 +20,11 @@ export type SubmitOtpAndLoginRequest = LoginRequest & {
 }
 
 export type UpdateUserRequest = {
-  session: Session
   username?: string
   profilePicture?: ImageDataUrl
 }
 
 export type ChangePasswordRequest = {
-  session: Session
   currentPassword: string
   newPassword: string
   newPasswordConfirmation: string
