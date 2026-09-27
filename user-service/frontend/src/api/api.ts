@@ -8,14 +8,56 @@ import {
   SubmitOtpAndLoginRequest,
   SubmitOtpAndLoginResponse,
   UserApi,
+  UpdateUserRequest,
+  UpdateUserResponse,
+  GetUserResponse,
 } from '@relay/contracts'
 import {
   AuthError,
   confirmSignUp,
+  fetchAuthSession,
   resendSignUpCode,
+  signOut,
   signIn,
   signUp,
 } from 'aws-amplify/auth'
+
+const PROFILE_API_URL = '/api/user/me'
+
+async function getAccessToken(): Promise<string> {
+  const session = await fetchAuthSession()
+  const token = session.tokens?.accessToken?.toString()
+  if (!token) {
+    throw new Error('No authenticated session is available.')
+  }
+  return token
+}
+
+async function profileRequest<T>(input: RequestInit): Promise<T> {
+  const token = await getAccessToken()
+  const response = await fetch(PROFILE_API_URL, {
+    ...input,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(input.body ? { 'Content-Type': 'application/json' } : {}),
+      ...input.headers,
+    },
+  })
+
+  if (!response.ok) {
+    let message = `Profile request failed with status ${response.status}.`
+    try {
+      const body = (await response.json()) as { message?: string; error?: { message?: string } }
+      message = body.error?.message ?? body.message ?? message
+    } catch {
+      // Keep the status-based message when the server has no JSON response.
+    }
+    throw new Error(message)
+  }
+
+  if (response.status === 204) return undefined as T
+  return (await response.json()) as T
+}
 
 export const userApi: UserApi = {
   async register(request: RegisterRequest): Promise<RegisterResponse> {
@@ -123,11 +165,16 @@ export const userApi: UserApi = {
           data: { emailVerified: false, profileCreated: false },
         }
       }
-      // TODO: Add api request to backend to check profile creation
-      // can just directly use fetchAuthSession to get session token to pass to backend
+      let profileCreated = false
+      try {
+        await this.getUser()
+        profileCreated = true
+      } catch {
+        // A newly authenticated user may not have completed profile setup yet.
+      }
       return {
         success: true,
-        data: { emailVerified: true, profileCreated: true },
+        data: { emailVerified: true, profileCreated },
       }
     } catch (e: unknown) {
       // TODO: Add exception checking
@@ -157,7 +204,22 @@ export const userApi: UserApi = {
   changePassword: function (request: ChangePasswordRequest): Promise<void> {
     throw new Error('Function not implemented.')
   },
-  logout: function (): Promise<void> {
-    throw new Error('Function not implemented.')
+  logout: async function (): Promise<void> {
+    await signOut()
+  },
+  getUser: async function (): Promise<GetUserResponse> {
+    return profileRequest<GetUserResponse>({ method: 'GET' })
+  },
+  updateUser: async function (request: UpdateUserRequest): Promise<UpdateUserResponse> {
+    return profileRequest<UpdateUserResponse>({
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    })
+  },
+  deleteUser: async function (confirmation: string): Promise<void> {
+    await profileRequest<void>({
+      method: 'DELETE',
+      body: JSON.stringify({ confirmation }),
+    })
   },
 }
