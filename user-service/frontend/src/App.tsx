@@ -11,7 +11,7 @@ import { ProfileSetupForm } from './user/ProfileSetupForm'
 import { RegisterForm } from './user/RegisterForm'
 import { UserApiProvider } from './user/UserApiProvider'
 import { VerificationForm } from './user/VerificationForm'
-// import { AccountView } from './user/AccountView'
+import { AccountView } from './user/AccountView'
 import { NusMapPanel } from './components/NusMapPanel'
 import { userApi } from './api/api'
 
@@ -39,8 +39,7 @@ export default function App({
   }
 
   function finishVerification(profileCreated: boolean) {
-    // TODO: check for profile creation
-    completeAuth();
+    setView(profileCreated ? 'complete' : 'profile')
   }
 
   function startProfileCreation() {
@@ -50,9 +49,7 @@ export default function App({
   function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
     if (!emailVerified) startVerification(email, password)
     else {
-      // TODO: check for profile creation
-      completeAuth();
-      setView('complete')
+      setView(profileCreated ? 'complete' : 'profile')
     }
   }
 
@@ -100,9 +97,9 @@ export default function App({
             notice={loginNotice}
           />
         )}
-        {/* {view === 'profile' && (
-          <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
-        )} */}
+        {view === 'profile' && (
+          <ProfileSetupForm onComplete={() => setView('complete')} />
+        )}
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
@@ -123,19 +120,17 @@ export default function App({
             </RelayButton>
           </div>
         )}
-        {/* {view === 'account' && sessionId && (
+        {view === 'account' && (
           <GlassCard className="account-glass-card">
             <AccountView
-              sessionId={sessionId}
               onLoggedOut={finishLogout}
               onDeleted={() => {
-                setSessionId(undefined)
                 setLoginNotice('Your account was deleted successfully.')
                 setView('login')
               }}
             />
           </GlassCard>
-        )} */}
+        )}
       </section>
       <p className="user-footer">Restricted to NUS Students and Staff (for now).</p>
     </div>
@@ -159,12 +154,10 @@ export default function App({
               ×
             </IconButton>
           </div>
-          {/* {sessionId && view === 'account' ? (
+          {view === 'account' ? (
             <AccountView
-              sessionId={sessionId}
               onLoggedOut={finishLogout}
               onDeleted={() => {
-                setSessionId(undefined)
                 setLoginNotice('Your account was deleted successfully.')
                 setView('login')
                 closeProfile?.()
@@ -172,7 +165,7 @@ export default function App({
             />
           ) : (
             <p className="user-profile-card-empty">Sign in to view your profile.</p>
-          )} */}
+          )}
         </div>
       </UserApiProvider>
     )
