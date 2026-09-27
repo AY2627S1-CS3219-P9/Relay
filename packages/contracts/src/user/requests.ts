@@ -34,9 +34,9 @@ export type ChangePasswordRequest = {
 }
 
 export type IsAuthenticatedRequest = {
-  session: Session
+  sessionToken: string
 }
 
 export type IsAdminRequest = {
-  session: Session
+  sessionToken: string
 }

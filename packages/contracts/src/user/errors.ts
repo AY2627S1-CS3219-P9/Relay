@@ -30,9 +30,9 @@ export type SubmitOtpAndLoginError =
     })
 
 export type IsAuthenticatedError = UserApiError & {
-  code: 'INVALID_SESSION' | 'UNKNOWN_ERROR'
+  code: 'INVALID_SESSION_TOKEN' | 'UNKNOWN_ERROR'
 }
 
 export type IsAdminError = UserApiError & {
-  code: 'INVALID_SESSION' | 'UNKNOWN_ERROR'
+  code: 'INVALID_SESSION_TOKEN' | 'UNKNOWN_ERROR'
 }
