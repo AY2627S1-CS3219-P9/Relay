@@ -154,6 +154,9 @@ export default function App({
             <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
+              void refreshUserProfile?.()
+              closeProfile?.()
+              navigateTo?.('user')
             }} />
           </GlassCard>
         )}
@@ -197,7 +200,9 @@ export default function App({
           <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
+              void refreshUserProfile?.()
               closeProfile?.()
+              navigateTo?.('user')
             }} />
         </div>
       </UserApiProvider>
