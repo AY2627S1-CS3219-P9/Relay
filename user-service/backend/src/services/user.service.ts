@@ -1,5 +1,10 @@
 import type { User, UserId } from '@relay/contracts'
-import { CognitoIdentityProviderClient, DeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider'
+import {
+  AdminDeleteUserCommand,
+  CognitoIdentityProviderClient,
+  DeleteUserCommand,
+  GetUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
@@ -34,7 +39,26 @@ export class CognitoIdentityGateway implements IdentityGateway {
   }
 
   async deleteAccount(_user: AuthenticatedUser, accessToken: string): Promise<void> {
-    await this.client.send(new DeleteUserCommand({ AccessToken: accessToken }))
+    try {
+      await this.client.send(new DeleteUserCommand({ AccessToken: accessToken }))
+    } catch (error) {
+      // Floci currently does not implement DeleteUser. Use the administrative
+      // operation locally; production Cognito should use DeleteUser above.
+      const operationError = error as { name?: string; __type?: string }
+      const unsupported =
+        operationError.name === 'UnsupportedOperation' ||
+        operationError.name === 'UnsupportedOperationException' ||
+        operationError.__type === 'UnsupportedOperation'
+      if (!unsupported) throw error
+      const env = getEnv()
+      const currentUser = await this.client.send(new GetUserCommand({ AccessToken: accessToken }))
+      const username = currentUser.Username
+      if (!username) throw new Error('Cognito did not return a username for deletion.')
+      await this.client.send(new AdminDeleteUserCommand({
+        UserPoolId: env.cognitoUserPoolId,
+        Username: username,
+      }))
+    }
   }
 }
 
@@ -135,11 +159,14 @@ export class UserService {
     }
     validateDeletionConfirmation(confirmation, existing.username)
 
+    // Delete the identity first. If Cognito rejects the request, keep the
+    // local profile and image intact so the user can retry safely.
+    await this.identityGateway.deleteAccount(user, accessToken)
+
     if (existing.profilePictureKey) {
       await this.imageStorage.delete(existing.profilePictureKey)
     }
     await this.repository.deleteProfile(user.sub)
-    await this.identityGateway.deleteAccount(user, accessToken)
   }
 
   private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {

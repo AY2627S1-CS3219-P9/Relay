@@ -9,6 +9,7 @@ export type UserServiceEnv = {
   cognitoIssuer: string
   cognitoClientId: string
   cognitoJwksUri: string
+  cognitoUserPoolId: string
   mockJwtSecret: string
   mockJwtIssuer: string
   mockJwtAudience: string
@@ -45,6 +46,7 @@ export function getEnv(): UserServiceEnv {
       'COGNITO_JWKS_URI',
       'http://localhost:4566/us-east-1_test/.well-known/jwks.json',
     ),
+    cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),
     mockJwtSecret: required('MOCK_JWT_SECRET', 'local-development-only-secret'),
     mockJwtIssuer: required('MOCK_JWT_ISSUER', 'relay-user-service'),
     mockJwtAudience: required('MOCK_JWT_AUDIENCE', 'relay-user-frontend'),
