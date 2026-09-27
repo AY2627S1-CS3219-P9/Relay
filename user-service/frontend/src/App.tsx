@@ -39,7 +39,10 @@ export default function App({
   }
 
   function finishVerification(profileCreated: boolean) {
-    setView(profileCreated ? 'complete' : 'profile')
+    if (!profileCreated) {
+      setView('profile')
+      return
+    }
     // TODO: check for profile creation
     completeAuth();
   }
@@ -51,10 +54,13 @@ export default function App({
   function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
     if (!emailVerified) startVerification(email, password)
     else {
-      setView(profileCreated ? 'complete' : 'profile')
+      if (!profileCreated) {
+        setView('profile')
+        return
+      }
+      // Do not block navigation while the profile is being fetched.
       // TODO: check for profile creation
       completeAuth();
-      setView('complete')
     }
   }
 
@@ -184,13 +190,11 @@ export default function App({
           ) : (
             <p className="user-profile-card-empty">Sign in to view your profile.</p>
           )} */}
-          {view === 'account' && (
-            <AccountView onLoggedOut={finishLogout} onDeleted={() => {
+          <AccountView onLoggedOut={finishLogout} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
               closeProfile?.()
             }} />
-          )}
         </div>
       </UserApiProvider>
     )

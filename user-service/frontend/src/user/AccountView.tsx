@@ -179,6 +179,7 @@ import { UsernameField } from '../components/UsernameField'
 import { usernameError } from '../validation/validation'
 import { useUserApi } from './UserApiProvider'
 import { DeleteAccountForm } from './DeleteAccountForm'
+import { ProfileSetupForm } from './ProfileSetupForm'
 
 export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => void; onDeleted: () => void }) {
   const api = useUserApi()
@@ -187,6 +188,7 @@ export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => voi
   const [picture, setPicture] = useState<ImageDataUrl>()
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [needsSetup, setNeedsSetup] = useState(false)
 
   async function loadProfile() {
     try {
@@ -194,7 +196,12 @@ export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => voi
       setProfile(next)
       setUsername(next.username ?? '')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to load your profile.')
+      const message = cause instanceof Error ? cause.message : 'Unable to load your profile.'
+      const profileMissing =
+        (cause instanceof Error && 'status' in cause && cause.status === 404) ||
+        message.includes('status 404')
+      setNeedsSetup(profileMissing)
+      setError(profileMissing ? '' : message)
     }
   }
 
@@ -226,6 +233,7 @@ export function AccountView({ onLoggedOut, onDeleted }: { onLoggedOut: () => voi
   return <div className="account-view">
     <div className="account-header"><button type="button" onClick={() => void logout()}>Log out</button></div>
     <ErrorMessage message={error} />
+    {needsSetup && <ProfileSetupForm onComplete={() => { setNeedsSetup(false); void loadProfile() }} />}
     {profile && <>
       <form className="account-section account-profile-section" onSubmit={saveProfile}>
         <h2>Personal details</h2>

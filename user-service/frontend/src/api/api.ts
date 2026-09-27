@@ -24,6 +24,13 @@ import {
 
 const PROFILE_API_URL = '/api/user/me'
 
+class ProfileRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+    this.name = 'ProfileRequestError'
+  }
+}
+
 async function getAccessToken(): Promise<string> {
   const session = await fetchAuthSession()
   const token = session.tokens?.accessToken?.toString()
@@ -52,7 +59,7 @@ async function profileRequest<T>(input: RequestInit): Promise<T> {
     } catch {
       // Keep the status-based message when the server has no JSON response.
     }
-    throw new Error(message)
+    throw new ProfileRequestError(message, response.status)
   }
 
   if (response.status === 204) return undefined as T
@@ -169,8 +176,8 @@ export const userApi: UserApi = {
       try {
         await this.getUser()
         profileCreated = true
-      } catch {
-        // A newly authenticated user may not have completed profile setup yet.
+      } catch (error) {
+        if (!(error instanceof ProfileRequestError) || error.status !== 404) throw error
       }
       return {
         success: true,

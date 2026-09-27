@@ -1,4 +1,4 @@
-import type { User } from '@relay/contracts'
+import type { User, UserId } from '@relay/contracts'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
 import { UserServiceError } from '../types/user.types.js'
@@ -126,7 +126,7 @@ export class UserService {
 
   private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {
     return {
-      id: 'xxxx' as any, // TODO: match backend user service to new contract
+      id: profile.id as UserId,
       profileCreated: true,
       email: user.email,
       username: profile.username,

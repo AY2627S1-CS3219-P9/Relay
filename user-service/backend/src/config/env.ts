@@ -3,6 +3,12 @@ import 'dotenv/config'
 export type UserServiceEnv = {
   nodeEnv: string
   port: number
+  awsEndpointUrl: string
+  awsRegion: string
+  authMode: 'mock' | 'cognito'
+  cognitoIssuer: string
+  cognitoClientId: string
+  cognitoJwksUri: string
   mockJwtSecret: string
   mockJwtIssuer: string
   mockJwtAudience: string
@@ -29,6 +35,15 @@ export function getEnv(): UserServiceEnv {
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port,
+    awsEndpointUrl: process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
+    awsRegion: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
+    authMode: (process.env.AUTH_MODE ?? 'mock') as 'mock' | 'cognito',
+    cognitoIssuer: required('COGNITO_ISSUER', 'http://localhost:4566/us-east-1_test'),
+    cognitoClientId: required('COGNITO_CLIENT_ID', 'test'),
+    cognitoJwksUri: required(
+      'COGNITO_JWKS_URI',
+      'http://localhost:4566/us-east-1_test/.well-known/jwks.json',
+    ),
     mockJwtSecret: required('MOCK_JWT_SECRET', 'local-development-only-secret'),
     mockJwtIssuer: required('MOCK_JWT_ISSUER', 'relay-user-service'),
     mockJwtAudience: required('MOCK_JWT_AUDIENCE', 'relay-user-frontend'),
