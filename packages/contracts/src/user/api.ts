@@ -1,30 +1,23 @@
-import type { SessionId } from './models'
 import type {
   ChangePasswordRequest,
   LoginRequest,
   RegisterRequest,
-  SubmitOtpRequest,
-  UpdateUserRequest,
+  SubmitOtpAndLoginRequest,
 } from './requests'
 import type {
-  GetUserResponse,
-  IsVerifiedResponse,
   LoginResponse,
   RegisterResponse,
-  SubmitOtpResponse,
-  UpdateUserResponse,
+  ResendOtpResponse,
+  SubmitOtpAndLoginResponse,
 } from './responses'
 
 /** Async boundary implemented by an HTTP adapter in the User UI. */
 export interface UserApi {
   register(request: RegisterRequest): Promise<RegisterResponse>
-  requestOtp(sessionId: SessionId): Promise<void>
-  submitOtp(request: SubmitOtpRequest): Promise<SubmitOtpResponse>
+  resendOtp(email: string): Promise<ResendOtpResponse>
+  submitOtpAndLogin(request: SubmitOtpAndLoginRequest): Promise<SubmitOtpAndLoginResponse>
   login(request: LoginRequest): Promise<LoginResponse>
-  isVerified(sessionId: SessionId): Promise<IsVerifiedResponse>
-  getUser(sessionId: SessionId): Promise<GetUserResponse>
-  updateUser(sessionId: SessionId, request: UpdateUserRequest): Promise<UpdateUserResponse>
-  changePassword(sessionId: SessionId, request: ChangePasswordRequest): Promise<void>
-  logout(sessionId: SessionId): Promise<void>
-  deleteUser(sessionId: SessionId, confirmation: string): Promise<void>
+  changePassword(request: ChangePasswordRequest): Promise<void>
+  logout(): Promise<void>
+  // TODO: Add other api functions
 }

@@ -3,10 +3,6 @@ import './styles.css'
 import { useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
 import type {
-  LoginResponse,
-  RegisterResponse,
-  SessionId,
-  SubmitOtpResponse,
   UserApi,
   RemoteAppProps,
 } from '@relay/contracts'
@@ -14,55 +10,69 @@ import { LoginForm } from './user/LoginForm'
 import { ProfileSetupForm } from './user/ProfileSetupForm'
 import { RegisterForm } from './user/RegisterForm'
 import { UserApiProvider } from './user/UserApiProvider'
-import { mockUserApi, mockVerificationCode } from './mockUserApi/mockUserApi'
 import { VerificationForm } from './user/VerificationForm'
-import { AccountView } from './user/AccountView'
+// import { AccountView } from './user/AccountView'
 import { NusMapPanel } from './components/NusMapPanel'
+import { userApi } from './api/api'
 
 type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
 export default function App({
-  api = mockUserApi,
-  onNavigate,
-  onCloseProfile,
+  api = userApi,
+  fetchSession,
+  navigateTo,
+  closeProfile,
   presentation = 'full',
 }: { api?: UserApi } & RemoteAppProps) {
   const [view, setView] = useState<View>('login')
-  const [sessionId, setSessionId] = useState<SessionId>()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loginNotice, setLoginNotice] = useState('')
   const showAuthMap =
     view === 'login' || view === 'register' || view === 'verify' || view === 'profile'
 
   /* Verification */
-  function startVerification(response: RegisterResponse, registeredEmail: string) {
-    setSessionId(response.sessionId)
-    setEmail(registeredEmail)
+  function startVerification(email: string, password: string) {
+    setEmail(email)
+    setPassword(password)
     setView('verify')
   }
 
-  function finishVerification(response: SubmitOtpResponse) {
-    setSessionId(response.sessionId)
-    setView(response.requiresProfileSetup ? 'profile' : 'complete')
+  function finishVerification(profileCreated: boolean) {
+    // TODO: check for profile creation
+    completeAuth();
+  }
+
+  function startProfileCreation() {
   }
 
   /* Verification Completion */
-  function finishLogin(response: LoginResponse) {
-    setSessionId(response.sessionId)
-    setView('account')
-    onNavigate?.('supplier')
-  }
-
-  function completeRegistration() {
-    setView('account')
-    onNavigate?.('supplier')
+  function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
+    if (!emailVerified) startVerification(email, password)
+    else {
+      // TODO: check for profile creation
+      completeAuth();
+      setView('complete')
+    }
   }
 
   function finishLogout() {
-    setSessionId(undefined)
+    // Temporary workaround to logout. TODO: add actual logout function to user api
+    localStorage.clear();
     setView('login')
-    onCloseProfile?.()
-    onNavigate?.('user')
+    closeProfile?.()
+    navigateTo?.('user')
+  }
+
+  function completeAuth() {
+    setView('complete')
+    fetchSession?.().then(session => {
+      console.log('User login complete! User details: ', session.userData);
+    });
+  }
+
+  function goToSupplier() {
+    navigateTo?.('supplier')
   }
 
   const userContent = (
@@ -71,31 +81,28 @@ export default function App({
       <section className={`user-panel${view === 'account' ? ' account-panel' : ''}`}>
         {view === 'register' && (
           <RegisterForm
-            onRegistered={(response, registeredEmail) =>
-              startVerification(response, registeredEmail)
-            }
-            onLogin={() => setView('login')}
+            onRegistered={startVerification}
+            switchToLogin={() => setView('login')}
           />
         )}
-        {view === 'login' && (
-          <LoginForm
-            onLoggedIn={finishLogin}
-            onRegister={() => setView('register')}
-            notice={loginNotice}
-          />
-        )}
-        {view === 'verify' && sessionId && (
+        {view === 'verify' && (
           <VerificationForm
-            sessionId={sessionId}
             email={email}
-            demoCode={api === mockUserApi ? mockVerificationCode : undefined}
+            password={password}
             onVerified={finishVerification}
             onBack={() => setView('register')}
           />
         )}
-        {view === 'profile' && sessionId && (
-          <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
+        {view === 'login' && (
+          <LoginForm
+            onLoggedIn={onLogin}
+            switchToRegister={() => setView('register')}
+            notice={loginNotice}
+          />
         )}
+        {/* {view === 'profile' && (
+          <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
+        )} */}
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
@@ -103,13 +110,20 @@ export default function App({
             <RelayButton
               variant="primary"
               className="glass-btn-primary user-submit"
-              onClick={completeRegistration}
+              onClick={finishLogout}
             >
-              Continue 
+              Logout
+            </RelayButton>
+            <RelayButton
+              variant="primary"
+              className="glass-btn-primary user-submit"
+              onClick={goToSupplier}
+            >
+              Continue
             </RelayButton>
           </div>
         )}
-        {view === 'account' && sessionId && (
+        {/* {view === 'account' && sessionId && (
           <GlassCard className="account-glass-card">
             <AccountView
               sessionId={sessionId}
@@ -121,7 +135,7 @@ export default function App({
               }}
             />
           </GlassCard>
-        )}
+        )} */}
       </section>
       <p className="user-footer">Restricted to NUS Students and Staff (for now).</p>
     </div>
@@ -141,11 +155,11 @@ export default function App({
         <div className="user-profile-content">
           <div className="user-profile-card-header">
             <h1>Profile</h1>
-            <IconButton label="Close profile" onClick={onCloseProfile}>
+            <IconButton label="Close profile" onClick={closeProfile}>
               ×
             </IconButton>
           </div>
-          {sessionId && view === 'account' ? (
+          {/* {sessionId && view === 'account' ? (
             <AccountView
               sessionId={sessionId}
               onLoggedOut={finishLogout}
@@ -153,12 +167,12 @@ export default function App({
                 setSessionId(undefined)
                 setLoginNotice('Your account was deleted successfully.')
                 setView('login')
-                onCloseProfile?.()
+                closeProfile?.()
               }}
             />
           ) : (
             <p className="user-profile-card-empty">Sign in to view your profile.</p>
-          )}
+          )} */}
         </div>
       </UserApiProvider>
     )

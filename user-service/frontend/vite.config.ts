@@ -13,6 +13,8 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: { './App': './src/App.tsx' },
       shared: {
+        'aws-amplify': { singleton: true, requiredVersion: '^6.22.0' },
+        'aws-amplify/auth': { singleton: true, requiredVersion: '^6.22.0' },
         react: { singleton: true, requiredVersion: '^19.2.8' },
         'react-dom': { singleton: true, requiredVersion: '^19.2.8' },
         'react-dom/client': { singleton: true, requiredVersion: '^19.2.8' },

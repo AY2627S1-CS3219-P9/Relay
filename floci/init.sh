@@ -7,7 +7,6 @@ pool_id=$(aws cognito-idp create-user-pool \
   --pool-name "$COGNITO_USER_POOL_NAME" \
   --username-attributes email \
   --auto-verified-attributes email \
-  --verification-message-template '{"DefaultEmailOption":"CONFIRM_WITH_CODE","EmailSubject":"Your verification code","EmailMessage":"Your verification code is {####}"}' \
   --username-configuration CaseSensitive=false \
   --policies '{"PasswordPolicy":{"MinimumLength":8,"RequireUppercase":true,"RequireLowercase":true,"RequireNumbers":true,"RequireSymbols":true}}' \
   --schema Name=email,AttributeDataType=String,Required=true,Mutable=true \

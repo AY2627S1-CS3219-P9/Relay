@@ -5,6 +5,7 @@ services:
       - "4566:4566"
     env_file:
       - .env.development
+    user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
@@ -12,6 +13,9 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+  host:
+    env_file:
+      - .env.development
   user-api:
     env_file:
       - .env.development

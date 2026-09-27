@@ -1,17 +1,17 @@
 import { useState, type SubmitEvent } from 'react'
 import { useUserApi } from './UserApiProvider'
-import type { LoginResponse } from '@relay/contracts'
+import type { LoginResponseData } from '@relay/contracts'
 import { EmailField } from '../components/EmailField'
 import { PasswordField } from '../components/PasswordField'
 import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function LoginForm({
   onLoggedIn,
-  onRegister,
+  switchToRegister,
   notice,
 }: {
-  onLoggedIn: (response: LoginResponse) => void
-  onRegister: () => void
+  onLoggedIn: (email: string, password: string, emailVerified: boolean, profileCreated: boolean) => void
+  switchToRegister: () => void
   notice?: string
 }) {
   const api = useUserApi()
@@ -27,18 +27,13 @@ export function LoginForm({
     setLoading(true)
     setErrorMessage('')
 
-    try {
-      onLoggedIn(await api.login({ email, password }))
-    } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message)
-      } else {
-        let errorMsg = (error as { message?: string }).message ?? 'Login failed.'
-        setErrorMessage(errorMsg)
-      }
-    } finally {
-      setLoading(false)
+    const response = await api.login({ email, password });
+    if (response.success) {
+      onLoggedIn(email, password, response.data.emailVerified, response.data.profileCreated)
+    } else {
+      setErrorMessage(response.error.message)
     }
+    setLoading(false)
   }
 
   return (
@@ -56,7 +51,7 @@ export function LoginForm({
       </button>
       <p className="user-switch">
         Need an account?&nbsp;
-        <TextButton onClick={onRegister}>
+        <TextButton onClick={switchToRegister}>
           Register
         </TextButton>
       </p>

@@ -51,7 +51,7 @@ docker compose down
 | host              | 8080 | Main app, proxies remotes and APIs  |
 | supplier-frontend | 5001 | Supplier microfrontend              |
 | supplier-api      | 3000 | Supplier backend API (internal)     |
-| supplier-db       | 5432 | PostgreSQL for suppliers (internal) |
+| supplier-db       | 5433 | PostgreSQL for suppliers (internal) |
 
 ## API Endpoints
 

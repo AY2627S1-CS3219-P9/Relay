@@ -110,7 +110,7 @@ services:
   supplier-db:
     image: postgres:16-alpine
     ports:
-      - '5432:5432'
+      - '5433:5432'
     environment:
       POSTGRES_DB: relay
       POSTGRES_USER: postgres
@@ -139,8 +139,8 @@ services:
       - "3000"
     environment:
       PORT: "3000"
-      DB_HOST: supplier-db
-      DB_PORT: "5432"
+      DB_HOST: localhost
+      DB_PORT: "5433"
       DB_NAME: relay
       DB_USER: postgres
       DB_PASSWORD: postgres

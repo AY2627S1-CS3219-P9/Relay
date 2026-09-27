@@ -20,12 +20,6 @@ export default defineConfig({
       dev: { disableDynamicRemoteTypeHints: true },
     }),
   ],
-  server: {
-    port: 5001,
-    strictPort: true,
-    proxy: {
-      '/api/supplier': { target: 'http://localhost:3000', changeOrigin: true },
-    },
-  },
+  server: { port: 5001, strictPort: true },
   build: { target: 'esnext' },
 })

@@ -1,5 +1,8 @@
 {
   "name": "@relay/contracts",
+  "peerDependencies": {
+    "aws-amplify": "^6.22.0"
+  },
   "version": "0.1.0",
   "private": true,
   "type": "module",
