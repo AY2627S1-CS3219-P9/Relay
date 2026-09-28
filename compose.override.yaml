@@ -19,6 +19,8 @@ services:
   user-api:
     env_file:
       - .env.development
+    ports:
+      - '5555:5555' # For prisma studio
     environment:
       PORT: 3000
       AUTH_MODE: cognito
