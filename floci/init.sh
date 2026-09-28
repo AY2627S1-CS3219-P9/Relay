@@ -1,5 +1,6 @@
 #!/bin/sh
-set -eu
+set -e
+set -u
 
 # 1a. Create user pool
 # TODO: Add AWS pre sign-up lambda to check if emails are NUS emails
