@@ -16,10 +16,10 @@ RUN apk add --no-cache wget
 WORKDIR /app
 
 # Copy built backend
-COPY --from=build /app/dist/backend ./dist/backend
+COPY --from=build /app/dist ./dist
 COPY --from=build /app/supplier-service/backend/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 
 EXPOSE 3000
 
-CMD ["node", "dist/backend/app.js"]
+CMD ["node", "dist/app.js"]
