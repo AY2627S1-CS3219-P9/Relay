@@ -1,5 +1,6 @@
 #!/bin/sh
-set -eu
+set -e
+set -u
 
 # 1. Create user pool and client
 # TODO: Add more fine-grained schema matching AWS user pool config

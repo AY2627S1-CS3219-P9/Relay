@@ -19,8 +19,16 @@ services:
   user-api:
     env_file:
       - .env.development
+    ports:
+      - '5555:5555' # For prisma studio
     environment:
       PORT: 3000
+      AUTH_MODE: cognito
+      AWS_ENDPOINT_URL: http://floci:4566
+      # Cognito tokens are issued using the browser-facing Floci URL.
+      # The backend still uses the internal Floci hostname for JWKS retrieval.
+      COGNITO_ISSUER: http://localhost:4566/us-east-1_test
+      COGNITO_JWKS_URI: http://floci:4566/us-east-1_test/.well-known/jwks.json
     depends_on:
       floci:
         condition: service_healthy

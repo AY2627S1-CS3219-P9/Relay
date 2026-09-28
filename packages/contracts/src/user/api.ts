@@ -4,13 +4,16 @@ import type {
   LoginRequest,
   RegisterRequest,
   SubmitOtpAndLoginRequest,
+  UpdateUserRequest,
 } from './requests'
 import type {
   CheckAuthResponse,
+  GetUserResponse,
   LoginResponse,
   RegisterResponse,
   ResendOtpResponse,
   SubmitOtpAndLoginResponse,
+  UpdateUserResponse,
 } from './responses'
 
 /** Async boundary implemented by an HTTP adapter in the User UI. */
@@ -22,4 +25,7 @@ export interface UserApi {
   changePassword(request: ChangePasswordRequest): Promise<void>
   logout(): Promise<void>
   checkAuth(request: CheckAuthRequest): Promise<CheckAuthResponse>
+  getUser(): Promise<GetUserResponse>
+  updateUser(request: UpdateUserRequest): Promise<UpdateUserResponse>
+  deleteUser(confirmation: string): Promise<void>
 }

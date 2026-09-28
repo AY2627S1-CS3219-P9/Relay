@@ -6,7 +6,7 @@ import type {
   SubmitOtpAndLoginError,
   UserApiError,
 } from './errors'
-import { UserRole } from './models'
+import { User, UserRole } from './models'
 
 type RegisterResponseData = never
 type ResendOtpResponseData = never
@@ -29,3 +29,6 @@ export type CheckAuthResponseData = {
 }
 
 export type CheckAuthResponse = UserApiResponse<CheckAuthResponseData, CheckAuthError>
+export type GetUserResponse = User
+export type UpdateUserResponse = User
+

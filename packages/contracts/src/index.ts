@@ -28,6 +28,8 @@ export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Ses
 
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
+  userProfile?: import('./user/models').User | null
+  refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void

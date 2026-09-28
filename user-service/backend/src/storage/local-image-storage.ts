@@ -11,10 +11,12 @@ export class FlociS3ImageStorage implements ImageStorage {
   private readonly client: S3Client
   private readonly bucket: string
   private readonly endpoint: string
+  private readonly publicEndpoint: string
 
   constructor() {
     const env = getEnv()
     this.endpoint = env.s3Endpoint.replace(/\/$/, '')
+    this.publicEndpoint = env.s3PublicEndpoint.replace(/\/$/, '')
     this.bucket = env.s3Bucket
     this.client = new S3Client({
       endpoint: this.endpoint,
@@ -52,7 +54,7 @@ export class FlociS3ImageStorage implements ImageStorage {
   }
 
   url(key: string): string {
-    return `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key
+    return `${this.publicEndpoint}/${encodeURIComponent(this.bucket)}/${key
       .split('/')
       .map(encodeURIComponent)
       .join('/')}`
