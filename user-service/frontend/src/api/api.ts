@@ -31,8 +31,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiResult<T
 
   if (response.status === 204) return { ok: true, data: undefined as T }
 
-  const body = (await response.json()) as T | { ok: false; error: UserApiError }
-  if (response.ok) return { ok: true, data: body as T }
+  const body = (await response.json()) as
+    | { ok: true; data: T }
+    | { ok: false; error: UserApiError }
+  if (response.ok && body.ok === true) return { ok: true, data: body.data }
 
   if (typeof body === 'object' && body !== null && 'ok' in body && body.ok === false) {
     return body

@@ -36,17 +36,17 @@ export default function App({
     setView('verify')
   }
 
-  function finishVerification(profileCreated: boolean) {
+  async function finishVerification(profileCreated: boolean) {
     if (!profileCreated) {
       setView('profile')
       return
     }
-    // TODO: check for profile creation
+    await refreshUserProfile?.()
     completeAuth()
   }
 
   /* Verification Completion */
-  function onLogin(
+  async function onLogin(
     email: string,
     password: string,
     emailVerified: boolean,
@@ -58,8 +58,7 @@ export default function App({
         setView('profile')
         return
       }
-      // Do not block navigation while the profile is being fetched.
-      // TODO: check for profile creation
+      await refreshUserProfile?.()
       completeAuth()
     }
   }
@@ -70,6 +69,7 @@ export default function App({
       console.error(response.error)
       return
     }
+    await refreshUserProfile?.()
     setView('login')
     closeProfile?.()
     navigateTo?.('user')
@@ -107,8 +107,8 @@ export default function App({
         )}
         {view === 'profile' && (
           <ProfileSetupForm
-            onComplete={() => {
-              void refreshUserProfile?.()
+            onComplete={async () => {
+              await refreshUserProfile?.()
               setView('complete')
             }}
           />

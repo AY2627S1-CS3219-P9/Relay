@@ -13,6 +13,7 @@ export type Session = {
     id: string
     email: string
     emailVerified: boolean
+    profileCreated: boolean
     isAdmin: boolean
   };
 }
@@ -28,6 +29,7 @@ export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Ses
 
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
+  authVersion?: number
   userProfile?: import('./user/models').User | null
   refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void

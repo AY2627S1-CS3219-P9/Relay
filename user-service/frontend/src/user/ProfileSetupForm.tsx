@@ -10,7 +10,7 @@ export function ProfileSetupForm({
   onComplete,
 }: {
   validateSession?: () => Promise<Session>
-  onComplete: () => void
+  onComplete: () => void | Promise<void>
 }) {
   const api = useUserApi()
 
@@ -29,8 +29,12 @@ export function ProfileSetupForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      await api.updateUser({ username, profilePicture: picture })
-      onComplete()
+      const response = await api.updateUser({ username, profilePicture: picture })
+      if (!response.ok) {
+        setErrorMessage(response.error.message)
+        return
+      }
+      await onComplete()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Profile setup failed.')
     } finally {

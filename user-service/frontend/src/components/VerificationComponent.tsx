@@ -11,7 +11,7 @@ export function VerificationComponent({
 }: {
   email: string
   password: string
-  onVerified: (profileCreated: boolean) => void
+  onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack?: () => void
 }) {
   const api = useUserApi()
@@ -35,7 +35,12 @@ export function VerificationComponent({
 
     const response = await api.submitOtpAndLogin({ email, password, code })
     if (response.ok) {
-      onVerified(response.data.user.profileCreated)
+      if (!response.data?.user) {
+        setErrorMessage('The User Service returned an invalid session response.')
+        setLoading(false)
+        return
+      }
+      await onVerified(response.data.user.profileCreated)
     } else {
       setErrorMessage(response.error.message)
     }

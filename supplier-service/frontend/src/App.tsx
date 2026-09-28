@@ -11,18 +11,25 @@ import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
 import { SupplierMap, type MapPoint } from './components/SupplierMap'
 import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
-import { httpSupplierApi } from './supplierApi'
+import { createHttpSupplierApi } from './supplierApi'
 
 const NUS_CENTER: MapPoint = { lat: 1.2966, lng: 103.7764 }
-const defaultSupplierApi =
-  import.meta.env.VITE_SUPPLIER_API_MODE === 'mock' ? mockSupplierApi : httpSupplierApi
-
 export default function App({
   navigateTo,
   openProfile,
   userProfile,
-  api = defaultSupplierApi,
+  fetchSession,
+  authVersion,
+  api,
 }: RemoteAppProps & { api?: SupplierApi }) {
+  const activeApi = useMemo(
+    () =>
+      api ??
+      (import.meta.env.VITE_SUPPLIER_API_MODE === 'mock'
+        ? mockSupplierApi
+        : createHttpSupplierApi()),
+    [api],
+  )
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [center, setCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()
@@ -55,9 +62,12 @@ export default function App({
   }
 
   useEffect(() => {
-    void api
+    void activeApi
       .getSuppliers()
-      .then(({ suppliers: loadedSuppliers }) => setSuppliers(loadedSuppliers))
+      .then(({ suppliers: loadedSuppliers }) => {
+        setSuppliers(loadedSuppliers)
+        setErrorMessage('')
+      })
       .catch((error) => {
         setErrorMessage(error instanceof Error ? error.message : 'Unable to load suppliers.')
       })
@@ -71,7 +81,7 @@ export default function App({
       () => undefined,
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
     )
-  }, [api])
+  }, [activeApi, authVersion])
 
   const visibleSuppliers = useMemo(() => {
     const filtered = suppliers.filter((supplier) => {
@@ -114,17 +124,19 @@ export default function App({
         >
           ⚡ 0 cr
         </RelayButton>
-        <SlidingSegmentedControl
-          className="mock-control-group"
-          scale={1}
-          ariaLabel="Supplier view"
-          options={[
-            { value: 'explore', label: 'Explore' },
-            { value: 'requests', label: 'My Requests' },
-          ]}
-          value={activeMode}
-          onChange={setActiveMode}
-        />
+        <div className="supplier-segment-control">
+          <SlidingSegmentedControl
+            className="mock-control-group"
+            scale={1}
+            ariaLabel="Supplier view"
+            options={[
+              { value: 'explore', label: 'Explore' },
+              { value: 'requests', label: 'My Requests' },
+            ]}
+            value={activeMode}
+            onChange={setActiveMode}
+          />
+        </div>
         <RelayButton
           variant="secondary"
           scale={1.25}

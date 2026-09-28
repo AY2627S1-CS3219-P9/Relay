@@ -23,20 +23,21 @@ declare global {
 
 function claimsToUser(claims: CognitoLikeClaims): AuthenticatedUser {
   if (!claims.sub || typeof claims.sub !== 'string') {
-    throw new UserServiceError('INVALID_REQUEST', 'The token does not contain a valid subject.', 401)
+    throw new UserServiceError('UNAUTHENTICATED', 'The token does not contain a valid subject.', 401)
   }
 
   const email = claims.email ?? claims.username
   if (!email || typeof email !== 'string') {
-    throw new UserServiceError('INVALID_REQUEST', 'The token does not contain an email.', 401)
+    throw new UserServiceError('UNAUTHENTICATED', 'The token does not contain an email.', 401)
   }
 
   const groups = claims['cognito:groups'] ?? []
+  const isAdmin = groups.includes(getEnv().cognitoAdminGroupName)
   return {
     sub: claims.sub,
     email,
     emailVerified: claims.email_verified === true,
-    role: groups.includes('admin') ? 'admin' : 'user',
+    role: isAdmin ? 'admin' : 'user',
   }
 }
 
@@ -127,7 +128,7 @@ export function verifyMockJwt(token: string): AuthenticatedUser {
   })
 
   if (typeof decoded === 'string') {
-    throw new UserServiceError('INVALID_REQUEST', 'The token payload is invalid.', 401)
+    throw new UserServiceError('UNAUTHENTICATED', 'The token payload is invalid.', 401)
   }
 
   return claimsToUser(decoded as CognitoLikeClaims)
@@ -138,7 +139,7 @@ export const cognitoAuthMiddleware: RequestHandler = async (req: Request, res: R
   const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
 
   if (!token) {
-    res.status(401).json({ code: 'SESSION_EXPIRED', message: 'A bearer token is required.' })
+    res.status(401).json({ code: 'UNAUTHENTICATED', message: 'A bearer token is required.' })
     return
   }
 
@@ -153,13 +154,13 @@ export const cognitoAuthMiddleware: RequestHandler = async (req: Request, res: R
 
 export function requireAuthenticatedUser(req: Request): AuthenticatedUser {
   if (!req.user) {
-    throw new UserServiceError('SESSION_EXPIRED', 'Authentication is required.', 401)
+    throw new UserServiceError('UNAUTHENTICATED', 'Authentication is required.', 401)
   }
   return req.user
 }
 
 export function requireBearerToken(req: Request): string {
   const token = req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
-  if (!token) throw new UserServiceError('SESSION_EXPIRED', 'A bearer token is required.', 401)
+  if (!token) throw new UserServiceError('UNAUTHENTICATED', 'A bearer token is required.', 401)
   return token
 }

@@ -10,7 +10,7 @@ export const usernameSchema = z
 export const updateProfileSchema = z
   .object({
     username: usernameSchema.optional(),
-    profilePicture: z.string().optional(),
+    profilePicture: z.string().nullable().optional(),
   })
   .refine((value) => value.username !== undefined || value.profilePicture !== undefined, {
     message: 'At least one profile field is required.',
@@ -22,7 +22,7 @@ export function validateUpdateProfile(input: unknown): UpdateProfileInput {
   const result = updateProfileSchema.safeParse(input)
   if (!result.success) {
     throw new UserServiceError(
-      'INVALID_REQUEST',
+      'VALIDATION_FAILED',
       'The profile update request is invalid.',
       400,
       Object.fromEntries(
@@ -36,12 +36,12 @@ export function validateUpdateProfile(input: unknown): UpdateProfileInput {
 function decodeBase64Payload(payload: string): Buffer {
   const normalized = payload.replace(/\s/g, '')
   if (!normalized || !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 !== 0) {
-    throw new UserServiceError('INVALID_REQUEST', 'The profile picture data is invalid.', 400)
+    throw new UserServiceError('VALIDATION_FAILED', 'The profile picture data is invalid.', 400)
   }
 
   const buffer = Buffer.from(normalized, 'base64')
   if (buffer.length === 0 || buffer.length >= MAX_PROFILE_IMAGE_BYTES) {
-    throw new UserServiceError('INVALID_REQUEST', 'The image must be smaller than 5 MB.', 400)
+    throw new UserServiceError('VALIDATION_FAILED', 'The image must be smaller than 5 MB.', 400)
   }
   return buffer
 }
@@ -49,7 +49,7 @@ function decodeBase64Payload(payload: string): Buffer {
 export function validateProfileImage(dataUrl: string): ImageUpload {
   const match = dataUrl.match(/^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/=\s]+)$/i)
   if (!match) {
-    throw new UserServiceError('INVALID_REQUEST', 'Choose a JPG or PNG image.', 400, {
+    throw new UserServiceError('VALIDATION_FAILED', 'Choose a JPG or PNG image.', 400, {
       profilePicture: 'Only image/jpeg and image/png data URLs are supported.',
     })
   }
@@ -63,7 +63,7 @@ export function validateProfileImage(dataUrl: string): ImageUpload {
 
 export function validateDeletionConfirmation(value: unknown, username: string | null): void {
   if (!username || value !== username) {
-    throw new UserServiceError('INVALID_REQUEST', 'Deletion confirmation is invalid.', 400, {
+    throw new UserServiceError('VALIDATION_FAILED', 'Deletion confirmation is invalid.', 400, {
       confirmation: 'Enter your username exactly as shown to confirm account deletion.',
     })
   }

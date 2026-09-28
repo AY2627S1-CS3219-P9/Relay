@@ -9,7 +9,7 @@ export function VerificationForm({
 }: {
   email: string,
   password: string,
-  onVerified: (profileCreated: boolean) => void
+  onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack: () => void
 }) {
   return (
