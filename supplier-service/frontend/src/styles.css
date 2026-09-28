@@ -266,6 +266,66 @@ legend {
   color: var(--relay-red-dark);
   transform: translateX(-50%);
 }
+.supplier-admin-toolbar {
+  position: absolute;
+  z-index: 700;
+  top: 132px;
+  left: 50%;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+.supplier-admin-panel {
+  position: absolute;
+  z-index: 900;
+  top: 110px;
+  right: 24px;
+  width: min(440px, calc(100vw - 48px));
+  max-height: calc(100dvh - 140px);
+  overflow: auto;
+  padding: 20px;
+}
+.supplier-admin-panel form,
+.supplier-admin-panel label,
+.supplier-admin-panel fieldset {
+  display: grid;
+  gap: 8px;
+}
+.supplier-admin-panel label,
+.supplier-admin-panel legend {
+  color: var(--relay-text);
+  font-weight: 650;
+}
+.supplier-admin-panel input:not([type='checkbox']) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+.supplier-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.supplier-admin-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.supplier-admin-options label,
+.supplier-admin-check {
+  display: flex !important;
+  align-items: center;
+  gap: 5px !important;
+}
+.supplier-admin-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
 @media (max-width: 700px) {
   .supplier-top-controls {
     right: 16px;
@@ -279,6 +339,14 @@ legend {
   .supplier-segment-control {
     width: calc(100vw - 32px);
     min-width: 0;
+  }
+  .supplier-admin-toolbar {
+    top: 118px;
+  }
+  .supplier-admin-panel {
+    top: 96px;
+    right: 16px;
+    width: calc(100vw - 32px);
   }
   .map-stub-controls {
     right: 16px;

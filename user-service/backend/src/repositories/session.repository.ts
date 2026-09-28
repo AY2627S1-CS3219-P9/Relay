@@ -30,4 +30,11 @@ export class SessionRepository {
       data: { revokedAt: new Date() },
     })
   }
+
+  async revokeByCognitoSub(cognitoSub: string): Promise<void> {
+    await prisma.userSession.updateMany({
+      where: { cognitoSub, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+  }
 }
