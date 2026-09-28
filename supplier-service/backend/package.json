@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "tsc --noEmit && tsx --watch src/app.ts",
-    "build": "tsc --noEmit && esbuild src/app.ts --bundle --platform=node --format=esm --outdir=./dist",
+    "build": "tsc --noEmit && esbuild ././src/app.ts --bundle --platform=node --format=esm --outdir=./dist",
     "start": "node ./dist/app.js"
   },
   "dependencies": {

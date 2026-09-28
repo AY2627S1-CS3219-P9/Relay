@@ -8,7 +8,7 @@ import type {
   SubmitOtpAndLoginError,
   UserApiError,
 } from './errors'
-import { User, UserRole } from './models'
+import type { User, UserRole } from './models'
 
 export type LoginResponseData = {
   emailVerified: boolean

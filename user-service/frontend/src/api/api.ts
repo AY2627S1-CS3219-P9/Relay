@@ -1,5 +1,6 @@
 import {
   ChangePasswordRequest,
+  CheckAuthRequest,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
@@ -12,6 +13,7 @@ import {
   UpdateUserResponse,
   GetUserResponse,
   ChangePasswordResponse,
+  CheckAuthResponse,
   LogoutResponse,
 } from '@relay/contracts'
 import {
@@ -257,6 +259,30 @@ export const userApi: UserApi = {
     try {
       await signOut()
       return { success: true }
+    } catch (e: unknown) {
+      return {
+        success: false,
+        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
+      }
+    }
+  },
+  async checkAuth(request: CheckAuthRequest): Promise<CheckAuthResponse> {
+    try {
+      const session = await fetchAuthSession()
+      const accessToken = session.tokens?.accessToken
+      const currentToken = accessToken?.toString()
+
+      if (!currentToken || currentToken !== request.sessionToken) {
+        return {
+          success: false,
+          error: { code: 'INVALID_SESSION_TOKEN', message: 'The session token is invalid.' },
+        }
+      }
+
+      const groups = accessToken?.payload?.['cognito:groups']
+      const isAdmin = Array.isArray(groups) && groups.includes('admin')
+
+      return { success: true, data: { role: isAdmin ? 'admin' : 'user' } }
     } catch (e: unknown) {
       return {
         success: false,
