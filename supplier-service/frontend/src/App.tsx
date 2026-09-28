@@ -19,7 +19,6 @@ export default function App({
   navigateTo,
   openProfile,
   userProfile,
-  fetchSession,
   authVersion,
   api,
 }: RemoteAppProps & { api?: SupplierApi }) {
@@ -41,8 +40,8 @@ export default function App({
   const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
-  const [isAdmin, setIsAdmin] = useState(false)
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
+  const isAdmin = userProfile?.role === 'admin'
 
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
 
@@ -65,10 +64,6 @@ export default function App({
   }
 
   useEffect(() => {
-    void fetchSession?.()
-      .then((session) => setIsAdmin(session.userData.isAdmin))
-      .catch(() => setIsAdmin(false))
-
     void activeApi
       .getSuppliers()
       .then(({ suppliers: loadedSuppliers }) => {
