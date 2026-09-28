@@ -40,6 +40,18 @@ export type SubmitOtpAndLoginError =
       code: 'EMAIL_IS_VERIFIED' | 'CODE_MISMATCH' | 'CODE_EXPIRED'
     })
 
+export type ChangePasswordError = UserApiError & {
+  code:
+    | 'WRONG_PASSWORD'
+    | 'INVALID_NEW_PASSWORD'
+    | 'NON_MATCHING_PASSWORDS'
+    | 'REUSED_PASSWORD'
+    | 'TOO_MANY_REQUESTS'
+    | 'UNKNOWN_ERROR'
+}
+
+export type LogoutError = UserApiError & {
+  code: 'UNKNOWN_ERROR'
 export type CheckAuthError = UserApiError & {
   code: 'INVALID_SESSION_TOKEN' | 'UNKNOWN_ERROR'
 }

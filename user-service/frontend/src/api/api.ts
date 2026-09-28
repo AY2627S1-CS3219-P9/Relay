@@ -11,6 +11,8 @@ import {
   UpdateUserRequest,
   UpdateUserResponse,
   GetUserResponse,
+  ChangePasswordResponse,
+  LogoutResponse,
 } from '@relay/contracts'
 import {
   AuthError,
@@ -20,12 +22,16 @@ import {
   signOut,
   signIn,
   signUp,
+  updatePassword,
 } from 'aws-amplify/auth'
 
 const PROFILE_API_URL = '/api/user/me'
 
 class ProfileRequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
     super(message)
     this.name = 'ProfileRequestError'
   }
@@ -105,7 +111,7 @@ export const userApi: UserApi = {
         // TODO: Add AWS pre sign-up lambda trigger to check for nus email, and check here
         // TODO: Also check other exceptions like password validity and other cases
       }
-      console.log(e);
+      console.log(e)
       return {
         success: false,
         error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
@@ -118,7 +124,7 @@ export const userApi: UserApi = {
       return { success: true }
     } catch (e: unknown) {
       // TODO: check other exceptions
-      console.log(e);
+      console.log(e)
       return {
         success: false,
         error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
@@ -153,7 +159,7 @@ export const userApi: UserApi = {
             }
         }
       }
-      console.log(e);
+      console.log(e)
       return {
         success: false,
         error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
@@ -201,29 +207,73 @@ export const userApi: UserApi = {
           // TODO: Check other exceptions
         }
       }
-      console.log(e);
+      console.log(e)
       return {
         success: false,
         error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
       }
     }
   },
-  changePassword: function (request: ChangePasswordRequest): Promise<void> {
-    throw new Error('Function not implemented.')
+  async changePassword(request: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    try {
+      if (request.newPassword !== request.newPasswordConfirmation) {
+        return {
+          success: false,
+          error: { code: 'NON_MATCHING_PASSWORDS', message: 'Passwords must match exactly.' },
+        }
+      }
+      await updatePassword({
+        oldPassword: request.currentPassword,
+        newPassword: request.newPassword,
+      })
+      return { success: true }
+    } catch (e: unknown) {
+      if (e instanceof AuthError) {
+        switch (e.name) {
+          case 'NotAuthorizedException':
+            return {
+              success: false,
+              error: { code: 'WRONG_PASSWORD', message: 'The current password you entered is incorrect.' },
+            }
+          case 'PasswordHistoryPolicyViolationException':
+            return {
+              success: false,
+              error: { code: 'REUSED_PASSWORD', message: 'You cannot reuse previous passwords.' },
+            }
+          case 'InvalidPasswordException':
+            return {
+              success: false,
+              error: { code: 'INVALID_NEW_PASSWORD', message: 'New password does not meet requirements.' },
+            }
+        }
+      }
+      return {
+        success: false,
+        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
+      }
+    }
   },
-  logout: async function (): Promise<void> {
-    await signOut()
+  async logout(): Promise<LogoutResponse> {
+    try {
+      await signOut()
+      return { success: true }
+    } catch (e: unknown) {
+      return {
+        success: false,
+        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
+      }
+    }
   },
-  getUser: async function (): Promise<GetUserResponse> {
+  async getUser(): Promise<GetUserResponse> {
     return profileRequest<GetUserResponse>({ method: 'GET' })
   },
-  updateUser: async function (request: UpdateUserRequest): Promise<UpdateUserResponse> {
+  async updateUser(request: UpdateUserRequest): Promise<UpdateUserResponse> {
     return profileRequest<UpdateUserResponse>({
       method: 'PATCH',
       body: JSON.stringify(request),
     })
   },
-  deleteUser: async function (confirmation: string): Promise<void> {
+  async deleteUser(confirmation: string): Promise<void> {
     await profileRequest<void>({
       method: 'DELETE',
       body: JSON.stringify({ confirmation }),

@@ -173,21 +173,26 @@
 
 import { useEffect, useState, type SubmitEvent } from 'react'
 import type { ImageDataUrl, User } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, IconButton } from '@relay/ui'
 import { ImageUploadComponent } from '../components/ImageUploadComponent'
 import { UsernameField } from '../components/UsernameField'
 import { usernameError } from '../validation/validation'
 import { useUserApi } from './UserApiProvider'
 import { DeleteAccountForm } from './DeleteAccountForm'
 import { ProfileSetupForm } from './ProfileSetupForm'
+import { PasswordField } from '../components/PasswordField'
+import { ChangePasswordForm } from './ChangePasswordForm'
+
+type Page = 'account' | 'change-password' | 'update-profile' | 'delete'
 
 export function AccountView({ onLoggedOut, onDeleted, onUpdated }: { onLoggedOut: () => void; onDeleted: () => void; onUpdated?: () => void }) {
   const api = useUserApi()
+  const [page, setPage] = useState<Page>('account')
   const [profile, setProfile] = useState<User | null>(null)
   const [username, setUsername] = useState('')
   const [picture, setPicture] = useState<ImageDataUrl>()
+  const [savingProfile, setSavingProfile] = useState(false)
   const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
   const [needsSetup, setNeedsSetup] = useState(false)
 
   async function loadProfile() {
@@ -211,7 +216,7 @@ export function AccountView({ onLoggedOut, onDeleted, onUpdated }: { onLoggedOut
     event.preventDefault()
     const validationError = usernameError(username)
     if (validationError) return setError(validationError)
-    setSaving(true)
+    setSavingProfile(true)
     setError('')
     try {
       const next = await api.updateUser({ username, profilePicture: picture })
@@ -222,7 +227,7 @@ export function AccountView({ onLoggedOut, onDeleted, onUpdated }: { onLoggedOut
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save your profile.')
     } finally {
-      setSaving(false)
+      setSavingProfile(false)
     }
   }
 
@@ -232,18 +237,43 @@ export function AccountView({ onLoggedOut, onDeleted, onUpdated }: { onLoggedOut
   }
 
   return <div className="account-view">
-    <div className="account-header"><button type="button" onClick={() => void logout()}>Log out</button></div>
     <ErrorMessage message={error} />
     {needsSetup && <ProfileSetupForm onComplete={() => { setNeedsSetup(false); void loadProfile() }} />}
     {profile && <>
-      <form className="account-section account-profile-section" onSubmit={saveProfile}>
-        <h2>Personal details</h2>
-        <p className="account-email"><span>Email</span>{profile.email}</p>
-        <UsernameField value={username} onChange={setUsername} />
-        <ImageUploadComponent value={picture} onChange={setPicture} />
-        <button className="glass-btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
-      </form>
-      <DeleteAccountForm username={profile.username} onDeleted={onDeleted} />
+      {page == 'account' &&
+        <div className="account-section" style={{ marginTop: 0 }}>
+          <h2>Personal details</h2>
+          <p className="account-email"><span>Email</span>{profile.email}</p>
+          <button className="glass-btn-primary" onClick={() => logout()}>Log out</button>
+          <h2>Account options</h2>
+          <button className="glass-btn-primary" onClick={() => setPage('update-profile')}>
+            Update profile
+          </button>
+          <button className="glass-btn-primary" onClick={() => setPage('change-password')}>
+            Change password
+          </button>
+          <button className="glass-btn-red" onClick={() => setPage('delete')}>
+            Delete account
+          </button>
+        </div>
+      }
+      {page == 'update-profile' && <>
+        <form className="account-section account-profile-section" onSubmit={saveProfile}>
+          <IconButton label="Go back" onClick={() => setPage('account')}>
+            ←
+          </IconButton>
+          <h2>Update profile details</h2>
+          <UsernameField value={username} onChange={setUsername} />
+          <ImageUploadComponent value={picture} onChange={setPicture} />
+          <button className="glass-btn-primary" disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
+        </form>
+      </>}
+      {page == 'change-password' && <>
+        <ChangePasswordForm onBack={() => setPage('account')} />
+      </>}
+      {page == 'delete' && <>
+        <DeleteAccountForm onBack={() => setPage('account')} username={profile.username} onDeleted={onDeleted} />
+      </>}
     </>}
   </div>
 }

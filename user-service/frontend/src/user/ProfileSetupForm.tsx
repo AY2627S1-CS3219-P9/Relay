@@ -36,23 +36,6 @@ export function ProfileSetupForm({
     } finally {
       setLoading(false)
     }
-    // const validationError = usernameError(username)
-    // if (validationError) return setErrorMessage(validationError)
-    // setLoading(true)
-    // setErrorMessage('')
-    // try {
-    //   await api.updateUser(sessionId, { username, profilePicture: picture })
-    //   /* TODO: notify Credit Service that the account is ready. */
-    //   onComplete()
-    // } catch (error) {
-    //   setErrorMessage(
-    //     error instanceof Error
-    //       ? error.message
-    //       : ((error as { message?: string }).message ?? 'Profile setup failed.'),
-    //   )
-    // } finally {
-    //   setLoading(false)
-    // }
   }
 
   return (

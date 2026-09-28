@@ -48,9 +48,6 @@ export default function App({
     completeAuth();
   }
 
-  function startProfileCreation() {
-  }
-
   /* Verification Completion */
   function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
     if (!emailVerified) startVerification(email, password)
@@ -65,9 +62,12 @@ export default function App({
     }
   }
 
-  function finishLogout() {
-    // Temporary workaround to logout. TODO: add actual logout function to user api
-    localStorage.clear();
+  async function finishLogout() {
+    const response = await api.logout()
+    if (!response.success) {
+      console.error(response.error)
+      return
+    }
     setView('login')
     closeProfile?.()
     navigateTo?.('user')
@@ -109,9 +109,6 @@ export default function App({
             notice={loginNotice}
           />
         )}
-        {/* {view === 'profile' && (
-          <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
-        )} */}
         {view === 'profile' && <ProfileSetupForm onComplete={() => {
           void refreshUserProfile?.()
           setView('complete')
@@ -183,20 +180,6 @@ export default function App({
               ×
             </IconButton>
           </div>
-          {/* {sessionId && view === 'account' ? (
-            <AccountView
-              sessionId={sessionId}
-              onLoggedOut={finishLogout}
-              onDeleted={() => {
-                setSessionId(undefined)
-                setLoginNotice('Your account was deleted successfully.')
-                setView('login')
-                closeProfile?.()
-              }}
-            />
-          ) : (
-            <p className="user-profile-card-empty">Sign in to view your profile.</p>
-          )} */}
           <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')

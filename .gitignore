@@ -4,6 +4,9 @@ build/
 out/
 node_modules/
 
+# Diagnostics
+.mf/
+
 # Environment / secrets
 .env
 .env.local
