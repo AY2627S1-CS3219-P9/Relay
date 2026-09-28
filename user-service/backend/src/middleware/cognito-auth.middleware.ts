@@ -32,11 +32,12 @@ function claimsToUser(claims: CognitoLikeClaims): AuthenticatedUser {
   }
 
   const groups = claims['cognito:groups'] ?? []
+  const isAdmin = groups.includes(getEnv().cognitoAdminGroupName)
   return {
     sub: claims.sub,
     email,
     emailVerified: claims.email_verified === true,
-    role: groups.includes('admin') ? 'admin' : 'user',
+    role: isAdmin ? 'admin' : 'user',
   }
 }
 

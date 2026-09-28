@@ -51,7 +51,9 @@ function App() {
         id: tokens.idToken.payload['sub']!,
         email: tokens.idToken.payload['email'] as string,
         emailVerified: tokens.idToken.payload['email_verified'] as boolean,
-        isAdmin: userGroups.includes('Admin'), // TODO: use env variable for admin user group
+        isAdmin: userGroups.some(group =>
+          group === 'AdminGroup' || group === 'admin' || group === 'Admin',
+        ),
       }
     }
   }

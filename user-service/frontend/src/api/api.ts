@@ -280,7 +280,9 @@ export const userApi: UserApi = {
       }
 
       const groups = accessToken?.payload?.['cognito:groups']
-      const isAdmin = Array.isArray(groups) && groups.includes('admin')
+      const isAdmin =
+        Array.isArray(groups) &&
+        groups.some(group => group === 'AdminGroup' || group === 'admin' || group === 'Admin')
 
       return { success: true, data: { role: isAdmin ? 'admin' : 'user' } }
     } catch (e: unknown) {
