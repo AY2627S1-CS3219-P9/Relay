@@ -29,3 +29,7 @@ export type ChangePasswordRequest = {
   newPassword: string
   newPasswordConfirmation: string
 }
+
+export type CheckAuthRequest = {
+  sessionToken: string
+}

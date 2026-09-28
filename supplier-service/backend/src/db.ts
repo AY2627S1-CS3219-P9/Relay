@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import type { SupplierRow } from './types/supplier.types'
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -13,12 +14,12 @@ export async function query<T>(text: string, params?: any[]): Promise<T[]> {
   return result.rows as T[]
 }
 
-export async function getSuppliers(): Promise<any[]> {
-  return query('SELECT * FROM suppliers ORDER BY name')
+export async function getSuppliers(): Promise<SupplierRow[]> {
+  return query<SupplierRow>('SELECT * FROM suppliers ORDER BY name')
 }
 
-export async function getSupplierById(id: string): Promise<any[] | null> {
-  const rows = await query('SELECT * FROM suppliers WHERE id = $1', [id])
+export async function getSupplierById(id: string): Promise<SupplierRow[] | null> {
+  const rows = await query<SupplierRow>('SELECT * FROM suppliers WHERE id = $1', [id])
   return rows.length > 0 ? rows : null
 }
 
@@ -28,8 +29,8 @@ export async function createSupplier(
   isOperational: boolean,
   operatingHours: string,
   serviceTypes: number[],
-): Promise<any[]> {
-  return query(
+): Promise<SupplierRow[]> {
+  return query<SupplierRow>(
     `INSERT INTO suppliers (name, location, is_operational, operating_hours, service_types)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
     [name, location, isOperational, operatingHours, serviceTypes],
@@ -43,7 +44,7 @@ export async function updateSupplier(
   isOperational?: boolean,
   operatingHours?: string,
   serviceTypes?: number[],
-): Promise<any[]> {
+): Promise<SupplierRow[]> {
   const updates: string[] = []
   const params: any[] = []
   let paramIndex = 1
@@ -75,7 +76,7 @@ export async function updateSupplier(
   }
 
   params.push(id)
-  const rows = await query(
+  const rows = await query<SupplierRow>(
     `UPDATE suppliers SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
     params,
   )

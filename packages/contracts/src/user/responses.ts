@@ -1,5 +1,14 @@
-import type { ChangePasswordError, LoginError, LogoutError, RegisterError, ResendOtpError, SubmitOtpAndLoginError, UserApiError } from './errors'
-import type { User } from './models'
+import type {
+  ChangePasswordError,
+  CheckAuthError,
+  LoginError,
+  LogoutError,
+  RegisterError,
+  ResendOtpError,
+  SubmitOtpAndLoginError,
+  UserApiError,
+} from './errors'
+import { User, UserRole } from './models'
 
 export type LoginResponseData = {
   emailVerified: boolean
@@ -15,6 +24,11 @@ export type ResendOtpResponse = UserApiResponse<never, ResendOtpError>
 export type SubmitOtpAndLoginResponse = UserApiResponse<LoginResponseData, SubmitOtpAndLoginError>
 export type LoginResponse = UserApiResponse<LoginResponseData, LoginError>
 
+export type CheckAuthResponseData = {
+  role: UserRole
+}
+
+export type CheckAuthResponse = UserApiResponse<CheckAuthResponseData, CheckAuthError>
 export type GetUserResponse = User
 export type UpdateUserResponse = User
 
