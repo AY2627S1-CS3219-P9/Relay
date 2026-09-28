@@ -1,11 +1,13 @@
 import type {
   ChangePasswordRequest,
+  CheckAuthRequest,
   LoginRequest,
   RegisterRequest,
   SubmitOtpAndLoginRequest,
   UpdateUserRequest,
 } from './requests'
 import type {
+  CheckAuthResponse,
   GetUserResponse,
   LoginResponse,
   RegisterResponse,
@@ -22,6 +24,7 @@ export interface UserApi {
   login(request: LoginRequest): Promise<LoginResponse>
   changePassword(request: ChangePasswordRequest): Promise<void>
   logout(): Promise<void>
+  checkAuth(request: CheckAuthRequest): Promise<CheckAuthResponse>
   getUser(): Promise<GetUserResponse>
   updateUser(request: UpdateUserRequest): Promise<UpdateUserResponse>
   deleteUser(confirmation: string): Promise<void>
