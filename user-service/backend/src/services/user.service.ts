@@ -4,6 +4,7 @@ import {
   CognitoIdentityProviderClient,
   DeleteUserCommand,
   GetUserCommand,
+  ListUsersInGroupCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
@@ -17,11 +18,16 @@ import {
 } from '../validators/user.validator.js'
 
 export interface IdentityGateway {
+  assertCanDeleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
   deleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
 }
 
 /** Temporary gateway. Can replace this with Cognito deletion later. */
 export class MockIdentityGateway implements IdentityGateway {
+  async assertCanDeleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
+    return
+  }
+
   async deleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
     return
   }
@@ -36,6 +42,32 @@ export class CognitoIdentityGateway implements IdentityGateway {
       region: env.awsRegion,
       endpoint: env.awsEndpointUrl,
     })
+  }
+
+  async assertCanDeleteAccount(user: AuthenticatedUser, _accessToken: string): Promise<void> {
+    if (user.role !== 'admin') return
+
+    const env = getEnv()
+    let nextToken: string | undefined
+    let adminCount = 0
+
+    do {
+      const result = await this.client.send(new ListUsersInGroupCommand({
+        UserPoolId: env.cognitoUserPoolId,
+        GroupName: env.cognitoAdminGroupName,
+        NextToken: nextToken,
+      }))
+      adminCount += result.Users?.length ?? 0
+      nextToken = result.NextToken
+    } while (nextToken)
+
+    if (adminCount <= 1) {
+      throw new UserServiceError(
+        'FORBIDDEN',
+        'The only admin account cannot be deleted.',
+        403,
+      )
+    }
   }
 
   async deleteAccount(_user: AuthenticatedUser, accessToken: string): Promise<void> {
@@ -157,6 +189,7 @@ export class UserService {
 
     // Delete the identity first. If Cognito rejects the request, keep the
     // local profile and image intact so the user can retry safely.
+    await this.identityGateway.assertCanDeleteAccount(user, accessToken)
     await this.identityGateway.deleteAccount(user, accessToken)
 
     if (existing.profilePictureKey) {

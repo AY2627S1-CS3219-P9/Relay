@@ -19,8 +19,9 @@ const identityGateway = getEnv().authMode === 'cognito'
   ? new CognitoIdentityGateway()
   : new MockIdentityGateway()
 const userService = new UserService(repository, imageStorage, identityGateway)
-const userController = new UserController(userService)
-const sessionService = new SessionService(new SessionRepository(), repository)
+const sessionRepository = new SessionRepository()
+const userController = new UserController(userService, sessionRepository)
+const sessionService = new SessionService(sessionRepository, repository)
 const sessionController = new SessionController(sessionService)
 
 export const app = express()

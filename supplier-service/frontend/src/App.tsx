@@ -8,6 +8,7 @@ import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import type { ServiceType, Supplier, SupplierApi } from '@relay/contracts'
 import { FilterIcon, LocationIcon, RelayButton, SlidingSegmentedControl } from '@relay/ui'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
+import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
 import { SupplierMap, type MapPoint } from './components/SupplierMap'
 import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
@@ -40,6 +41,8 @@ export default function App({
   const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
 
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
 
@@ -62,6 +65,10 @@ export default function App({
   }
 
   useEffect(() => {
+    void fetchSession?.()
+      .then((session) => setIsAdmin(session.userData.isAdmin))
+      .catch(() => setIsAdmin(false))
+
     void activeApi
       .getSuppliers()
       .then(({ suppliers: loadedSuppliers }) => {
@@ -209,6 +216,33 @@ export default function App({
         <SupplierDetailCard
           supplier={selectedSupplier}
           onClose={() => setSelectedSupplier(undefined)}
+        />
+      )}
+      {isAdmin && (
+        <div className="supplier-admin-toolbar">
+          <RelayButton variant="primary" onClick={() => setAdminMode('add')}>Add supplier</RelayButton>
+          {selectedSupplier && <RelayButton variant="secondary" onClick={() => setAdminMode('edit')}>Edit selected</RelayButton>}
+        </div>
+      )}
+      {isAdmin && adminMode && (
+        <SupplierAdminPanel
+          api={activeApi}
+          supplier={adminMode === 'edit' ? selectedSupplier : undefined}
+          onSaved={(supplier) => {
+            setSuppliers((current) => {
+              const index = current.findIndex((item) => item.id === supplier.id)
+              if (index < 0) return [...current, supplier]
+              const next = [...current]
+              next[index] = supplier
+              return next
+            })
+            setSelectedSupplier(supplier)
+          }}
+          onDeleted={(id) => {
+            setSuppliers((current) => current.filter((supplier) => supplier.id !== id))
+            setSelectedSupplier(undefined)
+          }}
+          onClose={() => setAdminMode(undefined)}
         />
       )}
       {errorMessage && (
