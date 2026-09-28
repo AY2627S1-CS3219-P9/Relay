@@ -2,10 +2,7 @@ import '@relay/ui/styles.css'
 import './styles.css'
 import { useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
-import type {
-  UserApi,
-  RemoteAppProps,
-} from '@relay/contracts'
+import type { UserApi, RemoteAppProps } from '@relay/contracts'
 import { LoginForm } from './user/LoginForm'
 import { ProfileSetupForm } from './user/ProfileSetupForm'
 import { RegisterForm } from './user/RegisterForm'
@@ -45,11 +42,16 @@ export default function App({
       return
     }
     // TODO: check for profile creation
-    completeAuth();
+    completeAuth()
   }
 
   /* Verification Completion */
-  function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
+  function onLogin(
+    email: string,
+    password: string,
+    emailVerified: boolean,
+    profileCreated: boolean,
+  ) {
     if (!emailVerified) startVerification(email, password)
     else {
       if (!profileCreated) {
@@ -58,13 +60,13 @@ export default function App({
       }
       // Do not block navigation while the profile is being fetched.
       // TODO: check for profile creation
-      completeAuth();
+      completeAuth()
     }
   }
 
   async function finishLogout() {
     const response = await api.logout()
-    if (!response.success) {
+    if (!response.ok) {
       console.error(response.error)
       return
     }
@@ -75,9 +77,6 @@ export default function App({
 
   function completeAuth() {
     setView('complete')
-    fetchSession?.().then(session => {
-      console.log('User login complete! User details: ', session.userData);
-    });
   }
 
   function goToSupplier() {
@@ -89,10 +88,7 @@ export default function App({
       <RelayBrand />
       <section className={`user-panel${view === 'account' ? ' account-panel' : ''}`}>
         {view === 'register' && (
-          <RegisterForm
-            onRegistered={startVerification}
-            switchToLogin={() => setView('login')}
-          />
+          <RegisterForm onRegistered={startVerification} switchToLogin={() => setView('login')} />
         )}
         {view === 'verify' && (
           <VerificationForm
@@ -109,10 +105,14 @@ export default function App({
             notice={loginNotice}
           />
         )}
-        {view === 'profile' && <ProfileSetupForm onComplete={() => {
-          void refreshUserProfile?.()
-          setView('complete')
-        }} />}
+        {view === 'profile' && (
+          <ProfileSetupForm
+            onComplete={() => {
+              void refreshUserProfile?.()
+              setView('complete')
+            }}
+          />
+        )}
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
@@ -148,13 +148,17 @@ export default function App({
         )} */}
         {view === 'account' && (
           <GlassCard className="account-glass-card">
-            <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
-              setLoginNotice('Your account was deleted successfully.')
-              setView('login')
-              void refreshUserProfile?.()
-              closeProfile?.()
-              navigateTo?.('user')
-            }} />
+            <AccountView
+              onLoggedOut={finishLogout}
+              onUpdated={() => void refreshUserProfile?.()}
+              onDeleted={() => {
+                setLoginNotice('Your account was deleted successfully.')
+                setView('login')
+                void refreshUserProfile?.()
+                closeProfile?.()
+                navigateTo?.('user')
+              }}
+            />
           </GlassCard>
         )}
       </section>
@@ -180,13 +184,17 @@ export default function App({
               ×
             </IconButton>
           </div>
-          <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
+          <AccountView
+            onLoggedOut={finishLogout}
+            onUpdated={() => void refreshUserProfile?.()}
+            onDeleted={() => {
               setLoginNotice('Your account was deleted successfully.')
               setView('login')
               void refreshUserProfile?.()
               closeProfile?.()
               navigateTo?.('user')
-            }} />
+            }}
+          />
         </div>
       </UserApiProvider>
     )

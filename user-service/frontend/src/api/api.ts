@@ -1,283 +1,94 @@
-import {
+import type {
+  ApiResult,
   ChangePasswordRequest,
+  DeleteUserRequest,
+  GetSessionResponse,
+  GetUserResponse,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegisterResponse,
-  ResendOtpResponse,
+  ResendVerificationRequest,
   SubmitOtpAndLoginRequest,
   SubmitOtpAndLoginResponse,
-  UserApi,
   UpdateUserRequest,
   UpdateUserResponse,
-  GetUserResponse,
-  ChangePasswordResponse,
-  LogoutResponse,
+  UserApi,
+  UserApiError,
 } from '@relay/contracts'
-import {
-  AuthError,
-  confirmSignUp,
-  fetchAuthSession,
-  resendSignUpCode,
-  signOut,
-  signIn,
-  signUp,
-  updatePassword,
-} from 'aws-amplify/auth'
 
-const PROFILE_API_URL = '/api/user/me'
+const USER_API_URL = '/api/user'
 
-class ProfileRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message)
-    this.name = 'ProfileRequestError'
-  }
-}
-
-async function getAccessToken(): Promise<string> {
-  const session = await fetchAuthSession()
-  const token = session.tokens?.accessToken?.toString()
-  if (!token) {
-    throw new Error('No authenticated session is available.')
-  }
-  return token
-}
-
-async function profileRequest<T>(input: RequestInit): Promise<T> {
-  const token = await getAccessToken()
-  const response = await fetch(PROFILE_API_URL, {
-    ...input,
+async function request<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
+  const response = await fetch(`${USER_API_URL}${path}`, {
+    ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${token}`,
-      ...(input.body ? { 'Content-Type': 'application/json' } : {}),
-      ...input.headers,
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
     },
   })
 
-  if (!response.ok) {
-    let message = `Profile request failed with status ${response.status}.`
-    try {
-      const body = (await response.json()) as { message?: string; error?: { message?: string } }
-      message = body.error?.message ?? body.message ?? message
-    } catch {
-      // Keep the status-based message when the server has no JSON response.
-    }
-    throw new ProfileRequestError(message, response.status)
+  if (response.status === 204) return { ok: true, data: undefined as T }
+
+  const body = (await response.json()) as T | { ok: false; error: UserApiError }
+  if (response.ok) return { ok: true, data: body as T }
+
+  if (typeof body === 'object' && body !== null && 'ok' in body && body.ok === false) {
+    return body
   }
 
-  if (response.status === 204) return undefined as T
-  return (await response.json()) as T
+  throw new Error('The User Service returned an invalid error response.')
 }
 
+function jsonRequest<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown) {
+  return request<T>(path, {
+    method,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+}
+
+/** Browser adapter for the backend-owned UserApi contract. */
 export const userApi: UserApi = {
-  async register(request: RegisterRequest): Promise<RegisterResponse> {
-    const { email, password, passwordConfirmation } = request
-    // Note that password confirmation is only checked client-side
-    if (password !== passwordConfirmation) {
-      return {
-        success: false,
-        error: { code: 'NON_MATCHING_PASSWORDS', message: 'Passwords must match exactly.' },
-      }
-    }
-    try {
-      const { isSignUpComplete, userId, nextStep } = await signUp({
-        username: email,
-        password: password,
-        options: {
-          userAttributes: {
-            email: email,
-          },
-          autoSignIn: true,
-        },
-      })
-      if (isSignUpComplete || nextStep.signUpStep == 'DONE' || !userId) {
-        throw { message: 'Something went wrong during sign up.' }
-      }
-      return { success: true }
-    } catch (e: unknown) {
-      if (e instanceof AuthError) {
-        if (e.name == 'UsernameExistsException') {
-          return {
-            success: false,
-            error: {
-              code: 'EMAIL_CONFLICT',
-              message: 'An account with this email already exists.',
-            },
-          }
-        }
-        // TODO: Add AWS pre sign-up lambda trigger to check for nus email, and check here
-        // TODO: Also check other exceptions like password validity and other cases
-      }
-      console.log(e)
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+  register(requestBody: RegisterRequest): Promise<ApiResult<RegisterResponse>> {
+    return jsonRequest('/auth/register', 'POST', requestBody)
   },
-  async resendOtp(email: string): Promise<ResendOtpResponse> {
-    try {
-      await resendSignUpCode({ username: email })
-      return { success: true }
-    } catch (e: unknown) {
-      // TODO: check other exceptions
-      console.log(e)
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+
+  resendVerification(requestBody: ResendVerificationRequest): Promise<ApiResult<undefined>> {
+    return jsonRequest('/auth/verification/resend', 'POST', requestBody)
   },
-  async submitOtpAndLogin(request: SubmitOtpAndLoginRequest): Promise<SubmitOtpAndLoginResponse> {
-    try {
-      const { isSignUpComplete } = await confirmSignUp({
-        username: request.email,
-        confirmationCode: request.code,
-      })
-      if (!isSignUpComplete) {
-        throw { message: 'Something went wrong during OTP submission.' }
-      }
-      return this.login({ email: request.email, password: request.password })
-    } catch (e: unknown) {
-      if (e instanceof AuthError) {
-        switch (e.name) {
-          case 'CodeMismatchException':
-            return {
-              success: false,
-              error: { code: 'CODE_MISMATCH', message: 'Please enter the correct OTP.' },
-            }
-          case 'ExpiredCodeException':
-            return {
-              success: false,
-              error: {
-                code: 'CODE_EXPIRED',
-                message: 'Your OTP has expired, please resend a new one.',
-              },
-            }
-        }
-      }
-      console.log(e)
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+
+  submitOtpAndLogin(
+    requestBody: SubmitOtpAndLoginRequest,
+  ): Promise<ApiResult<SubmitOtpAndLoginResponse>> {
+    return jsonRequest('/auth/verification/confirm-and-login', 'POST', requestBody)
   },
-  async login(request: LoginRequest): Promise<LoginResponse> {
-    try {
-      const { nextStep } = await signIn({ username: request.email, password: request.password })
-      if (nextStep.signInStep == 'CONFIRM_SIGN_UP') {
-        // Does a resend once, no error checking to simplify things
-        // User can just manually click resend again if this doesn't work
-        this.resendOtp(request.email)
-        return {
-          success: true,
-          data: { emailVerified: false, profileCreated: false },
-        }
-      }
-      let profileCreated = false
-      try {
-        await this.getUser()
-        profileCreated = true
-      } catch (error) {
-        if (!(error instanceof ProfileRequestError) || error.status !== 404) throw error
-      }
-      return {
-        success: true,
-        data: { emailVerified: true, profileCreated },
-      }
-    } catch (e: unknown) {
-      // TODO: Add exception checking
-      if (e instanceof AuthError) {
-        switch (e.name) {
-          case 'NotAuthorizedException':
-          case 'UserNotFoundException':
-            return {
-              success: false,
-              error: { code: 'INCORRECT_CREDENTIALS', message: 'Incorrect email or password.' },
-            }
-          case 'UserNotConfirmedException':
-            return {
-              success: true,
-              data: { emailVerified: false, profileCreated: false },
-            }
-          // TODO: Check other exceptions
-        }
-      }
-      console.log(e)
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+
+  login(requestBody: LoginRequest): Promise<ApiResult<LoginResponse>> {
+    return jsonRequest('/auth/login', 'POST', requestBody)
   },
-  async changePassword(request: ChangePasswordRequest): Promise<ChangePasswordResponse> {
-    try {
-      if (request.newPassword !== request.newPasswordConfirmation) {
-        return {
-          success: false,
-          error: { code: 'NON_MATCHING_PASSWORDS', message: 'Passwords must match exactly.' },
-        }
-      }
-      await updatePassword({
-        oldPassword: request.currentPassword,
-        newPassword: request.newPassword,
-      })
-      return { success: true }
-    } catch (e: unknown) {
-      if (e instanceof AuthError) {
-        switch (e.name) {
-          case 'NotAuthorizedException':
-            return {
-              success: false,
-              error: { code: 'WRONG_PASSWORD', message: 'The current password you entered is incorrect.' },
-            }
-          case 'PasswordHistoryPolicyViolationException':
-            return {
-              success: false,
-              error: { code: 'REUSED_PASSWORD', message: 'You cannot reuse previous passwords.' },
-            }
-          case 'InvalidPasswordException':
-            return {
-              success: false,
-              error: { code: 'INVALID_NEW_PASSWORD', message: 'New password does not meet requirements.' },
-            }
-        }
-      }
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+
+  logout(): Promise<ApiResult<undefined>> {
+    return jsonRequest('/auth/logout', 'POST')
   },
-  async logout(): Promise<LogoutResponse> {
-    try {
-      await signOut()
-      return { success: true }
-    } catch (e: unknown) {
-      return {
-        success: false,
-        error: { code: 'UNKNOWN_ERROR', message: (e as any)?.message ?? String(e) },
-      }
-    }
+
+  getSession(): Promise<ApiResult<GetSessionResponse>> {
+    return request('/session')
   },
-  async getUser(): Promise<GetUserResponse> {
-    return profileRequest<GetUserResponse>({ method: 'GET' })
+
+  changePassword(requestBody: ChangePasswordRequest): Promise<ApiResult<undefined>> {
+    return jsonRequest('/auth/password', 'POST', requestBody)
   },
-  async updateUser(request: UpdateUserRequest): Promise<UpdateUserResponse> {
-    return profileRequest<UpdateUserResponse>({
-      method: 'PATCH',
-      body: JSON.stringify(request),
-    })
+
+  getUser(): Promise<ApiResult<GetUserResponse>> {
+    return request('/me')
   },
-  async deleteUser(confirmation: string): Promise<void> {
-    await profileRequest<void>({
-      method: 'DELETE',
-      body: JSON.stringify({ confirmation }),
-    })
-    await signOut()
+
+  updateUser(requestBody: UpdateUserRequest): Promise<ApiResult<UpdateUserResponse>> {
+    return jsonRequest('/me', 'PATCH', requestBody)
+  },
+
+  deleteUser(requestBody: DeleteUserRequest): Promise<ApiResult<undefined>> {
+    return jsonRequest('/me', 'DELETE', requestBody)
   },
 }
