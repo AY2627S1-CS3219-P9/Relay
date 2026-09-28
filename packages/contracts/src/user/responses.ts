@@ -1,4 +1,5 @@
 import type { LoginError, RegisterError, ResendOtpError, SubmitOtpAndLoginError, UserApiError } from './errors'
+import type { User } from './models'
 
 type RegisterResponseData = never
 type ResendOtpResponseData = never
@@ -15,4 +16,7 @@ export type RegisterResponse = UserApiResponse<RegisterResponseData, RegisterErr
 export type ResendOtpResponse = UserApiResponse<ResendOtpResponseData, ResendOtpError>
 export type SubmitOtpAndLoginResponse = UserApiResponse<LoginResponseData, SubmitOtpAndLoginError>
 export type LoginResponse = UserApiResponse<LoginResponseData, LoginError>
+
+export type GetUserResponse = User
+export type UpdateUserResponse = User
 

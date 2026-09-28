@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { SERVICE_METADATA, type FetchSessionHandler, type ProfileAnchor, type ServiceId, type SessionError } from '@relay/contracts'
+import { SERVICE_METADATA, type FetchSessionHandler, type ProfileAnchor, type ServiceId, type SessionError, type User } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
 import { fetchAuthSession } from 'aws-amplify/auth'
+import { Hub } from 'aws-amplify/utils'
 
 function App() {
   /*
@@ -32,6 +33,7 @@ function App() {
   const [activeService, setActiveService] = useState<ServiceId>('user')
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
+  const [userProfile, setUserProfile] = useState<User | null>(null)
 
   const fetchSession: FetchSessionHandler = async (options) => {
     const authResult = await fetchAuthSession(options);
@@ -50,6 +52,46 @@ function App() {
         emailVerified: tokens.idToken.payload['email_verified'] as boolean,
         isAdmin: userGroups.includes('Admin'), // TODO: use env variable for admin user group
       }
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const loadProfile = async () => {
+      try {
+        const session = await fetchSession()
+        const response = await fetch('/api/user/me', {
+          headers: { Authorization: `Bearer ${session.token}` },
+        })
+        if (cancelled) return
+        if (response.ok) setUserProfile((await response.json()) as User)
+        else if (response.status === 404) setUserProfile(null)
+      } catch {
+        if (!cancelled) setUserProfile(null)
+      }
+    }
+    void loadProfile()
+    const removeAuthListener = Hub.listen('auth', ({ payload }) => {
+      if (payload.event === 'signedIn' || payload.event === 'signedOut' || payload.event === 'tokenRefresh') {
+        void loadProfile()
+      }
+    })
+    return () => {
+      cancelled = true
+      removeAuthListener()
+    }
+  }, [])
+
+  async function refreshUserProfile() {
+    try {
+      const session = await fetchSession({ forceRefresh: true })
+      const response = await fetch('/api/user/me', {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+      if (response.ok) setUserProfile((await response.json()) as User)
+      else if (response.status === 404) setUserProfile(null)
+    } catch {
+      setUserProfile(null)
     }
   }
 
@@ -102,6 +144,8 @@ function App() {
             cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
             appProps={{
               fetchSession,
+              userProfile,
+              refreshUserProfile,
               navigateTo,
               openProfile: id === 'supplier' ? openProfile : undefined,
               closeProfile: id === 'user' ? closeProfile : undefined,

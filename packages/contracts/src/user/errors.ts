@@ -22,6 +22,17 @@ export type LoginError = UserApiError & {
   code: 'INCORRECT_CREDENTIALS' | 'EMAIL_NOT_VERIFIED' | 'TOO_MANY_REQUESTS' | 'UNKNOWN_ERROR'
 }
 
+export type ProfileError = UserApiError & {
+  code:
+    | 'INVALID_REQUEST'
+    | 'EMAIL_NOT_VERIFIED'
+    | 'CONFLICT'
+    | 'NOT_FOUND'
+    | 'UNAUTHORIZED'
+    | 'FORBIDDEN'
+    | 'UNKNOWN_ERROR'
+}
+
 // Note that submit otp will also login the user
 export type SubmitOtpAndLoginError =
   | LoginError

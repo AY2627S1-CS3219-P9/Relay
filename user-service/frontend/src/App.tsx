@@ -11,7 +11,7 @@ import { ProfileSetupForm } from './user/ProfileSetupForm'
 import { RegisterForm } from './user/RegisterForm'
 import { UserApiProvider } from './user/UserApiProvider'
 import { VerificationForm } from './user/VerificationForm'
-// import { AccountView } from './user/AccountView'
+import { AccountView } from './user/AccountView'
 import { NusMapPanel } from './components/NusMapPanel'
 import { userApi } from './api/api'
 
@@ -22,6 +22,7 @@ export default function App({
   fetchSession,
   navigateTo,
   closeProfile,
+  refreshUserProfile,
   presentation = 'full',
 }: { api?: UserApi } & RemoteAppProps) {
   const [view, setView] = useState<View>('login')
@@ -39,6 +40,10 @@ export default function App({
   }
 
   function finishVerification(profileCreated: boolean) {
+    if (!profileCreated) {
+      setView('profile')
+      return
+    }
     // TODO: check for profile creation
     completeAuth();
   }
@@ -50,9 +55,13 @@ export default function App({
   function onLogin(email: string, password: string, emailVerified: boolean, profileCreated: boolean) {
     if (!emailVerified) startVerification(email, password)
     else {
+      if (!profileCreated) {
+        setView('profile')
+        return
+      }
+      // Do not block navigation while the profile is being fetched.
       // TODO: check for profile creation
       completeAuth();
-      setView('complete')
     }
   }
 
@@ -103,6 +112,10 @@ export default function App({
         {/* {view === 'profile' && (
           <ProfileSetupForm sessionId={sessionId} onComplete={() => setView('complete')} />
         )} */}
+        {view === 'profile' && <ProfileSetupForm onComplete={() => {
+          void refreshUserProfile?.()
+          setView('complete')
+        }} />}
         {view === 'complete' && (
           <div className="user-form user-complete">
             <span className="user-success-icon">✓</span>
@@ -136,6 +149,17 @@ export default function App({
             />
           </GlassCard>
         )} */}
+        {view === 'account' && (
+          <GlassCard className="account-glass-card">
+            <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
+              setLoginNotice('Your account was deleted successfully.')
+              setView('login')
+              void refreshUserProfile?.()
+              closeProfile?.()
+              navigateTo?.('user')
+            }} />
+          </GlassCard>
+        )}
       </section>
       <p className="user-footer">Restricted to NUS Students and Staff (for now).</p>
     </div>
@@ -173,6 +197,13 @@ export default function App({
           ) : (
             <p className="user-profile-card-empty">Sign in to view your profile.</p>
           )} */}
+          <AccountView onLoggedOut={finishLogout} onUpdated={() => void refreshUserProfile?.()} onDeleted={() => {
+              setLoginNotice('Your account was deleted successfully.')
+              setView('login')
+              void refreshUserProfile?.()
+              closeProfile?.()
+              navigateTo?.('user')
+            }} />
         </div>
       </UserApiProvider>
     )

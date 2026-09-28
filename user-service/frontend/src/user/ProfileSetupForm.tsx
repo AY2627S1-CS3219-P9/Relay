@@ -9,7 +9,7 @@ import { usernameError } from '../validation/validation'
 export function ProfileSetupForm({
   onComplete,
 }: {
-  validateSession: () => Promise<Session>
+  validateSession?: () => Promise<Session>
   onComplete: () => void
 }) {
   const api = useUserApi()
@@ -21,6 +21,21 @@ export function ProfileSetupForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
+    const validationError = usernameError(username)
+    if (validationError) {
+      setErrorMessage(validationError)
+      return
+    }
+    setLoading(true)
+    setErrorMessage('')
+    try {
+      await api.updateUser({ username, profilePicture: picture })
+      onComplete()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Profile setup failed.')
+    } finally {
+      setLoading(false)
+    }
     // const validationError = usernameError(username)
     // if (validationError) return setErrorMessage(validationError)
     // setLoading(true)

@@ -20,6 +20,7 @@ const defaultSupplierApi =
 export default function App({
   navigateTo,
   openProfile,
+  userProfile,
   api = defaultSupplierApi,
 }: RemoteAppProps & { api?: SupplierApi }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -131,7 +132,10 @@ export default function App({
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
         >
-          ◉ Alex
+          {userProfile?.profilePictureUrl && (
+            <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />
+          )}
+          {userProfile?.username ?? 'Complete profile'}
         </RelayButton>
       </div>
       <div className="map-stub-controls">

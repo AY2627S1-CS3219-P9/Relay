@@ -1,4 +1,11 @@
-import type { User } from '@relay/contracts'
+import type { User, UserId } from '@relay/contracts'
+import {
+  AdminDeleteUserCommand,
+  CognitoIdentityProviderClient,
+  DeleteUserCommand,
+  GetUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider'
+import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
 import { UserServiceError } from '../types/user.types.js'
@@ -10,13 +17,48 @@ import {
 } from '../validators/user.validator.js'
 
 export interface IdentityGateway {
-  deleteAccount(user: AuthenticatedUser): Promise<void>
+  deleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
 }
 
 /** Temporary gateway. Can replace this with Cognito deletion later. */
 export class MockIdentityGateway implements IdentityGateway {
-  async deleteAccount(_user: AuthenticatedUser): Promise<void> {
+  async deleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
     return
+  }
+}
+
+export class CognitoIdentityGateway implements IdentityGateway {
+  private readonly client: CognitoIdentityProviderClient
+
+  constructor() {
+    const env = getEnv()
+    this.client = new CognitoIdentityProviderClient({
+      region: env.awsRegion,
+      endpoint: env.awsEndpointUrl,
+    })
+  }
+
+  async deleteAccount(_user: AuthenticatedUser, accessToken: string): Promise<void> {
+    try {
+      await this.client.send(new DeleteUserCommand({ AccessToken: accessToken }))
+    } catch (error) {
+      // Floci currently does not implement DeleteUser. Use the administrative
+      // operation locally; production Cognito should use DeleteUser above.
+      const operationError = error as { name?: string; __type?: string }
+      const unsupported =
+        operationError.name === 'UnsupportedOperation' ||
+        operationError.name === 'UnsupportedOperationException' ||
+        operationError.__type === 'UnsupportedOperation'
+      if (!unsupported) throw error
+      const env = getEnv()
+      const currentUser = await this.client.send(new GetUserCommand({ AccessToken: accessToken }))
+      const username = currentUser.Username
+      if (!username) throw new Error('Cognito did not return a username for deletion.')
+      await this.client.send(new AdminDeleteUserCommand({
+        UserPoolId: env.cognitoUserPoolId,
+        Username: username,
+      }))
+    }
   }
 }
 
@@ -110,24 +152,26 @@ export class UserService {
     }
   }
 
-  async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<void> {
-    validateDeletionConfirmation(confirmation)
-
+  async deleteUser(user: AuthenticatedUser, confirmation: unknown, accessToken: string): Promise<void> {
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
       throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
     }
+    validateDeletionConfirmation(confirmation, existing.username)
+
+    // Delete the identity first. If Cognito rejects the request, keep the
+    // local profile and image intact so the user can retry safely.
+    await this.identityGateway.deleteAccount(user, accessToken)
 
     if (existing.profilePictureKey) {
       await this.imageStorage.delete(existing.profilePictureKey)
     }
     await this.repository.deleteProfile(user.sub)
-    await this.identityGateway.deleteAccount(user)
   }
 
   private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {
     return {
-      id: 'xxxx' as any, // TODO: match backend user service to new contract
+      id: profile.id as UserId,
       profileCreated: true,
       email: user.email,
       username: profile.username,

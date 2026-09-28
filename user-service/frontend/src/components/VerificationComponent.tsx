@@ -35,7 +35,7 @@ export function VerificationComponent({
 
     const response = await api.submitOtpAndLogin({ email, password, code })
     if (response.success) {
-      onVerified(true); // TODO: Add check for profile creation
+      onVerified(response.data.profileCreated)
     } else {
       setErrorMessage(response.error.message)
     }
