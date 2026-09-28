@@ -1,13 +1,14 @@
 import { useState, type SubmitEvent } from 'react'
-import { ErrorMessage } from '@relay/ui'
-import type { Session } from '@relay/contracts'
+import { ErrorMessage, IconButton } from '@relay/ui'
 import { useUserApi } from './UserApiProvider'
 
 export function DeleteAccountForm({
   username,
+  onBack,
   onDeleted,
 }: {
   username: string | null
+  onBack: () => void
   onDeleted: () => void
 }) {
   const api = useUserApi()
@@ -31,29 +32,14 @@ export function DeleteAccountForm({
     } finally {
       setLoading(false)
     }
-    // if (!username) {
-    //   setErrorMessage('Set a username before deleting your account.')
-    //   return
-    // }
-    // if (confirmation !== username) {
-    //   setErrorMessage('Enter your username exactly as shown to continue.')
-    //   return
-    // }
-    // setLoading(true)
-    // setErrorMessage('')
-    // try {
-    //   await api.deleteUser(sessionId, confirmation)
-    //   onDeleted()
-    // } catch (error) {
-    //   setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
-    // } finally {
-    //   setLoading(false)
-    // }
   }
 
   return (
     <form className="account-section account-danger-zone" onSubmit={submit}>
       <div>
+        <IconButton label="Go back" onClick={onBack}>
+          ←
+        </IconButton>
         <h2>Delete account</h2>
         <p>This permanently removes your credentials, username, and profile picture.</p>
       </div>
