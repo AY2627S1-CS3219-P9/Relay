@@ -1,57 +1,45 @@
-/** Transport-neutral error payload for failed User API requests. */
+/** A field that can receive a validation error from the User Service. */
+export type UserField =
+  | 'email'
+  | 'password'
+  | 'passwordConfirmation'
+  | 'currentPassword'
+  | 'newPassword'
+  | 'newPasswordConfirmation'
+  | 'code'
+  | 'username'
+  | 'profilePicture'
+  | 'confirmation'
+
+/** Stable, transport-neutral error codes returned by the User Service. */
+export type UserApiErrorCode =
+  | 'VALIDATION_FAILED'
+  | 'INVALID_CREDENTIALS'
+  | 'EMAIL_ALREADY_REGISTERED'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'EMAIL_ALREADY_VERIFIED'
+  | 'OTP_INVALID'
+  | 'OTP_EXPIRED'
+  | 'RATE_LIMITED'
+  | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
+  | 'PROFILE_NOT_FOUND'
+  | 'USERNAME_TAKEN'
+  | 'PASSWORD_REUSED'
+  | 'INTERNAL_ERROR'
+
+/**
+ * The body of every non-2xx User Service HTTP response.
+ *
+ * The HTTP status gives transport semantics; `code` gives stable application
+ * semantics for clients. `fieldErrors` is present only for invalid inputs.
+ * Statuses are mapped as follows: 400 for validation and invalid/expired OTPs,
+ * 401 for invalid credentials or no session, 403 for forbidden or unverified
+ * users, 404 for a missing profile, 409 for conflicts and reused passwords,
+ * 429 for rate limits, and 500 for unexpected failures.
+ */
 export type UserApiError = {
-  code: string
+  code: UserApiErrorCode
   message: string
-}
-
-export type RegisterError = UserApiError & {
-  code:
-    | 'INVALID_EMAIL'
-    | 'INVALID_PASSWORD'
-    | 'NON_MATCHING_PASSWORDS'
-    | 'EMAIL_CONFLICT'
-    | 'TOO_MANY_REQUESTS'
-    | 'UNKNOWN_ERROR'
-}
-
-export type ResendOtpError = UserApiError & {
-  code: 'EMAIL_IS_VERIFIED' | 'LIMIT_EXCEEDED' | 'UNKNOWN_ERROR'
-}
-
-export type LoginError = UserApiError & {
-  code: 'INCORRECT_CREDENTIALS' | 'EMAIL_NOT_VERIFIED' | 'TOO_MANY_REQUESTS' | 'UNKNOWN_ERROR'
-}
-
-export type ProfileError = UserApiError & {
-  code:
-    | 'INVALID_REQUEST'
-    | 'EMAIL_NOT_VERIFIED'
-    | 'CONFLICT'
-    | 'NOT_FOUND'
-    | 'UNAUTHORIZED'
-    | 'FORBIDDEN'
-    | 'UNKNOWN_ERROR'
-}
-
-// Note that submit otp will also login the user
-export type SubmitOtpAndLoginError =
-  | LoginError
-  | (UserApiError & {
-      code: 'EMAIL_IS_VERIFIED' | 'CODE_MISMATCH' | 'CODE_EXPIRED'
-    })
-
-export type ChangePasswordError = UserApiError & {
-  code:
-    | 'WRONG_PASSWORD'
-    | 'INVALID_NEW_PASSWORD'
-    | 'NON_MATCHING_PASSWORDS'
-    | 'REUSED_PASSWORD'
-    | 'TOO_MANY_REQUESTS'
-    | 'UNKNOWN_ERROR'
-}
-
-export type LogoutError = UserApiError & {
-  code: 'UNKNOWN_ERROR'
-export type CheckAuthError = UserApiError & {
-  code: 'INVALID_SESSION_TOKEN' | 'UNKNOWN_ERROR'
+  fieldErrors?: Partial<Record<UserField, string>>
 }

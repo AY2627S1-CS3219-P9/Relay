@@ -1,6 +1,5 @@
 import { useState, type SubmitEvent } from 'react'
 import { useUserApi } from './UserApiProvider'
-import type { LoginResponseData } from '@relay/contracts'
 import { EmailField } from '../components/EmailField'
 import { PasswordField } from '../components/PasswordField'
 import { ErrorMessage, TextButton } from '@relay/ui'
@@ -10,7 +9,12 @@ export function LoginForm({
   switchToRegister,
   notice,
 }: {
-  onLoggedIn: (email: string, password: string, emailVerified: boolean, profileCreated: boolean) => void
+  onLoggedIn: (
+    email: string,
+    password: string,
+    emailVerified: boolean,
+    profileCreated: boolean,
+  ) => void
   switchToRegister: () => void
   notice?: string
 }) {
@@ -27,9 +31,14 @@ export function LoginForm({
     setLoading(true)
     setErrorMessage('')
 
-    const response = await api.login({ email, password });
-    if (response.success) {
-      onLoggedIn(email, password, response.data.emailVerified, response.data.profileCreated)
+    const response = await api.login({ email, password })
+    if (response.ok) {
+      onLoggedIn(
+        email,
+        password,
+        response.data.user.emailVerified,
+        response.data.user.profileCreated,
+      )
     } else {
       setErrorMessage(response.error.message)
     }
@@ -51,9 +60,7 @@ export function LoginForm({
       </button>
       <p className="user-switch">
         Need an account?&nbsp;
-        <TextButton onClick={switchToRegister}>
-          Register
-        </TextButton>
+        <TextButton onClick={switchToRegister}>Register</TextButton>
       </p>
     </form>
   )
