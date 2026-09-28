@@ -77,7 +77,7 @@ export class UserService {
   async getUser(user: AuthenticatedUser): Promise<User> {
     const profile = await this.repository.findByCognitoSub(user.sub)
     if (!profile) {
-      throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
+      throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
     }
     return this.toPublicProfile(user, profile)
   }
@@ -85,7 +85,7 @@ export class UserService {
   async updateUser(
     user: AuthenticatedUser,
     input: ProfileUpdateRequest,
-  ): Promise<Pick<User, 'email' | 'username' | 'profilePictureUrl'>> {
+  ): Promise<User> {
     if (!user.emailVerified) {
       throw new UserServiceError(
         'EMAIL_NOT_VERIFIED',
@@ -97,7 +97,7 @@ export class UserService {
     const request = validateUpdateProfile(input)
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing && request.username === undefined) {
-      throw new UserServiceError('INVALID_REQUEST', 'A username is required to create a profile.', 400, {
+      throw new UserServiceError('VALIDATION_FAILED', 'A username is required to create a profile.', 400, {
         username: 'Username is required.',
       })
     }
@@ -105,18 +105,20 @@ export class UserService {
     if (request.username !== undefined) {
       const duplicate = await this.repository.findByUsername(request.username)
       if (duplicate && duplicate.cognitoSub !== user.sub) {
-        throw new UserServiceError('CONFLICT', 'That username is already taken.', 409, {
+        throw new UserServiceError('USERNAME_TAKEN', 'That username is already taken.', 409, {
           username: 'Username is already taken.',
         })
       }
     }
 
     let uploadedImage: ImageUpload | undefined
-    let newImageKey: string | undefined
-    if (request.profilePicture !== undefined) {
+    let newImageKey: string | null | undefined
+    if (request.profilePicture !== undefined && request.profilePicture !== null) {
       uploadedImage = validateProfileImage(request.profilePicture)
       const stored = await this.imageStorage.upload(uploadedImage, user.sub)
       newImageKey = stored.key
+    } else if (request.profilePicture === null) {
+      newImageKey = null
     }
 
     try {
@@ -129,24 +131,18 @@ export class UserService {
         ? await this.repository.updateProfile(user.sub, update)
         : await this.repository.createProfile(user.sub, update)
 
-      if (newImageKey && existing?.profilePictureKey) {
+      if (newImageKey !== undefined && existing?.profilePictureKey) {
         await this.imageStorage.delete(existing.profilePictureKey)
       }
 
-      return {
-        email: user.email,
-        username: profile.username,
-        profilePictureUrl: profile.profilePictureKey
-          ? this.imageStorage.url(profile.profilePictureKey)
-          : null,
-      }
+      return this.toPublicProfile(user, profile)
     } catch (error) {
       if (newImageKey) {
         await this.deleteUploadedImageSafely(newImageKey)
       }
       if (error instanceof UserServiceError) throw error
       if (isUniqueConstraintError(error)) {
-        throw new UserServiceError('CONFLICT', 'That username is already taken.', 409)
+        throw new UserServiceError('USERNAME_TAKEN', 'That username is already taken.', 409)
       }
       throw error
     }
@@ -155,7 +151,7 @@ export class UserService {
   async deleteUser(user: AuthenticatedUser, confirmation: unknown, accessToken: string): Promise<void> {
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
-      throw new UserServiceError('NOT_FOUND', 'User profile was not found.', 404)
+      throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
     }
     validateDeletionConfirmation(confirmation, existing.username)
 

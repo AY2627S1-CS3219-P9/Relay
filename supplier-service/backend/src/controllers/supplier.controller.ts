@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from 'express'
 import { SupplierErrors } from '@relay/contracts/supplier'
-import type { CheckAuthResponse } from '@relay/contracts/user'
+import type { ApiResult, ValidateSessionResponse } from '@relay/contracts/user'
 import { SupplierService } from '../services/supplier.service'
 
 const USER_API_URL = process.env.USER_API_URL || 'http://user-api:3000'
 const USER_API_TIMEOUT = parseInt(process.env.USER_API_TIMEOUT || '5000', 10)
+const USER_SERVICE_INTERNAL_TOKEN = process.env.USER_SERVICE_INTERNAL_TOKEN || 'local-internal-user-service-token'
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<globalThis.Response> {
   const controller = new AbortController()
@@ -21,15 +22,18 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<global
   }
 }
 
-async function checkAuth(sessionToken: string): Promise<{ role: 'admin' | 'user' } | null> {
-  if (!sessionToken || sessionToken.trim() === '') {
+async function checkAuth(cookieHeader: string): Promise<{ role: 'admin' | 'user' } | null> {
+  if (!cookieHeader || cookieHeader.trim() === '') {
     return null
   }
 
   try {
-    const response = await fetchWithTimeout(`${USER_API_URL}/api/user/check-auth`, {
+    const response = await fetchWithTimeout(`${USER_API_URL}/internal/user/session/validate`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${sessionToken}` },
+      headers: {
+        Cookie: cookieHeader,
+        'x-user-service-token': USER_SERVICE_INTERNAL_TOKEN,
+      },
     })
 
     if (!response.ok) {
@@ -37,11 +41,11 @@ async function checkAuth(sessionToken: string): Promise<{ role: 'admin' | 'user'
       return null
     }
 
-    const data = (await response.json()) as CheckAuthResponse
-    if (!data.success) {
+    const data = (await response.json()) as ApiResult<ValidateSessionResponse>
+    if (!data.ok) {
       return null
     }
-    return { role: data.data.role }
+    return { role: data.data.user.role }
   } catch (err) {
     console.error('checkAuth network error:', err)
     return null
@@ -53,8 +57,7 @@ export class SupplierController {
 
   getAllSuppliers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-      const authResult = await checkAuth(sessionTokenString)
+      const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
@@ -69,8 +72,7 @@ export class SupplierController {
 
   getSupplierById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-      const authResult = await checkAuth(sessionTokenString)
+      const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
@@ -89,8 +91,7 @@ export class SupplierController {
 
   createSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-      const authResult = await checkAuth(sessionTokenString)
+      const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
@@ -140,8 +141,7 @@ export class SupplierController {
 
   updateSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-      const authResult = await checkAuth(sessionTokenString)
+      const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
@@ -171,8 +171,7 @@ export class SupplierController {
 
   deleteSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
-      const authResult = await checkAuth(sessionTokenString)
+      const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return

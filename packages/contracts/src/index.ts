@@ -13,6 +13,7 @@ export type Session = {
     id: string
     email: string
     emailVerified: boolean
+    profileCreated: boolean
     isAdmin: boolean
   };
 }

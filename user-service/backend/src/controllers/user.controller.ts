@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
-import { requireAuthenticatedUser, requireBearerToken } from '../middleware/cognito-auth.middleware.js'
+import { requireAuthenticatedUser } from '../middleware/cognito-auth.middleware.js'
+import { requireSession } from '../middleware/session.middleware.js'
 import { UserService } from '../services/user.service.js'
 
 export class UserController {
@@ -18,7 +19,7 @@ export class UserController {
     try {
       const user = requireAuthenticatedUser(req)
       const profile = await this.userService.getUser(user)
-      res.status(200).json(profile)
+      res.status(200).json({ ok: true, data: profile })
     } catch (error) {
       next(error)
     }
@@ -28,7 +29,7 @@ export class UserController {
     try {
       const user = requireAuthenticatedUser(req)
       const profile = await this.userService.updateUser(user, req.body)
-      res.status(200).json(profile)
+      res.status(200).json({ ok: true, data: profile })
     } catch (error) {
       next(error)
     }
@@ -37,7 +38,7 @@ export class UserController {
   deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = requireAuthenticatedUser(req)
-      await this.userService.deleteUser(user, req.body?.confirmation, requireBearerToken(req))
+      await this.userService.deleteUser(user, req.body?.confirmation, requireSession(req).cognitoAccessToken)
       res.status(204).send()
     } catch (error) {
       next(error)

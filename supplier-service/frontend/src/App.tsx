@@ -27,8 +27,8 @@ export default function App({
       api ??
       (import.meta.env.VITE_SUPPLIER_API_MODE === 'mock'
         ? mockSupplierApi
-        : createHttpSupplierApi(fetchSession)),
-    [api, fetchSession],
+        : createHttpSupplierApi()),
+    [api],
   )
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [center, setCenter] = useState<MapPoint>(NUS_CENTER)
@@ -124,17 +124,19 @@ export default function App({
         >
           ⚡ 0 cr
         </RelayButton>
-        <SlidingSegmentedControl
-          className="mock-control-group"
-          scale={1}
-          ariaLabel="Supplier view"
-          options={[
-            { value: 'explore', label: 'Explore' },
-            { value: 'requests', label: 'My Requests' },
-          ]}
-          value={activeMode}
-          onChange={setActiveMode}
-        />
+        <div className="supplier-segment-control">
+          <SlidingSegmentedControl
+            className="mock-control-group"
+            scale={1}
+            ariaLabel="Supplier view"
+            options={[
+              { value: 'explore', label: 'Explore' },
+              { value: 'requests', label: 'My Requests' },
+            ]}
+            value={activeMode}
+            onChange={setActiveMode}
+          />
+        </div>
         <RelayButton
           variant="secondary"
           scale={1.25}

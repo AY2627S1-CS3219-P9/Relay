@@ -11,6 +11,10 @@ export type UserServiceEnv = {
   cognitoJwksUri: string
   cognitoUserPoolId: string
   cognitoAdminGroupName: string
+  sessionCookieName: string
+  sessionTtlSeconds: number
+  sessionCookieSecure: boolean
+  internalServiceToken: string
   mockJwtSecret: string
   mockJwtIssuer: string
   mockJwtAudience: string
@@ -49,6 +53,10 @@ export function getEnv(): UserServiceEnv {
     ),
     cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),
     cognitoAdminGroupName: required('COGNITO_ADMIN_GROUP_NAME', 'AdminGroup'),
+    sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'relay_session',
+    sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? '86400'),
+    sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? 'false') === 'true',
+    internalServiceToken: required('INTERNAL_USER_SERVICE_TOKEN', 'local-internal-user-service-token'),
     mockJwtSecret: required('MOCK_JWT_SECRET', 'local-development-only-secret'),
     mockJwtIssuer: required('MOCK_JWT_ISSUER', 'relay-user-service'),
     mockJwtAudience: required('MOCK_JWT_AUDIENCE', 'relay-user-frontend'),

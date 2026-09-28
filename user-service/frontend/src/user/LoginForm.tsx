@@ -14,7 +14,7 @@ export function LoginForm({
     password: string,
     emailVerified: boolean,
     profileCreated: boolean,
-  ) => void
+  ) => void | Promise<void>
   switchToRegister: () => void
   notice?: string
 }) {
@@ -33,7 +33,12 @@ export function LoginForm({
 
     const response = await api.login({ email, password })
     if (response.ok) {
-      onLoggedIn(
+      if (!response.data?.user) {
+        setErrorMessage('The User Service returned an invalid session response.')
+        setLoading(false)
+        return
+      }
+      await onLoggedIn(
         email,
         password,
         response.data.user.emailVerified,

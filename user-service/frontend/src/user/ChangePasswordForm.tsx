@@ -44,7 +44,7 @@ export function ChangePasswordForm({ onBack }: { onBack: () => void }) {
         ←
       </IconButton>
       <h2>Change password</h2>
-      <p>This permanently removes your credentials, username, and profile picture.</p>
+      <p>Update your password to something new and secure.</p>
       <PasswordField
         label="Current password"
         value={currentPassword}

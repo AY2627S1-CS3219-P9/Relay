@@ -21,7 +21,13 @@ export type UserProfileRecord = {
 /** Values accepted when creating or modifying a profile. */
 export type ProfileUpdate = {
   username?: string
-  profilePictureKey?: string
+  profilePictureKey?: string | null
+}
+
+export type AuthenticatedSession = {
+  user: AuthenticatedUser
+  accessToken: string
+  sessionId: string
 }
 
 export type UserServiceErrorCode = UserApiError['code']

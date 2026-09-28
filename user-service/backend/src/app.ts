@@ -6,6 +6,12 @@ import { CognitoIdentityGateway, MockIdentityGateway, UserService } from './serv
 import { getEnv } from './config/env.js'
 import { LocalImageStorage } from './storage/local-image-storage.js'
 import { UserServiceError } from './types/user.types.js'
+import { SessionRepository } from './repositories/session.repository.js'
+import { SessionService } from './services/session.service.js'
+import { SessionController } from './controllers/session.controller.js'
+import { createAuthRouter } from './routes/auth.routes.js'
+import { internalServiceAuth } from './middleware/internal-auth.middleware.js'
+import { sessionMiddleware } from './middleware/session.middleware.js'
 
 const repository = new UserRepository()
 const imageStorage = new LocalImageStorage()
@@ -14,6 +20,8 @@ const identityGateway = getEnv().authMode === 'cognito'
   : new MockIdentityGateway()
 const userService = new UserService(repository, imageStorage, identityGateway)
 const userController = new UserController(userService)
+const sessionService = new SessionService(new SessionRepository(), repository)
+const sessionController = new SessionController(sessionService)
 
 export const app = express()
 
@@ -29,29 +37,40 @@ app.get('/healthz', (_req, res) => {
 })
 
 app.use('/api/user', createUserRouter(userController))
+app.use('/api/user', createAuthRouter(sessionController))
+app.post('/internal/user/session/validate', internalServiceAuth, sessionMiddleware, sessionController.validateInternalSession)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof UserServiceError) {
     res.status(error.statusCode).json({
-      code: error.code,
-      message: error.message,
-      ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
+      ok: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
+      },
     })
     return
   }
 
   if (error instanceof SyntaxError) {
     res.status(400).json({
-      code: 'INVALID_REQUEST',
-      message: 'The request body contains invalid JSON.',
+      ok: false,
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: 'The request body contains invalid JSON.',
+      },
     })
     return
   }
 
   console.error(error)
   res.status(500).json({
-    code: 'INTERNAL_ERROR',
-    message: 'An unexpected error occurred.',
+    ok: false,
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred.',
+    },
   })
 }
 

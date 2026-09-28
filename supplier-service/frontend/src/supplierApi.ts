@@ -10,7 +10,6 @@ import type {
   SupplierError,
   SupplierErrorCode,
 } from '@relay/contracts'
-import type { FetchSessionHandler } from '@relay/contracts'
 
 const supplierApiBaseUrl = import.meta.env.VITE_SUPPLIER_API_URL ?? '/api/supplier'
 
@@ -25,14 +24,13 @@ export class SupplierApiError extends Error {
   }
 }
 
-export function createHttpSupplierApi(fetchSession?: FetchSessionHandler): SupplierApi {
+export function createHttpSupplierApi(): SupplierApi {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const session = fetchSession ? await fetchSession() : undefined
     const response = await fetch(`${supplierApiBaseUrl}${path}`, {
       ...init,
+      credentials: 'include',
       headers: {
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
         ...init?.headers,
       },
     })

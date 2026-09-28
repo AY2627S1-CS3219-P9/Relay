@@ -146,6 +146,7 @@ services:
       DB_PASSWORD: postgres
       USER_API_URL: "http://user-api:3000"
       USER_API_TIMEOUT: "5000"
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
     depends_on:
       supplier-db:
         condition: service_healthy
@@ -177,6 +178,7 @@ services:
       S3_SECRET_ACCESS_KEY: test
       S3_BUCKET: relay-user-profile-images
       S3_FORCE_PATH_STYLE: 'true'
+      INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
     depends_on:
       user-postgres:
         condition: service_healthy

@@ -3,7 +3,6 @@ import type { CSSProperties } from 'react'
 import { SERVICE_METADATA, type FetchSessionHandler, type ProfileAnchor, type ServiceId, type SessionError, type User } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
-import { fetchAuthSession } from 'aws-amplify/auth'
 import { Hub } from 'aws-amplify/utils'
 
 function App() {
@@ -37,23 +36,27 @@ function App() {
   const [authVersion, setAuthVersion] = useState(0)
 
   const fetchSession: FetchSessionHandler = async (options) => {
-    const authResult = await fetchAuthSession(options);
-    const tokens = authResult.tokens;
-    if (!tokens || !tokens.idToken) {
-      // User not authenticated, or token expired
-      const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No Active Session!' }
+    const response = await fetch('/api/user/session', {
+      credentials: 'include',
+      cache: options?.forceRefresh ? 'no-store' : 'default',
+    })
+    const body = (await response.json()) as {
+      ok?: boolean
+      data?: { user: { subject: string; email: string; emailVerified: boolean; profileCreated: boolean; role: 'admin' | 'user' } }
+    }
+    if (!response.ok || !body.ok || !body.data) {
+      const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No active session.' }
       throw error
     }
-    const userGroups = (tokens.accessToken.payload['cognito:groups'] as Array<String> ?? []);
+    const user = body.data.user
     return {
-      token: tokens.accessToken.toString(),
+      token: '',
       userData: {
-        id: tokens.idToken.payload['sub']!,
-        email: tokens.idToken.payload['email'] as string,
-        emailVerified: tokens.idToken.payload['email_verified'] as boolean,
-        isAdmin: userGroups.some(group =>
-          group === 'AdminGroup' || group === 'admin' || group === 'Admin',
-        ),
+        id: user.subject,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        profileCreated: user.profileCreated,
+        isAdmin: user.role === 'admin',
       }
     }
   }
@@ -63,11 +66,16 @@ function App() {
     const loadProfile = async () => {
       try {
         const session = await fetchSession()
-        const response = await fetch('/api/user/me', {
-          headers: { Authorization: `Bearer ${session.token}` },
-        })
+        if (!session.userData.profileCreated) {
+          if (!cancelled) setUserProfile(null)
+          return
+        }
+        const response = await fetch('/api/user/me', { credentials: 'include' })
         if (cancelled) return
-        if (response.ok) setUserProfile((await response.json()) as User)
+        if (response.ok) {
+          const body = (await response.json()) as { ok?: boolean; data?: User }
+          if (body.ok && body.data) setUserProfile(body.data)
+        }
         else if (response.status === 404) setUserProfile(null)
       } catch {
         if (!cancelled) setUserProfile(null)
@@ -89,10 +97,15 @@ function App() {
   async function refreshUserProfile() {
     try {
       const session = await fetchSession({ forceRefresh: true })
-      const response = await fetch('/api/user/me', {
-        headers: { Authorization: `Bearer ${session.token}` },
-      })
-      if (response.ok) setUserProfile((await response.json()) as User)
+      if (!session.userData.profileCreated) {
+        setUserProfile(null)
+        return
+      }
+      const response = await fetch('/api/user/me', { credentials: 'include' })
+      if (response.ok) {
+        const body = (await response.json()) as { ok?: boolean; data?: User }
+        if (body.ok && body.data) setUserProfile(body.data)
+      }
       else if (response.status === 404) setUserProfile(null)
     } catch {
       setUserProfile(null)

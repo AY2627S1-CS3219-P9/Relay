@@ -36,13 +36,16 @@ input {
   color: var(--relay-text);
   font-weight: 700;
 }
-.mock-control-group {
+.supplier-segment-control {
   position: absolute;
   top: 62px;
   left: 50%;
   width: min(520px, 62vw);
-  pointer-events: auto;
   transform: translateX(-50%);
+  pointer-events: auto;
+}
+.mock-control-group {
+  width: 100%;
 }
 .profile-chip {
   white-space: nowrap;
@@ -64,8 +67,11 @@ input {
   gap: 10px;
 }
 .map-control-button {
+  display: inline-flex;
   width: calc(48px * var(--relay-button-scale, 1));
   height: calc(48px * var(--relay-button-scale, 1));
+  align-items: center;
+  justify-content: center;
   min-height: 0;
   padding: 0;
   border: 0;
@@ -74,14 +80,18 @@ input {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: var(--relay-text);
   font-size: calc(22px * var(--relay-button-scale, 1));
+  line-height: 1;
 }
 .filter-icon {
   width: 1.05em;
   height: 1.05em;
 }
 .location-icon {
+  display: block;
+  flex: 0 0 auto;
   width: 0.95em;
   height: 0.95em;
+  margin: 0;
 }
 .supplier-bottom-controls {
   position: absolute;
@@ -266,7 +276,7 @@ legend {
     padding: calc(10px * var(--relay-button-scale, 1))
       calc(12px * var(--relay-button-scale, 1));
   }
-  .mock-control-group {
+  .supplier-segment-control {
     width: calc(100vw - 32px);
     min-width: 0;
   }
