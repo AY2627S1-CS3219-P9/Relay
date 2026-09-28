@@ -6,6 +6,7 @@ export function createUserRouter(controller: UserController): Router {
   const router = Router()
 
   router.use(cognitoAuthMiddleware)
+  router.post('/check-auth', controller.checkAuth)
   router.get('/me', controller.getUser)
   router.patch('/me', controller.updateUser)
   router.delete('/me', controller.deleteUser)

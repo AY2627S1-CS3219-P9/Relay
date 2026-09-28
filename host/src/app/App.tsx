@@ -34,6 +34,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
+  const [authVersion, setAuthVersion] = useState(0)
 
   const fetchSession: FetchSessionHandler = async (options) => {
     const authResult = await fetchAuthSession(options);
@@ -73,6 +74,7 @@ function App() {
     void loadProfile()
     const removeAuthListener = Hub.listen('auth', ({ payload }) => {
       if (payload.event === 'signedIn' || payload.event === 'signedOut' || payload.event === 'tokenRefresh') {
+        setAuthVersion(version => version + 1)
         void loadProfile()
       }
     })
@@ -144,6 +146,7 @@ function App() {
             cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
             appProps={{
               fetchSession,
+              authVersion,
               userProfile,
               refreshUserProfile,
               navigateTo,

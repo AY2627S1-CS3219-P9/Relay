@@ -5,6 +5,15 @@ import { UserService } from '../services/user.service.js'
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  checkAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = requireAuthenticatedUser(req)
+      res.status(200).json({ success: true, data: { role: user.role } })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   getUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = requireAuthenticatedUser(req)

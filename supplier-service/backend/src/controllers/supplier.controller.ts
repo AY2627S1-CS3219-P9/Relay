@@ -27,11 +27,9 @@ async function checkAuth(sessionToken: string): Promise<{ role: 'admin' | 'user'
   }
 
   try {
-    const requestBody = { sessionToken }
     const response = await fetchWithTimeout(`${USER_API_URL}/api/user/check-auth`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      headers: { Authorization: `Bearer ${sessionToken}` },
     })
 
     if (!response.ok) {
@@ -55,7 +53,7 @@ export class SupplierController {
 
   getAllSuppliers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.query.session as string
+      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
       const authResult = await checkAuth(sessionTokenString)
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
@@ -71,7 +69,7 @@ export class SupplierController {
 
   getSupplierById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.query.session as string
+      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
       const authResult = await checkAuth(sessionTokenString)
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
@@ -91,7 +89,7 @@ export class SupplierController {
 
   createSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.query.session as string
+      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
       const authResult = await checkAuth(sessionTokenString)
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
@@ -142,7 +140,7 @@ export class SupplierController {
 
   updateSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.query.session as string
+      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
       const authResult = await checkAuth(sessionTokenString)
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
@@ -173,7 +171,7 @@ export class SupplierController {
 
   deleteSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const sessionTokenString = req.query.session as string
+      const sessionTokenString = req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
       const authResult = await checkAuth(sessionTokenString)
       if (!authResult) {
         res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
