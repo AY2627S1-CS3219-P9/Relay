@@ -52,6 +52,8 @@ export type ChangePasswordError = UserApiError & {
 
 export type LogoutError = UserApiError & {
   code: 'UNKNOWN_ERROR'
+}
+
 export type CheckAuthError = UserApiError & {
   code: 'INVALID_SESSION_TOKEN' | 'UNKNOWN_ERROR'
 }
