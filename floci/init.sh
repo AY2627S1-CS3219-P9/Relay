@@ -2,8 +2,8 @@
 set -e
 set -u
 
-# 1. Create user pool and client
-# TODO: Add more fine-grained schema matching AWS user pool config
+# 1a. Create user pool
+# TODO: Add AWS pre sign-up lambda to check if emails are NUS emails
 pool_id=$(aws cognito-idp create-user-pool \
   --pool-name "$COGNITO_USER_POOL_NAME" \
   --username-attributes email \
@@ -15,6 +15,7 @@ pool_id=$(aws cognito-idp create-user-pool \
   --query UserPool.Id --output text)
 test "$pool_id" = "$COGNITO_USER_POOL_ID"
 
+# 1b. Create user pool client
 client_id=$(aws cognito-idp create-user-pool-client \
   --user-pool-id "$COGNITO_USER_POOL_ID" \
   --client-name "$COGNITO_CLIENT_ID" \
@@ -24,7 +25,32 @@ client_id=$(aws cognito-idp create-user-pool-client \
   --query UserPoolClient.ClientId --output text)
 test "$client_id" = "$COGNITO_CLIENT_ID"
 
-echo "Cognito initialized with pool id: $pool_id and client_id: $client_id"
+# 1c. Create admin group in user pool
+aws cognito-idp create-group \
+  --user-pool-id "$COGNITO_USER_POOL_ID" \
+  --group-name "$COGNITO_ADMIN_GROUP_NAME" \
+  --description "Admin user group"
+
+# 1d. Add initial admin to user pool
+# TODO for AWS:
+# - CloudFormation template should include custom lambda resource to add admin
+# - Admin email should be a real email
+# - AWS should send a temporary password to that email, and force password creation
+# - Add lambda triggers for deleteUsers or deleteUsersFromGroup to check for 0-admin states
+aws cognito-idp admin-create-user \
+  --user-pool-id "$COGNITO_USER_POOL_ID" \
+  --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
+  --user-attributes Name=email,Value="$FLOCI_INITIAL_ADMIN_EMAIL" Name=email_verified,Value=true \
+  --message-action SUPPRESS && \
+aws cognito-idp admin-set-user-password \
+  --user-pool-id "$COGNITO_USER_POOL_ID" \
+  --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
+  --password "$FLOCI_INITIAL_ADMIN_PASSWORD" \
+  --permanent && \
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id "$COGNITO_USER_POOL_ID" \
+  --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
+  --group-name "$COGNITO_ADMIN_GROUP_NAME"
 
 # 2. Create s3 bucket for user profile pictures
 aws s3api create-bucket --bucket "$S3_USER_IMAGE_BUCKET"
