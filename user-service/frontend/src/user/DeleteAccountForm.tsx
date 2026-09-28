@@ -25,8 +25,9 @@ export function DeleteAccountForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      await api.deleteUser(confirmation)
-      onDeleted()
+      const response = await api.deleteUser({ confirmation })
+      if (response.ok) onDeleted()
+      else setErrorMessage(response.error.message)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to delete your account.')
     } finally {

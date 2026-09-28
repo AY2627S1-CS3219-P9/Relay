@@ -4,11 +4,7 @@ import { useUserApi } from './UserApiProvider'
 import { PasswordField } from '../components/PasswordField'
 import { passwordErrors, passwordRequirements } from '../validation/validation'
 
-export function ChangePasswordForm({
-  onBack,
-}: {
-  onBack: () => void
-}) {
+export function ChangePasswordForm({ onBack }: { onBack: () => void }) {
   const api = useUserApi()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -21,16 +17,17 @@ export function ChangePasswordForm({
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     if (passwordIssues.length) return setErrorMessage('Please meet all password requirements.')
-    if (newPassword !== newPasswordConfirmation) return setErrorMessage('Passwords must match exactly.')
+    if (newPassword !== newPasswordConfirmation)
+      return setErrorMessage('Passwords must match exactly.')
     setSavingPassword(true)
     setSuccessMessage('')
     setErrorMessage('')
     const response = await api.changePassword({
       currentPassword,
       newPassword,
-      newPasswordConfirmation
-    });
-    if (response.success) {
+      newPasswordConfirmation,
+    })
+    if (response.ok) {
       setCurrentPassword('')
       setNewPassword('')
       setNewPasswordConfirmation('')
@@ -74,7 +71,7 @@ export function ChangePasswordForm({
         autoComplete="new-password"
       />
       <ErrorMessage message={errorMessage} />
-      <ErrorMessage message={successMessage} variant='success' />
+      <ErrorMessage message={successMessage} variant="success" />
       <button className="glass-btn-primary" disabled={savingPassword}>
         {savingPassword ? 'Changing…' : 'Change password'}
       </button>

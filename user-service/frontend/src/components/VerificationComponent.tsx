@@ -34,8 +34,8 @@ export function VerificationComponent({
     setErrorMessage('')
 
     const response = await api.submitOtpAndLogin({ email, password, code })
-    if (response.success) {
-      onVerified(response.data.profileCreated)
+    if (response.ok) {
+      onVerified(response.data.user.profileCreated)
     } else {
       setErrorMessage(response.error.message)
     }
@@ -47,9 +47,13 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      await api.resendOtp(email)
-      setSeconds(300)
-      setCode('')
+      const response = await api.resendVerification({ email })
+      if (response.ok) {
+        setSeconds(300)
+        setCode('')
+      } else {
+        setErrorMessage(response.error.message)
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -71,10 +75,7 @@ export function VerificationComponent({
       <button className="glass-btn-primary user-submit" disabled={loading || seconds === 0}>
         {loading ? 'Verifying…' : 'Verify email'}
       </button>
-      <TextButton
-        onClick={() => void resend()}
-        disabled={resending}
-      >
+      <TextButton onClick={() => void resend()} disabled={resending}>
         {resending ? 'Sending…' : 'Send a new code'}
       </TextButton>
       {onBack && (

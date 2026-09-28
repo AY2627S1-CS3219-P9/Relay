@@ -31,8 +31,8 @@ export function RegisterForm({
       email,
       password,
       passwordConfirmation: confirmation,
-    });
-    if (response.success) {
+    })
+    if (response.ok) {
       onRegistered(email, password)
     } else {
       setErrorMessage(response.error.message)
@@ -66,10 +66,7 @@ export function RegisterForm({
         {loading ? 'Creating account…' : 'Create account'}
       </button>
       <p className="user-switch">
-        Already registered?{' '}
-        <TextButton onClick={switchToLogin}>
-          Login
-        </TextButton>
+        Already registered? <TextButton onClick={switchToLogin}>Login</TextButton>
       </p>
     </form>
   )

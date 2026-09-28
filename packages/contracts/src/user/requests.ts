@@ -11,7 +11,7 @@ export type LoginRequest = {
   password: string
 }
 
-export type SendOtpRequest = {
+export type ResendVerificationRequest = {
   email: string
 }
 
@@ -19,9 +19,13 @@ export type SubmitOtpAndLoginRequest = LoginRequest & {
   code: string
 }
 
+/**
+ * Omit a field to leave it unchanged. Set `profilePicture` to null to remove
+ * the existing picture.
+ */
 export type UpdateUserRequest = {
   username?: string
-  profilePicture?: ImageDataUrl
+  profilePicture?: ImageDataUrl | null
 }
 
 export type ChangePasswordRequest = {
@@ -30,6 +34,6 @@ export type ChangePasswordRequest = {
   newPasswordConfirmation: string
 }
 
-export type CheckAuthRequest = {
-  sessionToken: string
+export type DeleteUserRequest = {
+  confirmation: string
 }
