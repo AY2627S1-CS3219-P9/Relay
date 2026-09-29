@@ -1,7 +1,7 @@
 .sheet-overlay {
   background: rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   animation: swift-overlay-in 0.32s ease-out both;
   pointer-events: auto;
 }
@@ -34,7 +34,7 @@
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(24px);
   }
 }
 @keyframes swift-sheet-mobile-in {

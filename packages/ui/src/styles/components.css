@@ -40,7 +40,7 @@
   background: var(--relay-glass-bg-strong);
   color: var(--relay-text);
   box-shadow: var(--relay-glass-shadow);
-  backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
 }
 .relay-button-danger {
   background: var(--relay-red);

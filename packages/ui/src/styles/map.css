@@ -38,13 +38,13 @@
   background: rgba(255, 255, 255, 0.88);
   color: #1c1c1e;
   line-height: 34px;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(28px);
 }
 .relay-map .leaflet-control-attribution {
   background: rgba(255, 255, 255, 0.72);
   border-radius: 8px 0 0 0;
   font-size: 9px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(24px);
 }
 .relay-leaflet-icon {
   background: transparent;
