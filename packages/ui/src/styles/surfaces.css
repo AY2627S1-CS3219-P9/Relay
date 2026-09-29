@@ -128,9 +128,8 @@
     0 0 0 0.5px rgba(0, 0, 0, 0.06);
   pointer-events: none;
   left: calc(
-    4px * var(--relay-segment-scale) +
-      (100% - 8px * var(--relay-segment-scale)) / var(--relay-segment-count) *
-        var(--relay-segment-index)
+    4px * var(--relay-segment-scale) + (100% - 8px * var(--relay-segment-scale)) /
+      var(--relay-segment-count) * var(--relay-segment-index)
   );
   transition: left 0.36s cubic-bezier(0.22, 1.18, 0.36, 1);
 }

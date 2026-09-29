@@ -1,7 +1,10 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { createPublicKey } from 'node:crypto'
 import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken'
-import { CognitoIdentityProviderClient, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider'
+import {
+  CognitoIdentityProviderClient,
+  GetUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import { UserServiceError, type AuthenticatedUser } from '../types/user.types.js'
 
@@ -23,7 +26,11 @@ declare global {
 
 function claimsToUser(claims: CognitoLikeClaims): AuthenticatedUser {
   if (!claims.sub || typeof claims.sub !== 'string') {
-    throw new UserServiceError('UNAUTHENTICATED', 'The token does not contain a valid subject.', 401)
+    throw new UserServiceError(
+      'UNAUTHENTICATED',
+      'The token does not contain a valid subject.',
+      401,
+    )
   }
 
   const email = claims.email ?? claims.username
@@ -74,7 +81,8 @@ async function verifyCognitoJwt(token: string): Promise<AuthenticatedUser> {
   if (typeof claims === 'string') throw new Error('The Cognito token payload is invalid.')
   const cognitoClaims = claims as CognitoLikeClaims & { token_use?: string; client_id?: string }
   if (cognitoClaims.token_use !== 'access') throw new Error('An access token is required.')
-  if (cognitoClaims.client_id !== env.cognitoClientId) throw new Error('The Cognito client is invalid.')
+  if (cognitoClaims.client_id !== env.cognitoClientId)
+    throw new Error('The Cognito client is invalid.')
   if (cognitoClaims.email_verified === true && typeof cognitoClaims.email === 'string') {
     return claimsToUser(cognitoClaims)
   }
@@ -84,7 +92,9 @@ async function verifyCognitoJwt(token: string): Promise<AuthenticatedUser> {
     endpoint: env.awsEndpointUrl,
   })
   const result = await cognito.send(new GetUserCommand({ AccessToken: token }))
-  const attributes = new Map((result.UserAttributes ?? []).map((attribute) => [attribute.Name, attribute.Value]))
+  const attributes = new Map(
+    (result.UserAttributes ?? []).map((attribute) => [attribute.Name, attribute.Value]),
+  )
   const enrichedClaims = {
     ...cognitoClaims,
     email: attributes.get('email') ?? cognitoClaims.email ?? cognitoClaims.username,
@@ -134,7 +144,11 @@ export function verifyMockJwt(token: string): AuthenticatedUser {
   return claimsToUser(decoded as CognitoLikeClaims)
 }
 
-export const cognitoAuthMiddleware: RequestHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const cognitoAuthMiddleware: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const authorization = req.header('authorization')
   const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]
 
@@ -144,7 +158,8 @@ export const cognitoAuthMiddleware: RequestHandler = async (req: Request, res: R
   }
 
   try {
-    req.user = getEnv().authMode === 'cognito' ? await verifyCognitoJwt(token) : verifyMockJwt(token)
+    req.user =
+      getEnv().authMode === 'cognito' ? await verifyCognitoJwt(token) : verifyMockJwt(token)
     next()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The bearer token is invalid.'

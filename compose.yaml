@@ -144,8 +144,8 @@ services:
       DB_NAME: relay
       DB_USER: postgres
       DB_PASSWORD: postgres
-      USER_API_URL: "http://user-api:3000"
-      USER_API_TIMEOUT: "5000"
+      USER_API_URL: 'http://user-api:3000'
+      USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
     depends_on:
       supplier-db:

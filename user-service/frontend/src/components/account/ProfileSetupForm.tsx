@@ -1,9 +1,9 @@
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, Session, UpdateUserResponse } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
-import { ImageUploadField } from '../components/base-elements/ImageUploadField'
-import { UsernameField } from '../components/base-elements/UsernameField'
-import { usernameError } from '../validation/validation'
+import { ImageUploadField } from '../base-elements/ImageUploadField'
+import { UsernameField } from '../base-elements/UsernameField'
+import { usernameError } from '../../validation/validation'
 
 export function ProfileSetupForm({
   onComplete,

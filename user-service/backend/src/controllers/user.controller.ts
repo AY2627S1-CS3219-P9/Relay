@@ -42,7 +42,11 @@ export class UserController {
   deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = requireAuthenticatedUser(req)
-      await this.userService.deleteUser(user, req.body?.confirmation, requireSession(req).cognitoAccessToken)
+      await this.userService.deleteUser(
+        user,
+        req.body?.confirmation,
+        requireSession(req).cognitoAccessToken,
+      )
       await this.sessions.revokeByCognitoSub(user.sub)
       res.status(204).send()
     } catch (error) {

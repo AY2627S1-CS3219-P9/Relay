@@ -1,4 +1,11 @@
-import { useId, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from 'react'
 import type { ImageDataUrl } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
 import { fileToDataUrl, imageFileError } from '../../validation/validation'
@@ -93,7 +100,11 @@ export function ImageUploadField({
         )}
         <span className="image-dropzone-copy">
           <strong>{value ? 'Replace profile picture' : 'Drag and drop a photo'}</strong>
-          <span>{value ? 'Drop a new image or tap to choose another' : 'or tap to select from your device'}</span>
+          <span>
+            {value
+              ? 'Drop a new image or tap to choose another'
+              : 'or tap to select from your device'}
+          </span>
         </span>
         <input
           ref={inputRef}

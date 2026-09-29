@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
 import type { RemoteAppProps } from '@relay/contracts'
 import { LoginForm } from '../user/LoginForm'
-import { ProfileSetupForm } from '../user/ProfileSetupForm'
+import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
 import { RegisterForm } from '../user/RegisterForm'
 import { VerificationForm } from '../user/VerificationForm'
 import { AccountPage } from '../user/AccountPage'
@@ -178,16 +178,11 @@ export default function App({
     )
   }
 
-  return (
-    showAuthMap ? (
-      <GlassWindow
-        background={<MapView />}
-        withGlow={view === 'login' || view === 'register'}
-      >
-        {userContent}
-      </GlassWindow>
-    ) : (
-      <main className="user-app-shell">{renderedUserContent}</main>
-    )
+  return showAuthMap ? (
+    <GlassWindow background={<MapView />} withGlow={view === 'login' || view === 'register'}>
+      {userContent}
+    </GlassWindow>
+  ) : (
+    <main className="user-app-shell">{renderedUserContent}</main>
   )
 }

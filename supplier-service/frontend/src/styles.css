@@ -31,8 +31,7 @@ input {
 }
 .mock-control {
   border: 1px solid rgba(255, 255, 255, 0.7);
-  padding: calc(12px * var(--relay-button-scale, 1))
-    calc(18px * var(--relay-button-scale, 1));
+  padding: calc(12px * var(--relay-button-scale, 1)) calc(18px * var(--relay-button-scale, 1));
   color: var(--relay-text);
   font-weight: 700;
 }
@@ -333,8 +332,7 @@ legend {
     gap: 8px;
   }
   .mock-control {
-    padding: calc(10px * var(--relay-button-scale, 1))
-      calc(12px * var(--relay-button-scale, 1));
+    padding: calc(10px * var(--relay-button-scale, 1)) calc(12px * var(--relay-button-scale, 1));
   }
   .supplier-segment-control {
     width: calc(100vw - 32px);

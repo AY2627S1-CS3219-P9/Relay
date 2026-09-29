@@ -1,7 +1,11 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
-import type { ApiResult, ResendVerificationRequest, SubmitOtpAndLoginResponse } from '@relay/contracts'
+import type {
+  ApiResult,
+  ResendVerificationRequest,
+  SubmitOtpAndLoginResponse,
+} from '@relay/contracts'
 
 export function VerificationComponent({
   email,
@@ -61,7 +65,9 @@ export function VerificationComponent({
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email } satisfies ResendVerificationRequest),
-      }).then((result) => (result.status === 204 ? { ok: true, data: undefined } : result.json()))) as ApiResult<undefined>
+      }).then((result) =>
+        result.status === 204 ? { ok: true, data: undefined } : result.json(),
+      )) as ApiResult<undefined>
       if (response.ok) {
         setSeconds(300)
         setCode('')

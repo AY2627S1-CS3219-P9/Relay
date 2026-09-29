@@ -22,20 +22,32 @@ export function readSessionCookie(req: Request): string | undefined {
   const name = `${getEnv().sessionCookieName}=`
   return cookieHeader
     ?.split(';')
-    .map(value => value.trim())
-    .find(value => value.startsWith(name))
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(name))
     ?.slice(name.length)
 }
 
-export const sessionMiddleware: RequestHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const sessionMiddleware: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const cookie = readSessionCookie(req)
   if (!cookie) {
-    res.status(401).json({ ok: false, error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' } })
+    res
+      .status(401)
+      .json({
+        ok: false,
+        error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+      })
     return
   }
   try {
-    const session = await sessions.findActiveByTokenHash(createHash('sha256').update(cookie).digest('hex'))
-    if (!session) throw new UserServiceError('UNAUTHENTICATED', 'The session is invalid or expired.', 401)
+    const session = await sessions.findActiveByTokenHash(
+      createHash('sha256').update(cookie).digest('hex'),
+    )
+    if (!session)
+      throw new UserServiceError('UNAUTHENTICATED', 'The session is invalid or expired.', 401)
     req.session = session
     req.accessToken = session.cognitoAccessToken
     req.user = {
@@ -52,6 +64,7 @@ export const sessionMiddleware: RequestHandler = async (req: Request, res: Respo
 }
 
 export function requireSession(req: Request): StoredSession {
-  if (!req.session) throw new UserServiceError('UNAUTHENTICATED', 'Authentication is required.', 401)
+  if (!req.session)
+    throw new UserServiceError('UNAUTHENTICATED', 'Authentication is required.', 401)
   return req.session
 }

@@ -29,7 +29,9 @@ export function DeleteAccountForm({
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmation }),
-      }).then((result) => (result.status === 204 ? { ok: true, data: undefined } : result.json()))) as ApiResult<undefined>
+      }).then((result) =>
+        result.status === 204 ? { ok: true, data: undefined } : result.json(),
+      )) as ApiResult<undefined>
       if (response.ok) onDeleted()
       else setErrorMessage(response.error.message)
     } catch (error) {

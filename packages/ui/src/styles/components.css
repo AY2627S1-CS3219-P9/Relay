@@ -63,7 +63,9 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.16s ease, text-decoration-color 0.16s ease;
+  transition:
+    color 0.16s ease,
+    text-decoration-color 0.16s ease;
 }
 .relay-text-button:hover:not(:disabled) {
   color: var(--relay-blue);

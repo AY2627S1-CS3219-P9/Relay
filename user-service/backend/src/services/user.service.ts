@@ -52,21 +52,19 @@ export class CognitoIdentityGateway implements IdentityGateway {
     let adminCount = 0
 
     do {
-      const result = await this.client.send(new ListUsersInGroupCommand({
-        UserPoolId: env.cognitoUserPoolId,
-        GroupName: env.cognitoAdminGroupName,
-        NextToken: nextToken,
-      }))
+      const result = await this.client.send(
+        new ListUsersInGroupCommand({
+          UserPoolId: env.cognitoUserPoolId,
+          GroupName: env.cognitoAdminGroupName,
+          NextToken: nextToken,
+        }),
+      )
       adminCount += result.Users?.length ?? 0
       nextToken = result.NextToken
     } while (nextToken)
 
     if (adminCount <= 1) {
-      throw new UserServiceError(
-        'FORBIDDEN',
-        'The only admin account cannot be deleted.',
-        403,
-      )
+      throw new UserServiceError('FORBIDDEN', 'The only admin account cannot be deleted.', 403)
     }
   }
 
@@ -86,10 +84,12 @@ export class CognitoIdentityGateway implements IdentityGateway {
       const currentUser = await this.client.send(new GetUserCommand({ AccessToken: accessToken }))
       const username = currentUser.Username
       if (!username) throw new Error('Cognito did not return a username for deletion.')
-      await this.client.send(new AdminDeleteUserCommand({
-        UserPoolId: env.cognitoUserPoolId,
-        Username: username,
-      }))
+      await this.client.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: env.cognitoUserPoolId,
+          Username: username,
+        }),
+      )
     }
   }
 }
@@ -114,10 +114,7 @@ export class UserService {
     return this.toPublicProfile(user, profile)
   }
 
-  async updateUser(
-    user: AuthenticatedUser,
-    input: ProfileUpdateRequest,
-  ): Promise<User> {
+  async updateUser(user: AuthenticatedUser, input: ProfileUpdateRequest): Promise<User> {
     if (!user.emailVerified) {
       throw new UserServiceError(
         'EMAIL_NOT_VERIFIED',
@@ -129,9 +126,14 @@ export class UserService {
     const request = validateUpdateProfile(input)
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing && request.username === undefined) {
-      throw new UserServiceError('VALIDATION_FAILED', 'A username is required to create a profile.', 400, {
-        username: 'Username is required.',
-      })
+      throw new UserServiceError(
+        'VALIDATION_FAILED',
+        'A username is required to create a profile.',
+        400,
+        {
+          username: 'Username is required.',
+        },
+      )
     }
 
     if (request.username !== undefined) {
@@ -180,7 +182,11 @@ export class UserService {
     }
   }
 
-  async deleteUser(user: AuthenticatedUser, confirmation: unknown, accessToken: string): Promise<void> {
+  async deleteUser(
+    user: AuthenticatedUser,
+    confirmation: unknown,
+    accessToken: string,
+  ): Promise<void> {
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
       throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)

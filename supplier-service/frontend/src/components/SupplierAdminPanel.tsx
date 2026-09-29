@@ -66,21 +66,30 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
   }, [supplier])
 
   function toggleDay(day: Day) {
-    setDaysOfWeek((current) => current.includes(day)
-      ? current.filter((value) => value !== day)
-      : [...current, day].sort((left, right) => left - right))
+    setDaysOfWeek((current) =>
+      current.includes(day)
+        ? current.filter((value) => value !== day)
+        : [...current, day].sort((left, right) => left - right),
+    )
   }
 
   function toggleServiceType(serviceType: ServiceType) {
-    setServiceTypes((current) => current.includes(serviceType)
-      ? current.filter((value) => value !== serviceType)
-      : [...current, serviceType])
+    setServiceTypes((current) =>
+      current.includes(serviceType)
+        ? current.filter((value) => value !== serviceType)
+        : [...current, serviceType],
+    )
   }
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     setError('')
-    if (!name.trim() || !buildingName.trim() || daysOfWeek.length === 0 || serviceTypes.length === 0) {
+    if (
+      !name.trim() ||
+      !buildingName.trim() ||
+      daysOfWeek.length === 0 ||
+      serviceTypes.length === 0
+    ) {
       setError('Complete the required fields and select at least one day and service type.')
       return
     }
@@ -106,9 +115,10 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
 
     setSaving(true)
     try {
-      const response = editing && supplier
-        ? await api.updateSupplier(supplier.id, payload satisfies UpdateSupplierRequest)
-        : await api.addSupplier(payload)
+      const response =
+        editing && supplier
+          ? await api.updateSupplier(supplier.id, payload satisfies UpdateSupplierRequest)
+          : await api.addSupplier(payload)
       onSaved(response.supplier)
       if (!editing) onClose()
     } catch (requestError) {
@@ -140,25 +150,122 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <span className="supplier-kicker">Admin</span>
           <h2>{editing ? 'Update supplier' : 'Add supplier'}</h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close supplier administration">×</button>
+        <button type="button" onClick={onClose} aria-label="Close supplier administration">
+          ×
+        </button>
       </div>
       <form onSubmit={submit}>
-        <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
+        <label>
+          Name
+          <input value={name} onChange={(event) => setName(event.target.value)} required />
+        </label>
         <div className="supplier-admin-grid">
-          <label>Latitude<input value={lat} onChange={(event) => setLat(event.target.value)} inputMode="decimal" /></label>
-          <label>Longitude<input value={lng} onChange={(event) => setLng(event.target.value)} inputMode="decimal" /></label>
-          <label>Building<input value={buildingName} onChange={(event) => setBuildingName(event.target.value)} required /></label>
-          <label>Floor<input value={floorNumber} onChange={(event) => setFloorNumber(event.target.value)} inputMode="numeric" /></label>
-          <label>Opens<input type="time" value={openingTime} onChange={(event) => setOpeningTime(event.target.value)} /></label>
-          <label>Closes<input type="time" value={closingTime} onChange={(event) => setClosingTime(event.target.value)} /></label>
+          <label>
+            Latitude
+            <input
+              value={lat}
+              onChange={(event) => setLat(event.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+          <label>
+            Longitude
+            <input
+              value={lng}
+              onChange={(event) => setLng(event.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+          <label>
+            Building
+            <input
+              value={buildingName}
+              onChange={(event) => setBuildingName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Floor
+            <input
+              value={floorNumber}
+              onChange={(event) => setFloorNumber(event.target.value)}
+              inputMode="numeric"
+            />
+          </label>
+          <label>
+            Opens
+            <input
+              type="time"
+              value={openingTime}
+              onChange={(event) => setOpeningTime(event.target.value)}
+            />
+          </label>
+          <label>
+            Closes
+            <input
+              type="time"
+              value={closingTime}
+              onChange={(event) => setClosingTime(event.target.value)}
+            />
+          </label>
         </div>
-        <label className="supplier-admin-check"><input type="checkbox" checked={isOperational} onChange={(event) => setIsOperational(event.target.checked)} /> Operational</label>
-        <fieldset><legend>Open days</legend><div className="supplier-admin-options">{dayOptions.map((day) => <label key={day.value}><input type="checkbox" checked={daysOfWeek.includes(day.value)} onChange={() => toggleDay(day.value)} />{day.label}</label>)}</div></fieldset>
-        <fieldset><legend>Services</legend><div className="supplier-admin-options">{serviceOptions.map((service) => <label key={service.value}><input type="checkbox" checked={serviceTypes.includes(service.value)} onChange={() => toggleServiceType(service.value)} />{service.label}</label>)}</div></fieldset>
-        {error && <p className="supplier-error" role="alert">{error}</p>}
+        <label className="supplier-admin-check">
+          <input
+            type="checkbox"
+            checked={isOperational}
+            onChange={(event) => setIsOperational(event.target.checked)}
+          />{' '}
+          Operational
+        </label>
+        <fieldset>
+          <legend>Open days</legend>
+          <div className="supplier-admin-options">
+            {dayOptions.map((day) => (
+              <label key={day.value}>
+                <input
+                  type="checkbox"
+                  checked={daysOfWeek.includes(day.value)}
+                  onChange={() => toggleDay(day.value)}
+                />
+                {day.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Services</legend>
+          <div className="supplier-admin-options">
+            {serviceOptions.map((service) => (
+              <label key={service.value}>
+                <input
+                  type="checkbox"
+                  checked={serviceTypes.includes(service.value)}
+                  onChange={() => toggleServiceType(service.value)}
+                />
+                {service.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {error && (
+          <p className="supplier-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="supplier-admin-actions">
-          <RelayButton variant="primary" type="submit" disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Add supplier'}</RelayButton>
-          {editing && <RelayButton variant="danger" type="button" onClick={() => void remove()} disabled={saving}>Delete</RelayButton>}
+          <RelayButton variant="primary" type="submit" disabled={saving}>
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add supplier'}
+          </RelayButton>
+          {editing && (
+            <RelayButton
+              variant="danger"
+              type="button"
+              onClick={() => void remove()}
+              disabled={saving}
+            >
+              Delete
+            </RelayButton>
+          )}
         </div>
       </form>
     </GlassCard>

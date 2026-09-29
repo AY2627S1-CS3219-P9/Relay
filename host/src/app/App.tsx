@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { SERVICE_METADATA, type FetchSessionHandler, type ProfileAnchor, type ServiceId, type SessionError, type User } from '@relay/contracts'
+import {
+  SERVICE_METADATA,
+  type FetchSessionHandler,
+  type ProfileAnchor,
+  type ServiceId,
+  type SessionError,
+  type User,
+} from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
 import { Hub } from 'aws-amplify/utils'
@@ -42,7 +49,15 @@ function App() {
     })
     const body = (await response.json()) as {
       ok?: boolean
-      data?: { user: { subject: string; email: string; emailVerified: boolean; profileCreated: boolean; role: 'admin' | 'user' } }
+      data?: {
+        user: {
+          subject: string
+          email: string
+          emailVerified: boolean
+          profileCreated: boolean
+          role: 'admin' | 'user'
+        }
+      }
     }
     if (!response.ok || !body.ok || !body.data) {
       const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No active session.' }
@@ -57,7 +72,7 @@ function App() {
         emailVerified: user.emailVerified,
         profileCreated: user.profileCreated,
         isAdmin: user.role === 'admin',
-      }
+      },
     }
   }
 
@@ -75,16 +90,19 @@ function App() {
         if (response.ok) {
           const body = (await response.json()) as { ok?: boolean; data?: User }
           if (body.ok && body.data) setUserProfile(body.data)
-        }
-        else if (response.status === 404) setUserProfile(null)
+        } else if (response.status === 404) setUserProfile(null)
       } catch {
         if (!cancelled) setUserProfile(null)
       }
     }
     void loadProfile()
     const removeAuthListener = Hub.listen('auth', ({ payload }) => {
-      if (payload.event === 'signedIn' || payload.event === 'signedOut' || payload.event === 'tokenRefresh') {
-        setAuthVersion(version => version + 1)
+      if (
+        payload.event === 'signedIn' ||
+        payload.event === 'signedOut' ||
+        payload.event === 'tokenRefresh'
+      ) {
+        setAuthVersion((version) => version + 1)
         void loadProfile()
       }
     })
@@ -105,8 +123,7 @@ function App() {
       if (response.ok) {
         const body = (await response.json()) as { ok?: boolean; data?: User }
         if (body.ok && body.data) setUserProfile(body.data)
-      }
-      else if (response.status === 404) setUserProfile(null)
+      } else if (response.status === 404) setUserProfile(null)
     } catch {
       setUserProfile(null)
     }
@@ -132,10 +149,7 @@ function App() {
     if (!profileAnchor) return undefined
     const cardWidth = Math.min(520, window.innerWidth - 32)
     const cardMaxHeight = window.innerHeight * 0.6
-    const top = Math.min(
-      profileAnchor.bottom + 12,
-      window.innerHeight - cardMaxHeight - 16,
-    )
+    const top = Math.min(profileAnchor.bottom + 12, window.innerHeight - cardMaxHeight - 16)
     const left = Math.min(
       Math.max(16, profileAnchor.right - cardWidth),
       window.innerWidth - cardWidth - 16,

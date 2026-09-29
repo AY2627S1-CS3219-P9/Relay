@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import type { ApiResult, GetUserResponse, User } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
 import { DeleteAccountForm } from '../components/account/DeleteAccountForm'
-import { ProfileSetupForm } from './ProfileSetupForm'
+import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
 import { ChangePasswordForm } from '../components/account/ChangePasswordForm'
 import { AccountOverview } from '../components/account/AccountOverview'
-import { UpdateProfileForm } from './UpdateProfileForm'
+import { UpdateProfileForm } from '../components/account/UpdateProfileForm'
 
 type Page = 'account' | 'change-password' | 'update-profile' | 'delete'
 
@@ -25,7 +25,9 @@ export function AccountPage({
 
   async function loadProfile() {
     try {
-      const response = (await fetch('/api/user/me', { credentials: 'include' }).then((result) => result.json())) as ApiResult<GetUserResponse>
+      const response = (await fetch('/api/user/me', { credentials: 'include' }).then((result) =>
+        result.json(),
+      )) as ApiResult<GetUserResponse>
       if (response.ok) {
         setProfile(response.data)
         setNeedsSetup(false)
@@ -90,9 +92,7 @@ export function AccountPage({
               }}
             />
           )}
-          {page == 'change-password' && (
-            <ChangePasswordForm onBack={() => setPage('account')} />
-          )}
+          {page == 'change-password' && <ChangePasswordForm onBack={() => setPage('account')} />}
           {page == 'delete' && (
             <DeleteAccountForm
               onBack={() => setPage('account')}

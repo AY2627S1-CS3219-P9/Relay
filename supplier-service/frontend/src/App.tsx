@@ -215,8 +215,14 @@ export default function App({
       )}
       {isAdmin && (
         <div className="supplier-admin-toolbar">
-          <RelayButton variant="primary" onClick={() => setAdminMode('add')}>Add supplier</RelayButton>
-          {selectedSupplier && <RelayButton variant="secondary" onClick={() => setAdminMode('edit')}>Edit selected</RelayButton>}
+          <RelayButton variant="primary" onClick={() => setAdminMode('add')}>
+            Add supplier
+          </RelayButton>
+          {selectedSupplier && (
+            <RelayButton variant="secondary" onClick={() => setAdminMode('edit')}>
+              Edit selected
+            </RelayButton>
+          )}
         </div>
       )}
       {isAdmin && adminMode && (

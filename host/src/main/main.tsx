@@ -17,10 +17,10 @@ Amplify.configure({
       loginWith: {
         username: false,
         email: true,
-      }
-    }
-  }
-});
+      },
+    },
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

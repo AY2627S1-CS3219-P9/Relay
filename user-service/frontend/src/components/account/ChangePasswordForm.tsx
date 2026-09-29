@@ -26,7 +26,9 @@ export function ChangePasswordForm({ onBack }: { onBack: () => void }) {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword, newPassword, newPasswordConfirmation }),
-    }).then((result) => (result.status === 204 ? { ok: true, data: undefined } : result.json()))) as ApiResult<undefined>
+    }).then((result) =>
+      result.status === 204 ? { ok: true, data: undefined } : result.json(),
+    )) as ApiResult<undefined>
     if (response.ok) {
       setCurrentPassword('')
       setNewPassword('')
