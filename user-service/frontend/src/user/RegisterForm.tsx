@@ -1,8 +1,8 @@
 import { useState, type SubmitEvent } from 'react'
-import { useUserApi } from './UserApiProvider'
+import type { ApiResult, RegisterResponse } from '@relay/contracts'
 import { isNusEmail, passwordErrors, passwordRequirements } from '../validation/validation'
-import { EmailField } from '../components/EmailField'
-import { PasswordField } from '../components/PasswordField'
+import { EmailField } from '../components/base-elements/EmailField'
+import { PasswordField } from '../components/base-elements/PasswordField'
 import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function RegisterForm({
@@ -12,7 +12,6 @@ export function RegisterForm({
   onRegistered: (email: string, password: string) => void
   switchToLogin: () => void
 }) {
-  const api = useUserApi()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -27,11 +26,12 @@ export function RegisterForm({
     if (password !== confirmation) return setErrorMessage('Passwords must match exactly.')
     setLoading(true)
     setErrorMessage('')
-    const response = await api.register({
-      email,
-      password,
-      passwordConfirmation: confirmation,
-    })
+    const response = (await fetch('/api/user/auth/register', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, passwordConfirmation: confirmation }),
+    }).then((result) => result.json())) as ApiResult<RegisterResponse>
     if (response.ok) {
       onRegistered(email, password)
     } else {

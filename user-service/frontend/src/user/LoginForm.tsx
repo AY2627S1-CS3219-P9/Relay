@@ -1,7 +1,7 @@
 import { useState, type SubmitEvent } from 'react'
-import { useUserApi } from './UserApiProvider'
-import { EmailField } from '../components/EmailField'
-import { PasswordField } from '../components/PasswordField'
+import type { ApiResult, LoginResponse } from '@relay/contracts'
+import { EmailField } from '../components/base-elements/EmailField'
+import { PasswordField } from '../components/base-elements/PasswordField'
 import { ErrorMessage, TextButton } from '@relay/ui'
 
 export function LoginForm({
@@ -18,8 +18,6 @@ export function LoginForm({
   switchToRegister: () => void
   notice?: string
 }) {
-  const api = useUserApi()
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -31,7 +29,12 @@ export function LoginForm({
     setLoading(true)
     setErrorMessage('')
 
-    const response = await api.login({ email, password })
+    const response = (await fetch('/api/user/auth/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then((result) => result.json())) as ApiResult<LoginResponse>
     if (response.ok) {
       if (!response.data?.user) {
         setErrorMessage('The User Service returned an invalid session response.')
