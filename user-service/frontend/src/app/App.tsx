@@ -1,6 +1,6 @@
 import '@relay/ui/styles.css'
 import './App.css'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
 import type { RemoteAppProps } from '@relay/contracts'
 import { LoginForm } from '../user/LoginForm'
@@ -14,15 +14,60 @@ type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
 export default function App({
   fetchSession,
+  authVersion = 0,
   navigateTo,
   closeProfile,
   refreshUserProfile,
   presentation = 'full',
 }: RemoteAppProps) {
   const [view, setView] = useState<View>('login')
+  const [restoringSession, setRestoringSession] = useState(Boolean(fetchSession))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginNotice, setLoginNotice] = useState('')
+
+  useEffect(() => {
+    if (!fetchSession) {
+      setRestoringSession(false)
+      return
+    }
+
+    let cancelled = false
+    setRestoringSession(true)
+
+    void fetchSession()
+      .then((session) => {
+        if (cancelled) return
+        setView(session.userData.profileCreated ? 'complete' : 'profile')
+      })
+      .catch(() => {
+        if (!cancelled) setView('login')
+      })
+      .finally(() => {
+        if (!cancelled) setRestoringSession(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [authVersion])
+
+  if (restoringSession) {
+    return presentation === 'card' ? (
+      <div className="user-profile-content">
+        <div className="user-profile-card-header">
+          <h1>Profile</h1>
+          <IconButton label="Close profile" onClick={closeProfile}>
+            ×
+          </IconButton>
+        </div>
+        <p>Restoring your session…</p>
+      </div>
+    ) : (
+      <main className="user-app-shell">Restoring your session…</main>
+    )
+  }
+
   const showAuthMap =
     view === 'login' || view === 'register' || view === 'verify' || view === 'profile'
 
