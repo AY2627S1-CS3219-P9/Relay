@@ -1,14 +1,14 @@
 import '@relay/ui/styles.css'
-import './styles.css'
+import './App.css'
 import { useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
 import type { RemoteAppProps } from '@relay/contracts'
-import { LoginForm } from './user/LoginForm'
-import { ProfileSetupForm } from './user/ProfileSetupForm'
-import { RegisterForm } from './user/RegisterForm'
-import { VerificationForm } from './user/VerificationForm'
-import { AccountPage } from './user/AccountPage'
-import { NusMapPanel } from './components/NusMapPanel'
+import { LoginForm } from '../user/LoginForm'
+import { ProfileSetupForm } from '../user/ProfileSetupForm'
+import { RegisterForm } from '../user/RegisterForm'
+import { VerificationForm } from '../user/VerificationForm'
+import { AccountPage } from '../user/AccountPage'
+import { MapView } from '../components/MapView'
 
 type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
@@ -181,7 +181,7 @@ export default function App({
   return (
     showAuthMap ? (
       <GlassWindow
-        background={<NusMapPanel />}
+        background={<MapView />}
         withGlow={view === 'login' || view === 'register'}
       >
         {userContent}

@@ -1,6 +1,6 @@
 import nusMapImage from '../assets/nus-map.png'
 
-export function NusMapPanel() {
+export function MapView() {
   return (
     <aside className="user-map-panel" aria-label="Map of the National University of Singapore">
       <img
