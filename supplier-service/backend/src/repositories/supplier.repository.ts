@@ -10,7 +10,7 @@ import type { Supplier } from '@relay/contracts/supplier'
 export class SupplierRepository {
   async findAll(): Promise<Supplier[]> {
     const rows = await getSuppliers()
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       name: row.name,
       location: row.location,

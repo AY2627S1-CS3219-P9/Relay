@@ -2,7 +2,11 @@ import express, { type ErrorRequestHandler } from 'express'
 import { UserController } from './controllers/user.controller.js'
 import { prisma, UserRepository } from './repositories/user.repository.js'
 import { createUserRouter } from './routes/user.routes.js'
-import { CognitoIdentityGateway, MockIdentityGateway, UserService } from './services/user.service.js'
+import {
+  CognitoIdentityGateway,
+  MockIdentityGateway,
+  UserService,
+} from './services/user.service.js'
 import { getEnv } from './config/env.js'
 import { LocalImageStorage } from './storage/local-image-storage.js'
 import { UserServiceError } from './types/user.types.js'
@@ -15,9 +19,8 @@ import { sessionMiddleware } from './middleware/session.middleware.js'
 
 const repository = new UserRepository()
 const imageStorage = new LocalImageStorage()
-const identityGateway = getEnv().authMode === 'cognito'
-  ? new CognitoIdentityGateway()
-  : new MockIdentityGateway()
+const identityGateway =
+  getEnv().authMode === 'cognito' ? new CognitoIdentityGateway() : new MockIdentityGateway()
 const userService = new UserService(repository, imageStorage, identityGateway)
 const sessionRepository = new SessionRepository()
 const userController = new UserController(userService, sessionRepository)
@@ -39,7 +42,12 @@ app.get('/healthz', (_req, res) => {
 
 app.use('/api/user', createUserRouter(userController))
 app.use('/api/user', createAuthRouter(sessionController))
-app.post('/internal/user/session/validate', internalServiceAuth, sessionMiddleware, sessionController.validateInternalSession)
+app.post(
+  '/internal/user/session/validate',
+  internalServiceAuth,
+  sessionMiddleware,
+  sessionController.validateInternalSession,
+)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof UserServiceError) {

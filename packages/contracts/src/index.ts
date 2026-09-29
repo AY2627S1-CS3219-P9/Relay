@@ -15,15 +15,15 @@ export type Session = {
     emailVerified: boolean
     profileCreated: boolean
     isAdmin: boolean
-  };
+  }
 }
 
 export type SessionError = {
-  code: 'SESSION INVALIDATED',
+  code: 'SESSION INVALIDATED'
   message: string
 }
 
-type FetchSessionOptions = { forceRefresh?: boolean; }
+type FetchSessionOptions = { forceRefresh?: boolean }
 
 export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Session>
 

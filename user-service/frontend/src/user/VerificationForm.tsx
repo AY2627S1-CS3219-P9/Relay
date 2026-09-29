@@ -7,8 +7,8 @@ export function VerificationForm({
   onVerified,
   onBack,
 }: {
-  email: string,
-  password: string,
+  email: string
+  password: string
   onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack: () => void
 }) {
@@ -22,7 +22,10 @@ export function VerificationForm({
         {
           // TODO: remove this in prod
           <p>
-            To read verification code in Floci, go to <a target='_blank' href='http://localhost:4566/_aws/ses'>http://localhost:4566/_aws/ses</a>
+            To read verification code in Floci, go to{' '}
+            <a target="_blank" href="http://localhost:4566/_aws/ses">
+              http://localhost:4566/_aws/ses
+            </a>
           </p>
         }
       </div>

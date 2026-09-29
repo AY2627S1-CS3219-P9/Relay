@@ -1,11 +1,10 @@
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, IconButton } from '@relay/ui'
-import { useUserApi } from './UserApiProvider'
-import { PasswordField } from '../components/PasswordField'
-import { passwordErrors, passwordRequirements } from '../validation/validation'
+import type { ApiResult } from '@relay/contracts'
+import { PasswordField } from '../base-elements/PasswordField'
+import { passwordErrors, passwordRequirements } from '../../validation/validation'
 
 export function ChangePasswordForm({ onBack }: { onBack: () => void }) {
-  const api = useUserApi()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('')
@@ -22,11 +21,14 @@ export function ChangePasswordForm({ onBack }: { onBack: () => void }) {
     setSavingPassword(true)
     setSuccessMessage('')
     setErrorMessage('')
-    const response = await api.changePassword({
-      currentPassword,
-      newPassword,
-      newPasswordConfirmation,
-    })
+    const response = (await fetch('/api/user/auth/password', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword, newPasswordConfirmation }),
+    }).then((result) =>
+      result.status === 204 ? { ok: true, data: undefined } : result.json(),
+    )) as ApiResult<undefined>
     if (response.ok) {
       setCurrentPassword('')
       setNewPassword('')

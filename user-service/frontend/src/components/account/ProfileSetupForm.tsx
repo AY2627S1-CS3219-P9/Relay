@@ -1,10 +1,9 @@
 import { useState, type SubmitEvent } from 'react'
-import type { ImageDataUrl, Session } from '@relay/contracts'
+import type { ApiResult, ImageDataUrl, Session, UpdateUserResponse } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
-import { ImageUploadComponent } from '../components/ImageUploadComponent'
-import { UsernameField } from '../components/UsernameField'
-import { useUserApi } from './UserApiProvider'
-import { usernameError } from '../validation/validation'
+import { ImageUploadField } from '../base-elements/ImageUploadField'
+import { UsernameField } from '../base-elements/UsernameField'
+import { usernameError } from '../../validation/validation'
 
 export function ProfileSetupForm({
   onComplete,
@@ -12,8 +11,6 @@ export function ProfileSetupForm({
   validateSession?: () => Promise<Session>
   onComplete: () => void | Promise<void>
 }) {
-  const api = useUserApi()
-
   const [username, setUsername] = useState('')
   const [picture, setPicture] = useState<ImageDataUrl>()
   const [errorMessage, setErrorMessage] = useState('')
@@ -29,7 +26,12 @@ export function ProfileSetupForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      const response = await api.updateUser({ username, profilePicture: picture })
+      const response = (await fetch('/api/user/me', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, profilePicture: picture }),
+      }).then((result) => result.json())) as ApiResult<UpdateUserResponse>
       if (!response.ok) {
         setErrorMessage(response.error.message)
         return
@@ -49,7 +51,7 @@ export function ProfileSetupForm({
         <p>Choose how other Relay users will see you.</p>
       </div>
       <UsernameField value={username} onChange={setUsername} />
-      <ImageUploadComponent value={picture} onChange={setPicture} />
+      <ImageUploadField value={picture} onChange={setPicture} />
       <ErrorMessage message={errorMessage} />
       <button className="glass-btn-primary user-submit" disabled={loading}>
         {loading ? 'Saving profile…' : 'Finish setup'}

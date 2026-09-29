@@ -1,7 +1,11 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
-import { useUserApi } from '../user/UserApiProvider'
+import type {
+  ApiResult,
+  ResendVerificationRequest,
+  SubmitOtpAndLoginResponse,
+} from '@relay/contracts'
 
 export function VerificationComponent({
   email,
@@ -14,7 +18,6 @@ export function VerificationComponent({
   onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack?: () => void
 }) {
-  const api = useUserApi()
   const [code, setCode] = useState('')
   const [seconds, setSeconds] = useState(300)
   const [errorMessage, setErrorMessage] = useState('')
@@ -33,7 +36,12 @@ export function VerificationComponent({
     setLoading(true)
     setErrorMessage('')
 
-    const response = await api.submitOtpAndLogin({ email, password, code })
+    const response = (await fetch('/api/user/auth/verification/confirm-and-login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, code }),
+    }).then((result) => result.json())) as ApiResult<SubmitOtpAndLoginResponse>
     if (response.ok) {
       if (!response.data?.user) {
         setErrorMessage('The User Service returned an invalid session response.')
@@ -52,7 +60,14 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      const response = await api.resendVerification({ email })
+      const response = (await fetch('/api/user/auth/verification/resend', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email } satisfies ResendVerificationRequest),
+      }).then((result) =>
+        result.status === 204 ? { ok: true, data: undefined } : result.json(),
+      )) as ApiResult<undefined>
       if (response.ok) {
         setSeconds(300)
         setCode('')

@@ -1,31 +1,73 @@
 import '@relay/ui/styles.css'
-import './styles.css'
-import { useState } from 'react'
+import './App.css'
+import { useEffect, useState } from 'react'
 import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
-import type { UserApi, RemoteAppProps } from '@relay/contracts'
-import { LoginForm } from './user/LoginForm'
-import { ProfileSetupForm } from './user/ProfileSetupForm'
-import { RegisterForm } from './user/RegisterForm'
-import { UserApiProvider } from './user/UserApiProvider'
-import { VerificationForm } from './user/VerificationForm'
-import { AccountView } from './user/AccountView'
-import { NusMapPanel } from './components/NusMapPanel'
-import { userApi } from './api/api'
+import type { RemoteAppProps } from '@relay/contracts'
+import { LoginForm } from '../user/LoginForm'
+import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
+import { RegisterForm } from '../user/RegisterForm'
+import { VerificationForm } from '../user/VerificationForm'
+import { AccountPage } from '../user/AccountPage'
+import { MapView } from '../components/MapView'
 
 type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
 
 export default function App({
-  api = userApi,
   fetchSession,
+  authVersion = 0,
   navigateTo,
   closeProfile,
   refreshUserProfile,
   presentation = 'full',
-}: { api?: UserApi } & RemoteAppProps) {
+}: RemoteAppProps) {
   const [view, setView] = useState<View>('login')
+  const [restoringSession, setRestoringSession] = useState(Boolean(fetchSession))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginNotice, setLoginNotice] = useState('')
+
+  useEffect(() => {
+    if (!fetchSession) {
+      setRestoringSession(false)
+      return
+    }
+
+    let cancelled = false
+    setRestoringSession(true)
+
+    void fetchSession()
+      .then((session) => {
+        if (cancelled) return
+        setView(session.userData.profileCreated ? 'complete' : 'profile')
+      })
+      .catch(() => {
+        if (!cancelled) setView('login')
+      })
+      .finally(() => {
+        if (!cancelled) setRestoringSession(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [authVersion])
+
+  if (restoringSession) {
+    return presentation === 'card' ? (
+      <div className="user-profile-content">
+        <div className="user-profile-card-header">
+          <h1>Profile</h1>
+          <IconButton label="Close profile" onClick={closeProfile}>
+            ×
+          </IconButton>
+        </div>
+        <p>Restoring your session…</p>
+      </div>
+    ) : (
+      <main className="user-app-shell">Restoring your session…</main>
+    )
+  }
+
   const showAuthMap =
     view === 'login' || view === 'register' || view === 'verify' || view === 'profile'
 
@@ -64,11 +106,7 @@ export default function App({
   }
 
   async function finishLogout() {
-    const response = await api.logout()
-    if (!response.ok) {
-      console.error(response.error)
-      return
-    }
+    await fetch('/api/user/auth/logout', { method: 'POST', credentials: 'include' })
     await refreshUserProfile?.()
     setView('login')
     closeProfile?.()
@@ -133,22 +171,9 @@ export default function App({
             </RelayButton>
           </div>
         )}
-        {/* {view === 'account' && sessionId && (
-          <GlassCard className="account-glass-card">
-            <AccountView
-              sessionId={sessionId}
-              onLoggedOut={finishLogout}
-              onDeleted={() => {
-                setSessionId(undefined)
-                setLoginNotice('Your account was deleted successfully.')
-                setView('login')
-              }}
-            />
-          </GlassCard>
-        )} */}
         {view === 'account' && (
           <GlassCard className="account-glass-card">
-            <AccountView
+            <AccountPage
               onLoggedOut={finishLogout}
               onUpdated={() => void refreshUserProfile?.()}
               onDeleted={() => {
@@ -176,42 +201,33 @@ export default function App({
 
   if (presentation === 'card') {
     return (
-      <UserApiProvider api={api}>
-        <div className="user-profile-content">
-          <div className="user-profile-card-header">
-            <h1>Profile</h1>
-            <IconButton label="Close profile" onClick={closeProfile}>
-              ×
-            </IconButton>
-          </div>
-          <AccountView
-            onLoggedOut={finishLogout}
-            onUpdated={() => void refreshUserProfile?.()}
-            onDeleted={() => {
-              setLoginNotice('Your account was deleted successfully.')
-              setView('login')
-              void refreshUserProfile?.()
-              closeProfile?.()
-              navigateTo?.('user')
-            }}
-          />
+      <div className="user-profile-content">
+        <div className="user-profile-card-header">
+          <h1>Profile</h1>
+          <IconButton label="Close profile" onClick={closeProfile}>
+            ×
+          </IconButton>
         </div>
-      </UserApiProvider>
+        <AccountPage
+          onLoggedOut={finishLogout}
+          onUpdated={() => void refreshUserProfile?.()}
+          onDeleted={() => {
+            setLoginNotice('Your account was deleted successfully.')
+            setView('login')
+            void refreshUserProfile?.()
+            closeProfile?.()
+            navigateTo?.('user')
+          }}
+        />
+      </div>
     )
   }
 
-  return (
-    <UserApiProvider api={api}>
-      {showAuthMap ? (
-        <GlassWindow
-          background={<NusMapPanel />}
-          withGlow={view === 'login' || view === 'register'}
-        >
-          {userContent}
-        </GlassWindow>
-      ) : (
-        <main className="user-app-shell">{renderedUserContent}</main>
-      )}
-    </UserApiProvider>
+  return showAuthMap ? (
+    <GlassWindow background={<MapView />} withGlow={view === 'login' || view === 'register'}>
+      {userContent}
+    </GlassWindow>
+  ) : (
+    <main className="user-app-shell">{renderedUserContent}</main>
   )
 }

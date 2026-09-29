@@ -11,7 +11,7 @@ export default defineConfig({
     federation({
       name: 'userFrontend',
       filename: 'remoteEntry.js',
-      exposes: { './App': './src/App.tsx' },
+      exposes: { './App': './src/app/App.tsx' },
       shared: {
         'aws-amplify': { singleton: true, requiredVersion: '^6.22.0' },
         'aws-amplify/auth': { singleton: true, requiredVersion: '^6.22.0' },

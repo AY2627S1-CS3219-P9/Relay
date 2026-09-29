@@ -38,10 +38,7 @@ export class UserRepository {
     return profile ? toProfileRecord(profile) : null
   }
 
-  async createProfile(
-    cognitoSub: string,
-    update: ProfileUpdate,
-  ): Promise<UserProfileRecord> {
+  async createProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
     const profile = await prisma.userProfile.create({
       data: {
         cognitoSub,
@@ -52,10 +49,7 @@ export class UserRepository {
     return toProfileRecord(profile)
   }
 
-  async updateProfile(
-    cognitoSub: string,
-    update: ProfileUpdate,
-  ): Promise<UserProfileRecord> {
+  async updateProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
     const profile = await prisma.userProfile.update({
       where: { cognitoSub },
       data: {

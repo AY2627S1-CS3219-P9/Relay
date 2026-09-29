@@ -1,6 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, IconButton } from '@relay/ui'
-import { useUserApi } from './UserApiProvider'
+import type { ApiResult } from '@relay/contracts'
 
 export function DeleteAccountForm({
   username,
@@ -11,7 +11,6 @@ export function DeleteAccountForm({
   onBack: () => void
   onDeleted: () => void
 }) {
-  const api = useUserApi()
   const [confirmation, setConfirmation] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,7 +24,14 @@ export function DeleteAccountForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      const response = await api.deleteUser({ confirmation })
+      const response = (await fetch('/api/user/me', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation }),
+      }).then((result) =>
+        result.status === 204 ? { ok: true, data: undefined } : result.json(),
+      )) as ApiResult<undefined>
       if (response.ok) onDeleted()
       else setErrorMessage(response.error.message)
     } catch (error) {

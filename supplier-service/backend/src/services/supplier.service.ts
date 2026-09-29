@@ -49,13 +49,16 @@ export class SupplierService {
     })
   }
 
-  async updateSupplier(id: string, data: {
-    name?: string
-    location?: Supplier['location']
-    isOperational?: boolean
-    operatingHours?: Supplier['operatingHours']
-    serviceTypes?: Supplier['serviceTypes']
-  }): Promise<Supplier> {
+  async updateSupplier(
+    id: string,
+    data: {
+      name?: string
+      location?: Supplier['location']
+      isOperational?: boolean
+      operatingHours?: Supplier['operatingHours']
+      serviceTypes?: Supplier['serviceTypes']
+    },
+  ): Promise<Supplier> {
     // Check if supplier exists first
     const existing = await this.repository.findById(id)
     if (!existing) {

@@ -40,7 +40,7 @@
   background: var(--relay-glass-bg-strong);
   color: var(--relay-text);
   box-shadow: var(--relay-glass-shadow);
-  backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
 }
 .relay-button-danger {
   background: var(--relay-red);
@@ -63,7 +63,9 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition: color 0.16s ease, text-decoration-color 0.16s ease;
+  transition:
+    color 0.16s ease,
+    text-decoration-color 0.16s ease;
 }
 .relay-text-button:hover:not(:disabled) {
   color: var(--relay-blue);

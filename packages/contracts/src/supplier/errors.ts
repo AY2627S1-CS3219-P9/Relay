@@ -8,7 +8,7 @@ export const SupplierErrors = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 
-export type SupplierErrorCode = typeof SupplierErrors[keyof typeof SupplierErrors]
+export type SupplierErrorCode = (typeof SupplierErrors)[keyof typeof SupplierErrors]
 
 /** Error response structure used across Supplier service endpoints */
 export interface SupplierError {

@@ -44,12 +44,14 @@ export class SessionService {
       })
     }
     try {
-      await this.client.send(new SignUpCommand({
-        ClientId: this.env.cognitoClientId,
-        Username: request.email,
-        Password: request.password,
-        UserAttributes: [{ Name: 'email', Value: request.email }],
-      }))
+      await this.client.send(
+        new SignUpCommand({
+          ClientId: this.env.cognitoClientId,
+          Username: request.email,
+          Password: request.password,
+          UserAttributes: [{ Name: 'email', Value: request.email }],
+        }),
+      )
       return { verificationRequired: true }
     } catch (error) {
       throw mapCognitoError(error)
@@ -58,22 +60,28 @@ export class SessionService {
 
   async resendVerification(request: ResendVerificationRequest): Promise<void> {
     try {
-      await this.client.send(new ResendConfirmationCodeCommand({
-        ClientId: this.env.cognitoClientId,
-        Username: request.email,
-      }))
+      await this.client.send(
+        new ResendConfirmationCodeCommand({
+          ClientId: this.env.cognitoClientId,
+          Username: request.email,
+        }),
+      )
     } catch (error) {
       throw mapCognitoError(error)
     }
   }
 
-  async submitOtpAndLogin(request: SubmitOtpAndLoginRequest): Promise<{ session: UserSession; cookie: string }> {
+  async submitOtpAndLogin(
+    request: SubmitOtpAndLoginRequest,
+  ): Promise<{ session: UserSession; cookie: string }> {
     try {
-      await this.client.send(new ConfirmSignUpCommand({
-        ClientId: this.env.cognitoClientId,
-        Username: request.email,
-        ConfirmationCode: request.code,
-      }))
+      await this.client.send(
+        new ConfirmSignUpCommand({
+          ClientId: this.env.cognitoClientId,
+          Username: request.email,
+          ConfirmationCode: request.code,
+        }),
+      )
       return this.login(request)
     } catch (error) {
       throw mapCognitoError(error)
@@ -82,14 +90,17 @@ export class SessionService {
 
   async login(request: LoginRequest): Promise<{ session: UserSession; cookie: string }> {
     try {
-      const result = await this.client.send(new InitiateAuthCommand({
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        ClientId: this.env.cognitoClientId,
-        AuthParameters: { USERNAME: request.email, PASSWORD: request.password },
-      }))
+      const result = await this.client.send(
+        new InitiateAuthCommand({
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          ClientId: this.env.cognitoClientId,
+          AuthParameters: { USERNAME: request.email, PASSWORD: request.password },
+        }),
+      )
       const accessToken = result.AuthenticationResult?.AccessToken
       const idToken = result.AuthenticationResult?.IdToken
-      if (!accessToken) throw new UserServiceError('INTERNAL_ERROR', 'Cognito did not return an access token.', 500)
+      if (!accessToken)
+        throw new UserServiceError('INTERNAL_ERROR', 'Cognito did not return an access token.', 500)
       const identity = await this.identityFromAccessToken(accessToken, idToken)
       return this.createSession(identity, accessToken)
     } catch (error) {
@@ -107,11 +118,13 @@ export class SessionService {
       throw new UserServiceError('VALIDATION_FAILED', 'Passwords must match.', 400)
     }
     try {
-      await this.client.send(new ChangePasswordCommand({
-        AccessToken: session.cognitoAccessToken,
-        PreviousPassword: request.currentPassword,
-        ProposedPassword: request.newPassword,
-      }))
+      await this.client.send(
+        new ChangePasswordCommand({
+          AccessToken: session.cognitoAccessToken,
+          PreviousPassword: request.currentPassword,
+          ProposedPassword: request.newPassword,
+        }),
+      )
     } catch (error) {
       throw mapCognitoError(error)
     }
@@ -121,7 +134,10 @@ export class SessionService {
     await this.sessions.revokeByTokenHash(hash(sessionCookie))
   }
 
-  async createSession(identity: Identity, accessToken: string): Promise<{ session: UserSession; cookie: string }> {
+  async createSession(
+    identity: Identity,
+    accessToken: string,
+  ): Promise<{ session: UserSession; cookie: string }> {
     const cookie = randomBytes(32).toString('base64url')
     const expiresAt = new Date(Date.now() + this.env.sessionTtlSeconds * 1000)
     const stored = await this.sessions.create({
@@ -149,10 +165,13 @@ export class SessionService {
 
   private async identityFromAccessToken(accessToken: string, idToken?: string): Promise<Identity> {
     const result = await this.client.send(new GetUserCommand({ AccessToken: accessToken }))
-    const attributes = new Map((result.UserAttributes ?? []).map(attribute => [attribute.Name, attribute.Value]))
+    const attributes = new Map(
+      (result.UserAttributes ?? []).map((attribute) => [attribute.Name, attribute.Value]),
+    )
     const subject = attributes.get('sub')
     const email = attributes.get('email')
-    if (!subject || !email) throw new UserServiceError('INTERNAL_ERROR', 'Cognito identity is incomplete.', 500)
+    if (!subject || !email)
+      throw new UserServiceError('INTERNAL_ERROR', 'Cognito identity is incomplete.', 500)
     const idClaims = idToken ? decodeJwtPayload(idToken) : {}
     const groups = Array.isArray(idClaims['cognito:groups']) ? idClaims['cognito:groups'] : []
     const role = groups.includes(this.env.cognitoAdminGroupName) ? 'admin' : 'user'
@@ -173,12 +192,22 @@ function hash(value: string): string {
 
 function mapCognitoError(error: unknown): UserServiceError {
   const name = error && typeof error === 'object' && 'name' in error ? String(error.name) : ''
-  if (name === 'UsernameExistsException') return new UserServiceError('EMAIL_ALREADY_REGISTERED', 'An account with this email already exists.', 409)
-  if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') return new UserServiceError('INVALID_CREDENTIALS', 'Invalid email or password.', 401)
-  if (name === 'UserNotConfirmedException') return new UserServiceError('EMAIL_NOT_VERIFIED', 'Verify your email before signing in.', 403)
-  if (name === 'CodeMismatchException') return new UserServiceError('OTP_INVALID', 'The verification code is invalid.', 400)
-  if (name === 'ExpiredCodeException') return new UserServiceError('OTP_EXPIRED', 'The verification code has expired.', 400)
-  if (name === 'PasswordHistoryPolicyViolationException') return new UserServiceError('PASSWORD_REUSED', 'You cannot reuse a previous password.', 409)
+  if (name === 'UsernameExistsException')
+    return new UserServiceError(
+      'EMAIL_ALREADY_REGISTERED',
+      'An account with this email already exists.',
+      409,
+    )
+  if (name === 'NotAuthorizedException' || name === 'UserNotFoundException')
+    return new UserServiceError('INVALID_CREDENTIALS', 'Invalid email or password.', 401)
+  if (name === 'UserNotConfirmedException')
+    return new UserServiceError('EMAIL_NOT_VERIFIED', 'Verify your email before signing in.', 403)
+  if (name === 'CodeMismatchException')
+    return new UserServiceError('OTP_INVALID', 'The verification code is invalid.', 400)
+  if (name === 'ExpiredCodeException')
+    return new UserServiceError('OTP_EXPIRED', 'The verification code has expired.', 400)
+  if (name === 'PasswordHistoryPolicyViolationException')
+    return new UserServiceError('PASSWORD_REUSED', 'You cannot reuse a previous password.', 409)
   return new UserServiceError('INTERNAL_ERROR', 'The identity provider request failed.', 500)
 }
 

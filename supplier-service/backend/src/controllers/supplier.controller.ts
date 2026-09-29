@@ -5,7 +5,8 @@ import { SupplierService } from '../services/supplier.service'
 
 const USER_API_URL = process.env.USER_API_URL || 'http://user-api:3000'
 const USER_API_TIMEOUT = parseInt(process.env.USER_API_TIMEOUT || '5000', 10)
-const USER_SERVICE_INTERNAL_TOKEN = process.env.USER_SERVICE_INTERNAL_TOKEN || 'local-internal-user-service-token'
+const USER_SERVICE_INTERNAL_TOKEN =
+  process.env.USER_SERVICE_INTERNAL_TOKEN || 'local-internal-user-service-token'
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<globalThis.Response> {
   const controller = new AbortController()
@@ -59,7 +60,9 @@ export class SupplierController {
     try {
       const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
-        res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
+        res
+          .status(401)
+          .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
 
@@ -74,7 +77,9 @@ export class SupplierController {
     try {
       const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
-        res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
+        res
+          .status(401)
+          .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
 
@@ -93,7 +98,9 @@ export class SupplierController {
     try {
       const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
-        res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
+        res
+          .status(401)
+          .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
 
@@ -109,19 +116,27 @@ export class SupplierController {
         return
       }
       if (!location || typeof location !== 'object') {
-        res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'Location is required' })
+        res
+          .status(400)
+          .json({ code: SupplierErrors.INVALID_REQUEST, message: 'Location is required' })
         return
       }
       if (typeof isOperational !== 'boolean') {
-        res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'isOperational is required' })
+        res
+          .status(400)
+          .json({ code: SupplierErrors.INVALID_REQUEST, message: 'isOperational is required' })
         return
       }
       if (!operatingHours || typeof operatingHours !== 'object') {
-        res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'OperatingHours is required' })
+        res
+          .status(400)
+          .json({ code: SupplierErrors.INVALID_REQUEST, message: 'OperatingHours is required' })
         return
       }
       if (!Array.isArray(serviceTypes) || serviceTypes.length === 0) {
-        res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: 'serviceTypes is required' })
+        res
+          .status(400)
+          .json({ code: SupplierErrors.INVALID_REQUEST, message: 'serviceTypes is required' })
         return
       }
 
@@ -143,7 +158,9 @@ export class SupplierController {
     try {
       const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
-        res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
+        res
+          .status(401)
+          .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
 
@@ -173,7 +190,9 @@ export class SupplierController {
     try {
       const authResult = await checkAuth(req.header('cookie') ?? '')
       if (!authResult) {
-        res.status(401).json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
+        res
+          .status(401)
+          .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
 
