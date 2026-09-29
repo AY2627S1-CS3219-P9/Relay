@@ -157,12 +157,18 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
       <form onSubmit={submit}>
         <label>
           Name
-          <input value={name} onChange={(event) => setName(event.target.value)} required />
+          <input
+            className="ios-input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
         </label>
         <div className="supplier-admin-grid">
           <label>
             Latitude
             <input
+              className="ios-input"
               value={lat}
               onChange={(event) => setLat(event.target.value)}
               inputMode="decimal"
@@ -171,6 +177,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Longitude
             <input
+              className="ios-input"
               value={lng}
               onChange={(event) => setLng(event.target.value)}
               inputMode="decimal"
@@ -179,6 +186,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Building
             <input
+              className="ios-input"
               value={buildingName}
               onChange={(event) => setBuildingName(event.target.value)}
               required
@@ -187,6 +195,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Floor
             <input
+              className="ios-input"
               value={floorNumber}
               onChange={(event) => setFloorNumber(event.target.value)}
               inputMode="numeric"
@@ -195,6 +204,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Opens
             <input
+              className="ios-input"
               type="time"
               value={openingTime}
               onChange={(event) => setOpeningTime(event.target.value)}
@@ -203,6 +213,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Closes
             <input
+              className="ios-input"
               type="time"
               value={closingTime}
               onChange={(event) => setClosingTime(event.target.value)}
