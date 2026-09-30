@@ -106,15 +106,14 @@ input {
 }
 .supplier-bottom-controls .supplier-row-button {
   box-sizing: border-box;
-  flex: 0 0 clamp(96px, 12vw, 160px);
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
   min-height: 70px;
   height: 70px;
-  overflow: hidden;
   padding: 0 14px;
   font-size: min(1.5rem, 1.667vw) !important;
   white-space: nowrap;
-  text-overflow: clip;
+  gap: 8px;
 }
 .supplier-control-icon {
   display: block;
@@ -332,7 +331,17 @@ legend {
   justify-content: flex-end;
 }
 .supplier-action-icon {
-  display: none;
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+.supplier-action-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 @media (max-width: 700px) {
   .supplier-top-controls {
