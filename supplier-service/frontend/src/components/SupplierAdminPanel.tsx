@@ -8,7 +8,7 @@ import type {
   UpdateSupplierRequest,
 } from '@relay/contracts'
 import { Day as Days, ServiceType as ServiceTypes } from '@relay/contracts'
-import { GlassCard, RelayButton } from '@relay/ui'
+import { GlassCard, IconButton, RelayButton } from '@relay/ui'
 
 const dayOptions: Array<{ value: Day; label: string }> = [
   { value: Days.Monday, label: 'Mon' },
@@ -147,12 +147,16 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
     <GlassCard as="aside" className="supplier-admin-panel" aria-label="Supplier administration">
       <div className="supplier-card-header">
         <div>
-          <span className="supplier-kicker">Admin</span>
           <h2>{editing ? 'Update supplier' : 'Add supplier'}</h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close supplier administration">
+        <IconButton
+          scale={1.5}
+          className="icon-button"
+          label="Close supplier administration"
+          onClick={onClose}
+        >
           ×
-        </button>
+        </IconButton>
       </div>
       <form onSubmit={submit}>
         <label>

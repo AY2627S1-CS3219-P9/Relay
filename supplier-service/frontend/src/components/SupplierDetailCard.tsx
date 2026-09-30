@@ -39,7 +39,6 @@ export function SupplierDetailCard({
     >
       <div className="supplier-card-header">
         <div>
-          <span className="supplier-kicker">Supplier</span>
           <h2>{supplier.name}</h2>
         </div>
         <IconButton
@@ -71,8 +70,7 @@ export function SupplierDetailCard({
         ))}
       </div>
       <div className="errand-placeholder">
-        <span className="supplier-kicker">Available errands</span>
-        <p>No errands are available for this supplier yet.</p>
+        <p>Available errands</p>
       </div>
     </GlassCard>
   )

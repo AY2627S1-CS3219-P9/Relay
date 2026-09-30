@@ -25,6 +25,7 @@ import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
 import { SupplierMap, type MapPoint } from './components/SupplierMap'
+import { SupplierRowButton } from './components/SupplierRowButton'
 import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
 import { createHttpSupplierApi } from './supplierApi'
 
@@ -239,19 +240,17 @@ export default function App({
         </RelayButton>
       </div>
       <div className="supplier-bottom-controls map-bottom-menu">
-        <RelayButton variant="secondary" scale={1.5} className="updates-action glass-pill">
+        <SupplierRowButton className="updates-action">
           <BellIcon className="supplier-control-icon" />
           <span className="supplier-control-label">Updates</span>
-          <b>1</b>
-        </RelayButton>
+        </SupplierRowButton>
         <Spacer />
         {isAdmin && (
           <>
             {selectedSupplier && (
-              <RelayButton
+              <SupplierRowButton
                 variant="secondary"
-                scale={1.5}
-                className="supplier-admin-action glass-btn"
+                className="supplier-admin-action"
                 onClick={(event) => openAdminPanel('edit', event.currentTarget)}
                 aria-label="Edit selected supplier"
                 title="Edit selected supplier"
@@ -260,12 +259,11 @@ export default function App({
                   <PencilIcon />
                 </span>
                 <span className="supplier-action-label">Edit selected</span>
-              </RelayButton>
+              </SupplierRowButton>
             )}
-            <RelayButton
+            <SupplierRowButton
               variant="primary"
-              scale={1.5}
-              className="supplier-admin-action glass-btn-primary"
+              className="supplier-admin-action"
               onClick={(event) => openAdminPanel('add', event.currentTarget)}
               aria-label="Add supplier"
               title="Add supplier"
@@ -274,13 +272,13 @@ export default function App({
                 <StorePlusIcon />
               </span>
               <span className="supplier-action-label">Add supplier</span>
-            </RelayButton>
+            </SupplierRowButton>
           </>
         )}
-        <RelayButton variant="primary" scale={1.5} className="new-request-action glass-btn-primary">
+        <SupplierRowButton variant="primary" className="new-request-action">
           <ClipboardPlusIcon className="supplier-control-icon" />
           <span className="supplier-control-label">New request</span>
-        </RelayButton>
+        </SupplierRowButton>
       </div>
       {showFilters && (
         <SupplierFilterPanel
