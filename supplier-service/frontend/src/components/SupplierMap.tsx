@@ -2,12 +2,13 @@ import { useEffect } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { Supplier } from '@relay/contracts'
+import type { BubbleAnchor } from '@relay/ui'
 
 export type MapPoint = { lat: number; lng: number }
 
 const supplierIcon = L.divIcon({
   className: 'relay-leaflet-icon',
-  html: '<span class="supplier-marker"><b>•</b></span>',
+  html: '<span class="supplier-marker"></span>',
   iconSize: [36, 36],
   iconAnchor: [18, 36],
 })
@@ -57,7 +58,7 @@ export function SupplierMap({
   center: MapPoint
   suppliers: Supplier[]
   userLocation?: MapPoint
-  onSelect: (supplier: Supplier) => void
+  onSelect: (supplier: Supplier, anchor: BubbleAnchor) => void
   onMapReady: (map: L.Map) => void
 }) {
   return (
@@ -81,7 +82,14 @@ export function SupplierMap({
           key={supplier.id}
           position={[supplier.location.lat, supplier.location.lng]}
           icon={supplierIcon}
-          eventHandlers={{ click: () => onSelect(supplier) }}
+          eventHandlers={{
+            click: (event) => {
+              const element = (event.target as L.Marker).getElement()
+              if (!element) return
+              const { top, left, right, bottom } = element.getBoundingClientRect()
+              onSelect(supplier, { top, left, right, bottom })
+            },
+          }}
         />
       ))}
     </MapContainer>
