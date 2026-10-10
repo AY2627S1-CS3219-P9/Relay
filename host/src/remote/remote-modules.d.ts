@@ -12,7 +12,7 @@ declare module 'userFrontend/App' {
   export default App
 }
 
-declare module 'orderFrontend/App' {
+declare module 'errandFrontend/App' {
   import type { ComponentType } from 'react'
   import type { RemoteAppProps } from '@relay/contracts'
   const App: ComponentType<RemoteAppProps>

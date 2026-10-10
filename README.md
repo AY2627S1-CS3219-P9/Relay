@@ -24,14 +24,14 @@ withdrawn, or exchanged for money, and only circulate within the platform.
 ## Repository Structure
 
 This repository follows a **one-service-per-folder** structure: each
-microservice (`user-service/`, `supplier-service/`, `order-service/`,
+microservice (`user-service/`, `supplier-service/`, `errand-service/`,
 `credit-service/`) lives in its own top-level folder.
 
 ```text
 .
 ├── user-service/
 ├── supplier-service/
-├── order-service/
+├── errand-service/
 ├── credit-service/
 ├── <n2h-service>/
 └── README.md
@@ -61,7 +61,7 @@ docker compose up --build
 
 Open `http://localhost:8080`. The host container serves the host and routes
 all remotes through one origin using `/remotes/supplier/`, `/remotes/user/`,
-`/remotes/order/`, and `/remotes/credit/`.
+`/remotes/errand/`, and `/remotes/credit/`.
 
 The remotes are available on host ports `5001`–`5004` for Docker's internal
 Docker Compose service names. The application itself loads them through the host's
@@ -71,7 +71,7 @@ single public route on port `8080`.
 | -------- | -------------------- | ---------------------------------- |
 | Supplier | `/remotes/supplier/` | `/remotes/supplier/remoteEntry.js` |
 | User     | `/remotes/user/`     | `/remotes/user/remoteEntry.js`     |
-| Order    | `/remotes/order/`    | `/remotes/order/remoteEntry.js`    |
+| Errand   | `/remotes/errand/`   | `/remotes/errand/remoteEntry.js`   |
 | Credit   | `/remotes/credit/`   | `/remotes/credit/remoteEntry.js`   |
 
 Install all workspace dependencies once from the repository root:
@@ -86,14 +86,14 @@ service-owned frontend directories:
 ```bash
 npm run build --workspace=@relay/supplier-frontend
 npm run build --workspace=@relay/user-frontend
-npm run build --workspace=@relay/order-frontend
+npm run build --workspace=@relay/errand-frontend
 npm run build --workspace=@relay/credit-frontend
 npm run dev --workspace=@relay/host
 ```
 
 The host uses stable same-origin remote paths, so no per-machine remote URL
 environment variables are required. The host deployment must rewrite client-side
-paths such as `/suppliers` and `/orders` to its `index.html`.
+paths such as `/suppliers` and `/errands` to its `index.html`.
 
 ## Deployment preparation
 

@@ -1,5 +1,5 @@
-/** Machine-readable errors returned by the Order Service. */
-export const OrderErrors = {
+/** Machine-readable errors returned by the Errand Service. */
+export const ErrandErrors = {
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   UNAUTHENTICATED: 'UNAUTHENTICATED',
   FORBIDDEN: 'FORBIDDEN',
@@ -11,10 +11,10 @@ export const OrderErrors = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 
-export type OrderErrorCode = (typeof OrderErrors)[keyof typeof OrderErrors]
+export type ErrandErrorCode = (typeof ErrandErrors)[keyof typeof ErrandErrors]
 
-export type OrderError = {
-  code: OrderErrorCode
+export type ErrandError = {
+  code: ErrandErrorCode
   message: string
   fieldErrors?: Record<string, string>
 }

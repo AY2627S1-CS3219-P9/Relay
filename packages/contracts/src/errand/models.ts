@@ -1,5 +1,5 @@
 /** States in the errand lifecycle. */
-export const OrderStatus = {
+export const ErrandStatus = {
   Open: 'OPEN',
   Accepted: 'ACCEPTED',
   PickedUp: 'PICKED_UP',
@@ -9,23 +9,23 @@ export const OrderStatus = {
   Confirmed: 'CONFIRMED',
 } as const
 
-export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+export type ErrandStatus = (typeof ErrandStatus)[keyof typeof ErrandStatus]
 
-/** A location snapshot stored with an order. */
-export type OrderLocation = {
+/** A location snapshot stored with an errand. */
+export type ErrandLocation = {
   lat: number
   lng: number
   description: string
 }
 
-/** Delivery information owned by the Order Service. */
+/** Delivery information owned by the Errand Service. */
 export type DeliveryDetails = {
   address: string
   instructions?: string
 }
 
-/** The public Order Service representation of an errand. */
-export type Order = {
+/** The public Errand Service representation of an errand. */
+export type Errand = {
   id: string
   /** Cognito sub of the user who created the errand. */
   requesterSub: string
@@ -33,10 +33,10 @@ export type Order = {
   courierSub: string | null
   /** Supplier Service identifier, when a supplier is selected. */
   supplierId: string | null
-  pickupLocation: OrderLocation
+  pickupLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
-  status: OrderStatus
+  status: ErrandStatus
   expiresAt: string
   createdAt: string
   updatedAt: string

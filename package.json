@@ -7,12 +7,12 @@
     "supplier-service/backend",
     "user-service/frontend",
     "user-service/backend",
-    "order-service/frontend",
+    "errand-service/frontend",
     "credit-service/frontend",
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail \"npm run dev --workspace @relay/host\" \"npm run dev --workspace @relay/supplier-frontend\" \"npm run dev --workspace @relay/user-frontend\" \"npm run dev --workspace @relay/order-frontend\" \"npm run dev --workspace @relay/credit-frontend\"",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev --workspace @relay/host\" \"npm run dev --workspace @relay/supplier-frontend\" \"npm run dev --workspace @relay/user-frontend\" \"npm run dev --workspace @relay/errand-frontend\" \"npm run dev --workspace @relay/credit-frontend\"",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:services",

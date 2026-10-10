@@ -20,9 +20,9 @@ export const REMOTE_REGISTRY = {
     entry: '/remotes/user/remoteEntry.js',
     exposedModule: './App',
   },
-  order: {
-    name: 'orderFrontend',
-    entry: '/remotes/order/remoteEntry.js',
+  errand: {
+    name: 'errandFrontend',
+    entry: '/remotes/errand/remoteEntry.js',
     exposedModule: './App',
   },
   credit: {
