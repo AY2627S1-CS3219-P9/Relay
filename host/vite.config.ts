@@ -14,6 +14,17 @@ export default defineConfig(({ mode }) => {
     // Docker, locally, and through a Codespaces forwarded port.
     server: {
       proxy: {
+        // Keep browser requests same-origin during local development. The
+        // backend services use separate host ports because both default to
+        // port 3000 inside their Docker containers.
+        '/api/user': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+        '/api/supplier': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
         '/remotes/supplier': {
           target: 'http://localhost:5001',
           changeOrigin: true,

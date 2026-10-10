@@ -95,6 +95,64 @@ The host uses stable same-origin remote paths, so no per-machine remote URL
 environment variables are required. The host deployment must rewrite client-side
 paths such as `/suppliers` and `/orders` to its `index.html`.
 
+### Minimal Docker development
+
+Developers can run only the stateful or infrastructure dependencies in Docker
+and run the Relay services directly with npm. This avoids building the host and
+frontend containers during normal development.
+
+Install dependencies first:
+
+```bash
+npm install
+```
+
+Start the PostgreSQL containers needed by the local backends:
+
+```bash
+docker compose up -d user-postgres supplier-db
+```
+
+Build the local Floci image once, then start it in a separate terminal:
+
+```bash
+docker build -t floci-sa ./floci
+./floci/run-floci.sh
+```
+
+In another terminal, start the frontend and backend development processes:
+
+```bash
+npm run dev
+```
+
+The local development topology is:
+
+| Component | Address |
+| --- | --- |
+| Host frontend | `http://localhost:8080` |
+| Supplier frontend | `http://localhost:5001` |
+| User frontend | `http://localhost:5002` |
+| Order frontend | `http://localhost:5003` |
+| Credit frontend | `http://localhost:5004` |
+| Supplier API | `http://localhost:3000` |
+| User API | `http://localhost:3001` |
+| Floci | `http://localhost:4566` |
+| User PostgreSQL | `localhost:5432` |
+| Supplier PostgreSQL | `localhost:5433` |
+
+The local Vite host proxies `/api/user` to the user API and `/api/supplier`
+to the supplier API. The user backend generates Prisma Client and applies
+pending migrations when it starts.
+
+Do not run the full `docker compose up` workflow at the same time as
+`npm run dev`; both workflows use the same host ports. To stop the minimal
+development dependencies, run:
+
+```bash
+docker compose stop user-postgres supplier-db
+```
+
 ## Deployment preparation
 
 The Docker Compose setup is also the local reference topology for a future
