@@ -1,6 +1,7 @@
 import { Day, ServiceType } from '@relay/contracts'
 import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
 import type { Supplier } from '@relay/contracts'
+import type { CSSProperties } from 'react'
 
 const serviceLabels: Record<ServiceType, string> = {
   [ServiceType.Food]: 'Food',
@@ -23,15 +24,21 @@ const dayLabels: Record<Day, string> = {
 export function SupplierDetailCard({
   supplier,
   onClose,
+  style,
 }: {
   supplier: Supplier
   onClose: () => void
+  style?: CSSProperties
 }) {
   return (
-    <GlassCard as="aside" className="supplier-detail-card" aria-label={`${supplier.name} details`}>
+    <GlassCard
+      as="aside"
+      className="supplier-detail-card"
+      style={style}
+      aria-label={`${supplier.name} details`}
+    >
       <div className="supplier-card-header">
         <div>
-          <span className="supplier-kicker">Supplier</span>
           <h2>{supplier.name}</h2>
         </div>
         <IconButton
@@ -63,8 +70,7 @@ export function SupplierDetailCard({
         ))}
       </div>
       <div className="errand-placeholder">
-        <span className="supplier-kicker">Available errands</span>
-        <p>No errands are available for this supplier yet.</p>
+        <p>Available errands</p>
       </div>
     </GlassCard>
   )
