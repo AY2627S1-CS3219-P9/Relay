@@ -15,12 +15,13 @@ export type ErrandStatus = (typeof ErrandStatus)[keyof typeof ErrandStatus]
 export type ErrandLocation = {
   lat: number
   lng: number
-  description: string
+  buildingName: string
+  floorNumber: number
 }
 
 /** Delivery information owned by the Errand Service. */
 export type DeliveryDetails = {
-  address: string
+  description: string
   instructions?: string
 }
 
