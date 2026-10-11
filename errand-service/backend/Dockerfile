@@ -24,8 +24,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/errand-service/backend/package.json ./errand-service/backend/
 COPY --from=build /app/errand-service/backend/dist ./errand-service/backend/dist
+COPY --from=build /app/errand-service/backend/src ./errand-service/backend/src
 COPY --from=build /app/errand-service/backend/prisma ./errand-service/backend/prisma
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=errand-service/backend/prisma/schema.prisma && node errand-service/backend/dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=errand-service/backend/prisma/schema.prisma && npx tsx errand-service/backend/src/server.ts"]

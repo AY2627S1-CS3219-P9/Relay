@@ -51,6 +51,8 @@ services:
         condition: service_healthy
       errand-frontend:
         condition: service_healthy
+      errand-api:
+        condition: service_healthy
       credit-frontend:
         condition: service_healthy
     healthcheck:
@@ -105,6 +107,9 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    depends_on:
+      errand-api:
+        condition: service_healthy
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked errand-api dependency when its API exists.
 
@@ -164,6 +169,8 @@ services:
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
     depends_on:
+      errand-api:
+        condition: service_healthy
       supplier-db:
         condition: service_healthy
       user-api:
@@ -204,10 +211,29 @@ services:
       timeout: 3s
       retries: 5
   #
-  # errand-api:
-  #   build:
-  #     context: ./errand-service/backend
-  #   expose: ["3000"]
+  errand-api:
+    build:
+      context: .
+      dockerfile: errand-service/backend/Dockerfile
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
+      USER_API_URL: http://user-api:3000
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      ERRAND_SERVICE_TIMEOUT_MS: '5000'
+    depends_on:
+      errand-postgres:
+        condition: service_healthy
+      user-api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
   #
   # credit-api:
   #   build:
