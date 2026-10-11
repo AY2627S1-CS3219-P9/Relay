@@ -2,8 +2,11 @@ import express, { type ErrorRequestHandler } from 'express'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
-import { errandRouter } from './routes/errand.routes.js'
 import { sessionMiddleware } from './middleware/session.middleware.js'
+import { ErrandRepository } from './repositories/errand.repository.js'
+import { ErrandService } from './services/errand.service.js'
+import { ErrandController } from './controllers/errand.controller.js'
+import { createErrandRouter } from './routes/errand.routes.js'
 
 export function createApp() {
   const app = express()
@@ -17,6 +20,11 @@ export function createApp() {
   app.get('/healthz', (_req, res) => {
     res.status(200).send('ok\n')
   })
+
+  const repository = new ErrandRepository()
+  const service = new ErrandService(repository)
+  const controller = new ErrandController(service)
+  const errandRouter = createErrandRouter(controller)
 
   app.use('/api/errands', sessionMiddleware, errandRouter)
 
