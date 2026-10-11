@@ -13,3 +13,9 @@ export type GetErrandResponse = {
 }
 
 export type DeleteErrandResponse = undefined
+
+/** Response from supplier event processing. */
+export type SupplierEventsResponse = {
+  processed: boolean
+  affectedErrandIds: string[]
+}
