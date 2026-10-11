@@ -17,3 +17,11 @@ export interface UpdateSupplierRequest {
   operatingHours?: OperatingHours
   serviceTypes?: ServiceType[]
 }
+
+/** Query parameters for filtering the supplier list */
+export interface GetSuppliersFilterParams {
+  /** Operational status filter; 'all' or omitted means no status filter */
+  status?: 'all' | 'operational' | 'not-operational'
+  /** Service types to match (OR); an empty array matches no supplier */
+  serviceTypes?: ServiceType[]
+}

@@ -54,7 +54,16 @@ export function createHttpSupplierApi(): SupplierApi {
   }
 
   return {
-    getSuppliers: () => request<GetSuppliersResponse>(''),
+    getSuppliers: (filters) => {
+      const params = new URLSearchParams()
+      if (filters?.status) params.append('status', filters.status)
+      // Only send serviceTypes if non-empty (backend handles missing as "all")
+      if (filters?.serviceTypes && filters.serviceTypes.length > 0) {
+        params.append('serviceTypes', JSON.stringify(filters.serviceTypes))
+      }
+      const query = params.toString()
+      return request<GetSuppliersResponse>(query ? `?${query}` : '')
+    },
     getSupplier: (id) => request<GetSupplierResponse>(`/${encodeURIComponent(id)}`),
     addSupplier: (requestBody) =>
       request<CreateSupplierResponse>('', { method: 'POST', body: JSON.stringify(requestBody) }),
