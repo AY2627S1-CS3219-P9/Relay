@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ErrandStatus {
+  OPEN
+  ACCEPTED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+  EXPIRED
+  CONFIRMED
+}
+
+model Errand {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Cognito identity keys. These are intentionally not foreign keys because
+  // identity ownership is managed by the User Service.
+  requesterSub String
+  courierSub   String?
+
+  // Supplier Service identifier. Supplier data is owned by another service.
+  supplierId String?
+
+  pickupLat          Float
+  pickupLng          Float
+  pickupBuildingName String
+  pickupFloorNumber  Int
+
+  deliveryDescription  String
+  deliveryInstructions String?
+
+  creditAmount Int
+  status       ErrandStatus @default(OPEN)
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([requesterSub])
+  @@index([courierSub])
+  @@index([supplierId])
+  @@index([status, expiresAt])
+  @@map("errands")
+}
