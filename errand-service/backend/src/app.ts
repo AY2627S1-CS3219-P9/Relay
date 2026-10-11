@@ -1,7 +1,9 @@
 import express, { type ErrorRequestHandler } from 'express'
+import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
 import { errandRouter } from './routes/errand.routes.js'
+import { sessionMiddleware } from './middleware/session.middleware.js'
 
 export function createApp() {
   const app = express()
@@ -16,7 +18,7 @@ export function createApp() {
     res.status(200).send('ok\n')
   })
 
-  app.use('/api/errands', errandRouter)
+  app.use('/api/errands', sessionMiddleware, errandRouter)
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof ErrandServiceError) {
@@ -25,7 +27,7 @@ export function createApp() {
     }
 
     console.error(error)
-    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Internal server error' })
+    res.status(500).json({ code: ErrandErrors.INTERNAL_ERROR, message: 'Internal server error' })
   }
 
   app.use(errorHandler)
