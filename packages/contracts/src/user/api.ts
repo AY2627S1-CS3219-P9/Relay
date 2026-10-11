@@ -86,7 +86,7 @@ export interface UserApi {
  * Private backend-to-backend session validation boundary.
  *
  * This is deliberately separate from `UserApi`: browser clients call
- * `getSession()`, while Supplier, Order, and Credit forward the original
+ * `getSession()`, while Supplier, Errand, and Credit forward the original
  * browser `Cookie` header to `POST /internal/user/session/validate` and
  * authenticate themselves with a service credential. No service accepts a
  * browser session token in a query parameter or calls Cognito directly. The

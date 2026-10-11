@@ -5,11 +5,11 @@ import { federation } from '@module-federation/vite'
 // IMPORTANT: Add this config to REMOTE_REGISTRY in the host service to register it
 // configure Module Federation to expose component
 export default defineConfig({
-  base: '/remotes/order/',
+  base: '/remotes/errand/',
   plugins: [
     react(),
     federation({
-      name: 'orderFrontend',
+      name: 'errandFrontend',
       filename: 'remoteEntry.js',
       exposes: { './App': './src/App.tsx' },
       shared: {

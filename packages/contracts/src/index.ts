@@ -1,4 +1,4 @@
-export type ServiceId = 'supplier' | 'user' | 'order' | 'credit'
+export type ServiceId = 'supplier' | 'user' | 'errand' | 'credit'
 
 export type ServiceMetadata = {
   id: ServiceId
@@ -61,11 +61,11 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
     description: 'Manage your Relay profile and student identity.',
     path: '/users',
   },
-  order: {
-    id: 'order',
-    label: 'Order service',
+  errand: {
+    id: 'errand',
+    label: 'Errand service',
     description: 'Create, accept, and track campus errand requests.',
-    path: '/orders',
+    path: '/errands',
   },
   credit: {
     id: 'credit',
@@ -77,3 +77,4 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
 
 export * from './user'
 export * from './supplier'
+export * from './errand'

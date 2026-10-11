@@ -33,7 +33,7 @@ services:
         condition: service_healthy
       user-frontend:
         condition: service_healthy
-      order-frontend:
+      errand-frontend:
         condition: service_healthy
       credit-frontend:
         condition: service_healthy
@@ -78,10 +78,10 @@ services:
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked user-api dependency when its API exists.
 
-  order-frontend:
+  errand-frontend:
     build:
       context: .
-      dockerfile: order-service/frontend/Dockerfile
+      dockerfile: errand-service/frontend/Dockerfile
     ports:
       - '5003:80'
     healthcheck:
@@ -90,7 +90,7 @@ services:
       timeout: 3s
       retries: 5
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
-    # Add a health-checked order-api dependency when its API exists.
+    # Add a health-checked errand-api dependency when its API exists.
 
   credit-frontend:
     build:
@@ -188,9 +188,9 @@ services:
       timeout: 3s
       retries: 5
   #
-  # order-api:
+  # errand-api:
   #   build:
-  #     context: ./order-service/backend
+  #     context: ./errand-service/backend
   #   expose: ["3000"]
   #
   # credit-api:
