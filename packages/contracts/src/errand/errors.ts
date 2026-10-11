@@ -1,6 +1,6 @@
 /** Machine-readable errors returned by the Errand Service. */
 export const ErrandErrors = {
-  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  INVALID_ERRAND: 'INVALID_ERRAND',
   UNAUTHENTICATED: 'UNAUTHENTICATED',
   FORBIDDEN: 'FORBIDDEN',
   NOT_FOUND: 'NOT_FOUND',
