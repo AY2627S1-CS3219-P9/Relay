@@ -15,6 +15,22 @@ services:
       timeout: 5s
       retries: 10
 
+  errand-postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_DB: relay_errand
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+    volumes:
+      - errand-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U relay -d relay_errand']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
   # publishing its port. The host is the browser-facing API boundary.
@@ -200,3 +216,4 @@ services:
 
 volumes:
   user-postgres-data:
+  errand-postgres-data:
