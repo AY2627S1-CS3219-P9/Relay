@@ -13,6 +13,7 @@ export class ErrandServiceError extends Error {
     public readonly code: ErrandErrorCode,
     message: string,
     public readonly statusCode = 500,
+    public readonly fieldErrors?: Record<string, string>,
   ) {
     super(message)
     this.name = 'ErrandServiceError'

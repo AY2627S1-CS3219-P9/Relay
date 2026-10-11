@@ -22,7 +22,11 @@ export function createApp() {
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof ErrandServiceError) {
-      res.status(error.statusCode).json({ code: error.code, message: error.message })
+      res.status(error.statusCode).json({
+        code: error.code,
+        message: error.message,
+        ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
+      })
       return
     }
 
