@@ -1,5 +1,13 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import relayHandoffLogo from './assets/relay-handoff.png'
+
+export type BubbleAnchor = {
+  top: number
+  left: number
+  right: number
+  bottom: number
+}
 
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
 
@@ -39,6 +47,50 @@ export function TextButton({
     >
       {children}
     </button>
+  )
+}
+
+export function Spacer({ className = '' }: { className?: string }) {
+  return <span aria-hidden="true" className={`relay-spacer${className ? ` ${className}` : ''}`} />
+}
+
+export function BubblePopover({
+  anchor,
+  children,
+  className = '',
+  open = true,
+}: {
+  anchor?: BubbleAnchor
+  children: ReactNode
+  className?: string
+  open?: boolean
+}) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [ready, setReady] = useState(false)
+
+  useLayoutEffect(() => {
+    setReady(false)
+    if (!open || !anchor || !contentRef.current) return
+    const content = contentRef.current.firstElementChild
+    if (!content) return
+    const card = content.getBoundingClientRect()
+    const anchorX = (anchor.left + anchor.right) / 2
+    const anchorY = (anchor.top + anchor.bottom) / 2
+    contentRef.current.style.setProperty('--relay-bubble-origin-x', `${anchorX - card.left}px`)
+    contentRef.current.style.setProperty('--relay-bubble-origin-y', `${anchorY - card.top}px`)
+    const frame = window.requestAnimationFrame(() => setReady(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [anchor, open])
+
+  if (!open) return <>{children}</>
+
+  return (
+    <div
+      ref={contentRef}
+      className={`relay-bubble-popover${ready ? ' relay-bubble-popover-ready' : ''}${className ? ` ${className}` : ''}`}
+    >
+      {children}
+    </div>
   )
 }
 
@@ -101,6 +153,56 @@ export function LocationIcon({ className = '' }: { className?: string }) {
         d="M32 76L156 18C166 13 176 23 171 33L113 157C108 168 92 165 92 153V101H32C20 101 14 84 32 76Z"
         fill="currentColor"
       />
+    </svg>
+  )
+}
+
+export function BoltIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M13.2 2 5 13h5.7L9.8 22 19 10.5h-5.8L13.2 2Z" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function BellIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 6 2.5 6.5 2.5 8H4c0-1.5 2.5-2 2.5-8ZM10 21h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function ClipboardPlusIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M9 4h6m-5 0a2 2 0 0 1 4 0m-6 0H6.5A1.5 1.5 0 0 0 5 5.5v14A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M15 17h6m-3-3v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function StorePlusIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M4 10v10h11M4 10l2-5h12l2 5M4 10c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2-2 0 1.1.9 2 2 2s2-.9 2-2M8 20v-5h4v5m7-5v6m-3-3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function PencilIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="m4 16.5-.7 3.7 3.7-.7L18.8 7.7a2.1 2.1 0 0 0-3-3L4 16.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m14.5 6.5 3 3" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+export function PlusIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }

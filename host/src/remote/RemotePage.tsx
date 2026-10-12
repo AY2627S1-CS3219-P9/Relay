@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
-import { GlassCard, LoadingState } from '@relay/ui'
+import { BubblePopover, GlassCard, LoadingState, type BubbleAnchor } from '@relay/ui'
 import { loadServiceRemote } from './RemoteLoader'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
 
@@ -20,6 +20,7 @@ type RemotePageProps = {
   overlay?: boolean
   card?: boolean
   cardStyle?: CSSProperties
+  bubbleAnchor?: BubbleAnchor
 }
 
 type RemoteComponent = LazyExoticComponent<ComponentType<RemoteAppProps>>
@@ -64,6 +65,7 @@ export function RemotePage({
   overlay,
   card,
   cardStyle,
+  bubbleAnchor,
 }: RemotePageProps) {
   const RemoteApp = remoteApps[service]
 
@@ -74,15 +76,17 @@ export function RemotePage({
       style={{ display: visible ? undefined : 'none' }}
     >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-        <GlassCard
-          variant={card ? 'glass' : 'plain'}
-          className={card ? 'remote-profile-card' : ''}
-          style={card ? cardStyle : undefined}
-        >
-          <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
-            <RemoteApp {...appProps} />
-          </Suspense>
-        </GlassCard>
+        <BubblePopover anchor={bubbleAnchor} open={card && Boolean(bubbleAnchor)}>
+          <GlassCard
+            variant={card ? 'glass' : 'plain'}
+            className={card ? 'remote-profile-card' : ''}
+            style={card ? cardStyle : undefined}
+          >
+            <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
+              <RemoteApp {...appProps} />
+            </Suspense>
+          </GlassCard>
+        </BubblePopover>
       </RemoteFailureBoundary>
     </section>
   )

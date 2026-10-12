@@ -92,6 +92,42 @@
 .relay-text-button-bouncy:active:not(:disabled) {
   transform: translateY(1px) scale(0.96);
 }
+.relay-spacer {
+  flex: 1 1 auto;
+}
+.relay-bubble-popover {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.relay-bubble-popover-ready > * {
+  animation: relay-bubble-in 0.42s cubic-bezier(0.22, 1.18, 0.36, 1) both;
+  transform-origin: var(--relay-bubble-origin-x, 50%) var(--relay-bubble-origin-y, 50%);
+}
+@keyframes relay-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .relay-bubble-popover-ready > * {
+    animation-duration: 0.12s;
+    animation-name: relay-bubble-fade-in;
+  }
+}
+@keyframes relay-bubble-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 .relay-icon-button {
   display: inline-grid;
   width: calc(34px * var(--relay-icon-button-scale, 1));
