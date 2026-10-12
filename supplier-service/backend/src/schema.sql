@@ -22,6 +22,10 @@ ON suppliers (
   ((location->>'lng')::numeric)
 );
 
+-- Indexes supporting backend filtering
+CREATE INDEX IF NOT EXISTS idx_suppliers_operational ON suppliers (is_operational);
+CREATE INDEX IF NOT EXISTS idx_suppliers_service_types ON suppliers USING GIN (service_types);
+
 -- Trigger to update timestamp on row change
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

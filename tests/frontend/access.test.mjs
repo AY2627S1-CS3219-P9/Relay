@@ -6,7 +6,7 @@ const shellUrl = (process.env.RELAY_SHELL_URL ?? 'http://localhost:8080').replac
 const frontendServices = [
   { id: 'supplier', federationName: 'supplierFrontend' },
   { id: 'user', federationName: 'userFrontend' },
-  { id: 'order', federationName: 'orderFrontend' },
+  { id: 'errand', federationName: 'errandFrontend' },
   { id: 'credit', federationName: 'creditFrontend' },
 ]
 

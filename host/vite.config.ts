@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
         },
-        '/remotes/order': {
+        '/remotes/errand': {
           target: 'http://localhost:5003',
           changeOrigin: true,
           ws: true,

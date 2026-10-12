@@ -7,7 +7,7 @@
     "supplier-service/backend",
     "user-service/frontend",
     "user-service/backend",
-    "order-service/frontend",
+    "errand-service/frontend",
     "credit-service/frontend",
     "packages/*"
   ],

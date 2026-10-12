@@ -5,7 +5,8 @@ import './styles.css'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
-import type { ServiceType, Supplier, SupplierApi } from '@relay/contracts'
+import { ServiceType } from '@relay/contracts'
+import type { Supplier, SupplierApi } from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
@@ -53,8 +54,10 @@ export default function App({
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
   const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState<SupplierFilters>({ status: 'all', serviceTypes: [] })
-  const [sort, setSort] = useState<'operational' | 'service-type'>('operational')
+  const [filters, setFilters] = useState<SupplierFilters>({
+    status: 'all',
+    serviceTypes: Object.values(ServiceType),
+  })
   const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
@@ -110,16 +113,35 @@ export default function App({
     return { left, top, width: cardWidth, transform: 'none' }
   }
 
+  // Debounce filter changes to reduce API calls
+  function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setDebouncedValue(value)
+      }, delay)
+      return () => clearTimeout(timer)
+    }, [value, delay])
+
+    return debouncedValue
+  }
+
+  const debouncedFilters = useDebounce(filters, 300)
+
   useEffect(() => {
     void activeApi
-      .getSuppliers()
+      .getSuppliers({ status: debouncedFilters.status, serviceTypes: debouncedFilters.serviceTypes })
       .then(({ suppliers: loadedSuppliers }) => {
         setSuppliers(loadedSuppliers)
         setErrorMessage('')
       })
-      .catch((error) => {
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load suppliers.')
+      .catch((error: Error) => {
+        setErrorMessage(error.message)
       })
+  }, [activeApi, authVersion, debouncedFilters])
+
+  useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
@@ -130,36 +152,13 @@ export default function App({
       () => undefined,
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
     )
-  }, [activeApi, authVersion])
-
-  const visibleSuppliers = useMemo(() => {
-    const filtered = suppliers.filter((supplier) => {
-      const matchesStatus =
-        filters.status === 'all' ||
-        (filters.status === 'operational' && supplier.isOperational) ||
-        (filters.status === 'not-operational' && !supplier.isOperational)
-      const matchesServiceTypes =
-        filters.serviceTypes.length === 0 ||
-        filters.serviceTypes.some((serviceType: ServiceType) =>
-          supplier.serviceTypes.includes(serviceType),
-        )
-      return matchesStatus && matchesServiceTypes
-    })
-    return [...filtered].sort((left, right) => {
-      if (sort === 'operational' && left.isOperational !== right.isOperational)
-        return left.isOperational ? -1 : 1
-      return (
-        (left.serviceTypes[0] ?? Number.MAX_SAFE_INTEGER) -
-          (right.serviceTypes[0] ?? Number.MAX_SAFE_INTEGER) || left.name.localeCompare(right.name)
-      )
-    })
-  }, [filters, sort, suppliers])
+  }, [])
 
   return (
     <main className="supplier-app">
       <SupplierMap
         center={center}
-        suppliers={visibleSuppliers}
+        suppliers={suppliers}
         userLocation={userLocation}
         onSelect={(supplier, anchor, nearby) => {
           setSelectedSupplier(undefined)
@@ -287,9 +286,7 @@ export default function App({
       {showFilters && (
         <SupplierFilterPanel
           filters={filters}
-          sort={sort}
           onChange={setFilters}
-          onSortChange={setSort}
           onClose={() => setShowFilters(false)}
         />
       )}
