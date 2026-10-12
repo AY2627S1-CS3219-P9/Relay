@@ -31,12 +31,146 @@ export class ErrandService {
     return this.repository.listVisibleTo(user.sub)
   }
 
+  async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
+    return this.repository.listOpenBySupplier(supplierId)
+  }
+
   async getErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
     return errand
+  }
+
+  async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findOpenById(id)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    if (errand.courierSub !== null) {
+      throw new ErrandServiceError(
+        ErrandErrors.CONFLICT,
+        'Errand has already been accepted by another courier.',
+        409,
+      )
+    }
+
+    if (errand.requesterSub === courier.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'Requesters cannot accept their own errands.',
+        403,
+      )
+    }
+
+    return this.repository.assignCourier(id, courier.sub)
+  }
+
+  async cancelErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findVisibleById(id, user.sub)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    if (errand.courierSub !== user.sub && errand.requesterSub !== user.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'You do not have permission to cancel this errand.',
+        403,
+      )
+    }
+
+    if (errand.status !== 'ACCEPTED') {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Only accepted errands can be cancelled.',
+        409,
+      )
+    }
+
+    return this.repository.cancel(id)
+  }
+
+  async deliverErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findVisibleById(id, user.sub)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    if (errand.courierSub !== user.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'Only the assigned courier can deliver this errand.',
+        403,
+      )
+    }
+
+    if (errand.status !== 'PICKED_UP') {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Errand must be picked up before it can be delivered.',
+        409,
+      )
+    }
+
+    return this.repository.deliver(id)
+  }
+
+  async confirmErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findVisibleById(id, user.sub)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    // Only the requester can confirm
+    if (errand.requesterSub !== user.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'Only the requester can confirm this errand.',
+        403,
+      )
+    }
+
+    if (errand.status !== 'DELIVERED') {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Errand must be delivered before it can be confirmed.',
+        409,
+      )
+    }
+
+    // Send placeholder credit transfer request to credit service
+    // TODO: Implement actual credit transfer API call to credit-service
+    // await fetch(`${CREDIT_SERVICE_URL}/internal/credit/transfer`, { ... })
+
+    return this.repository.confirm(id)
+  }
+
+  async pickUpErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findVisibleById(id, user.sub)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    if (errand.courierSub !== user.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'Only the assigned courier can pick up this errand.',
+        403,
+      )
+    }
+
+    if (errand.status !== 'ACCEPTED') {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Errand must be accepted before it can be picked up.',
+        409,
+      )
+    }
+
+    return this.repository.pickUp(id)
   }
 
   async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {

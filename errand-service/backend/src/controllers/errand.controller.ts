@@ -24,10 +24,75 @@ export class ErrandController {
     }
   }
 
+  listOpenBySupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const supplierId = String(req.params.supplierId)
+      const errands = await this.service.listOpenBySupplier(supplierId)
+      res.json({ errands })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   get = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const errand = await this.service.getErrand(requireUser(req), String(req.params.id))
       res.json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  accept = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = String(req.params.id)
+      const courier = requireUser(req)
+      const errand = await this.service.acceptErrand(courier, id)
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  cancel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = String(req.params.id)
+      const user = requireUser(req)
+      const errand = await this.service.cancelErrand(user, id)
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  pickUp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = String(req.params.id)
+      const courier = requireUser(req)
+      const errand = await this.service.pickUpErrand(courier, id)
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  deliver = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = String(req.params.id)
+      const courier = requireUser(req)
+      const errand = await this.service.deliverErrand(courier, id)
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  confirm = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = String(req.params.id)
+      const requester = requireUser(req)
+      const errand = await this.service.confirmErrand(requester, id)
+      res.status(200).json({ errand })
     } catch (error) {
       next(error)
     }
