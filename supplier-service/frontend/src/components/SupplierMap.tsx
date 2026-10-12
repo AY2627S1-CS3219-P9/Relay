@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { CircleMarker, MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
+import { useEffect, useMemo, useState } from 'react'
+import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { Supplier } from '@relay/contracts'
 import type { BubbleAnchor } from '@relay/ui'
@@ -12,6 +12,17 @@ const supplierIcon = L.divIcon({
   iconSize: [36, 36],
   iconAnchor: [18, 36],
 })
+
+const markerSize = 36
+const overlapRadius = 24
+
+export function getSupplierAnchor(map: L.Map, supplier: Supplier): BubbleAnchor {
+  const point = map.latLngToContainerPoint([supplier.location.lat, supplier.location.lng])
+  const mapBounds = map.getContainer().getBoundingClientRect()
+  const left = mapBounds.left + point.x - markerSize / 2
+  const top = mapBounds.top + point.y - markerSize
+  return { top, left, right: left + markerSize, bottom: top + markerSize }
+}
 
 function MapCenterController({ center }: { center: MapPoint }) {
   const map = useMap()
@@ -48,6 +59,105 @@ function MapReadyController({ onReady }: { onReady: (map: L.Map) => void }) {
   return null
 }
 
+function SupplierMarkers({
+  suppliers,
+  onSelect,
+}: {
+  suppliers: Supplier[]
+  onSelect: (supplier: Supplier, anchor: BubbleAnchor, nearbySuppliers: Supplier[]) => void
+}) {
+  const map = useMap()
+  const [zoomRevision, setZoomRevision] = useState(0)
+
+  useMapEvents({
+    zoomend: () => setZoomRevision((revision) => revision + 1),
+  })
+
+  const clusters = useMemo(() => {
+    const remaining = new Set(suppliers.map((supplier) => supplier.id))
+    const byId = new Map(suppliers.map((supplier) => [supplier.id, supplier]))
+    const result: Supplier[][] = []
+
+    while (remaining.size > 0) {
+      const firstId = remaining.values().next().value as string
+      const group = [byId.get(firstId)!]
+      remaining.delete(firstId)
+
+      for (let memberIndex = 0; memberIndex < group.length; memberIndex += 1) {
+        const member = group[memberIndex]
+        const memberPoint = map.latLngToContainerPoint([
+          member.location.lat,
+          member.location.lng,
+        ])
+        for (const candidateId of [...remaining]) {
+          const candidate = byId.get(candidateId)!
+          const candidatePoint = map.latLngToContainerPoint([
+            candidate.location.lat,
+            candidate.location.lng,
+          ])
+          if (memberPoint.distanceTo(candidatePoint) <= overlapRadius) {
+            group.push(candidate)
+            remaining.delete(candidateId)
+          }
+        }
+      }
+
+      result.push(group)
+    }
+
+    return result
+  }, [map, suppliers, zoomRevision])
+
+  function selectCluster(cluster: Supplier[], event: L.LeafletMouseEvent) {
+    const element = (event.target as L.Marker).getElement()
+    if (!element) return
+    const { top, left, right, bottom } = element.getBoundingClientRect()
+    onSelect(cluster[0], { top, left, right, bottom }, cluster)
+  }
+
+  return (
+    <>
+      {clusters.map((cluster) => {
+        const clusterKey = cluster
+          .map((supplier) => supplier.id)
+          .sort()
+          .join('-')
+        const position: [number, number] = [
+          cluster[0].location.lat,
+          cluster[0].location.lng,
+        ]
+
+        if (cluster.length === 1) {
+          return (
+            <Marker
+              key={clusterKey}
+              position={position}
+              icon={supplierIcon}
+              eventHandlers={{ click: (event) => selectCluster(cluster, event) }}
+            />
+          )
+        }
+
+        const clusterIcon = L.divIcon({
+          className: 'relay-leaflet-icon supplier-cluster-icon',
+          html: `<span class="supplier-cluster-marker"><span>${cluster.length}</span></span>`,
+          iconSize: [42, 42],
+          iconAnchor: [21, 42],
+        })
+
+        return (
+          <Marker
+            key={clusterKey}
+            position={position}
+            icon={clusterIcon}
+            eventHandlers={{ click: (event) => selectCluster(cluster, event) }}
+          />
+        )
+      })}
+    </>
+  )
+}
+
 export function SupplierMap({
   center,
   suppliers,
@@ -58,7 +168,7 @@ export function SupplierMap({
   center: MapPoint
   suppliers: Supplier[]
   userLocation?: MapPoint
-  onSelect: (supplier: Supplier, anchor: BubbleAnchor) => void
+  onSelect: (supplier: Supplier, anchor: BubbleAnchor, nearbySuppliers: Supplier[]) => void
   onMapReady: (map: L.Map) => void
 }) {
   return (
@@ -77,21 +187,7 @@ export function SupplierMap({
           pathOptions={{ color: '#fff', fillColor: '#007aff', fillOpacity: 1, weight: 3 }}
         />
       )}
-      {suppliers.map((supplier) => (
-        <Marker
-          key={supplier.id}
-          position={[supplier.location.lat, supplier.location.lng]}
-          icon={supplierIcon}
-          eventHandlers={{
-            click: (event) => {
-              const element = (event.target as L.Marker).getElement()
-              if (!element) return
-              const { top, left, right, bottom } = element.getBoundingClientRect()
-              onSelect(supplier, { top, left, right, bottom })
-            },
-          }}
-        />
-      ))}
+      <SupplierMarkers suppliers={suppliers} onSelect={onSelect} />
     </MapContainer>
   )
 }

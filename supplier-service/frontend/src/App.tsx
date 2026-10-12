@@ -24,7 +24,8 @@ import {
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
-import { SupplierMap, type MapPoint } from './components/SupplierMap'
+import { getSupplierAnchor, SupplierMap, type MapPoint } from './components/SupplierMap'
+import { SupplierList } from './components/SupplierList'
 import { SupplierRowButton } from './components/SupplierRowButton'
 import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
 import { createHttpSupplierApi } from './supplierApi'
@@ -50,6 +51,7 @@ export default function App({
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
+  const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<SupplierFilters>({ status: 'all', serviceTypes: [] })
   const [sort, setSort] = useState<'operational' | 'service-type'>('operational')
@@ -159,9 +161,11 @@ export default function App({
         center={center}
         suppliers={visibleSuppliers}
         userLocation={userLocation}
-        onSelect={(supplier, anchor) => {
-          setSelectedSupplier(supplier)
+        onSelect={(supplier, anchor, nearby) => {
+          setSelectedSupplier(undefined)
           setSelectedSupplierAnchor(anchor)
+          setNearbySuppliers(nearby.length > 1 ? nearby : undefined)
+          if (nearby.length === 1) setSelectedSupplier(supplier)
         }}
         onMapReady={handleMapReady}
       />
@@ -289,18 +293,38 @@ export default function App({
           onClose={() => setShowFilters(false)}
         />
       )}
-      {selectedSupplier && (
+      {(selectedSupplier || nearbySuppliers) && (
         <BubblePopover anchor={selectedSupplierAnchor}>
-          <SupplierDetailCard
-            supplier={selectedSupplier}
-            style={
-              selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
-            }
-            onClose={() => {
-              setSelectedSupplier(undefined)
-              setSelectedSupplierAnchor(undefined)
-            }}
-          />
+          {selectedSupplier ? (
+            <SupplierDetailCard
+              supplier={selectedSupplier}
+              style={
+                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
+              }
+              onClose={() => {
+                setSelectedSupplier(undefined)
+                setSelectedSupplierAnchor(undefined)
+                setNearbySuppliers(undefined)
+              }}
+            />
+          ) : (
+            <SupplierList
+              suppliers={nearbySuppliers ?? []}
+              style={
+                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
+              }
+              onSelect={(supplier) => {
+                if (!map) return
+                setSelectedSupplier(supplier)
+                setSelectedSupplierAnchor(getSupplierAnchor(map, supplier))
+                setNearbySuppliers(undefined)
+              }}
+              onClose={() => {
+                setSelectedSupplierAnchor(undefined)
+                setNearbySuppliers(undefined)
+              }}
+            />
+          )}
         </BubblePopover>
       )}
       {isAdmin && adminMode && (

@@ -33,7 +33,7 @@ export function SupplierDetailCard({
   return (
     <GlassCard
       as="aside"
-      className="supplier-detail-card"
+      className="supplier-detail-card supplier-detail-card-transition"
       style={style}
       aria-label={`${supplier.name} details`}
     >
