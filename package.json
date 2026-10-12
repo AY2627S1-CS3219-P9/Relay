@@ -8,6 +8,7 @@
     "user-service/frontend",
     "user-service/backend",
     "errand-service/frontend",
+    "errand-service/backend",
     "credit-service/frontend",
     "packages/*"
   ],
