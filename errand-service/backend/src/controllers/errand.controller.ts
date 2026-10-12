@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
+import { SupplierEventErrors } from '@relay/contracts'
 
 export class ErrandController {
   constructor(private readonly service: ErrandService) {}
@@ -36,6 +37,37 @@ export class ErrandController {
     try {
       await this.service.deleteErrand(requireUser(req), String(req.params.id))
       res.status(204).send()
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  receiveSupplierEvents = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { supplierId, name, location, operatingHours, isOperational, serviceTypes } = req.body
+
+      if (!supplierId) {
+        res.status(400).json({
+          code: SupplierEventErrors.INVALID_EVENT,
+          message: 'supplierId is required',
+        })
+        return
+      }
+
+      const result = await this.service.receiveSupplierEvents({
+        supplierId,
+        name,
+        location,
+        operatingHours,
+        isOperational,
+        serviceTypes,
+      })
+
+      res.json(result)
     } catch (error) {
       next(error)
     }

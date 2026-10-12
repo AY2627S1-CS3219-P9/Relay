@@ -27,7 +27,5 @@ export interface ErrandApi {
    * Receives supplier change notifications from the Supplier Service.
    * Authenticates with `x-errand-service-token` header.
    */
-  receiveSupplierEvents(
-    event: SupplierInfoEvent
-  ): Promise<SupplierEventsResponse>
+  receiveSupplierEvents(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
 }

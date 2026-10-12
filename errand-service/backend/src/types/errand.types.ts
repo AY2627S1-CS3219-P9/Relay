@@ -1,7 +1,4 @@
-import type { 
-  ErrandErrorCode, 
-  UserRole 
-} from '@relay/contracts'
+import type { ErrandErrorCode, UserRole } from '@relay/contracts'
 
 export type AuthenticatedUser = {
   sub: string

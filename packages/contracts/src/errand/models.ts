@@ -1,6 +1,4 @@
-import type { Location, OperatingHours, ServiceType } from '../supplier/models'
-
-export type { Location, ServiceType, OperatingHours } from '../supplier'
+import type { Location, ServiceType, OperatingHours } from '../supplier/models'
 
 /** States in the errand lifecycle. */
 export const ErrandStatus = {
@@ -24,16 +22,6 @@ export type DeliveryDetails = {
   instructions?: string
 }
 
-/** Supplier change event for errand service notifications. */
-export type SupplierInfoEvent = {
-  supplierId: string
-  name?: string
-  location?: ErrandLocation
-  operatingHours?: OperatingHours
-  isOperational?: boolean
-  serviceTypes?: ServiceType[]
-}
-
 /** The public Errand Service representation of an errand. */
 export type Errand = {
   id: string
@@ -50,4 +38,14 @@ export type Errand = {
   expiresAt: string
   createdAt: string
   updatedAt: string
+}
+
+/** Supplier change event for errand service notifications. */
+export type SupplierInfoEvent = {
+  supplierId: string
+  name?: string
+  location?: ErrandLocation
+  operatingHours?: OperatingHours
+  isOperational?: boolean
+  serviceTypes?: ServiceType[]
 }

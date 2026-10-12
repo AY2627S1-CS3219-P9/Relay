@@ -19,10 +19,11 @@ const createErrandSchema = z.object({
   pickupLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().positive(),
-  expiresAt: z.string().datetime({ offset: true }).refine(
-    (value) => new Date(value).getTime() > Date.now(),
-    'Expiry must be in the future',
-  ).optional(),
+  expiresAt: z
+    .string()
+    .datetime({ offset: true })
+    .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
+    .optional(),
 })
 
 export function validateCreateErrand(input: unknown): CreateErrandRequest {
