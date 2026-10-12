@@ -117,7 +117,7 @@ Build the local Floci image once, then start it in a separate terminal:
 
 ```bash
 docker build -t floci-sa ./floci
-./floci/run-floci.sh
+./floci/local-floci.sh
 ```
 
 In another terminal, start the frontend and backend development processes:
