@@ -15,7 +15,7 @@ const deliveryDetailsSchema = z.object({
 })
 
 const createErrandSchema = z.object({
-  supplierId: z.string().trim().min(1).optional(),
+  supplierId: z.string().trim().min(1),
   pickupLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().positive(),
