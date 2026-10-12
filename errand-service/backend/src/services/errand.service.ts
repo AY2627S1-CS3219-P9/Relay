@@ -1,13 +1,13 @@
-import { 
-  ErrandErrors, 
-  type CreateErrandRequest, 
-  type Errand 
+import {
+  ErrandErrors,
+  type CreateErrandRequest,
+  type Errand,
+  type ErrandLocation,
+  type OperatingHours,
+  type ServiceType,
 } from '@relay/contracts'
 import { ErrandRepository } from '../repositories/errand.repository.js'
-import { 
-  ErrandServiceError, 
-  type AuthenticatedUser 
-} from '../types/errand.types.js'
+import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { validateCreateErrand } from '../validators/errand.validator.js'
 
 export class ErrandService {
@@ -53,5 +53,40 @@ export class ErrandService {
         409,
       )
     }
+  }
+
+  async receiveSupplierEvents(event: {
+    supplierId: string
+    name?: string
+    location?: ErrandLocation
+    operatingHours?: OperatingHours
+    isOperational?: boolean
+    serviceTypes?: ServiceType[]
+  }): Promise<{ processed: boolean; affectedErrandIds: string[] }> {
+    if (!event.supplierId) {
+      return {
+        processed: false,
+        affectedErrandIds: [],
+      }
+    }
+
+    const allErrands = await this.repository.findErrandsBySupplier(event.supplierId)
+    const affectedErrands = allErrands.filter((e) => e.status === 'OPEN' || e.status === 'ACCEPTED')
+
+    const affectedIds = affectedErrands.map((e) => e.id)
+
+    if (affectedIds.length === 0) {
+      return { processed: true, affectedErrandIds: [] }
+    }
+
+    await this.repository.updateErrandsBySupplier(event.supplierId, {
+      name: event.name,
+      location: event.location,
+      operatingHours: event.operatingHours,
+      isOperational: event.isOperational,
+      serviceTypes: event.serviceTypes,
+    })
+
+    return { processed: true, affectedErrandIds: affectedIds }
   }
 }

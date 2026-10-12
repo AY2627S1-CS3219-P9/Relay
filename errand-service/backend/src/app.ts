@@ -48,4 +48,17 @@ export function createApp() {
 
 export const app = createApp()
 
-if (process.env.NODE_ENV !== 'test') getEnv()
+if (process.env.NODE_ENV !== 'test') {
+  const env = getEnv()
+  const server = app.listen(env.port, () => {
+    console.log(`Errand Service listening on port ${env.port}`)
+  })
+
+  const shutdown = (signal: string) => {
+    console.log(`${signal} received; shutting down Errand Service.`)
+    server.close(() => process.exit(0))
+  }
+
+  process.once('SIGINT', () => shutdown('SIGINT'))
+  process.once('SIGTERM', () => shutdown('SIGTERM'))
+}
