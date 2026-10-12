@@ -245,8 +245,21 @@ function cloneSupplier(supplier: Supplier): Supplier {
 }
 
 export const mockSupplierApi: SupplierApi = {
-  async getSuppliers() {
-    return { suppliers: seedSuppliers.map(cloneSupplier) }
+  async getSuppliers(filters) {
+    let suppliers = seedSuppliers
+    if (filters?.status && filters.status !== 'all') {
+      const target = filters.status === 'operational'
+      suppliers = suppliers.filter((supplier) => supplier.isOperational === target)
+    }
+    // Backend handles empty serviceTypes filter (return all), but we still respect it for mock consistency
+    if (filters?.serviceTypes && filters.serviceTypes.length > 0) {
+      const selected = filters.serviceTypes
+      // OR logic: supplier must have ANY of the selected service types
+      suppliers = suppliers.filter((supplier) =>
+        selected.some((type) => supplier.serviceTypes.includes(type)),
+      )
+    }
+    return { suppliers: suppliers.map(cloneSupplier) }
   },
   async getSupplier(supplierId: string) {
     const supplier = seedSuppliers.find((candidate) => candidate.id === supplierId)

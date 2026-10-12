@@ -5,11 +5,11 @@ import {
   updateSupplier,
   deleteSupplier,
 } from '../db'
-import type { Supplier } from '@relay/contracts/supplier'
+import type { Supplier, GetSuppliersFilterParams } from '@relay/contracts/supplier'
 
 export class SupplierRepository {
-  async findAll(): Promise<Supplier[]> {
-    const rows = await getSuppliers()
+  async findAll(filters?: GetSuppliersFilterParams): Promise<Supplier[]> {
+    const rows = await getSuppliers(filters)
     return rows.map((row) => ({
       id: row.id,
       name: row.name,

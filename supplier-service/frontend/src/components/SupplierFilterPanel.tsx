@@ -15,15 +15,11 @@ const serviceOptions: Array<{ value: ServiceType; label: string }> = [
 
 export function SupplierFilterPanel({
   filters,
-  sort,
   onChange,
-  onSortChange,
   onClose,
 }: {
   filters: SupplierFilters
-  sort: 'operational' | 'service-type'
   onChange: (filters: SupplierFilters) => void
-  onSortChange: (sort: 'operational' | 'service-type') => void
   onClose: () => void
 }) {
   function toggleServiceType(serviceType: ServiceType) {
@@ -68,13 +64,6 @@ export function SupplierFilterPanel({
           </label>
         ))}
       </fieldset>
-      <label className="filter-label">
-        Sort markers by
-        <select value={sort} onChange={(event) => onSortChange(event.target.value as typeof sort)}>
-          <option value="operational">Operational status</option>
-          <option value="service-type">Service type</option>
-        </select>
-      </label>
     </GlassCard>
   )
 }
