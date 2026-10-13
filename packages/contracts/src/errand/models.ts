@@ -1,4 +1,4 @@
-import type { Location, ServiceType, OperatingHours } from '../supplier/models'
+import type { ServiceType, OperatingHours } from '../supplier/models'
 
 /** States in the errand lifecycle. */
 export const ErrandStatus = {

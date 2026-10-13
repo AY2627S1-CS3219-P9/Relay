@@ -3,7 +3,6 @@ import type {
   GetErrandsOptions,
   SupplierErrandViewRequest,
 } from './requests'
-import type { SupplierInfoEvent } from './models'
 import type {
   CreateErrandResponse,
   DeleteErrandResponse,
@@ -15,7 +14,6 @@ import type {
   DeliverErrandResponse,
   ConfirmErrandResponse,
   CancelErrandResponse,
-  SupplierEventsResponse,
   GetSupplierErrandViewResponse,
 } from './responses'
 
@@ -56,10 +54,4 @@ export interface ErrandApi {
   /** Delete an eligible errand owned by the authenticated requester. */
   deleteErrand(id: string): Promise<DeleteErrandResponse>
 
-  /**
-   * Supplier event receiver (internal).
-   * Receives supplier change notifications from the Supplier Service.
-   * Authenticates with `x-errand-service-token` header.
-   */
-  receiveSupplierEvents(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
 }

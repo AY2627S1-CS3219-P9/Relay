@@ -62,7 +62,34 @@ export function createHttpErrandApi(): ErrandApi {
       })
       return request<GetSupplierErrandViewResponse>(`/supplier-view?${params.toString()}`)
     },
+    listOpenBySupplier: (supplierId: string) =>
+      request<GetErrandsResponse>(`/by-supplier/${encodeURIComponent(supplierId)}`),
     getErrand: (id: string) => request<GetErrandResponse>(`/${encodeURIComponent(id)}`),
+    acceptErrand: (id: string) =>
+      request<import('@relay/contracts/errand').AcceptErrandResponse>(
+        `/${encodeURIComponent(id)}/accept`,
+        { method: 'POST' },
+      ),
+    pickupErrand: (id: string) =>
+      request<import('@relay/contracts/errand').PickupErrandResponse>(
+        `/${encodeURIComponent(id)}/pickup`,
+        { method: 'POST' },
+      ),
+    deliverErrand: (id: string) =>
+      request<import('@relay/contracts/errand').DeliverErrandResponse>(
+        `/${encodeURIComponent(id)}/deliver`,
+        { method: 'POST' },
+      ),
+    confirmErrand: (id: string) =>
+      request<import('@relay/contracts/errand').ConfirmErrandResponse>(
+        `/${encodeURIComponent(id)}/confirm`,
+        { method: 'POST' },
+      ),
+    cancelErrand: (id: string) =>
+      request<import('@relay/contracts/errand').CancelErrandResponse>(
+        `/${encodeURIComponent(id)}/cancel`,
+        { method: 'POST' },
+      ),
     deleteErrand: (id: string) =>
       request<DeleteErrandResponse>(`/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   }

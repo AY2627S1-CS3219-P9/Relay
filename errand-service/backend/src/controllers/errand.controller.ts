@@ -1,8 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
-import { ErrandErrors } from '@relay/contracts'
+import { ErrandErrors, SupplierEventErrors } from '@relay/contracts'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
-import { SupplierEventErrors } from '@relay/contracts'
 import { validateSupplierErrandView } from '../validators/errand.validator.js'
 
 export class ErrandController {
@@ -47,16 +46,6 @@ export class ErrandController {
           ...(supplierId !== undefined ? { supplierId } : {}),
         }),
       )
-      res.json({ errands })
-    } catch (error) {
-      next(error)
-    }
-  }
-
-  listOpenBySupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const supplierId = String(req.params.supplierId)
-      const errands = await this.service.listOpenBySupplier(supplierId)
       res.json({ errands })
     } catch (error) {
       next(error)

@@ -7,6 +7,7 @@ import { ErrandRepository } from './repositories/errand.repository.js'
 import { ErrandService } from './services/errand.service.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
+import { internalServiceAuth } from './middleware/internal.middleware.js'
 
 export function createApp() {
   const app = express()
@@ -26,6 +27,11 @@ export function createApp() {
   const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
 
+  app.post(
+    '/api/errands/internal/errand/supplier-events',
+    internalServiceAuth,
+    controller.receiveSupplierEvents,
+  )
   app.use('/api/errands', sessionMiddleware, errandRouter)
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {

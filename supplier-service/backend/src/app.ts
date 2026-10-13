@@ -24,6 +24,10 @@ app.get('/healthz', (req, res) => {
   res.json({ status: 'ok' })
 })
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' })
+})
+
 // API routes
 app.use('/api/supplier', supplierRouter)
 app.use('/internal/suppliers', internalServiceAuth, internalSupplierRouter)

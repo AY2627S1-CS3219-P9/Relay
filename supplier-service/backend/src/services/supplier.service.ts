@@ -130,7 +130,9 @@ export class SupplierService {
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const response = await fetch(`${ERRAND_API_URL}/internal/errand/supplier-events`, {
+        const response = await fetch(
+          `${ERRAND_API_URL}/api/errands/internal/errand/supplier-events`,
+          {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -144,7 +146,8 @@ export class SupplierService {
             isOperational: updates.isOperational,
             serviceTypes: updates.serviceTypes,
           }),
-        })
+          },
+        )
 
         if (response.ok) {
           console.log(`Successfully notified Errand Service for supplier ${supplierId}`)

@@ -3,6 +3,9 @@ import {
   type CreateErrandRequest, 
   type Errand,
   type GetErrandsOptions,
+  type ErrandLocation,
+  type OperatingHours,
+  type ServiceType,
   type SupplierErrandSummary,
   type SupplierErrandViewRequest,
 } from '@relay/contracts'
@@ -52,6 +55,7 @@ export class ErrandService {
   }
 
   async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
+    await this.repository.expireOpenErrands()
     return this.repository.listOpenBySupplier(supplierId)
   }
 
@@ -65,6 +69,7 @@ export class ErrandService {
   }
 
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
+    await this.repository.expireOpenErrands()
     const errand = await this.repository.findOpenById(id)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
@@ -204,7 +209,7 @@ export class ErrandService {
 
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Only open errands owned by the requester can be deleted.',
+        'Only eligible errands owned by the requester can be deleted.',
         409,
       )
     }
