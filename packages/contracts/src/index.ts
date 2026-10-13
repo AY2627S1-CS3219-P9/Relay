@@ -27,6 +27,12 @@ type FetchSessionOptions = { forceRefresh?: boolean }
 
 export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Session>
 
+export type ErrandViewContext = {
+  supplierId: string
+  scope: 'explore' | 'mine'
+  supplier?: import('./supplier/models').Supplier
+}
+
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
   authVersion?: number
@@ -36,6 +42,8 @@ export type RemoteAppProps = {
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void
   closeProfile?: () => void
+  openErrandView?: (context: ErrandViewContext) => void
+  errandViewContext?: ErrandViewContext
   presentation?: 'full' | 'card'
 }
 

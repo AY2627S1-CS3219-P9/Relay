@@ -7,6 +7,7 @@ import {
   type SupplierErrandViewRequest,
 } from '@relay/contracts'
 import { ErrandRepository } from '../repositories/errand.repository.js'
+import { SupplierClient } from '../clients/supplier.client.js'
 import { 
   ErrandServiceError, 
   type AuthenticatedUser 
@@ -14,7 +15,10 @@ import {
 import { validateCreateErrand } from '../validators/errand.validator.js'
 
 export class ErrandService {
-  constructor(private readonly repository: ErrandRepository) {}
+  constructor(
+    private readonly repository: ErrandRepository,
+    private readonly supplierClient: SupplierClient = new SupplierClient(),
+  ) {}
 
   async createErrand(user: AuthenticatedUser, input: unknown): Promise<Errand> {
     const request: CreateErrandRequest = validateCreateErrand(input)
@@ -26,6 +30,8 @@ export class ErrandService {
         403,
       )
     }
+
+    await this.supplierClient.validateSelection({ supplierId: request.supplierId })
 
     return this.repository.create(user.sub, request)
   }

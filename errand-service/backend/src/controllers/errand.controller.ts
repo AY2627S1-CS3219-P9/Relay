@@ -38,9 +38,13 @@ export class ErrandController {
 
   supplierView = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const supplierId = typeof req.query.supplierId === 'string' ? req.query.supplierId : undefined
       const errands = await this.service.getSupplierErrandView(
         requireUser(req),
-        validateSupplierErrandView(req.body),
+        validateSupplierErrandView({
+          scope: req.query.scope,
+          ...(supplierId !== undefined ? { supplierId } : {}),
+        }),
       )
       res.json({ errands })
     } catch (error) {

@@ -35,6 +35,7 @@ const NUS_CENTER: MapPoint = { lat: 1.2966, lng: 103.7764 }
 export default function App({
   navigateTo,
   openProfile,
+  openErrandView,
   userProfile,
   authVersion,
   api,
@@ -295,6 +296,16 @@ export default function App({
           {selectedSupplier ? (
             <SupplierDetailCard
               supplier={selectedSupplier}
+              onViewErrands={
+                openErrandView
+                  ? () =>
+                      openErrandView({
+                        supplierId: selectedSupplier.id,
+                        scope: activeMode === 'requests' ? 'mine' : 'explore',
+                        supplier: selectedSupplier,
+                      })
+                  : undefined
+              }
               style={
                 selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
               }

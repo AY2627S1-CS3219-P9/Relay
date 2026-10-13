@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import {
   SERVICE_METADATA,
   type FetchSessionHandler,
+  type ErrandViewContext,
   type ProfileAnchor,
   type ServiceId,
   type SessionError,
@@ -41,6 +42,7 @@ function App() {
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [authVersion, setAuthVersion] = useState(0)
+  const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
 
   const fetchSession: FetchSessionHandler = async (options) => {
     const response = await fetch('/api/user/session', {
@@ -135,7 +137,13 @@ function App() {
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
+    if (service !== 'errand') setErrandViewContext(undefined)
     setActiveService(service)
+  }
+
+  function openErrandView(context: ErrandViewContext) {
+    setErrandViewContext(context)
+    setActiveService('errand')
   }
 
   function openProfile(anchor: ProfileAnchor) {
@@ -184,6 +192,8 @@ function App() {
               refreshUserProfile,
               navigateTo,
               openProfile: id === 'supplier' ? openProfile : undefined,
+              openErrandView: id === 'supplier' ? openErrandView : undefined,
+              errandViewContext: id === 'errand' ? errandViewContext : undefined,
               closeProfile: id === 'user' ? closeProfile : undefined,
               presentation: id === 'user' && profileOpen ? 'card' : 'full',
             }}

@@ -168,9 +168,9 @@ services:
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
+      SUPPLIER_TIMEZONE: Asia/Singapore
     depends_on:
-      errand-api:
-        condition: service_healthy
       supplier-db:
         condition: service_healthy
       user-api:
@@ -223,10 +223,14 @@ services:
       DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      INTERNAL_ERRAND_SERVICE_TOKEN: local-internal-errand-service-token
+      SUPPLIER_API_URL: http://supplier-api:3000
+      SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
+      INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
     depends_on:
       errand-postgres:
+        condition: service_healthy
+      supplier-api:
         condition: service_healthy
       user-api:
         condition: service_healthy

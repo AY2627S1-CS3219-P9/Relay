@@ -1,27 +1,98 @@
-:root {
-  font-family: Inter, system-ui, sans-serif;
-  color: #221a35;
-  background: #f8f7fc;
+.errand-page,
+.errand-empty-state {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: clamp(24px, 5vw, 64px);
+  display: grid;
+  place-items: center;
 }
-body {
+
+.errand-view-card {
+  width: min(680px, 100%);
+  max-height: min(760px, calc(100dvh - 48px));
+  box-sizing: border-box;
+  padding: clamp(24px, 4vw, 40px);
+  overflow: auto;
+  animation: errand-card-in 0.34s cubic-bezier(0.22, 1.16, 0.36, 1) both;
+}
+
+.errand-view-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.errand-eyebrow {
+  margin: 0 0 12px;
+  color: var(--relay-text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.errand-view-card h1 {
   margin: 0;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  letter-spacing: -0.04em;
 }
-.service-remote {
-  background: white;
-  border: 1px solid #ded7f5;
-  border-radius: 1rem;
-  padding: 2rem;
+
+.errand-empty-state p:not(.errand-eyebrow),
+.errand-empty-copy {
+  color: var(--relay-text-muted);
 }
-.service-remote h1 {
-  margin: 0.4rem 0;
+
+.errand-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
 }
-.service-remote button {
-  background: #6d28d9;
-  border: 0;
-  border-radius: 0.5rem;
-  color: white;
-  cursor: pointer;
-  font: inherit;
-  margin-top: 1rem;
-  padding: 0.65rem 0.9rem;
+
+.errand-list-item {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.errand-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--relay-text-muted);
+  font-size: 0.86rem;
+}
+
+.errand-list-item p {
+  margin: 14px 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.errand-list-item small {
+  color: var(--relay-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.errand-error {
+  margin-top: 28px;
+  color: #a32626;
+}
+
+@keyframes errand-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .errand-view-card {
+    animation: none;
+  }
 }

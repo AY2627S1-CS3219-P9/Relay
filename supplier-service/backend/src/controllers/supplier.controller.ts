@@ -1,18 +1,18 @@
 import type { NextFunction, Request, Response } from 'express'
 import { SupplierErrors } from '@relay/contracts/supplier'
-import type { GetSuppliersFilterParams, ServiceType } from '@relay/contracts/supplier'
+import type {
+  GetSuppliersFilterParams,
+  ServiceType,
+  ValidateSupplierSelectionRequest,
+} from '@relay/contracts/supplier'
 import type { ApiResult, ValidateSessionResponse } from '@relay/contracts/user'
+import { getEnv } from '../config/env'
 import { SupplierService } from '../services/supplier.service'
 import { validateLocation, validateOperatingHours, validateServiceTypes } from '../validators/supplier.validator'
 
-const USER_API_URL = process.env.USER_API_URL || 'http://user-api:3000'
-const USER_API_TIMEOUT = parseInt(process.env.USER_API_TIMEOUT || '5000', 10)
-const USER_SERVICE_INTERNAL_TOKEN =
-  process.env.USER_SERVICE_INTERNAL_TOKEN || 'local-internal-user-service-token'
-
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<globalThis.Response> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), USER_API_TIMEOUT)
+  const timeoutId = setTimeout(() => controller.abort(), getEnv().userApiTimeoutMs)
 
   try {
     const response = await fetch(url, {
@@ -31,11 +31,12 @@ async function checkAuth(cookieHeader: string): Promise<{ role: 'admin' | 'user'
   }
 
   try {
-    const response = await fetchWithTimeout(`${USER_API_URL}/internal/user/session/validate`, {
+    const env = getEnv()
+    const response = await fetchWithTimeout(`${env.userApiUrl}/internal/user/session/validate`, {
       method: 'POST',
       headers: {
         Cookie: cookieHeader,
-        'x-user-service-token': USER_SERVICE_INTERNAL_TOKEN,
+        'x-user-service-token': env.userServiceInternalToken,
       },
     })
 
@@ -55,6 +56,38 @@ async function checkAuth(cookieHeader: string): Promise<{ role: 'admin' | 'user'
   }
 }
 
+function parseFilters(query: Request['query']):
+  | { filters: GetSuppliersFilterParams }
+  | { error: string } {
+  const { status, serviceTypes } = query
+  const filters: GetSuppliersFilterParams = {}
+
+  if (status !== undefined) {
+    if (status !== 'all' && status !== 'operational' && status !== 'not-operational') {
+      return { error: 'Invalid status filter' }
+    }
+    filters.status = status as GetSuppliersFilterParams['status']
+  }
+
+  if (serviceTypes !== undefined) {
+    let parsedServiceTypes: unknown
+    try {
+      parsedServiceTypes = JSON.parse(serviceTypes as string)
+    } catch {
+      parsedServiceTypes = undefined
+    }
+    if (
+      !Array.isArray(parsedServiceTypes) ||
+      !parsedServiceTypes.every((value) => typeof value === 'number')
+    ) {
+      return { error: 'Invalid serviceTypes filter' }
+    }
+    filters.serviceTypes = parsedServiceTypes as ServiceType[]
+  }
+
+  return { filters }
+}
+
 export class SupplierController {
   constructor(private readonly service: SupplierService) {}
 
@@ -68,40 +101,46 @@ export class SupplierController {
         return
       }
 
-      const { status, serviceTypes } = req.query
-      const filters: GetSuppliersFilterParams = {}
-
-      if (status !== undefined) {
-        if (status !== 'all' && status !== 'operational' && status !== 'not-operational') {
-          res
-            .status(400)
-            .json({ code: SupplierErrors.INVALID_REQUEST, message: 'Invalid status filter' })
-          return
-        }
-        filters.status = status as GetSuppliersFilterParams['status']
+      const parsed = parseFilters(req.query)
+      if ('error' in parsed) {
+        res.status(400).json({ code: SupplierErrors.INVALID_REQUEST, message: parsed.error })
+        return
       }
 
-      if (serviceTypes !== undefined) {
-        let parsedServiceTypes: unknown
-        try {
-          parsedServiceTypes = JSON.parse(serviceTypes as string)
-        } catch {
-          parsedServiceTypes = undefined
-        }
-        if (
-          !Array.isArray(parsedServiceTypes) ||
-          !parsedServiceTypes.every((value) => typeof value === 'number')
-        ) {
-          res
-            .status(400)
-            .json({ code: SupplierErrors.INVALID_REQUEST, message: 'Invalid serviceTypes filter' })
-          return
-        }
-        filters.serviceTypes = parsedServiceTypes as ServiceType[]
-      }
-
-      const suppliers = await this.service.getAllSuppliers(filters)
+      const suppliers = await this.service.getAllSuppliers(parsed.filters)
       res.json({ suppliers: suppliers })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  validateSupplierSelection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const body = req.body as Partial<ValidateSupplierSelectionRequest>
+      if (!body || typeof body.supplierId !== 'string' || body.supplierId.trim() === '') {
+        res.status(400).json({
+          code: SupplierErrors.INVALID_REQUEST,
+          message: 'supplierId is required',
+        })
+        return
+      }
+      if (body.serviceType !== undefined && typeof body.serviceType !== 'number') {
+        res.status(400).json({
+          code: SupplierErrors.INVALID_REQUEST,
+          message: 'serviceType must be a number',
+        })
+        return
+      }
+
+      const result = await this.service.validateSupplierSelection({
+        supplierId: body.supplierId.trim(),
+        ...(body.serviceType !== undefined ? { serviceType: body.serviceType } : {}),
+      })
+      res.json(result)
     } catch (error) {
       next(error)
     }

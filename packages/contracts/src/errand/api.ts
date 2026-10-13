@@ -1,9 +1,14 @@
-import type { CreateErrandRequest, GetErrandsOptions } from './requests'
+import type {
+  CreateErrandRequest,
+  GetErrandsOptions,
+  SupplierErrandViewRequest,
+} from './requests'
 import type {
   CreateErrandResponse,
   DeleteErrandResponse,
   GetErrandResponse,
   GetErrandsResponse,
+  GetSupplierErrandViewResponse,
 } from './responses'
 
 /** Browser-facing Errand Service boundary. */
@@ -13,6 +18,11 @@ export interface ErrandApi {
 
   /** List errands visible to the authenticated user. */
   getErrands(options?: GetErrandsOptions): Promise<GetErrandsResponse>
+
+  /** List errands for a selected supplier in the authenticated user's view. */
+  getSupplierErrandView(
+    request: SupplierErrandViewRequest,
+  ): Promise<GetSupplierErrandViewResponse>
 
   /** Retrieve an errand visible to the authenticated user. */
   getErrand(id: string): Promise<GetErrandResponse>

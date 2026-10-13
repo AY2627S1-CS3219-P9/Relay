@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:3000',
           changeOrigin: true,
         },
+        '/api/errands': {
+          target: 'http://localhost:3002',
+          changeOrigin: true,
+        },
         '/remotes/supplier': {
           target: 'http://localhost:5001',
           changeOrigin: true,

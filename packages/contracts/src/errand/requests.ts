@@ -7,7 +7,7 @@ import type {
 
 /** Request to create an errand. The requester is taken from the session. */
 export type CreateErrandRequest = {
-  supplierId?: string
+  supplierId: string
   pickupLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
@@ -20,6 +20,6 @@ export type GetErrandsOptions = {
 
 export type SupplierErrandViewRequest = {
   scope: SupplierErrandViewScope
-  supplierId?: string
+  supplierId: string
 }
 

@@ -6,6 +6,7 @@ export function createErrandRouter(controller: ErrandController): Router {
 
   router.post('/', controller.create)
   router.get('/', controller.list)
+  router.get('/supplier-view', controller.supplierView)
   router.get('/:id', controller.get)
   router.delete('/:id', controller.delete)
 

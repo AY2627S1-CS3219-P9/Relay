@@ -369,15 +369,10 @@ legend {
   font-size: 0.75rem;
   font-weight: 700;
 }
-.errand-placeholder {
+.errand-actions {
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid rgba(0, 122, 255, 0.14);
-}
-.errand-placeholder p {
-  margin: 8px 0 0;
-  color: var(--relay-text-muted);
-  font-size: 0.9rem;
 }
 .supplier-error {
   position: absolute;

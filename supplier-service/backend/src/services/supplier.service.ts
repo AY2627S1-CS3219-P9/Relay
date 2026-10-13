@@ -2,8 +2,11 @@ import {
   SupplierErrors,
   type Supplier,
   type GetSuppliersFilterParams,
+  type ValidateSupplierSelectionRequest,
+  type ValidateSupplierSelectionResponse,
 } from '@relay/contracts/supplier'
 import { SupplierRepository } from '../repositories/supplier.repository'
+import { isSupplierActive } from './supplier-availability'
 
 
 export class SupplierService {
@@ -15,6 +18,45 @@ export class SupplierService {
 
   async getSupplierById(id: string): Promise<Supplier | null> {
     return await this.repository.findById(id)
+  }
+
+  async validateSupplierSelection(
+    request: ValidateSupplierSelectionRequest,
+  ): Promise<ValidateSupplierSelectionResponse> {
+    const supplier = await this.repository.findById(request.supplierId)
+    if (!supplier) {
+      return {
+        valid: false,
+        supplierId: request.supplierId,
+        code: 'SUPPLIER_NOT_FOUND',
+        message: 'Supplier not found.',
+      }
+    }
+
+    if (!isSupplierActive(supplier)) {
+      return {
+        valid: false,
+        supplierId: request.supplierId,
+        code: 'SUPPLIER_INACTIVE',
+        message: 'The supplier is not currently active.',
+      }
+    }
+
+    // TODO: require serviceType once the Errand create request includes it.
+    if (request.serviceType !== undefined && !supplier.serviceTypes.includes(request.serviceType)) {
+      return {
+        valid: false,
+        supplierId: request.supplierId,
+        code: 'SERVICE_TYPE_NOT_OFFERED',
+        message: 'The supplier does not offer the selected service type.',
+      }
+    }
+
+    return {
+      valid: true,
+      supplierId: request.supplierId,
+      ...(request.serviceType !== undefined ? { serviceType: request.serviceType } : {}),
+    }
   }
 
   async createSupplier(data: {

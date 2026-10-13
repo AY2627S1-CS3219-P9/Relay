@@ -1,5 +1,5 @@
 import { Day, ServiceType } from '@relay/contracts'
-import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
+import { GlassCard, IconButton, RelayButton, StatusBadge } from '@relay/ui'
 import type { Supplier } from '@relay/contracts'
 import type { CSSProperties } from 'react'
 
@@ -24,10 +24,12 @@ const dayLabels: Record<Day, string> = {
 export function SupplierDetailCard({
   supplier,
   onClose,
+  onViewErrands,
   style,
 }: {
   supplier: Supplier
   onClose: () => void
+  onViewErrands?: () => void
   style?: CSSProperties
 }) {
   return (
@@ -69,9 +71,13 @@ export function SupplierDetailCard({
           </span>
         ))}
       </div>
-      <div className="errand-placeholder">
-        <p>Available errands</p>
-      </div>
+      {onViewErrands && (
+        <div className="errand-actions">
+          <RelayButton variant="primary" onClick={onViewErrands}>
+            View errands
+          </RelayButton>
+        </div>
+      )}
     </GlassCard>
   )
 }
