@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '.prisma/user-client'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
 export const prisma = new PrismaClient()

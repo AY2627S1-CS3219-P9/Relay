@@ -1,8 +1,8 @@
 import { 
   Prisma,
-  PrismaClient, 
+  PrismaClient,
   type Errand as PrismaErrand 
-} from '@prisma/client'
+} from '.prisma/errand-client'
 import type { 
   CreateErrandRequest, 
   Errand, 
