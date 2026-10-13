@@ -8,7 +8,7 @@ import type {
   UpdateSupplierRequest,
 } from '@relay/contracts'
 import { Day as Days, ServiceType as ServiceTypes } from '@relay/contracts'
-import { GlassCard, RelayButton } from '@relay/ui'
+import { GlassCard, IconButton, RelayButton } from '@relay/ui'
 
 const dayOptions: Array<{ value: Day; label: string }> = [
   { value: Days.Monday, label: 'Mon' },
@@ -147,22 +147,32 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
     <GlassCard as="aside" className="supplier-admin-panel" aria-label="Supplier administration">
       <div className="supplier-card-header">
         <div>
-          <span className="supplier-kicker">Admin</span>
           <h2>{editing ? 'Update supplier' : 'Add supplier'}</h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close supplier administration">
+        <IconButton
+          scale={1.5}
+          className="icon-button"
+          label="Close supplier administration"
+          onClick={onClose}
+        >
           ×
-        </button>
+        </IconButton>
       </div>
       <form onSubmit={submit}>
         <label>
           Name
-          <input value={name} onChange={(event) => setName(event.target.value)} required />
+          <input
+            className="ios-input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
         </label>
         <div className="supplier-admin-grid">
           <label>
             Latitude
             <input
+              className="ios-input"
               value={lat}
               onChange={(event) => setLat(event.target.value)}
               inputMode="decimal"
@@ -171,6 +181,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Longitude
             <input
+              className="ios-input"
               value={lng}
               onChange={(event) => setLng(event.target.value)}
               inputMode="decimal"
@@ -179,6 +190,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Building
             <input
+              className="ios-input"
               value={buildingName}
               onChange={(event) => setBuildingName(event.target.value)}
               required
@@ -187,6 +199,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Floor
             <input
+              className="ios-input"
               value={floorNumber}
               onChange={(event) => setFloorNumber(event.target.value)}
               inputMode="numeric"
@@ -195,6 +208,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Opens
             <input
+              className="ios-input"
               type="time"
               value={openingTime}
               onChange={(event) => setOpeningTime(event.target.value)}
@@ -203,6 +217,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
           <label>
             Closes
             <input
+              className="ios-input"
               type="time"
               value={closingTime}
               onChange={(event) => setClosingTime(event.target.value)}

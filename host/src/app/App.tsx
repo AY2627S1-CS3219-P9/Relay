@@ -173,6 +173,7 @@ function App() {
             overlay={id === 'user' && profileOpen}
             card={id === 'user' && profileOpen}
             cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
+            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
             appProps={{
               fetchSession,
               authVersion,
