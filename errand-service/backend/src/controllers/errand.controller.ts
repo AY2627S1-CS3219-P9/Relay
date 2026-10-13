@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from 'express'
+import { ErrandErrors } from '@relay/contracts'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
+import { validateSupplierErrandView } from '../validators/errand.validator.js'
 
 export class ErrandController {
   constructor(private readonly service: ErrandService) {}
@@ -16,7 +18,30 @@ export class ErrandController {
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const errands = await this.service.getErrands(requireUser(req))
+      const scope = req.query.scope
+      if (scope !== undefined && scope !== 'mine' && scope !== 'visible') {
+        res.status(400).json({
+          code: ErrandErrors.INVALID_ERRAND,
+          message: 'Invalid errand list scope.',
+          fieldErrors: { scope: 'Scope must be mine or visible.' },
+        })
+        return
+      }
+      const errands = await this.service.getErrands(requireUser(req), {
+        scope: scope as 'mine' | 'visible' | undefined,
+      })
+      res.json({ errands })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  supplierView = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const errands = await this.service.getSupplierErrandView(
+        requireUser(req),
+        validateSupplierErrandView(req.body),
+      )
       res.json({ errands })
     } catch (error) {
       next(error)

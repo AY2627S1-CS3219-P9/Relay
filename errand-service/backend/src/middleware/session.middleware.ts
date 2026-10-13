@@ -4,6 +4,7 @@ import type {
   RequestHandler, 
   Response 
 } from 'express'
+import type { ApiResult, ValidateSessionResponse } from '@relay/contracts'
 import { ErrandErrors } from '@relay/contracts'
 import { 
   getEnv 
@@ -17,19 +18,6 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthenticatedUser
-    }
-  }
-}
-
-type UserSessionResponse = {
-  ok: boolean
-  data?: {
-    user?: {
-      subject: string
-      email: string
-      emailVerified: boolean
-      role: AuthenticatedUser['role']
-      profileCreated: boolean
     }
   }
 }
@@ -62,8 +50,8 @@ export const sessionMiddleware: RequestHandler = async (
       return
     }
 
-    const body = (await response.json()) as UserSessionResponse
-    const user = body.data?.user
+    const body = (await response.json()) as ApiResult<ValidateSessionResponse>
+    const user = body.ok ? body.data.user : undefined
     if (!body.ok || !user?.subject || !user.email) {
       next(new ErrandServiceError(ErrandErrors.UNAUTHENTICATED, 'The session response is invalid.', 401))
       return

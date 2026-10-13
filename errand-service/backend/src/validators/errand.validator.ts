@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import { ErrandErrors, type CreateErrandRequest } from '@relay/contracts'
+import {
+  ErrandErrors,
+  type CreateErrandRequest,
+  type SupplierErrandViewRequest,
+} from '@relay/contracts'
 import { ErrandServiceError } from '../types/errand.types.js'
 
 const errandLocationSchema = z.object({
@@ -25,6 +29,11 @@ const createErrandSchema = z.object({
   ).optional(),
 })
 
+const supplierErrandViewSchema = z.object({
+  scope: z.enum(['explore', 'mine']),
+  supplierId: z.string().trim().min(1).optional(),
+})
+
 export function validateCreateErrand(input: unknown): CreateErrandRequest {
   const result = createErrandSchema.safeParse(input)
   if (result.success) return result.data
@@ -38,6 +47,24 @@ export function validateCreateErrand(input: unknown): CreateErrandRequest {
   throw new ErrandServiceError(
     ErrandErrors.INVALID_ERRAND,
     'The errand request is invalid.',
+    400,
+    fieldErrors,
+  )
+}
+
+export function validateSupplierErrandView(input: unknown): SupplierErrandViewRequest {
+  const result = supplierErrandViewSchema.safeParse(input)
+  if (result.success) return result.data
+
+  const fieldErrors: Record<string, string> = {}
+  for (const issue of result.error.issues) {
+    const field = issue.path.join('.') || 'request'
+    fieldErrors[field] ??= issue.message
+  }
+
+  throw new ErrandServiceError(
+    ErrandErrors.INVALID_ERRAND,
+    'The supplier errand view request is invalid.',
     400,
     fieldErrors,
   )

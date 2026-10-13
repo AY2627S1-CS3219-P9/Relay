@@ -1,4 +1,4 @@
-import type { CreateErrandRequest } from './requests'
+import type { CreateErrandRequest, GetErrandsOptions } from './requests'
 import type {
   CreateErrandResponse,
   DeleteErrandResponse,
@@ -12,7 +12,7 @@ export interface ErrandApi {
   createErrand(request: CreateErrandRequest): Promise<CreateErrandResponse>
 
   /** List errands visible to the authenticated user. */
-  getErrands(): Promise<GetErrandsResponse>
+  getErrands(options?: GetErrandsOptions): Promise<GetErrandsResponse>
 
   /** Retrieve an errand visible to the authenticated user. */
   getErrand(id: string): Promise<GetErrandResponse>
