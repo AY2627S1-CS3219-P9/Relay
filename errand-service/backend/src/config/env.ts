@@ -14,6 +14,7 @@ export type ErrandEnv = {
   supplierApiUrl: string
   supplierServiceToken: string
   supplierTimeoutMs: number
+  errandServiceInternalToken: string
   timeoutMs: number
 }
 
@@ -32,6 +33,8 @@ export function getEnv(): ErrandEnv {
     supplierServiceToken:
       process.env.INTERNAL_SUPPLIER_SERVICE_TOKEN ?? 'local-internal-supplier-service-token',
     supplierTimeoutMs: positiveInteger(process.env.SUPPLIER_SERVICE_TIMEOUT_MS, 5000),
+    errandServiceInternalToken:
+      process.env.ERRAND_SERVICE_INTERNAL_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),
   }
 }

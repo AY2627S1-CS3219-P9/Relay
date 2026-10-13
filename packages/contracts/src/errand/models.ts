@@ -1,3 +1,5 @@
+import type { Location, ServiceType, OperatingHours } from '../supplier/models'
+
 /** States in the errand lifecycle. */
 export const ErrandStatus = {
   Open: 'OPEN',
@@ -52,4 +54,14 @@ export type Errand = {
 /** Privacy-safe errand projection used by supplier map and detail views. */
 export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub' | 'supplierId'> & {
   supplierId: string
+}
+
+/** Supplier change event for errand service notifications. */
+export type SupplierInfoEvent = {
+  supplierId: string
+  name?: string
+  location?: ErrandLocation
+  operatingHours?: OperatingHours
+  isOperational?: boolean
+  serviceTypes?: ServiceType[]
 }

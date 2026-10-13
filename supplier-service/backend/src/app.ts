@@ -20,7 +20,7 @@ const env = getEnv()
 
 app.use(express.json())
 
-app.get('/health', (req, res) => {
+app.get('/healthz', (req, res) => {
   res.json({ status: 'ok' })
 })
 

@@ -4,11 +4,14 @@ import {
   type Errand as PrismaErrand 
 } from '../../../../node_modules/.prisma/errand-client/index.js'
 import type { 
-  CreateErrandRequest, 
-  Errand, 
-  ErrandStatus,
   SupplierErrandSummary,
   SupplierErrandViewRequest,
+  CreateErrandRequest,
+  Errand,
+  ErrandLocation,
+  ErrandStatus,
+  OperatingHours,
+  ServiceType,
 } from '@relay/contracts'
 
 export class ErrandRepository {
@@ -92,13 +95,114 @@ export class ErrandRepository {
     })
     return result.count === 1
   }
+
+  async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
+    const rows = await this.prisma.errand.findMany({
+      where: { supplierId, status: 'OPEN', courierSub: null },
+      orderBy: { createdAt: 'asc' },
+    })
+    return rows.map(toContract)
+  }
+
+  async findOpenById(id: string): Promise<Errand | null> {
+    const row = await this.prisma.errand.findFirst({
+      where: { id, status: 'OPEN', courierSub: null },
+    })
+    return row ? toContract(row) : null
+  }
+
+  async assignCourier(id: string, courierSub: string): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id },
+      data: { courierSub, status: 'ACCEPTED' },
+    })
+    return toContract(row)
+  }
+
+  async cancel(id: string): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+    })
+    return toContract(row)
+  }
+
+  // Internal method for supplier service integration.
+  // Finds errands by supplier ID for notification purposes.
+  async findErrandsBySupplier(supplierId: string): Promise<Errand[]> {
+    const rows = await this.prisma.errand.findMany({ where: { supplierId } })
+    return rows.map(toContract)
+  }
+
+  // Internal method for supplier service integration.
+  // Updates errands when supplier information changes.
+  async updateErrandsBySupplier(
+    supplierId: string,
+    updates: Partial<{
+      name: string
+      location: ErrandLocation
+      operatingHours: OperatingHours
+      isOperational: boolean
+      serviceTypes: ServiceType[]
+    }>,
+  ): Promise<Errand[]> {
+    const rows = await this.prisma.errand.findMany({ where: { supplierId } })
+
+    const updatedRows = await Promise.all(
+      rows.map(async (row: any) => {
+        const changes: any = { updatedAt: new Date() }
+
+        if (updates.location) {
+          changes.pickupLat = updates.location.lat
+          changes.pickupLng = updates.location.lng
+          if (updates.location.buildingName !== undefined) {
+            changes.pickupBuildingName = updates.location.buildingName
+          }
+          if (updates.location.floorNumber !== undefined) {
+            changes.pickupFloorNumber = updates.location.floorNumber
+          }
+        }
+
+        return await this.prisma.errand.update({
+          where: { id: row.id },
+          data: changes,
+        })
+      }),
+    )
+
+    return updatedRows.map(toContract)
+  }
+
+  async pickUp(id: string): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id },
+      data: { status: 'PICKED_UP' },
+    })
+    return toContract(row)
+  }
+
+  async deliver(id: string): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id },
+      data: { status: 'DELIVERED' },
+    })
+    return toContract(row)
+  }
+
+  async confirm(id: string): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id },
+      data: { status: 'CONFIRMED' },
+    })
+    return toContract(row)
+  }
 }
 
 function defaultExpiry(): Date {
   return new Date(Date.now() + 24 * 60 * 60 * 1000)
 }
 
-function toContract(row: PrismaErrand): Errand {
+function toContract(row: any): Errand {
   return {
     id: row.id,
     requesterSub: row.requesterSub,

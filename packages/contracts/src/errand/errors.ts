@@ -18,3 +18,18 @@ export type ErrandError = {
   message: string
   fieldErrors?: Record<string, string>
 }
+
+/** Machine-readable errors for supplier event processing. */
+export const SupplierEventErrors = {
+  INVALID_EVENT: 'INVALID_EVENT',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const
+
+export type SupplierEventErrorCode = (typeof SupplierEventErrors)[keyof typeof SupplierEventErrors]
+
+export type SupplierEventError = {
+  code: SupplierEventErrorCode
+  message: string
+  fieldErrors?: Record<string, string>
+}

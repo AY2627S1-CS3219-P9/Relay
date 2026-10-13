@@ -23,3 +23,8 @@ export type SupplierErrandViewRequest = {
   supplierId: string
 }
 
+/** Request to accept an errand. No body needed - authenticated via session. */
+export type AcceptErrandRequest = {}
+
+/** Request to cancel an errand. No body needed - authenticated via session. */
+export type CancelErrandRequest = {}
