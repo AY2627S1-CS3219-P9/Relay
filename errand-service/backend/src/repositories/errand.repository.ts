@@ -2,7 +2,7 @@ import {
   Prisma,
   PrismaClient,
   type Errand as PrismaErrand 
-} from '.prisma/errand-client'
+} from '../../../../node_modules/.prisma/errand-client/index.js'
 import type { 
   CreateErrandRequest, 
   Errand, 
