@@ -9,9 +9,13 @@ import {
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { validateCreateErrand } from '../validators/errand.validator.js'
+import { EventService } from './event.service.js'
 
 export class ErrandService {
-  constructor(private readonly repository: ErrandRepository) {}
+  constructor(
+    private readonly repository: ErrandRepository,
+    private readonly eventService: EventService,
+  ) {}
 
   async createErrand(user: AuthenticatedUser, input: unknown): Promise<Errand> {
     const request: CreateErrandRequest = validateCreateErrand(input)
@@ -24,7 +28,11 @@ export class ErrandService {
       )
     }
 
-    return this.repository.create(user.sub, request)
+    const errand = await this.repository.create(user.sub, request)
+
+    await this.eventService.onErrandCreated(errand)
+
+    return errand
   }
 
   async getErrands(user: AuthenticatedUser): Promise<Errand[]> {
@@ -69,7 +77,18 @@ export class ErrandService {
       )
     }
 
-    return this.repository.assignCourier(id, courier.sub)
+    const updated = await this.repository.assignCourier(id, courier.sub)
+
+    await this.eventService.onErrandStatusChanged(
+      updated.id,
+      'ACCEPTED',
+      'OPEN',
+      courier.sub,
+      'courier',
+      updated.requesterSub,
+    )
+
+    return updated
   }
 
   async cancelErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -94,7 +113,16 @@ export class ErrandService {
       )
     }
 
-    return this.repository.cancel(id)
+    const cancelled = await this.repository.cancel(id)
+
+    await this.eventService.onErrandCancelled(
+      cancelled.id,
+      user.sub,
+      undefined,
+      cancelled.requesterSub,
+    )
+
+    return cancelled
   }
 
   async deliverErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -119,7 +147,17 @@ export class ErrandService {
       )
     }
 
-    return this.repository.deliver(id)
+    const updated = await this.repository.deliver(id)
+
+    await this.eventService.onErrandStatusChanged(
+      updated.id,
+      'DELIVERED',
+      'PICKED_UP',
+      user.sub,
+      'courier',
+    )
+
+    return updated
   }
 
   async confirmErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -145,11 +183,11 @@ export class ErrandService {
       )
     }
 
-    // Send placeholder credit transfer request to credit service
-    // TODO: Implement actual credit transfer API call to credit-service
-    // await fetch(`${CREDIT_SERVICE_URL}/internal/credit/transfer`, { ... })
+    const confirmed = await this.repository.confirm(id)
 
-    return this.repository.confirm(id)
+    await this.eventService.onErrandCompleted(confirmed)
+
+    return confirmed
   }
 
   async pickUpErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -174,7 +212,17 @@ export class ErrandService {
       )
     }
 
-    return this.repository.pickUp(id)
+    const updated = await this.repository.pickUp(id)
+
+    await this.eventService.onErrandStatusChanged(
+      updated.id,
+      'PICKED_UP',
+      'ACCEPTED',
+      user.sub,
+      'courier',
+    )
+
+    return updated
   }
 
   async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
