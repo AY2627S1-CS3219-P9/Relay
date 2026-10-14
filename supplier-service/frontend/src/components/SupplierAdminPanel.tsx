@@ -144,7 +144,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
   }
 
   return (
-    <RelayFormSurface as="aside" className="supplier-admin-panel" title={editing ? 'Update supplier' : 'Add supplier'} onClose={onClose}>
+    <RelayFormSurface as="aside" className="supplier-admin-panel relay-mobile-sheet-surface" title={editing ? 'Update supplier' : 'Add supplier'} onClose={onClose}>
       <form onSubmit={submit}>
         <label>
           Name

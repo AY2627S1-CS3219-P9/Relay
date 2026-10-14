@@ -5,7 +5,7 @@ import './styles.css'
 import { useCallback, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
-import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge } from '@relay/ui'
+import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge, type BubbleAnchor } from '@relay/ui'
 import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
@@ -17,14 +17,16 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, userLocation, requestUserLocation, mapViewport, onMapViewportChange }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [showFilters, setShowFilters] = useState(false)
   const [location, setLocation] = useState(userLocation)
   const [map, setMap] = useState<LeafletMap>()
+  const [createAnchor, setCreateAnchor] = useState<BubbleAnchor>()
   const [filters, setFilters] = useState<ErrandFilters>({ statuses: ['OPEN', 'ACCEPTED', 'PICKED_UP', 'DELIVERED', 'CONFIRMED'], serviceTypes: [0, 1, 2, 3, 4], sort: 'lifecycle' })
   const view = errandViewContext?.view ?? 'requests'
+  const notificationCount = 2
   const selectedErrand = errands.find((errand) => errand.id === selectedErrandId)
   const isCourierView = view === 'explore' || (errandViewContext?.view === 'supplier' && errandViewContext.scope === 'explore')
   const role = isCourierView ? 'courier' : 'requester'
@@ -42,7 +44,13 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     })
   }, [errands, filters, location])
 
-  function closeRemote() { navigateTo?.('supplier') }
+  function closeRemote() {
+    if (presentation === 'card') {
+      navigateTo?.('supplier')
+      return
+    }
+    openErrandView?.({ view: 'requests' })
+  }
 
   function openProfileCard(button: HTMLButtonElement) {
     if (!openProfile) {
@@ -67,6 +75,20 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     if (next) setLocation(next)
   }
 
+  const createCard = view === 'create' && (
+    <RelayCardAnchor placement={createAnchor ? 'anchored' : 'center-right'} anchor={createAnchor} className="errand-create-popover">
+      <CreateErrandCard
+        initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined}
+        onClose={closeRemote}
+        onCreated={() => openErrandView?.({ view: 'requests' })}
+      />
+    </RelayCardAnchor>
+  )
+
+  if (presentation === 'card' && createCard) {
+    return <main className="errand-create-overlay relay-design-system">{createCard}</main>
+  }
+
   return (
     <main className="errand-map-shell relay-design-system">
       <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} />
@@ -81,9 +103,9 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomIn()} aria-label="Zoom in"><PlusIcon /></RelayButton>
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
       </div>
-      <div className="errand-bottom-controls map-bottom-menu"><RelayButton variant="secondary" size="map-action" className="updates-action"><BellIcon /><span>Updates</span><b>2</b></RelayButton><Spacer /><RelayButton variant="primary" size="map-action" className="new-request-action" onClick={() => { /* TODO: ask the host to open { view: 'create' }. */ openErrandView?.({ view: 'create' }) }}><ClipboardPlusIcon /><span>New request</span></RelayButton></div>
+      <div className="errand-bottom-controls map-bottom-menu"><RelayButton variant="secondary" size="map-action" className="updates-action" aria-label="Updates"><span className="relay-button-icon-badge"><BellIcon className="errand-control-icon" />{notificationCount > 0 && <span className="relay-button-notification-dot" aria-hidden="true" />}</span><span className="errand-control-label">Updates</span></RelayButton><Spacer /><RelayButton variant="primary" size="map-action" className="new-request-action" onClick={(event) => { const { top, left, right, bottom } = event.currentTarget.getBoundingClientRect(); setCreateAnchor({ top, left, right, bottom }); openErrandView?.({ view: 'create' }) }}><ClipboardPlusIcon className="errand-control-icon" /><span className="errand-control-label">New request</span></RelayButton></div>
       {selectedErrand && <RelayCardAnchor placement="center-right" className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => setSelectedErrandId(undefined)} onAction={(action) => updateErrand(action, selectedErrand.id)} /></RelayCardAnchor>}
-      {view === 'create' && <RelayCardAnchor placement="center-right" className="errand-create-popover"><CreateErrandCard initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined} onClose={closeRemote} onCreated={() => { /* TODO: refresh request list after Errand Service confirms creation. */ closeRemote() }} /></RelayCardAnchor>}
+      {createCard}
       {!selectedErrand && view === 'requests' && visibleErrands[0] && <button className="my-request-card" type="button" onClick={() => setSelectedErrandId(visibleErrands[0].id)}><span className="request-card-label">My request <StatusBadge tone={statusTone(visibleErrands[0].status)}>{STATUS_LABELS[visibleErrands[0].status]}</StatusBadge></span><strong>{visibleErrands[0].name}</strong><small>{formatRoute(visibleErrands[0].pickupLocation)} → {formatRoute(visibleErrands[0].deliveryLocation)}</small><em>{visibleErrands[0].creditAmount} cr reserved · Due {formatDeadline(visibleErrands[0].expiresAt)}</em></button>}
       {showFilters && <ErrandFilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)} />}
     </main>

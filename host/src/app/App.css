@@ -33,6 +33,22 @@
 .remote-profile-card::-webkit-scrollbar {
   display: none;
 }
+.errand-create-overlay-page .relay-card-placement-center-right,
+.errand-create-overlay-page .relay-card-placement-anchored {
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  .errand-create-overlay-page .relay-card-placement-center-right,
+  .errand-create-overlay-page .relay-card-placement-anchored {
+    top: auto !important;
+    right: 16px !important;
+    bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    left: 16px !important;
+    width: auto !important;
+    max-height: calc(100dvh - 96px) !important;
+    transform: none !important;
+  }
+}
 .remote-state {
   display: grid;
   height: 100%;

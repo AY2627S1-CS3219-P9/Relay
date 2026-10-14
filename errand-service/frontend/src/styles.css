@@ -2,7 +2,8 @@
 .errand-card-shell { min-height: 100%; padding: 22px; box-sizing: border-box; }
 .errand-top-controls { position: absolute; z-index: 5; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
 .errand-top-controls > * { pointer-events: auto; }
-.errand-control-icon { width: 20px; height: 20px; color: #1c1c1e; }
+.errand-control-icon { width: 20px; height: 20px; }
+.errand-top-controls .errand-control-icon { color: #1c1c1e; }
 .errand-segment-control { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); }
 .errand-map-controls { position: absolute; z-index: 5; right: 24px; bottom: 126px; display: grid; gap: 10px; }
 .errand-bottom-controls { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; }
@@ -68,4 +69,4 @@
 .errand-marker { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid white; border-radius: 50% 50% 50% 6px; background: var(--marker); color: white; box-shadow: 0 4px 12px rgba(0,0,0,.28); transform: rotate(-45deg); }
 .errand-marker b { transform: rotate(45deg); font-size: 13px; }
 .errand-marker-selected { box-shadow: 0 0 0 8px rgba(0,122,255,.25), 0 4px 12px rgba(0,0,0,.28); }
-@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } }
+@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-popover, .errand-detail-popover { bottom: calc(72px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 96px); } .errand-filter-panel { top: auto; right: 16px; bottom: 92px; left: 16px; width: auto; max-height: calc(100dvh - 120px); overflow: auto; } .errand-bottom-controls .errand-control-label { font-size: inherit !important; } .updates-action .errand-control-label, .new-request-action .errand-control-label { display: none; } }

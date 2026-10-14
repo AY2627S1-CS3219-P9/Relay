@@ -41,7 +41,7 @@ export function ErrandFilterPanel({
   }
 
   return (
-    <aside className="errand-filter-panel glass-card" aria-label="Errand filters">
+    <aside className="errand-filter-panel glass-card relay-mobile-sheet-surface" aria-label="Errand filters">
       <div className="errand-panel-header">
         <div>
           <p className="errand-eyebrow">FILTERS</p>

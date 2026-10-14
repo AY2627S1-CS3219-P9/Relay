@@ -18,6 +18,7 @@ type RemotePageProps = {
   visible: boolean
   appProps?: RemoteAppProps
   overlay?: boolean
+  overlayClassName?: string
   card?: boolean
   cardStyle?: CSSProperties
   bubbleAnchor?: BubbleAnchor
@@ -63,6 +64,7 @@ export function RemotePage({
   visible,
   appProps,
   overlay,
+  overlayClassName,
   card,
   cardStyle,
   bubbleAnchor,
@@ -71,7 +73,7 @@ export function RemotePage({
 
   return (
     <section
-      className={`remote-page${overlay ? ' remote-page-overlay' : ''}`}
+      className={`remote-page${overlay ? ' remote-page-overlay' : ''}${overlayClassName ? ` ${overlayClassName}` : ''}`}
       aria-label={serviceLabel}
       style={{ display: visible ? undefined : 'none' }}
     >

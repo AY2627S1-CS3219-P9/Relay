@@ -198,13 +198,14 @@ input {
   top: 50%;
   transform: translateY(-50%);
 }
-.filter-panel-header,
+.supplier-filter-header,
 .supplier-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
+.supplier-filter-eyebrow { margin: 0 0 8px; color: var(--relay-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
 .supplier-filter-panel h2,
 .supplier-detail-card h2,
 .supplier-list h2 {
@@ -212,6 +213,13 @@ input {
   font-size: 1.35rem;
   letter-spacing: -0.03em;
 }
+.supplier-filter-panel h2 { margin: 0; letter-spacing: -.04em; }
+.supplier-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }
+.supplier-filter-panel legend { margin-bottom: 9px; color: var(--relay-text-muted); font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.supplier-filter-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.supplier-filter-chip { padding: 10px 20px; border: 1px solid rgba(0,0,0,.08); border-radius: 999px; background: rgba(255,255,255,.5); color: inherit; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
+.supplier-filter-chip.selected { border-color: #007aff; background: #007aff; color: white; }
+.supplier-filter-button-icon { width: 16px; height: 16px; margin-right: 5px; vertical-align: -3px; }
 .supplier-list-items {
   display: grid;
   gap: 8px;

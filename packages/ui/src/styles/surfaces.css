@@ -9,6 +9,27 @@
     0 5px 18px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
 }
+@media (max-width: 700px) {
+  .relay-mobile-sheet-surface {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+  }
+  .relay-mobile-sheet-surface::after {
+    position: absolute;
+    z-index: -1;
+    top: calc(100% - 1px);
+    right: -1px;
+    bottom: calc(-72px - env(safe-area-inset-bottom));
+    left: -1px;
+    content: '';
+    border-right: 1px solid rgba(255, 255, 255, 0.68);
+    border-left: 1px solid rgba(255, 255, 255, 0.68);
+    background: rgba(255, 255, 255, 0.78);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+  }
+}
 .relay-card-anchor {
   position: absolute;
   z-index: 900;

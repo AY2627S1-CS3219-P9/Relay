@@ -34,7 +34,7 @@ export function ErrandDetailCard({
   const canDelete = role === 'requester' && ['CANCELLED', 'EXPIRED', 'CONFIRMED'].includes(errand.status)
 
   return (
-    <GlassCard className="errand-detail-card" aria-label={`${errand.name} details`}>
+    <GlassCard className="errand-detail-card relay-mobile-sheet-surface" aria-label={`${errand.name} details`}>
       <div className="errand-detail-header">
         <div>
           <p className="errand-eyebrow">{role === 'courier' ? 'AVAILABLE ERRAND' : 'ACTIVE ERRAND'}</p>

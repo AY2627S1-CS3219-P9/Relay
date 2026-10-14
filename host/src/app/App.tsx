@@ -44,6 +44,7 @@ function App() {
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [authVersion, setAuthVersion] = useState(0)
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
+  const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
   const [supplierMode, setSupplierMode] = useState<'explore' | 'requests'>('explore')
   const [mapViewport, setMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
@@ -165,7 +166,10 @@ function App() {
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
-    if (service !== 'errand') setErrandViewContext(undefined)
+    if (service !== 'errand') {
+      setErrandViewContext(undefined)
+      setCreateErrandOnSupplierMap(false)
+    }
     if (service === 'supplier') setSupplierMode('explore')
     setActiveService(service)
   }
@@ -176,9 +180,14 @@ function App() {
       navigateTo('supplier')
       return
     }
+    if (context.view === 'create') {
+      setCreateErrandOnSupplierMap(activeService === 'supplier')
+    } else {
+      setCreateErrandOnSupplierMap(false)
+    }
     if (context.view === 'requests') setSupplierMode('requests')
     setErrandViewContext(context)
-    setActiveService('errand')
+    if (context.view !== 'create' || activeService !== 'supplier') setActiveService('errand')
   }
 
   function openProfile(anchor: ProfileAnchor) {
@@ -225,7 +234,7 @@ function App() {
             key={id}
             service={id}
             serviceLabel={label}
-            visible={activeService === id || (id === 'user' && profileOpen)}
+            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)}
             bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
             appProps={{
               fetchSession,
@@ -242,11 +251,16 @@ function App() {
               mapViewport,
               onMapViewportChange: handleMapViewportChange,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'user' && profileOpen ? 'card' : 'full',
+              presentation: id === 'user' && profileOpen
+                ? 'card'
+                : id === 'errand' && createErrandOnSupplierMap
+                  ? 'card'
+                  : 'full',
             }}
             overlay={
-              id === 'user' && profileOpen
+              (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)
             }
+            overlayClassName={id === 'errand' && createErrandOnSupplierMap ? 'errand-create-overlay-page' : undefined}
             card={
               id === 'user' && profileOpen
             }

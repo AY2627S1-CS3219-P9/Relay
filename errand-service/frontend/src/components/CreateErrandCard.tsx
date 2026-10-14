@@ -92,7 +92,7 @@ export function CreateErrandCard({
   if (loadingSuppliers) return <LoadingState label="Loading suppliers" />
 
   return (
-    <RelayFormSurface className="create-errand-card" title="Create an errand" description="Tell us what you need delivered." onClose={onClose}>
+    <RelayFormSurface className="create-errand-card relay-mobile-sheet-surface" title="Create an errand" description="Tell us what you need delivered." onClose={onClose}>
       {errorMessage && <ErrorMessage message={errorMessage} />}
       <form className="errand-form" onSubmit={submit}>
         <RelayFormField label="What do you need?" required><input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="e.g. Graphing calculator" maxLength={120} /></RelayFormField>

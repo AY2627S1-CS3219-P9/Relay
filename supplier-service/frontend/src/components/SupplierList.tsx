@@ -22,7 +22,7 @@ export function SupplierList({
   style?: CSSProperties
 }) {
   return (
-    <RelayFormSurface as="aside" className="supplier-list" style={style} title="Select a supplier" onClose={onClose}>
+    <RelayFormSurface as="aside" className="supplier-list relay-mobile-sheet-surface" style={style} title="Select a supplier" onClose={onClose}>
       <RelayList className="supplier-list-items">
         {suppliers.map((supplier) => (
           <RelayListItem
