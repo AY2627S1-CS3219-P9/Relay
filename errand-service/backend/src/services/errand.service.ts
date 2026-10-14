@@ -1,8 +1,11 @@
 import {
+  CreateErrandRequest,
+  Errand,
   ErrandErrors,
   ErrandStatus,
-  type CreateErrandRequest,
-  type Errand,
+  GetErrandsOptions,
+  SupplierErrandSummary,
+  SupplierErrandViewRequest,
   type ErrandLocation,
   type OperatingHours,
   type ServiceType,
@@ -33,8 +36,19 @@ export class ErrandService {
     return errand
   }
 
-  async getErrands(user: AuthenticatedUser): Promise<Errand[]> {
-    return this.repository.listVisibleTo(user.sub)
+  async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
+    await this.repository.expireOpenErrands()
+    return options.scope === 'mine'
+      ? this.repository.listOwnedBy(user.sub)
+      : this.repository.listVisibleTo(user.sub)
+  }
+
+  async getSupplierErrandView(
+    user: AuthenticatedUser,
+    request: SupplierErrandViewRequest,
+  ): Promise<SupplierErrandSummary[]> {
+    await this.repository.expireOpenErrands()
+    return this.repository.listSupplierView({ ...request, viewerSub: user.sub })
   }
 
   async listBySupplier(supplierId: string): Promise<Errand[]> {
@@ -46,6 +60,7 @@ export class ErrandService {
   }
 
   async getErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    await this.repository.expireOpenErrands()
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)

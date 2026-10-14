@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient, type Errand as PrismaErrand } from '@prisma/client'
 import type {
   CreateErrandRequest,
   Errand,
@@ -6,6 +6,8 @@ import type {
   ErrandStatus,
   OperatingHours,
   ServiceType,
+  SupplierErrandSummary,
+  SupplierErrandViewRequest,
 } from '@relay/contracts'
 
 export class ErrandRepository {
@@ -38,6 +40,45 @@ export class ErrandRepository {
       orderBy: { createdAt: 'desc' },
     })
     return rows.map(toContract)
+  }
+
+  async listOwnedBy(requesterSub: string): Promise<Errand[]> {
+    const rows = await this.prisma.errand.findMany({
+      where: { requesterSub },
+      orderBy: { createdAt: 'asc' },
+    })
+    return rows.map(toContract)
+  }
+
+  async expireOpenErrands(now = new Date()): Promise<number> {
+    const result = await this.prisma.errand.updateMany({
+      where: { status: 'OPEN', expiresAt: { lte: now } },
+      data: { status: 'EXPIRED' },
+    })
+    return result.count
+  }
+
+  async listSupplierView(
+    request: SupplierErrandViewRequest & { viewerSub: string },
+  ): Promise<SupplierErrandSummary[]> {
+    const where: Prisma.ErrandWhereInput =
+      request.scope === 'explore'
+        ? {
+            status: 'OPEN',
+            requesterSub: { not: request.viewerSub },
+            ...(request.supplierId ? { supplierId: request.supplierId } : {}),
+            expiresAt: { gt: new Date() },
+          }
+        : {
+            requesterSub: request.viewerSub,
+            ...(request.supplierId ? { supplierId: request.supplierId } : {}),
+          }
+
+    const rows = await this.prisma.errand.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+    })
+    return rows.map(toSupplierSummary)
   }
 
   async findVisibleById(errandId: string, userSub: string): Promise<Errand | null> {
@@ -173,9 +214,9 @@ export class ErrandRepository {
   async dropCourier(errandId: string, newStatus: ErrandStatus): Promise<Errand> {
     const row = await this.prisma.errand.update({
       where: { id: errandId },
-      data: { 
-        courierSub: null, 
-        status: newStatus 
+      data: {
+        courierSub: null,
+        status: newStatus,
       },
     })
     return toContract(row)
@@ -224,4 +265,11 @@ function toContract(row: any): Errand {
     supplierName: row.supplierName,
     serviceType: row.serviceType,
   }
+}
+
+function toSupplierSummary(row: PrismaErrand): SupplierErrandSummary {
+  const errand = toContract(row)
+  if (!errand.supplierId) throw new Error('Supplier errand summary requires a supplier.')
+  const { requesterSub: _requesterSub, courierSub: _courierSub, ...summary } = errand
+  return { ...summary, supplierId: errand.supplierId }
 }
