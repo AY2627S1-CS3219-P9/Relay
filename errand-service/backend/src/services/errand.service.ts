@@ -224,20 +224,86 @@ export class ErrandService {
     return updated
   }
 
-  async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
-    const deleted = await this.repository.deleteOpenOwnedBy(id, user.sub)
-    if (!deleted) {
-      const existing = await this.repository.findVisibleById(id, user.sub)
-      if (!existing) {
-        throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
-      }
+  async dropErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
+    const errand = await this.repository.findVisibleById(id, courier.sub)
+    if (!errand) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
 
+    if (errand.courierSub !== courier.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'Only the assigned courier can drop this errand.',
+        403,
+      )
+    }
+
+    if (errand.status !== 'ACCEPTED') {
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Only open errands owned by the requester can be deleted.',
+        'Only accepted errands can be dropped.',
         409,
       )
     }
+
+    const now = new Date()
+    const isExpired = errand.expiresAt && new Date(errand.expiresAt) <= now
+
+    let status: ErrandStatus
+    let publishStatus: ErrandStatus
+
+    if (isExpired) {
+      // If deadline exceeded, set to expired
+      status = ErrandStatus.Expired
+      publishStatus = ErrandStatus.Expired
+    } else {
+      // Change state from accepted to open
+      status = ErrandStatus.Open
+      publishStatus = ErrandStatus.Open
+    }
+
+    const updated = await this.repository.dropCourier(id, status)
+
+    await this.eventService.onErrandStatusChanged(
+      updated.id,
+      publishStatus,
+      ErrandStatus.Accepted,
+      courier.sub,
+      'courier',
+      updated.requesterSub,
+    )
+
+    if (isExpired) {
+      await this.eventService.onErrandExpired(updated.id)
+    }
+
+    return updated
+  }
+
+  async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
+    const existing = await this.repository.findVisibleById(id, user.sub)
+    if (!existing) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    }
+
+    const allowedStatuses: ErrandStatus[] = ['CANCELLED', 'EXPIRED', 'CONFIRMED']
+    if (!allowedStatuses.includes(existing.status)) {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Errands in this state cannot be deleted. Only cancelled, expired, or confirmed errands can be deleted.',
+        409,
+      )
+    }
+
+    if (existing.requesterSub !== user.sub) {
+      throw new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        'You can only delete your own errands.',
+        403,
+      )
+    }
+
+    await this.repository.deleteErrand(id)
 
     await this.eventService.onErrandDeleted(id, user.sub)
   }

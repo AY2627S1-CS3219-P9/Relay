@@ -77,6 +77,13 @@ export class ErrandRepository {
     return row ? toContract(row) : null
   }
 
+  async findAcceptedById(errandId: string): Promise<Errand | null> {
+    const row = await this.prisma.errand.findFirst({
+      where: { id: errandId, status: 'ACCEPTED' },
+    })
+    return row ? toContract(row) : null
+  }
+
   async assignCourier(errandId: string, courierSub: string): Promise<Errand> {
     const row = await this.prisma.errand.update({
       where: { id: errandId },
@@ -161,6 +168,23 @@ export class ErrandRepository {
       data: { status: 'CONFIRMED' },
     })
     return toContract(row)
+  }
+
+  async dropCourier(errandId: string, newStatus: ErrandStatus): Promise<Errand> {
+    const row = await this.prisma.errand.update({
+      where: { id: errandId },
+      data: { 
+        courierSub: null, 
+        status: newStatus 
+      },
+    })
+    return toContract(row)
+  }
+
+  async deleteErrand(errandId: string): Promise<void> {
+    await this.prisma.errand.delete({
+      where: { id: errandId },
+    })
   }
 
   async findExpired(): Promise<Errand[]> {
