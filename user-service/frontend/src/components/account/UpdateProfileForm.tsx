@@ -1,6 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, UpdateUserResponse, User } from '@relay/contracts'
-import { ErrorMessage, IconButton } from '@relay/ui'
+import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
 import { ImageUploadField } from '../../components/base-elements/ImageUploadField'
 import { UsernameField } from '../../components/base-elements/UsernameField'
 import { usernameError } from '../../validation/validation'
@@ -47,17 +47,15 @@ export function UpdateProfileForm({
   }
 
   return (
-    <form className="account-section account-profile-section" onSubmit={submit}>
-      <IconButton label="Go back" onClick={onBack}>
-        ←
-      </IconButton>
-      <h2>Update profile details</h2>
+    <RelayFormSurface className="account-section account-profile-section" title="Update profile details" onClose={onBack}>
+      <form onSubmit={submit}>
       <UsernameField value={username} onChange={setUsername} />
       <ImageUploadField value={picture} onChange={setPicture} />
       <ErrorMessage message={error} />
-      <button className="glass-btn-primary" disabled={saving}>
+      <RelayButton variant="primary" type="submit" disabled={saving}>
         {saving ? 'Saving…' : 'Save profile'}
-      </button>
-    </form>
+      </RelayButton>
+      </form>
+    </RelayFormSurface>
   )
 }

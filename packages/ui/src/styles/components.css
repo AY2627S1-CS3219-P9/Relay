@@ -9,7 +9,7 @@
   border-radius: calc(12px * var(--relay-button-scale, 1));
   color: var(--relay-text-on-accent);
   font: inherit;
-  font-size: calc(1em * var(--relay-button-scale, 1));
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * var(--relay-button-scale, 1));
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -57,11 +57,11 @@
 .relay-button-size-map-pill {
   box-sizing: border-box;
   min-width: max-content;
-  min-height: 70px;
-  height: 70px;
-  padding: 0 14px;
+  min-height: 50px;
+  height: 50px;
+  padding: 10px 20px;
   border-radius: 24px;
-  font-size: min(1.5rem, 1.667vw);
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * var(--relay-button-scale, 1));
   white-space: nowrap;
   gap: 8px;
 }
@@ -86,7 +86,7 @@
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   color: var(--relay-text);
-  font-size: 22px;
+  font-size: var(--relay-control-font-size, 1.05rem);
   line-height: 1;
 }
 .relay-button-size-map-icon svg {
@@ -96,11 +96,11 @@
 .relay-button-size-map-action {
   box-sizing: border-box;
   min-width: max-content;
-  min-height: 70px;
-  height: 70px;
-  padding: 0 14px;
+  min-height: 50px;
+  height: 50px;
+  padding: 10px 20px;
   border-radius: 24px;
-  font-size: min(1.5rem, 1.667vw);
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * var(--relay-button-scale, 1));
   white-space: nowrap;
   gap: 8px;
 }
@@ -122,14 +122,14 @@
   .relay-button-size-map-pill {
     min-height: 56px;
     height: 56px;
-    padding-inline: 16px;
-    font-size: 17px;
+    padding: 10px 16px;
+    font-size: var(--relay-control-font-size, 1.05rem);
   }
   .relay-button-size-map-action {
     min-height: 56px;
     height: 56px;
-    padding-inline: 14px;
-    font-size: 17px;
+    padding: 10px 20px;
+    font-size: var(--relay-control-font-size, 1.05rem);
   }
 }
 .relay-text-button {
@@ -219,7 +219,7 @@
   background: var(--relay-control-bg);
   color: var(--relay-text);
   font: inherit;
-  font-size: calc(1.25rem * var(--relay-icon-button-scale, 1));
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * var(--relay-icon-button-scale, 1));
   cursor: pointer;
   transition:
     transform 0.16s ease,

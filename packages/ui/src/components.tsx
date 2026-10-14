@@ -308,6 +308,118 @@ export function GlassCard({
   )
 }
 
+export function RelayFormOverlay({
+  children,
+  className = '',
+  open = true,
+  onClose,
+}: {
+  children: ReactNode
+  className?: string
+  open?: boolean
+  onClose?: () => void
+}) {
+  if (!open) return null
+  return (
+    <div className={`relay-form-overlay${className ? ` ${className}` : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+      {children}
+    </div>
+  )
+}
+
+export function RelayFormSurface({
+  children,
+  title,
+  description,
+  footer,
+  onClose,
+  className = '',
+  as = 'section',
+  style,
+}: {
+  children: ReactNode
+  title: ReactNode
+  description?: ReactNode
+  footer?: ReactNode
+  onClose?: () => void
+  className?: string
+  as?: 'div' | 'section' | 'aside'
+  style?: CSSProperties
+}) {
+  const Element = as
+  return (
+    <Element style={style} className={`relay-form-surface glass-card${className ? ` ${className}` : ''}`}>
+      <header className="relay-form-surface-header">
+        <div>
+          <h2>{title}</h2>
+          {description && <p>{description}</p>}
+        </div>
+        {onClose && <IconButton label="Close" onClick={onClose}>×</IconButton>}
+      </header>
+      <div className="relay-form-surface-body">{children}</div>
+      {footer && <footer className="relay-form-surface-footer">{footer}</footer>}
+    </Element>
+  )
+}
+
+export function RelayFormField({
+  label,
+  hint,
+  error,
+  required = false,
+  children,
+  className = '',
+}: {
+  label: ReactNode
+  hint?: ReactNode
+  error?: ReactNode
+  required?: boolean
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <label className={`relay-form-field${error ? ' relay-form-field-error' : ''}${className ? ` ${className}` : ''}`}>
+      <span className="relay-form-field-label">{label}{required && <b aria-hidden="true"> *</b>}</span>
+      {children}
+      {hint && !error && <small>{hint}</small>}
+      {error && <small role="alert">{error}</small>}
+    </label>
+  )
+}
+
+export function RelayList({
+  children,
+  className = '',
+  ...props
+}: HTMLAttributes<HTMLUListElement> & { children: ReactNode }) {
+  return <ul {...props} className={`relay-list${className ? ` ${className}` : ''}`}>{children}</ul>
+}
+
+export function RelayListItem({
+  title,
+  subtitle,
+  meta,
+  leading,
+  trailing,
+  onClick,
+  className = '',
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  meta?: ReactNode
+  leading?: ReactNode
+  trailing?: ReactNode
+  onClick?: () => void
+  className?: string
+}) {
+  const content = <>
+    {leading && <span className="relay-list-item-leading">{leading}</span>}
+    <span className="relay-list-item-content"><strong>{title}</strong>{subtitle && <span>{subtitle}</span>}{meta && <small>{meta}</small>}</span>
+    {trailing && <span className="relay-list-item-trailing">{trailing}</span>}
+  </>
+  return <li className={`relay-list-item${className ? ` ${className}` : ''}`}>{onClick ? <button type="button" onClick={onClick}>{content}</button> : <div>{content}</div>}</li>
+}
+
 export function SlidingSegmentedControl<T extends string | number>({
   options,
   value,

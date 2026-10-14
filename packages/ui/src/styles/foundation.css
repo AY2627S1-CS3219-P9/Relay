@@ -24,6 +24,7 @@
   --relay-glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
   --relay-control-bg: rgba(118, 118, 128, 0.1);
   --relay-control-bg-hover: rgba(118, 118, 128, 0.18);
+  --relay-control-font-size: 1.05rem;
   --ios-blue: var(--relay-blue);
   --ios-blue-dark: var(--relay-blue-dark);
   --ios-green: #34c759;

@@ -59,7 +59,7 @@
 .errand-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }
 .errand-filter-panel legend { margin-bottom: 9px; color: var(--relay-text-muted); font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .errand-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.errand-filter-chip { padding: 8px 11px; border: 1px solid rgba(0,0,0,.08); border-radius: 999px; background: rgba(255,255,255,.5); color: inherit; font: inherit; font-size: .78rem; cursor: pointer; }
+.errand-filter-chip { padding: 10px 20px; border: 1px solid rgba(0,0,0,.08); border-radius: 999px; background: rgba(255,255,255,.5); color: inherit; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
 .errand-filter-chip.selected { border-color: #007aff; background: #007aff; color: white; }
 .errand-button-icon { width: 16px; height: 16px; margin-right: 5px; vertical-align: -3px; }
 .my-request-card { position: absolute; z-index: 6; left: 18px; bottom: 116px; display: grid; gap: 5px; width: min(360px, calc(100vw - 36px)); padding: 17px; border: 1px solid rgba(255,255,255,.8); border-radius: 22px; background: rgba(255,255,255,.74); box-shadow: 0 12px 32px rgba(0,0,0,.15); backdrop-filter: blur(28px) saturate(1.4); text-align: left; cursor: pointer; }

@@ -83,10 +83,10 @@ input {
   box-sizing: border-box;
   flex: 0 0 auto;
   min-width: max-content;
-  min-height: 70px;
-  height: 70px;
+  min-height: 50px;
+  height: 50px;
   padding: 0 14px;
-  font-size: min(1.5rem, 1.667vw) !important;
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * var(--relay-button-scale, 1)) !important;
   white-space: nowrap;
   gap: 8px;
 }
@@ -126,7 +126,7 @@ input {
     height: 48px !important;
     min-height: 48px !important;
     padding: 0 !important;
-    font-size: 1rem !important;
+    font-size: var(--relay-control-font-size, 1.05rem) !important;
   }
 }
 .supplier-marker {
@@ -218,50 +218,7 @@ input {
   margin-top: 20px;
   min-width: 0;
 }
-.supplier-list-item {
-  display: grid;
-  gap: 7px;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  padding: 13px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.38);
-  color: var(--relay-text);
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.22, 1.2, 0.36, 1), background 0.2s ease;
-}
-.supplier-list-item:hover {
-  background: rgba(255, 255, 255, 0.68);
-  transform: translateY(-1px);
-}
-.supplier-list-item:active {
-  transform: scale(0.98);
-}
-.supplier-list-item-copy {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-}
-.supplier-list-item-copy strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.supplier-list-item-meta {
-  flex: 0 0 auto;
-}
-.supplier-list-item-services {
-  color: rgba(60, 60, 67, 0.72);
-  font-size: 0.88rem;
-}
+.supplier-list-item-meta { flex: 0 0 auto; }
 .supplier-detail-card-transition {
   animation: supplier-detail-resize-in 0.34s cubic-bezier(0.22, 1.16, 0.36, 1) both;
 }
