@@ -8,6 +8,7 @@ import {
   type ServiceId,
   type SessionError,
   type User,
+  type UserLocation,
 } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
@@ -43,6 +44,31 @@ function App() {
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [authVersion, setAuthVersion] = useState(0)
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
+  const [userLocation, setUserLocation] = useState<UserLocation>()
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => setUserLocation({ lat: coords.latitude, lng: coords.longitude }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+    )
+  }, [])
+
+  async function requestUserLocation(): Promise<UserLocation | undefined> {
+    if (!navigator.geolocation) return undefined
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const next = { lat: coords.latitude, lng: coords.longitude }
+          setUserLocation(next)
+          resolve(next)
+        },
+        () => resolve(undefined),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+      )
+    })
+  }
 
   const fetchSession: FetchSessionHandler = async (options) => {
     const response = await fetch('/api/user/session', {
@@ -172,6 +198,16 @@ function App() {
     }
   }
 
+  function errandCardStyle(): CSSProperties {
+    return {
+      top: '50%',
+      left: '50%',
+      width: 'min(540px, calc(100vw - 32px))',
+      maxHeight: 'calc(100dvh - 32px)',
+      transform: 'translate(-50%, -50%)',
+    }
+  }
+
   return (
     <main className="relay-host-shell">
       <div className="remote-grid">
@@ -181,9 +217,6 @@ function App() {
             service={id}
             serviceLabel={label}
             visible={activeService === id || (id === 'user' && profileOpen)}
-            overlay={id === 'user' && profileOpen}
-            card={id === 'user' && profileOpen}
-            cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
             bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
             appProps={{
               fetchSession,
@@ -192,11 +225,32 @@ function App() {
               refreshUserProfile,
               navigateTo,
               openProfile: id === 'supplier' ? openProfile : undefined,
-              openErrandView: id === 'supplier' ? openErrandView : undefined,
+              openErrandView,
               errandViewContext: id === 'errand' ? errandViewContext : undefined,
+              userLocation,
+              requestUserLocation,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'user' && profileOpen ? 'card' : 'full',
+              presentation:
+                (id === 'user' && profileOpen) ||
+                (id === 'errand' && errandViewContext?.view === 'create')
+                  ? 'card'
+                  : 'full',
             }}
+            overlay={
+              (id === 'user' && profileOpen) ||
+              (id === 'errand' && errandViewContext?.view === 'create')
+            }
+            card={
+              (id === 'user' && profileOpen) ||
+              (id === 'errand' && errandViewContext?.view === 'create')
+            }
+            cardStyle={
+              id === 'errand' && errandViewContext?.view === 'create'
+                ? errandCardStyle()
+                : id === 'user' && profileOpen
+                  ? profileCardStyle()
+                  : undefined
+            }
           />
         ))}
       </div>

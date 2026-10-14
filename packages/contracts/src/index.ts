@@ -27,10 +27,27 @@ type FetchSessionOptions = { forceRefresh?: boolean }
 
 export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Session>
 
-export type ErrandViewContext = {
-  supplierId: string
-  scope: 'explore' | 'mine'
-  supplier?: import('./supplier/models').Supplier
+export type ErrandViewContext =
+  | {
+      view: 'create'
+      supplierId?: string
+    }
+  | {
+      view: 'requests'
+    }
+  | {
+      view: 'explore'
+    }
+  | {
+      view: 'supplier'
+      supplierId: string
+      scope: 'explore' | 'mine'
+      supplier?: import('./supplier/models').Supplier
+    }
+
+export type UserLocation = {
+  lat: number
+  lng: number
 }
 
 export type RemoteAppProps = {
@@ -44,6 +61,8 @@ export type RemoteAppProps = {
   closeProfile?: () => void
   openErrandView?: (context: ErrandViewContext) => void
   errandViewContext?: ErrandViewContext
+  userLocation?: UserLocation
+  requestUserLocation?: () => Promise<UserLocation | undefined>
   presentation?: 'full' | 'card'
 }
 

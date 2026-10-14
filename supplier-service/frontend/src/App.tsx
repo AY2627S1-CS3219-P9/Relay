@@ -189,7 +189,13 @@ export default function App({
               { value: 'requests', label: 'My Requests' },
             ]}
             value={activeMode}
-            onChange={setActiveMode}
+            onChange={(nextMode) => {
+              if (nextMode === 'requests' && openErrandView) {
+                openErrandView({ view: 'requests' })
+                return
+              }
+              setActiveMode(nextMode)
+            }}
           />
         </div>
         <RelayButton
@@ -279,7 +285,11 @@ export default function App({
             </SupplierRowButton>
           </>
         )}
-        <SupplierRowButton variant="primary" className="new-request-action">
+        <SupplierRowButton
+          variant="primary"
+          className="new-request-action"
+          onClick={() => openErrandView?.({ view: 'create' })}
+        >
           <ClipboardPlusIcon className="supplier-control-icon" />
           <span className="supplier-control-label">New request</span>
         </SupplierRowButton>
@@ -300,6 +310,7 @@ export default function App({
                 openErrandView
                   ? () =>
                       openErrandView({
+                        view: 'supplier',
                         supplierId: selectedSupplier.id,
                         scope: activeMode === 'requests' ? 'mine' : 'explore',
                         supplier: selectedSupplier,
