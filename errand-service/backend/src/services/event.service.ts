@@ -64,6 +64,7 @@ export class EventService {
   }
 
   async onErrandDeleted(errandId: string, requesterSub: string): Promise<void> {
+    // ErrandDeleted reuses ErrandCancelled event type
     await this.eventBus.publishErrandCancelled(errandId, requesterSub, undefined, requesterSub)
   }
 }
