@@ -8,6 +8,8 @@ export type CreateErrandRequest = {
   deliveryDetails: DeliveryDetails
   creditAmount: number
   expiresAt?: string
+  serviceType: number
+  supplierName: string
 }
 
 /** Request to accept an errand. No body needed - authenticated via session. */

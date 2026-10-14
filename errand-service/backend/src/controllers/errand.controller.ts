@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
+import { validateCreateErrand } from '../validators/errand.validator.js'
 import { SupplierEventErrors } from '@relay/contracts'
 
 export class ErrandController {
@@ -8,7 +9,8 @@ export class ErrandController {
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const errand = await this.service.createErrand(requireUser(req), req.body)
+      const validated = validateCreateErrand(req.body)
+      const errand = await this.service.createErrand(requireUser(req), validated)
       res.status(201).json({ errand })
     } catch (error) {
       next(error)
