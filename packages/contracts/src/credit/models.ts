@@ -1,5 +1,6 @@
 // IMPORTANT: Do not change transaction reference, db will rely on this for idempotency
-export type TransactionType = 'INITIAL_ALLOCATION' | 'CREDIT_RESERVE' | 'CREDIT_RELEASE' | 'CREDIT_TRANSFER'
+export type TransactionType =
+  'INITIAL_ALLOCATION' | 'CREDIT_RESERVE' | 'CREDIT_RELEASE' | 'CREDIT_TRANSFER' | 'USER_DELETION'
 
 export type TransactionReference = {
   service: string
@@ -38,5 +39,5 @@ export type TransactionRecord = {
   senderId: string
   receiverId: string
   type: TransactionType
-  amount: string
+  amount: number
 }
