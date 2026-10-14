@@ -2,12 +2,9 @@
 .errand-card-shell { min-height: 100%; padding: 22px; box-sizing: border-box; }
 .errand-top-controls { position: absolute; z-index: 5; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
 .errand-top-controls > * { pointer-events: auto; }
-.errand-top-pill { box-sizing: border-box; min-width: max-content; min-height: 70px; height: 70px; padding: 0 14px !important; border-radius: 24px; font-size: min(1.5rem, 1.667vw) !important; white-space: nowrap; }
 .errand-control-icon { width: 20px; height: 20px; color: #1c1c1e; }
-.errand-segment-control { position: absolute; top: 62px; left: 50%; width: min(520px, 62vw); transform: translateX(-50%); }
+.errand-segment-control { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); }
 .errand-map-controls { position: absolute; z-index: 5; right: 24px; bottom: 126px; display: grid; gap: 10px; }
-.map-control-button { width: 48px; height: 48px; padding: 0 !important; display: grid; place-items: center; }
-.map-control-button svg { width: 19px; height: 19px; }
 .errand-bottom-controls { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; }
 .errand-bottom-controls .updates-action { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding-inline: 18px; }
 .errand-bottom-controls .updates-action svg, .new-request-action svg { width: 20px; height: 20px; }
@@ -77,4 +74,4 @@
 .errand-marker { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid white; border-radius: 50% 50% 50% 6px; background: var(--marker); color: white; box-shadow: 0 4px 12px rgba(0,0,0,.28); transform: rotate(-45deg); }
 .errand-marker b { transform: rotate(45deg); font-size: 13px; }
 .errand-marker-selected { box-shadow: 0 0 0 8px rgba(0,122,255,.25), 0 4px 12px rgba(0,0,0,.28); }
-@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-top-pill { min-width: max-content; height: 56px; min-height: 56px; padding-inline: 16px !important; } .errand-segment-control { top: 62px; width: calc(100vw - 32px); } .errand-detail-popover { top: auto; right: 16px; bottom: 88px; left: 16px; width: auto; max-height: calc(100dvh - 170px); transform: none; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-overlay { padding: 12px; } }
+@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-popover { top: auto; right: 16px; bottom: 88px; left: 16px; width: auto; max-height: calc(100dvh - 170px); transform: none; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-overlay { padding: 12px; } }

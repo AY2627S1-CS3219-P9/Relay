@@ -71,15 +71,15 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     <main className="errand-map-shell relay-design-system">
       <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} />
       <div className="errand-top-controls map-top-menu">
-        <RelayButton variant="secondary" scale={1} className="glass-pill glass-control errand-top-pill" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
-        <SlidingSegmentedControl className="errand-segment-control" scale={1} ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }]} value={isCourierView ? 'explore' : 'requests'} onChange={(next) => { /* TODO: load the selected map mode from Errand Service. */ openErrandView?.(next === 'explore' ? { view: 'explore' } : { view: 'requests' }) }} />
-        <RelayButton variant="secondary" scale={1} className="glass-pill glass-control errand-top-pill profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
+        <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
+        <SlidingSegmentedControl className="errand-segment-control" size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }]} value={isCourierView ? 'explore' : 'requests'} onChange={(next) => { /* TODO: load the selected map mode from Errand Service. */ openErrandView?.(next === 'explore' ? { view: 'explore' } : { view: 'requests' }) }} />
+        <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
       </div>
       <div className="errand-map-controls">
-        <RelayButton variant="secondary" className="map-control-button" onClick={() => setShowFilters(true)} aria-label="Open errand filters"><FilterIcon /></RelayButton>
-        <RelayButton variant="secondary" className="map-control-button" onClick={() => void locateMe()} aria-label="Center map"><LocationIcon /></RelayButton>
-        <RelayButton variant="secondary" className="map-control-button" onClick={() => map?.zoomIn()} aria-label="Zoom in"><PlusIcon /></RelayButton>
-        <RelayButton variant="secondary" className="map-control-button" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
+        <RelayButton variant="secondary" size="map-icon" onClick={() => setShowFilters(true)} aria-label="Open errand filters"><FilterIcon /></RelayButton>
+        <RelayButton variant="secondary" size="map-icon" onClick={() => void locateMe()} aria-label="Center map"><LocationIcon /></RelayButton>
+        <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomIn()} aria-label="Zoom in"><PlusIcon /></RelayButton>
+        <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
       </div>
       <div className="errand-bottom-controls map-bottom-menu"><RelayButton variant="secondary" className="updates-action"><BellIcon /><span>Updates</span><b>2</b></RelayButton><Spacer /><RelayButton variant="primary" className="new-request-action" onClick={() => { /* TODO: ask the host to open { view: 'create' }. */ openErrandView?.({ view: 'create' }) }}><ClipboardPlusIcon /><span>New request</span></RelayButton></div>
       {selectedErrand && <div className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => setSelectedErrandId(undefined)} onAction={(action) => updateErrand(action, selectedErrand.id)} /></div>}

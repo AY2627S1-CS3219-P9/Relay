@@ -29,12 +29,6 @@ input {
 .supplier-top-controls > * {
   pointer-events: auto;
 }
-.mock-control {
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  padding: calc(12px * var(--relay-button-scale, 1)) calc(18px * var(--relay-button-scale, 1));
-  color: var(--relay-text);
-  font-weight: 700;
-}
 .supplier-segment-control {
   position: absolute;
   top: 62px;
@@ -42,9 +36,6 @@ input {
   width: min(520px, 62vw);
   transform: translateX(-50%);
   pointer-events: auto;
-}
-.mock-control-group {
-  width: 100%;
 }
 .profile-chip {
   white-space: nowrap;
@@ -64,22 +55,6 @@ input {
   bottom: 126px;
   display: grid;
   gap: 10px;
-}
-.map-control-button {
-  display: inline-flex;
-  width: calc(48px * var(--relay-button-scale, 1));
-  height: calc(48px * var(--relay-button-scale, 1));
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  color: var(--relay-text);
-  font-size: calc(22px * var(--relay-button-scale, 1));
-  line-height: 1;
 }
 .filter-icon {
   width: 1.05em;
@@ -448,9 +423,6 @@ legend {
     right: 16px;
     left: 16px;
     gap: 8px;
-  }
-  .mock-control {
-    padding: calc(10px * var(--relay-button-scale, 1)) calc(12px * var(--relay-button-scale, 1));
   }
   .supplier-segment-control {
     width: calc(100vw - 32px);

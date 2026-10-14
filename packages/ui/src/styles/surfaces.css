@@ -113,6 +113,9 @@
   backdrop-filter: blur(24px) saturate(1.6);
   isolation: isolate;
 }
+.relay-segmented-control-size-map {
+  width: min(520px, 62vw);
+}
 .relay-segmented-indicator {
   position: absolute;
   z-index: 0;
@@ -158,6 +161,11 @@
 }
 .relay-segmented-option:active {
   transform: scale(0.97);
+}
+@media (max-width: 700px) {
+  .relay-segmented-control-size-map {
+    width: calc(100vw - 32px);
+  }
 }
 .overflow-y-auto::-webkit-scrollbar {
   display: none;

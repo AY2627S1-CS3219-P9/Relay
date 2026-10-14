@@ -181,8 +181,8 @@ export default function App({
       <div className="supplier-top-controls map-top-menu">
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="glass-pill glass-control mock-control"
+          size="map-pill"
+          className="glass-pill glass-control"
           aria-label="Credits"
         >
           <BoltIcon className="supplier-control-icon" />
@@ -190,8 +190,7 @@ export default function App({
         </RelayButton>
         <div className="supplier-segment-control">
           <SlidingSegmentedControl
-            className="mock-control-group"
-            scale={1}
+            size="map"
             ariaLabel="Supplier view"
             options={[
               { value: 'explore', label: 'Explore' },
@@ -209,8 +208,8 @@ export default function App({
         </div>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="glass-pill glass-control profile-chip mock-control"
+          size="map-pill"
+          className="glass-pill glass-control profile-chip"
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
         >
@@ -223,8 +222,8 @@ export default function App({
       <div className="map-stub-controls">
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button filter-map-control"
+          size="map-icon"
+          className="filter-map-control"
           onClick={() => setShowFilters(true)}
           aria-label="Open supplier filters"
         >
@@ -232,8 +231,7 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Center map"
           onClick={() => map?.setView(userLocation ?? center)}
         >
@@ -241,8 +239,7 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Zoom in"
           onClick={() => map?.zoomIn()}
         >
@@ -250,8 +247,7 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Zoom out"
           onClick={() => map?.zoomOut()}
         >

@@ -54,6 +54,53 @@
   color: var(--relay-blue-dark);
   box-shadow: none;
 }
+.relay-button-size-map-pill {
+  box-sizing: border-box;
+  min-width: max-content;
+  min-height: 70px;
+  height: 70px;
+  padding: 0 14px;
+  border-radius: 24px;
+  font-size: min(1.5rem, 1.667vw);
+  white-space: nowrap;
+  gap: 8px;
+}
+.relay-button-size-map-pill .profile-chip-avatar {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+}
+.relay-button-size-map-icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  min-height: 0;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--relay-text);
+  font-size: 22px;
+  line-height: 1;
+}
+.relay-button-size-map-icon svg {
+  width: 1em;
+  height: 1em;
+}
+@media (max-width: 700px) {
+  .relay-button-size-map-pill {
+    min-height: 56px;
+    height: 56px;
+    padding-inline: 16px;
+    font-size: 17px;
+  }
+}
 .relay-text-button {
   min-height: 0;
   padding: 0;

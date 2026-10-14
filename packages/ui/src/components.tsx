@@ -10,23 +10,26 @@ export type BubbleAnchor = {
 }
 
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
+export type RelayButtonSize = 'default' | 'map-pill' | 'map-icon'
 
 export function RelayButton({
   variant = 'secondary',
   scale = 1,
+  size = 'default',
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: RelayButtonVariant
   scale?: number
+  size?: RelayButtonSize
   children: ReactNode
 }) {
   return (
     <button
       {...props}
       style={{ ...props.style, '--relay-button-scale': scale } as CSSProperties}
-      className={`relay-button relay-button-${variant}${className ? ` ${className}` : ''}`}
+      className={`relay-button relay-button-${variant}${size !== 'default' ? ` relay-button-size-${size}` : ''}${className ? ` ${className}` : ''}`}
     >
       {children}
     </button>
@@ -311,6 +314,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   onChange,
   ariaLabel = 'Options',
   scale = 1,
+  size = 'default',
   className = '',
 }: {
   options: ReadonlyArray<{ value: T; label: ReactNode }>
@@ -318,6 +322,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   onChange: (value: T) => void
   ariaLabel?: string
   scale?: number
+  size?: 'default' | 'map'
   className?: string
 }) {
   const activeIndex = Math.max(
@@ -327,7 +332,7 @@ export function SlidingSegmentedControl<T extends string | number>({
 
   return (
     <div
-      className={`relay-segmented-control${className ? ` ${className}` : ''}`}
+      className={`relay-segmented-control${size !== 'default' ? ` relay-segmented-control-size-${size}` : ''}${className ? ` ${className}` : ''}`}
       role="tablist"
       aria-label={ariaLabel}
       style={
