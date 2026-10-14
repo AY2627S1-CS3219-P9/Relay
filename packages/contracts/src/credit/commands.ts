@@ -1,22 +1,22 @@
-import { TransactionReference } from "./models";
+import type { TransactionReference } from "./models";
 
-export interface AllocateInitialCreditCommand {
+export type AllocateInitialCreditCommand = {
   transactionReference: TransactionReference;
   userId: string;
 }
 
-export interface DeleteUserCreditCommand {
+export type DeleteUserCreditCommand = {
   transactionReference: TransactionReference;
   userId: string;
 }
 
-export interface ReleaseCreditCommand {
+export type ReleaseCreditCommand = {
   transactionReference: TransactionReference;
   userId: string;
   amount: number;
 }
 
-export interface TransferCreditCommand {
+export type TransferCreditCommand = {
   transactionReference: TransactionReference;
   senderId: string;
   receiverId: string;

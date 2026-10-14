@@ -1,15 +1,15 @@
-import { TransactionReference } from "./models";
+import type { TransactionReference } from "./models";
 
-export interface ViewCreditRequest {
+export type ViewCreditRequest = {
   userId: string;
 }
 
-export interface ViewCreditHistoryRequest {
+export type ViewCreditHistoryRequest = {
   userId: string;
   // TODO: Add filters and limits
 }
 
-export interface ReserveCreditRequest {
+export type ReserveCreditRequest = {
   transactionReference: TransactionReference;
   userId: string;
   amount: number;

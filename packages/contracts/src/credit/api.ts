@@ -1,6 +1,11 @@
-import { AllocateInitialCreditCommand, DeleteUserCreditCommand, ReleaseCreditCommand, TransferCreditCommand } from "./commands"
-import { ReserveCreditRequest, ViewCreditHistoryRequest, ViewCreditRequest } from "./requests"
-import { ReserveCreditResponse, ViewCreditHistoryResponse, ViewCreditResponse } from "./responses"
+import type {
+  AllocateInitialCreditCommand,
+  DeleteUserCreditCommand,
+  ReleaseCreditCommand,
+  TransferCreditCommand,
+} from './commands'
+import type { ReserveCreditRequest, ViewCreditHistoryRequest, ViewCreditRequest } from './requests'
+import type { ReserveCreditResponse, ViewCreditHistoryResponse, ViewCreditResponse } from './responses'
 
 /** Credit Service methods for backend to implement */
 export interface CreditApi {
