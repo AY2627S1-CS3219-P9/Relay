@@ -1,4 +1,4 @@
-import { type Errand, ErrandEventTypes } from '@relay/contracts'
+import { type Errand, ErrandEventTypes, type ErrandStatus } from '@relay/contracts'
 import { EventBus } from '../kafka/eventBus.js'
 
 /**
@@ -22,16 +22,16 @@ export class EventService {
 
   async onErrandStatusChanged(
     errandId: string,
-    newStatus: string,
-    previousStatus: string,
+    newStatus: ErrandStatus,
+    previousStatus: ErrandStatus,
     actorSub: string,
     actorType: 'user' | 'courier' | 'system',
     requesterSub?: string,
   ): Promise<void> {
     await this.eventBus.publishErrandStatusChanged(
       errandId,
-      newStatus as any,
-      previousStatus as any,
+      newStatus,
+      previousStatus,
       actorSub,
       actorType,
       requesterSub,
@@ -61,5 +61,9 @@ export class EventService {
 
   async onErrandExpired(errandId: string): Promise<void> {
     await this.eventBus.publishErrandExpired(errandId)
+  }
+
+  async onErrandDeleted(errandId: string, requesterSub: string): Promise<void> {
+    await this.eventBus.publishErrandCancelled(errandId, requesterSub, undefined, requesterSub)
   }
 }
