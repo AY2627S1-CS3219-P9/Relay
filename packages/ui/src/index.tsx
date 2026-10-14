@@ -25,7 +25,7 @@ export {
   StatusBadge,
   TextButton,
 } from './components'
-export type { BubbleAnchor, RelayButtonVariant } from './components'
+export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant } from './components'
 
 export function ServiceCard({
   label,

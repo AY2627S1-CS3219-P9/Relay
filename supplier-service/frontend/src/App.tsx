@@ -255,7 +255,7 @@ export default function App({
         </RelayButton>
       </div>
       <div className="supplier-bottom-controls map-bottom-menu">
-        <SupplierRowButton className="updates-action">
+        <SupplierRowButton size="map-action" className="updates-action">
           <BellIcon className="supplier-control-icon" />
           <span className="supplier-control-label">Updates</span>
         </SupplierRowButton>
@@ -278,6 +278,7 @@ export default function App({
             )}
             <SupplierRowButton
               variant="primary"
+              size="map-action"
               className="supplier-admin-action"
               onClick={(event) => openAdminPanel('add', event.currentTarget)}
               aria-label="Add supplier"
@@ -292,6 +293,7 @@ export default function App({
         )}
         <SupplierRowButton
           variant="primary"
+          size="map-action"
           className="new-request-action"
           onClick={() => openErrandView?.({ view: 'create' })}
         >

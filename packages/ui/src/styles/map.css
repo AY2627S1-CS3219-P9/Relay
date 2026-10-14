@@ -166,24 +166,6 @@
     left: 16px;
     gap: 10px;
   }
-  .updates-action {
-    height: calc(56px * var(--relay-button-scale, 1)) !important;
-    padding-inline: calc(14px * var(--relay-button-scale, 1)) !important;
-    gap: calc(8px * var(--relay-button-scale, 1)) !important;
-    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
-  }
-  .updates-action svg {
-    width: 21px !important;
-    height: 21px !important;
-  }
-  .new-request-action {
-    height: calc(56px * var(--relay-button-scale, 1)) !important;
-    padding-inline: calc(17px * var(--relay-button-scale, 1)) !important;
-    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
-  }
-  .new-request-action > span {
-    font-size: 24px !important;
-  }
   .my-request-card {
     bottom: 92px;
   }

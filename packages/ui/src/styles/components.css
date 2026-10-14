@@ -93,11 +93,42 @@
   width: 1em;
   height: 1em;
 }
+.relay-button-size-map-action {
+  box-sizing: border-box;
+  min-width: max-content;
+  min-height: 70px;
+  height: 70px;
+  padding: 0 14px;
+  border-radius: 24px;
+  font-size: min(1.5rem, 1.667vw);
+  white-space: nowrap;
+  gap: 8px;
+}
+.relay-button-size-map-action svg {
+  width: 20px;
+  height: 20px;
+}
+.updates-action b {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ff3b30;
+  color: white;
+  font-size: 11px;
+}
 @media (max-width: 700px) {
   .relay-button-size-map-pill {
     min-height: 56px;
     height: 56px;
     padding-inline: 16px;
+    font-size: 17px;
+  }
+  .relay-button-size-map-action {
+    min-height: 56px;
+    height: 56px;
+    padding-inline: 14px;
     font-size: 17px;
   }
 }

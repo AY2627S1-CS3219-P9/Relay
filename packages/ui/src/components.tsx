@@ -10,7 +10,7 @@ export type BubbleAnchor = {
 }
 
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
-export type RelayButtonSize = 'default' | 'map-pill' | 'map-icon'
+export type RelayButtonSize = 'default' | 'map-pill' | 'map-icon' | 'map-action'
 
 export function RelayButton({
   variant = 'secondary',

@@ -79,7 +79,7 @@ input {
 .supplier-bottom-controls > * {
   pointer-events: auto;
 }
-.supplier-bottom-controls .supplier-row-button {
+.supplier-bottom-controls .supplier-row-button:not(.relay-button-size-map-action) {
   box-sizing: border-box;
   flex: 0 0 auto;
   min-width: max-content;
@@ -120,7 +120,7 @@ input {
   .new-request-action .supplier-control-label {
     display: none;
   }
-  .supplier-bottom-controls .supplier-row-button {
+  .supplier-bottom-controls .supplier-row-button:not(.relay-button-size-map-action) {
     flex-basis: 48px;
     width: 48px;
     height: 48px !important;
