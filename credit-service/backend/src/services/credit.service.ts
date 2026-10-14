@@ -6,6 +6,8 @@ import type {
   AllocateInitialCreditCommand,
   DeleteUserCreditCommand,
   ReleaseCreditCommand,
+  ReserveCreditRequest,
+  ReserveCreditResponse,
   TransferCreditCommand,
 } from '@relay/contracts'
 import { CreditRepository } from '../repositories/credit.repository.js'
@@ -18,6 +20,10 @@ export class CreditService {
     await this.repository.allocateInitialCredit(command)
   }
 
+  async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
+    return this.repository.reserveCredit(request)
+  }
+  
   async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
     await this.repository.releaseCredit(command)
   }

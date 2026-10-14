@@ -1,3 +1,3 @@
-FROM apache/kafka:3.9.1
+FROM apache/kafka:latest
 COPY --chmod=755 init.sh /opt/kafka/init.sh
 ENTRYPOINT ["/opt/kafka/init.sh"]

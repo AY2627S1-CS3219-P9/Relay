@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: apache/kafka:3.9.1
+    image: apache/kafka:latest
     ports:
       - '127.0.0.1:9094:9094'
     environment:

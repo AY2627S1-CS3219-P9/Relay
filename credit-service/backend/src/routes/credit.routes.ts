@@ -8,5 +8,6 @@ export function createCreditRouter(controller: CreditController, sessions: UserS
   router.use(createSessionMiddleware(sessions))
   router.get('/', controller.viewCredit)
   router.get('/history', controller.viewCreditHistory)
+  router.post('/reserve', controller.reserveCredit)
   return router
 }

@@ -5,10 +5,13 @@ import type {
   CreditBalance,
   DeleteUserCreditCommand,
   ReleaseCreditCommand,
+  ReserveCreditRequest,
+  ReserveCreditResponse,
   TransactionRecord,
   TransferCreditCommand,
 } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
+import { CreditServiceError } from '../types/credit.types.js'
 
 export const prisma = new PrismaClient({
   datasources: { db: { url: getEnv().databaseUrl } },
@@ -43,7 +46,7 @@ export class CreditRepository {
   async findHistory(userId: string): Promise<TransactionRecord[]> {
     const records = await prisma.transactionRecord.findMany({
       where: { OR: [{ senderId: userId }, { receiverId: userId }] },
-      orderBy: [{ time: 'desc' }, { reference: 'asc' }],
+      orderBy: [{ time: 'desc' }],
     })
     return records.map((record: any) => {
       const [service, id] = record.reference.split(':')
@@ -94,6 +97,88 @@ export class CreditRepository {
     }
   }
 
+  async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
+    const reference = referenceOf(request)
+    if (
+      request.transactionReference.service !== 'errand' ||
+      request.transactionReference.type !== 'CREDIT_RESERVE' ||
+      !request.userId
+    ) throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
+    if (!Number.isFinite(request.amount) || request.amount <= 0) {
+      throw new CreditServiceError('INVALID_CREDIT_AMOUNT', 'Credit amount must be a positive number.', 422)
+    }
+    const amount = new Decimal(request.amount)
+
+    const existingResponse = async (): Promise<ReserveCreditResponse | null> => {
+      const record = await prisma.transactionRecord.findUnique({ where: { reference } })
+      if (!record) return null
+      if (
+        record.senderId !== request.userId ||
+        record.receiverId !== request.userId ||
+        !record.amount.equals(amount)
+      ) throw new CreditServiceError('INVALID_REQUEST', 'Reservation reference was already used for different details.', 400)
+      const balance = await this.findBalance(request.userId)
+      if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
+      return { ...balance, status: 'ALREADY_RESERVED' }
+    }
+
+    try {
+      return await prisma.$transaction(async (tx: any) => {
+        const prior = await tx.transactionRecord.findUnique({ where: { reference } })
+        if (prior) {
+          if (
+            prior.senderId !== request.userId ||
+            prior.receiverId !== request.userId ||
+            !prior.amount.equals(amount)
+          ) throw new CreditServiceError('INVALID_REQUEST', 'Reservation reference was already used for different details.', 400)
+          const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
+          if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
+          return {
+            userId: balance.userId,
+            availableCredit: balance.availableCredit.toNumber(),
+            reserveCredit: balance.reserveCredit.toNumber(),
+            lastUpdated: balance.lastUpdated,
+            status: 'ALREADY_RESERVED' as const,
+          }
+        }
+        const updated = await tx.creditBalance.updateMany({
+          where: { userId: request.userId, availableCredit: { gte: amount } },
+          data: { availableCredit: { decrement: amount }, reserveCredit: { increment: amount } },
+        })
+        if (updated.count !== 1) {
+          const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
+          if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
+          throw new CreditServiceError('INSUFFICIENT_CREDITS', 'The available credit balance is too low.', 422)
+        }
+        await tx.transactionRecord.create({
+          data: {
+            reference,
+            senderId: request.userId,
+            receiverId: request.userId,
+            type: 'CREDIT_RESERVE',
+            amount,
+          },
+        })
+        const balance = await tx.creditBalance.findUniqueOrThrow({ where: { userId: request.userId } })
+        return {
+          userId: balance.userId,
+          availableCredit: balance.availableCredit.toNumber(),
+          reserveCredit: balance.reserveCredit.toNumber(),
+          lastUpdated: balance.lastUpdated,
+          status: 'RESERVE_SUCCESS' as const,
+        }
+      })
+    } catch (error) {
+      if (
+        (error as { code?: string }).code === 'P2002' ||
+        (error instanceof CreditServiceError && error.code === 'INSUFFICIENT_CREDITS')
+      ) {
+        const previous = await existingResponse()
+        if (previous) return previous
+      }
+      throw error
+    }
+  }
   async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
     const reference = referenceOf(command)
     if (

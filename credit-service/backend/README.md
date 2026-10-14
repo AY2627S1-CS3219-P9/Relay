@@ -55,28 +55,38 @@ npm run dev --workspace @relay/credit-backend
 
 ## HTTP API
 
-| Method | Route                 | Response                                                  |
-| ------ | --------------------- | --------------------------------------------------------- |
-| GET    | `/api/credit`         | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
-| GET    | `/api/credit/history` | `{ records: TransactionRecord[] }`                        |
+| Method | Route | Response |
+| ------ | ----- | -------- |
+| GET | `/api/credit` | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
+| GET | `/api/credit/history` | `{ records: TransactionRecord[] }` |
+| POST | `/api/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS' | 'ALREADY_RESERVED' }` |
 
-Both routes forward the browser's Cookie header and the configured internal
-service token to `POST /internal/user/session/validate` on the User Service.
+All routes forward the browser's Cookie header and the configured internal
+service token to `POST /internal/user/session/validate` on User Service.
 The validated Cognito subject selects the user's records. An optional `userId`
-query parameter must match that subject; another user's ID returns 403. These
-rules also apply to admins. Responses use the credit contract directly, without
-the User Service's `{ ok, data }` envelope. Dates are serialized as ISO strings.
+query parameter must match that subject; another user's ID returns 403.
+Responses use the credit contract directly, without User Service's
+`{ ok, data }` envelope. Dates are serialized as ISO strings.
+
+Reserve accepts the contract body
+`{ transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' }, userId, amount }`.
+The body userId must match the authenticated subject. The amount must be a
+positive number. The balance and a `CREDIT_RESERVE` history record are updated
+atomically. Repeating the same reference and details returns `ALREADY_RESERVED`
+without charging again; reusing the reference with different details returns
+`INVALID_REQUEST` (400). A missing balance returns `USER_NOT_FOUND` (404);
+invalid amounts and insufficient available credit return 422.
 
 History includes transactions where the user is sender or receiver, newest
 first, with reference as a deterministic tie-breaker. No transactions returns
-`{ records: [] }`; a missing balance returns `USER_NOT_FOUND` (404). Missing or
-invalid authentication returns `UNAUTHENTICATED` (401), invalid userId input
-returns `INVALID_REQUEST` (400), and User Service failures/timeouts return 503.
+`{ records: [] }`. Missing or invalid authentication returns
+`UNAUTHENTICATED` (401), invalid userId input returns `INVALID_REQUEST` (400),
+and User Service failures/timeouts return 503.
 
 Configure `USER_API_URL`, `USER_API_TIMEOUT` (milliseconds), and
-`USER_SERVICE_INTERNAL_TOKEN`. The token must match the User Service's
+`USER_SERVICE_INTERNAL_TOKEN`. The token must match User Service's
 `INTERNAL_USER_SERVICE_TOKEN`. Compose configures the same local token used by
-Supplier Service. The User Service must be running for authenticated requests;
+Supplier Service. User Service must be running for authenticated requests;
 credit database health checks remain independent. The host proxies `/api/credit`
 with the browser cookie to this API.
 
@@ -94,7 +104,8 @@ Integration tests use the configured real credit database and an HTTP test
 server implementing the User Service session-validation boundary. Fixtures use
 unique IDs and are removed afterward. Tests cover authentication forwarding,
 expired sessions, outages/timeouts, ownership checks, balance serialization,
-history filtering/ordering, and missing records.
+history filtering/ordering, reservation validation and idempotency, concurrent
+spending, and the Kafka registration-to-transfer workflow.
 
 ## New-user credit allocation
 

@@ -35,4 +35,5 @@ services:
         condition: service_healthy
   credit-api:
     ports:
+      - '127.0.0.1:3002:3000' # Credit API for local Postman requests
       - '127.0.0.1:5556:5555' # Credit Prisma Studio
