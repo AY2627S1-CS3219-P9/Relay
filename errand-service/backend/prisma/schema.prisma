@@ -34,8 +34,8 @@ model Errand {
   pickupFloorNumber  Int
 
   name                 String
-  supplierName         String!
-  serviceType          Int!
+  supplierName         String
+  serviceType          Int
   deliveryDescription  String
   deliveryInstructions String?
 

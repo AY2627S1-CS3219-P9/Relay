@@ -12,7 +12,7 @@ export type ErrandEnv = {
   userApiUrl: string
   supplierApiUrl: string
   userServiceInternalToken: string
-  errandServiceInternalToken: string
+  internalServiceToken: string
   timeoutMs: number
   kafkaBrokers: string
   kafkaGroupId: string
@@ -30,8 +30,8 @@ export function getEnv(): ErrandEnv {
     supplierApiUrl: process.env.SUPPLIER_API_URL ?? 'http://supplier-api:3000',
     userServiceInternalToken:
       process.env.USER_SERVICE_INTERNAL_TOKEN ?? 'local-internal-user-service-token',
-    errandServiceInternalToken:
-      process.env.ERRAND_SERVICE_INTERNAL_TOKEN ?? 'local-internal-errand-service-token',
+    internalServiceToken:
+      process.env.INTERNAL_ERRAND_SERVICE_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),
     kafkaBrokers: process.env.KAFKA_BROKERS ?? 'localhost:9092',
     kafkaGroupId: process.env.KAFKA_GROUP_ID ?? 'errand-service',

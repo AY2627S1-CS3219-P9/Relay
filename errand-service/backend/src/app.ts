@@ -9,6 +9,8 @@ import { EventService } from './services/event.service.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
 import { connectProducer, disconnectProducer } from './kafka/producer.js'
+import { internalServiceAuth } from './middleware/internal.middleware.js'
+import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
 
 export function createApp() {
   const app = express()
@@ -28,8 +30,10 @@ export function createApp() {
   const service = new ErrandService(repository, eventService)
   const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
+  const internalErrandRouter = createInternalErrandRouter(controller)
 
   app.use('/api/errands', sessionMiddleware, errandRouter)
+  app.use('/internal/errands', internalServiceAuth, sessionMiddleware, internalErrandRouter)
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof ErrandServiceError) {
@@ -53,7 +57,7 @@ export const app = createApp()
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
-  
+
   // Connect Kafka producer on startup
   connectProducer().catch((err) => {
     console.error('Failed to connect Kafka producer:', err)

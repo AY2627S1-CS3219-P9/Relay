@@ -1,4 +1,4 @@
-import type { CreateErrandRequest } from './requests'
+import type { CreateErrandRequest, GetErrandsOptions } from './requests'
 import type { SupplierInfoEvent } from './models'
 import type {
   CreateErrandResponse,
@@ -20,7 +20,7 @@ export interface ErrandApi {
   createErrand(request: CreateErrandRequest): Promise<CreateErrandResponse>
 
   /** List errands visible to the authenticated user. */
-  getErrands(): Promise<GetErrandsResponse>
+  getErrands(options?: GetErrandsOptions): Promise<GetErrandsResponse>
 
   /** List open errands for a specific supplier (for courier discovery when viewing supplier). */
   listOpenBySupplier(supplierId: string): Promise<ListOpenBySupplierResponse>

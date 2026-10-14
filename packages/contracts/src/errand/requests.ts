@@ -1,4 +1,9 @@
-import type { DeliveryDetails, ErrandLocation } from './models'
+import type {
+  DeliveryDetails,
+  ErrandListScope,
+  ErrandLocation,
+  SupplierErrandViewScope,
+} from './models'
 
 /** Request to create an errand. The requester is taken from the session. */
 export type CreateErrandRequest = {
@@ -17,3 +22,12 @@ export type AcceptErrandRequest = {}
 
 /** Request to cancel an errand. No body needed - authenticated via session. */
 export type CancelErrandRequest = {}
+
+export type GetErrandsOptions = {
+  scope?: ErrandListScope
+}
+
+export type SupplierErrandViewRequest = {
+  scope: SupplierErrandViewScope
+  supplierId?: string
+}
