@@ -16,7 +16,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
@@ -33,6 +33,18 @@ services:
       KAFKA_CLUSTERS_0_NAME: relay-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  kafka-init:
+    build: ./kafka
+    environment:
+      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
+      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
+      KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
+      KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
+      KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
     depends_on:
       kafka:
         condition: service_healthy
@@ -63,16 +75,19 @@ services:
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_GROUP_ID: relay-credit-initial-allocation
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
+      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
+      KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
+      KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
+      KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
     depends_on:
       credit-postgres:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 10s
@@ -261,10 +276,11 @@ services:
       S3_BUCKET: relay-user-profile-images
       S3_FORCE_PATH_STYLE: 'true'
       INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
+      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
     depends_on:
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       user-postgres:
         condition: service_healthy
     healthcheck:

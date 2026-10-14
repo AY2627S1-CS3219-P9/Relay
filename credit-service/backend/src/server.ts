@@ -1,13 +1,13 @@
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
-import { NewUserConsumer } from './consumers/credit.consumer.js'
+import { CreditEventConsumer } from './consumers/credit.consumer.js'
 import { CreditService } from './services/credit.service.js'
 import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 let server: Server | undefined
-const consumer = new NewUserConsumer(new CreditService(new CreditRepository()))
+const consumer = new CreditEventConsumer(new CreditService(new CreditRepository()))
 let stopping = false
 async function startConsumer(): Promise<void> {
   while (!stopping) {
@@ -15,7 +15,7 @@ async function startConsumer(): Promise<void> {
       await consumer.start()
       return
     } catch (error) {
-      console.error('Credit new-user consumer failed to start; retrying:', error)
+      console.error('Credit event consumer failed to start; retrying:', error)
       await consumer.stop().catch(() => undefined)
       if (!stopping) await new Promise((resolve) => setTimeout(resolve, 3000))
     }

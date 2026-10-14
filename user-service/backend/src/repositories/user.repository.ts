@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import type { NewUserEvent } from '@relay/contracts'
+import { getEnv } from '../config/env.js'
+import type { UserDeletedEvent, UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
 export const prisma = new PrismaClient()
@@ -40,7 +41,7 @@ export class UserRepository {
   }
 
   async createProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
-    const profile = await prisma.$transaction(async (tx) => {
+    const profile = await prisma.$transaction(async (tx: any) => {
       const created = await tx.userProfile.create({
         data: {
           cognitoSub,
@@ -50,9 +51,9 @@ export class UserRepository {
       })
       await tx.userOutboxEvent.create({
         data: {
-          topic: 'relay.user.created',
+          topic: getEnv().kafkaTopicUserRegistered,
           key: cognitoSub,
-          payload: { cognitoSub } satisfies NewUserEvent,
+          payload: { cognitoSub } satisfies UserRegisteredEvent,
         },
       })
       return created
@@ -74,8 +75,16 @@ export class UserRepository {
   }
 
   async deleteProfile(cognitoSub: string): Promise<UserProfileRecord> {
-    const profile = await prisma.userProfile.delete({
-      where: { cognitoSub },
+    const profile = await prisma.$transaction(async (tx: any) => {
+      const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
+      await tx.userOutboxEvent.create({
+        data: {
+          topic: getEnv().kafkaTopicUserDeleted,
+          key: cognitoSub,
+          payload: { cognitoSub } satisfies UserDeletedEvent,
+        },
+      })
+      return deleted
     })
     return toProfileRecord(profile)
   }

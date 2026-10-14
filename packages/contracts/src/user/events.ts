@@ -1,7 +1,7 @@
-export type NewUserEvent = {
+export type UserRegisteredEvent = {
   cognitoSub: string
 }
 
-export type DeleteUserEvent = {
+export type UserDeletedEvent = {
   cognitoSub: string
 }

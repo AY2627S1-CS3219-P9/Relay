@@ -1,14 +1,31 @@
 import { PrismaClient } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
 import type {
   AllocateInitialCreditCommand,
   CreditBalance,
+  DeleteUserCreditCommand,
+  ReleaseCreditCommand,
   TransactionRecord,
+  TransferCreditCommand,
 } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
 
 export const prisma = new PrismaClient({
   datasources: { db: { url: getEnv().databaseUrl } },
 })
+
+function referenceOf(command: { transactionReference: { service: string; id: string; type: string } }): string {
+  const { service, id, type } = command.transactionReference
+  if (!service || !id || service.includes(':') || id.includes(':')) {
+    throw new Error('Invalid transaction reference.')
+  }
+  return `${service}:${id}:${type}`
+}
+
+function positiveAmount(amount: number): Decimal {
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.')
+  return new Decimal(amount)
+}
 
 export class CreditRepository {
   async findBalance(userId: string): Promise<CreditBalance | null> {
@@ -42,16 +59,19 @@ export class CreditRepository {
   }
 
   async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
-    const reference = `${command.transactionReference.service}:${command.transactionReference.id}:${command.transactionReference.type}`
+    const reference = referenceOf(command)
     if (
       command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
+      command.transactionReference.service !== 'user' ||
       command.userId !== command.transactionReference.id
-    ) {
-      throw new Error('Invalid initial credit allocation command.')
-    }
+    ) throw new Error('Invalid initial credit allocation command.')
     try {
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+        // A delayed registration event must never recreate a deleted user's balance.
+        if (await tx.transactionRecord.findUnique({
+          where: { reference: `user:${command.userId}:USER_DELETION` },
+        })) return
         await tx.creditBalance.create({
           data: { userId: command.userId, availableCredit: 100, reserveCredit: 0 },
         })
@@ -66,14 +86,96 @@ export class CreditRepository {
         })
       })
     } catch (error) {
-      // A retry or concurrent consumer may win the unique-key race.
       if (
         (error as { code?: string }).code === 'P2002' &&
         (await prisma.transactionRecord.findUnique({ where: { reference } }))
-      )
-        return
+      ) return
       throw error
     }
+  }
+
+  async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
+    const reference = referenceOf(command)
+    if (
+      command.transactionReference.service !== 'errand' ||
+      command.transactionReference.type !== 'CREDIT_RELEASE' ||
+      !command.userId
+    ) throw new Error('Invalid release credit command.')
+    const amount = positiveAmount(command.amount)
+    await prisma.$transaction(async (tx: any) => {
+      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+      const conflicting = await tx.transactionRecord.findUnique({
+        where: { reference: `errand:${command.transactionReference.id}:CREDIT_TRANSFER` },
+      })
+      if (conflicting) throw new Error('Cannot release credit for a confirmed errand.')
+      const updated = await tx.creditBalance.updateMany({
+        where: { userId: command.userId, reserveCredit: { gte: amount } },
+        data: { reserveCredit: { decrement: amount }, availableCredit: { increment: amount } },
+      })
+      if (updated.count !== 1) throw new Error('Insufficient reserved credit for release.')
+      await tx.transactionRecord.create({
+        data: {
+          reference, senderId: command.userId, receiverId: command.userId,
+          type: 'CREDIT_RELEASE', amount,
+        },
+      })
+    })
+  }
+
+  async transferCredit(command: TransferCreditCommand): Promise<void> {
+    const reference = referenceOf(command)
+    if (
+      command.transactionReference.service !== 'errand' ||
+      command.transactionReference.type !== 'CREDIT_TRANSFER' ||
+      !command.senderId || !command.receiverId ||
+      command.senderId === command.receiverId
+    ) throw new Error('Invalid transfer credit command.')
+    const amount = positiveAmount(command.amount)
+    await prisma.$transaction(async (tx: any) => {
+      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+      const conflicting = await tx.transactionRecord.findUnique({
+        where: { reference: `errand:${command.transactionReference.id}:CREDIT_RELEASE` },
+      })
+      if (conflicting) throw new Error('Cannot transfer credit for a cancelled errand.')
+      const debited = await tx.creditBalance.updateMany({
+        where: { userId: command.senderId, reserveCredit: { gte: amount } },
+        data: { reserveCredit: { decrement: amount } },
+      })
+      if (debited.count !== 1) throw new Error('Insufficient reserved credit for transfer.')
+      await tx.creditBalance.update({
+        where: { userId: command.receiverId },
+        data: { availableCredit: { increment: amount } },
+      })
+      await tx.transactionRecord.create({
+        data: {
+          reference, senderId: command.senderId, receiverId: command.receiverId,
+          type: 'CREDIT_TRANSFER', amount,
+        },
+      })
+    })
+  }
+
+  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<void> {
+    const reference = referenceOf(command)
+    if (
+      command.transactionReference.service !== 'user' ||
+      command.transactionReference.type !== 'USER_DELETION' ||
+      command.transactionReference.id !== command.userId
+    ) throw new Error('Invalid user deletion command.')
+    await prisma.$transaction(async (tx: any) => {
+      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+      const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
+      await tx.transactionRecord.create({
+        data: {
+          reference, senderId: command.userId, receiverId: 'SYSTEM',
+          type: 'USER_DELETION',
+          amount: balance
+            ? balance.availableCredit.plus(balance.reserveCredit)
+            : new Decimal(0),
+        },
+      })
+      if (balance) await tx.creditBalance.delete({ where: { userId: command.userId } })
+    })
   }
 
   async checkTables(): Promise<void> {

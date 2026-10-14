@@ -98,15 +98,30 @@ history filtering/ordering, and missing records.
 
 ## New-user credit allocation
 
-When User Service creates a profile, it writes a `NewUserEvent` to its PostgreSQL
+When User Service creates a profile, it writes a `UserRegisteredEvent` to its PostgreSQL
 outbox in the same transaction. Its publisher sends the event to the
-`relay.user.created` Kafka topic. The credit consumer in `src/consumers/`
+`KAFKA_TOPIC_USER_REGISTERED` Kafka topic. The credit consumer in `src/consumers/`
 translates the event to `AllocateInitialCreditCommand` and creates a balance
 with 100 available credits and 0 reserved credits, plus one
 `INITIAL_ALLOCATION` transaction from `SYSTEM` to the Cognito subject.
 
 The reference `user:<cognitoSub>:INITIAL_ALLOCATION` is unique. The balance and
 transaction are written atomically, so a replay does not issue more credit.
-Configure `KAFKA_BROKERS` and `KAFKA_GROUP_ID` to match the local cluster.
+Configure `KAFKA_BROKERS` to match the local cluster.
 Kafbat UI is available at http://localhost:8081; Prisma Studio for credit is
 available at http://localhost:5556 when started in the credit container.
+
+## Errand outcomes and user deletion
+
+The consumer maps `ErrandConfirmedEvent` to `TransferCreditCommand`: it moves the
+errand amount from the requester reserved balance to the courier available
+balance. `ErrandCancelledEvent` and `ErrandExpiredEvent` map to
+`ReleaseCreditCommand`, returning the amount from reserved to available.
+These operations require the errand amount to have been reserved already.
+Both operations use `errand:<id>:<transaction type>` as an idempotency key,
+and a conflicting release or transfer for the same errand is rejected.
+
+`UserDeletedEvent` maps to `DeleteUserCreditCommand`. It removes the balance
+and leaves a `USER_DELETION` history record containing the remaining total.
+A delayed registration event cannot recreate a deleted balance. Compose's
+`kafka-init` builds `kafka/Dockerfile` and runs `kafka/init.sh` to create all five configured event topics before the APIs start.

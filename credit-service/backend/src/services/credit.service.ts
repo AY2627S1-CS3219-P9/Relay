@@ -4,6 +4,9 @@ import type {
   ViewCreditHistoryRequest,
   ViewCreditHistoryResponse,
   AllocateInitialCreditCommand,
+  DeleteUserCreditCommand,
+  ReleaseCreditCommand,
+  TransferCreditCommand,
 } from '@relay/contracts'
 import { CreditRepository } from '../repositories/credit.repository.js'
 import { CreditServiceError } from '../types/credit.types.js'
@@ -13,6 +16,18 @@ export class CreditService {
 
   async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
     await this.repository.allocateInitialCredit(command)
+  }
+
+  async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
+    await this.repository.releaseCredit(command)
+  }
+
+  async transferCredit(command: TransferCreditCommand): Promise<void> {
+    await this.repository.transferCredit(command)
+  }
+
+  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<void> {
+    await this.repository.deleteUserCredit(command)
   }
 
   async viewCredit(request: ViewCreditRequest): Promise<ViewCreditResponse> {

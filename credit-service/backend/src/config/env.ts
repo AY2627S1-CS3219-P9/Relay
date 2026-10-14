@@ -8,7 +8,11 @@ const schema = z.object({
   USER_API_TIMEOUT: z.coerce.number().int().positive().default(5000),
   USER_SERVICE_INTERNAL_TOKEN: z.string().min(1).default('local-internal-user-service-token'),
   KAFKA_BROKERS: z.string().min(1).default('kafka:9092'),
-  KAFKA_GROUP_ID: z.string().min(1).default('relay-credit-initial-allocation'),
+  KAFKA_TOPIC_USER_REGISTERED: z.string().min(1),
+  KAFKA_TOPIC_USER_DELETED: z.string().min(1),
+  KAFKA_TOPIC_ERRAND_CONFIRMED: z.string().min(1),
+  KAFKA_TOPIC_ERRAND_CANCELLED: z.string().min(1),
+  KAFKA_TOPIC_ERRAND_EXPIRED: z.string().min(1),
 })
 
 export function getEnv() {
@@ -20,6 +24,12 @@ export function getEnv() {
     userApiTimeout: env.USER_API_TIMEOUT,
     userServiceInternalToken: env.USER_SERVICE_INTERNAL_TOKEN,
     kafkaBrokers: env.KAFKA_BROKERS.split(','),
-    kafkaGroupId: env.KAFKA_GROUP_ID,
+    kafkaTopics: {
+      userRegistered: env.KAFKA_TOPIC_USER_REGISTERED,
+      userDeleted: env.KAFKA_TOPIC_USER_DELETED,
+      errandConfirmed: env.KAFKA_TOPIC_ERRAND_CONFIRMED,
+      errandCancelled: env.KAFKA_TOPIC_ERRAND_CANCELLED,
+      errandExpired: env.KAFKA_TOPIC_ERRAND_EXPIRED,
+    },
   }
 }
