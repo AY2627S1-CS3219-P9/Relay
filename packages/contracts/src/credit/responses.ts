@@ -1,4 +1,4 @@
-import { CreditBalance, TransactionRecord } from "./models";
+import type { CreditBalance, TransactionRecord } from "./models";
 
 export type ViewCreditResponse = CreditBalance
 

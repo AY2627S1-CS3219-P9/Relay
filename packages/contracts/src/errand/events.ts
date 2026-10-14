@@ -1,4 +1,4 @@
-import { Errand } from "./models"
+import type { Errand } from "./models"
 
 type ErrandEvent = {
   errand: Errand
