@@ -1,5 +1,6 @@
 import {
   ErrandErrors,
+  ErrandStatus,
   type CreateErrandRequest,
   type Errand,
   type ErrandLocation,
@@ -81,8 +82,8 @@ export class ErrandService {
 
     await this.eventService.onErrandStatusChanged(
       updated.id,
-      'ACCEPTED',
-      'OPEN',
+      ErrandStatus.Accepted,
+      ErrandStatus.Open,
       courier.sub,
       'courier',
       updated.requesterSub,
@@ -151,10 +152,11 @@ export class ErrandService {
 
     await this.eventService.onErrandStatusChanged(
       updated.id,
-      'DELIVERED',
-      'PICKED_UP',
+      ErrandStatus.Delivered,
+      ErrandStatus.PickedUp,
       user.sub,
       'courier',
+      updated.requesterSub,
     )
 
     return updated
@@ -216,10 +218,11 @@ export class ErrandService {
 
     await this.eventService.onErrandStatusChanged(
       updated.id,
-      'PICKED_UP',
-      'ACCEPTED',
+      ErrandStatus.PickedUp,
+      ErrandStatus.Accepted,
       user.sub,
       'courier',
+      updated.requesterSub,
     )
 
     return updated
@@ -239,6 +242,9 @@ export class ErrandService {
         409,
       )
     }
+
+    // Publish deletion event after successful DB delete
+    await this.eventService.onErrandDeleted(id, user.sub)
   }
 
   async receiveSupplierEvents(event: {
