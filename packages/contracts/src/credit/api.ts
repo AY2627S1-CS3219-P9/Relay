@@ -1,0 +1,31 @@
+import { AllocateInitialCreditCommand, DeleteUserCreditCommand, ReleaseCreditCommand, TransferCreditCommand } from "./commands"
+import { ReserveCreditRequest, ViewCreditHistoryRequest, ViewCreditRequest } from "./requests"
+import { ReserveCreditResponse, ViewCreditHistoryResponse, ViewCreditResponse } from "./responses"
+
+/** Credit Service methods for backend to implement */
+export interface CreditApi {
+  /// Synchronous HTTP methods
+
+  /** Views credit balance for the authenticated user. */
+  viewCredit(request: ViewCreditRequest): Promise<ViewCreditResponse>
+
+  /** Views credit balance history for the authenticated user. */
+  viewCreditHistory(request: ViewCreditHistoryRequest): Promise<ViewCreditHistoryResponse>
+
+  /** Reserves credit amount from available credits. */
+  reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse>
+
+  /// Asynchronous commands from Kafka events
+
+  /** Allocates initial credit amount for new user. */
+  allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void>
+
+  /** Releases credit amount from reserved credits. */
+  releaseCredit(command: ReleaseCreditCommand): Promise<void>
+
+  /** Transfers credit amount from sender's reserve balance to receiver's available balance. */
+  transferCredit(command: TransferCreditCommand): Promise<void>
+
+  /** Deletes user credit balance record. */
+  deleteUser(command: DeleteUserCreditCommand): Promise<void>
+}
