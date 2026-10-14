@@ -34,6 +34,16 @@ export class ErrandController {
     }
   }
 
+  listBySupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const supplierId = String(req.params.supplierId)
+      const errands = await this.service.listBySupplier(supplierId)
+      res.json({ errands })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   get = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const errand = await this.service.getErrand(requireUser(req), String(req.params.id))
