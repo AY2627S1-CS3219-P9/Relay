@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import type { Supplier } from '@relay/contracts'
+import type { MapViewport, Supplier } from '@relay/contracts'
 import type { BubbleAnchor } from '@relay/ui'
 
 export type MapPoint = { lat: number; lng: number }
@@ -56,6 +56,17 @@ function MapReadyController({ onReady }: { onReady: (map: L.Map) => void }) {
     onReady(map)
   }, [map, onReady])
 
+  return null
+}
+
+function MapZoomController({ onChange }: { onChange?: (viewport: MapViewport) => void }) {
+  const map = useMap()
+  const reportViewport = () => {
+    const center = map.getCenter()
+    onChange?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
+  }
+  useEffect(() => { reportViewport() }, [map, onChange])
+  useMapEvents({ zoomend: reportViewport, moveend: reportViewport })
   return null
 }
 
@@ -164,18 +175,23 @@ export function SupplierMap({
   userLocation,
   onSelect,
   onMapReady,
+  zoom,
+  onViewportChange,
 }: {
   center: MapPoint
   suppliers: Supplier[]
   userLocation?: MapPoint
   onSelect: (supplier: Supplier, anchor: BubbleAnchor, nearbySuppliers: Supplier[]) => void
   onMapReady: (map: L.Map) => void
+  zoom: number
+  onViewportChange?: (viewport: MapViewport) => void
 }) {
   return (
-    <MapContainer className="relay-map" center={center} zoom={16} zoomControl={false}>
+    <MapContainer className="relay-map" center={center} zoom={zoom} zoomControl={false}>
       <MapCenterController center={center} />
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
+      <MapZoomController onChange={onViewportChange} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

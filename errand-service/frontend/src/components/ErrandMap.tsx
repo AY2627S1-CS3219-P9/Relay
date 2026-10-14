@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import type { UserLocation } from '@relay/contracts'
+import type { MapViewport, UserLocation } from '@relay/contracts'
 import type { DemoErrand } from '../types'
 
 export type MapPoint = { lat: number; lng: number }
@@ -51,8 +51,14 @@ function MapReadyController({ onReady }: { onReady?: (map: L.Map) => void }) {
   return null
 }
 
-function ZoomRevisionController({ onChange }: { onChange: () => void }) {
-  useMapEvents({ zoomend: onChange })
+function ViewportController({ onChange }: { onChange?: (viewport: MapViewport) => void }) {
+  const map = useMap()
+  const reportViewport = () => {
+    const center = map.getCenter()
+    onChange?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
+  }
+  useEffect(() => { reportViewport() }, [map, onChange])
+  useMapEvents({ zoomend: reportViewport, moveend: reportViewport })
   return null
 }
 
@@ -63,6 +69,8 @@ export function ErrandMap({
   selectedId,
   onSelect,
   onMapReady,
+  zoom,
+  onViewportChange,
 }: {
   errands: DemoErrand[]
   center: MapPoint
@@ -70,16 +78,15 @@ export function ErrandMap({
   selectedId?: string
   onSelect: (errand: DemoErrand) => void
   onMapReady?: (map: L.Map) => void
+  zoom: number
+  onViewportChange?: (viewport: MapViewport) => void
 }) {
-  const [zoomRevision, setZoomRevision] = useState(0)
-  const visibleErrands = useMemo(() => errands, [errands, zoomRevision])
-
   return (
-    <MapContainer className="relay-map" center={center} zoom={16} zoomControl>
+    <MapContainer className="relay-map" center={center} zoom={zoom} zoomControl={false}>
       <MapCenterController center={center} />
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
-      <ZoomRevisionController onChange={() => setZoomRevision((value) => value + 1)} />
+      <ViewportController onChange={onViewportChange} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -91,7 +98,7 @@ export function ErrandMap({
           pathOptions={{ color: '#fff', fillColor: '#007aff', fillOpacity: 1, weight: 3 }}
         />
       )}
-      {visibleErrands.map((errand) => (
+      {errands.map((errand) => (
         <Marker
           key={errand.id}
           position={[errand.pickupLocation.lat, errand.pickupLocation.lng]}

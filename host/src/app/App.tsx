@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   SERVICE_METADATA,
@@ -45,6 +45,8 @@ function App() {
   const [authVersion, setAuthVersion] = useState(0)
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [userLocation, setUserLocation] = useState<UserLocation>()
+  const [supplierMode, setSupplierMode] = useState<'explore' | 'requests'>('explore')
+  const [mapViewport, setMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -164,10 +166,17 @@ function App() {
     setProfileOpen(false)
     setProfileAnchor(undefined)
     if (service !== 'errand') setErrandViewContext(undefined)
+    if (service === 'supplier') setSupplierMode('explore')
     setActiveService(service)
   }
 
   function openErrandView(context: ErrandViewContext) {
+    if (context.view === 'explore') {
+      setSupplierMode('explore')
+      navigateTo('supplier')
+      return
+    }
+    if (context.view === 'requests') setSupplierMode('requests')
     setErrandViewContext(context)
     setActiveService('errand')
   }
@@ -176,6 +185,16 @@ function App() {
     setProfileAnchor(anchor)
     setProfileOpen(true)
   }
+
+  const handleMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
+    setMapViewport((currentViewport) => (
+      currentViewport.zoom === nextViewport.zoom &&
+      currentViewport.center.lat === nextViewport.center.lat &&
+      currentViewport.center.lng === nextViewport.center.lng
+        ? currentViewport
+        : nextViewport
+    ))
+  }, [])
 
   function closeProfile() {
     setProfileOpen(false)
@@ -198,16 +217,6 @@ function App() {
     }
   }
 
-  function errandCardStyle(): CSSProperties {
-    return {
-      top: '50%',
-      left: '50%',
-      width: 'min(540px, calc(100vw - 32px))',
-      maxHeight: 'calc(100dvh - 32px)',
-      transform: 'translate(-50%, -50%)',
-    }
-  }
-
   return (
     <main className="relay-host-shell">
       <div className="remote-grid">
@@ -224,32 +233,25 @@ function App() {
               userProfile,
               refreshUserProfile,
               navigateTo,
-              openProfile: id === 'supplier' ? openProfile : undefined,
+              openProfile,
               openErrandView,
               errandViewContext: id === 'errand' ? errandViewContext : undefined,
               userLocation,
               requestUserLocation,
+              supplierMode: id === 'supplier' ? supplierMode : undefined,
+              mapViewport,
+              onMapViewportChange: handleMapViewportChange,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation:
-                (id === 'user' && profileOpen) ||
-                (id === 'errand' && errandViewContext?.view === 'create')
-                  ? 'card'
-                  : 'full',
+              presentation: id === 'user' && profileOpen ? 'card' : 'full',
             }}
             overlay={
-              (id === 'user' && profileOpen) ||
-              (id === 'errand' && errandViewContext?.view === 'create')
+              id === 'user' && profileOpen
             }
             card={
-              (id === 'user' && profileOpen) ||
-              (id === 'errand' && errandViewContext?.view === 'create')
+              id === 'user' && profileOpen
             }
             cardStyle={
-              id === 'errand' && errandViewContext?.view === 'create'
-                ? errandCardStyle()
-                : id === 'user' && profileOpen
-                  ? profileCardStyle()
-                  : undefined
+              id === 'user' && profileOpen ? profileCardStyle() : undefined
             }
           />
         ))}

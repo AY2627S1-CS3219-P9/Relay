@@ -38,6 +38,9 @@ export default function App({
   openErrandView,
   userProfile,
   authVersion,
+  supplierMode,
+  mapViewport,
+  onMapViewportChange,
   api,
 }: RemoteAppProps & { api?: SupplierApi }) {
   const activeApi = useMemo(
@@ -59,12 +62,16 @@ export default function App({
     status: 'all',
     serviceTypes: Object.values(ServiceType),
   })
-  const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
+  const [activeMode, setActiveMode] = useState<'explore' | 'requests'>(supplierMode ?? 'explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
   const [adminAnchor, setAdminAnchor] = useState<BubbleAnchor>()
   const isAdmin = userProfile?.role === 'admin'
+
+  useEffect(() => {
+    setActiveMode(supplierMode ?? 'explore')
+  }, [supplierMode])
 
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
 
@@ -161,6 +168,8 @@ export default function App({
         center={center}
         suppliers={suppliers}
         userLocation={userLocation}
+        zoom={mapViewport?.zoom ?? 16}
+        onViewportChange={onMapViewportChange}
         onSelect={(supplier, anchor, nearby) => {
           setSelectedSupplier(undefined)
           setSelectedSupplierAnchor(anchor)
@@ -190,11 +199,11 @@ export default function App({
             ]}
             value={activeMode}
             onChange={(nextMode) => {
+              setActiveMode(nextMode)
               if (nextMode === 'requests' && openErrandView) {
                 openErrandView({ view: 'requests' })
                 return
               }
-              setActiveMode(nextMode)
             }}
           />
         </div>

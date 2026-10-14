@@ -50,6 +50,11 @@ export type UserLocation = {
   lng: number
 }
 
+export type MapViewport = {
+  center: UserLocation
+  zoom: number
+}
+
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
   authVersion?: number
@@ -63,6 +68,9 @@ export type RemoteAppProps = {
   errandViewContext?: ErrandViewContext
   userLocation?: UserLocation
   requestUserLocation?: () => Promise<UserLocation | undefined>
+  supplierMode?: 'explore' | 'requests'
+  mapViewport?: MapViewport
+  onMapViewportChange?: (viewport: MapViewport) => void
   presentation?: 'full' | 'card'
 }
 
