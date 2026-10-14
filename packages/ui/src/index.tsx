@@ -18,6 +18,7 @@ export {
   PlusIcon,
   RelayBrand,
   RelayButton,
+  RelayCardAnchor,
   RelayFormField,
   RelayFormOverlay,
   RelayFormSurface,
@@ -30,7 +31,7 @@ export {
   StatusBadge,
   TextButton,
 } from './components'
-export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant } from './components'
+export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant, RelayCardPlacement } from './components'
 
 export function ServiceCard({
   label,

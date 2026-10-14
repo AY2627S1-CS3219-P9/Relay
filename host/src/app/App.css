@@ -21,7 +21,8 @@
   pointer-events: none;
 }
 .remote-profile-card {
-  position: absolute;
+  width: 100%;
+  box-sizing: border-box;
   max-height: 60dvh;
   overflow: auto;
   border-radius: 28px;

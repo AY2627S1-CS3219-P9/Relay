@@ -318,14 +318,12 @@ legend {
   transform: translateX(-50%);
 }
 .supplier-admin-panel {
-  position: absolute;
-  z-index: 1200;
-  top: 110px;
-  right: 24px;
-  width: min(440px, calc(100vw - 48px));
+  width: 100%;
   max-height: calc(100dvh - 140px);
-  overflow: auto;
-  padding: 20px;
+}
+.supplier-admin-anchor {
+  z-index: 1200;
+  width: min(440px, calc(100vw - 48px));
 }
 .supplier-admin-panel form,
 .supplier-admin-panel label,
@@ -385,14 +383,9 @@ legend {
     width: calc(100vw - 32px);
     min-width: 0;
   }
-  .supplier-admin-panel {
-    top: auto;
-    right: 0;
+  .supplier-admin-anchor {
     bottom: calc(72px + env(safe-area-inset-bottom));
-    left: 0;
-    width: 100%;
     max-height: calc(100dvh - 96px);
-    border-radius: 24px 24px 0 0;
   }
 .map-stub-controls {
     right: 16px;

@@ -17,6 +17,7 @@ import {
   PencilIcon,
   PlusIcon,
   RelayButton,
+  RelayCardAnchor,
   SlidingSegmentedControl,
   Spacer,
   StorePlusIcon,
@@ -353,8 +354,8 @@ export default function App({
           )}
         </BubblePopover>
       )}
-      {isAdmin && adminMode && (
-        <BubblePopover anchor={adminAnchor}>
+      {isAdmin && adminMode && adminAnchor && (
+        <RelayCardAnchor placement="anchored" anchor={adminAnchor} className="supplier-admin-anchor">
           <SupplierAdminPanel
             api={activeApi}
             supplier={adminMode === 'edit' ? selectedSupplier : undefined}
@@ -377,7 +378,7 @@ export default function App({
               setAdminAnchor(undefined)
             }}
           />
-        </BubblePopover>
+        </RelayCardAnchor>
       )}
       {errorMessage && (
         <div className="supplier-error" role="alert">

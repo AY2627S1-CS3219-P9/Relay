@@ -5,7 +5,7 @@ import './styles.css'
 import { useCallback, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
-import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, SlidingSegmentedControl, Spacer, StatusBadge } from '@relay/ui'
+import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge } from '@relay/ui'
 import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
@@ -82,8 +82,8 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
       </div>
       <div className="errand-bottom-controls map-bottom-menu"><RelayButton variant="secondary" size="map-action" className="updates-action"><BellIcon /><span>Updates</span><b>2</b></RelayButton><Spacer /><RelayButton variant="primary" size="map-action" className="new-request-action" onClick={() => { /* TODO: ask the host to open { view: 'create' }. */ openErrandView?.({ view: 'create' }) }}><ClipboardPlusIcon /><span>New request</span></RelayButton></div>
-      {selectedErrand && <div className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => setSelectedErrandId(undefined)} onAction={(action) => updateErrand(action, selectedErrand.id)} /></div>}
-      {view === 'create' && <div className="errand-create-popover"><CreateErrandCard initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined} onClose={closeRemote} onCreated={() => { /* TODO: refresh request list after Errand Service confirms creation. */ closeRemote() }} /></div>}
+      {selectedErrand && <RelayCardAnchor placement="center-right" className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => setSelectedErrandId(undefined)} onAction={(action) => updateErrand(action, selectedErrand.id)} /></RelayCardAnchor>}
+      {view === 'create' && <RelayCardAnchor placement="center-right" className="errand-create-popover"><CreateErrandCard initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined} onClose={closeRemote} onCreated={() => { /* TODO: refresh request list after Errand Service confirms creation. */ closeRemote() }} /></RelayCardAnchor>}
       {!selectedErrand && view === 'requests' && visibleErrands[0] && <button className="my-request-card" type="button" onClick={() => setSelectedErrandId(visibleErrands[0].id)}><span className="request-card-label">My request <StatusBadge tone={statusTone(visibleErrands[0].status)}>{STATUS_LABELS[visibleErrands[0].status]}</StatusBadge></span><strong>{visibleErrands[0].name}</strong><small>{formatRoute(visibleErrands[0].pickupLocation)} → {formatRoute(visibleErrands[0].deliveryLocation)}</small><em>{visibleErrands[0].creditAmount} cr reserved · Due {formatDeadline(visibleErrands[0].expiresAt)}</em></button>}
       {showFilters && <ErrandFilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)} />}
     </main>

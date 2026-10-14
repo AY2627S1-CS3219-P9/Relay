@@ -1,13 +1,38 @@
 .glass-card {
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.32);
-  -webkit-backdrop-filter: blur(28px) saturate(1.6);
-  backdrop-filter: blur(28px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.68);
   box-shadow:
-    0 12px 48px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 5px 18px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
+}
+.relay-card-anchor {
+  position: absolute;
+  z-index: 900;
+  width: min(var(--relay-card-max-width, 540px), calc(100vw - 32px));
+  max-height: var(--relay-card-max-height, calc(100dvh - 150px));
+  box-sizing: border-box;
+  overflow: auto;
+  animation: relay-card-anchor-in 0.46s cubic-bezier(0.22, 1.16, 0.36, 1) both;
+}
+.relay-card-placement-top-left { top: var(--relay-card-margin, 24px); left: var(--relay-card-margin, 24px); }
+.relay-card-placement-top-right { top: var(--relay-card-margin, 24px); right: var(--relay-card-margin, 24px); }
+.relay-card-placement-center-right { top: 50%; right: clamp(18px, 7vw, 140px); transform: translateY(-50%); animation-name: relay-card-center-right-in; }
+.relay-card-placement-bottom-left { bottom: var(--relay-card-bottom-offset, 92px); left: var(--relay-card-margin, 24px); }
+.relay-card-placement-bottom-right { right: var(--relay-card-margin, 24px); bottom: var(--relay-card-bottom-offset, 92px); }
+.relay-card-placement-anchored { transform-origin: top right; }
+@keyframes relay-card-anchor-in {
+  from { opacity: 0; transform: translateY(24px) scale(.975); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.004); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes relay-card-center-right-in {
+  from { opacity: 0; transform: translateY(calc(-50% + 24px)) scale(.975); }
+  70% { opacity: 1; transform: translateY(calc(-50% - 2px)) scale(1.004); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
 }
 
 .glass-pill {
@@ -163,6 +188,16 @@
   transform: scale(0.97);
 }
 @media (max-width: 700px) {
+  .relay-card-placement-center-right,
+  .relay-card-placement-anchored {
+    top: auto !important;
+    right: 16px !important;
+    bottom: 88px;
+    left: 16px !important;
+    width: auto !important;
+    max-height: calc(100dvh - 104px);
+    transform: none;
+  }
   .relay-segmented-control-size-map {
     width: calc(100vw - 32px);
   }

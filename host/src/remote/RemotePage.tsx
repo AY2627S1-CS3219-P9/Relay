@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
-import { BubblePopover, GlassCard, LoadingState, type BubbleAnchor } from '@relay/ui'
+import { GlassCard, LoadingState, RelayCardAnchor, type BubbleAnchor } from '@relay/ui'
 import { loadServiceRemote } from './RemoteLoader'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
 
@@ -76,17 +76,24 @@ export function RemotePage({
       style={{ display: visible ? undefined : 'none' }}
     >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-        <BubblePopover anchor={bubbleAnchor} open={card && Boolean(bubbleAnchor)}>
+        {card && bubbleAnchor ? (
+          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} style={cardStyle}>
           <GlassCard
-            variant={card ? 'glass' : 'plain'}
-            className={card ? 'remote-profile-card' : ''}
-            style={card ? cardStyle : undefined}
+            variant="glass"
+            className="remote-profile-card"
           >
             <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
               <RemoteApp {...appProps} />
             </Suspense>
           </GlassCard>
-        </BubblePopover>
+          </RelayCardAnchor>
+        ) : (
+          <GlassCard variant="plain">
+            <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
+              <RemoteApp {...appProps} />
+            </Suspense>
+          </GlassCard>
+        )}
       </RemoteFailureBoundary>
     </section>
   )

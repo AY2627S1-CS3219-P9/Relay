@@ -327,6 +327,45 @@ export function RelayFormOverlay({
   )
 }
 
+export type RelayCardPlacement = 'top-left' | 'top-right' | 'center-right' | 'bottom-left' | 'bottom-right' | 'anchored'
+
+export function RelayCardAnchor({
+  children,
+  placement = 'center-right',
+  anchor,
+  preferredSide = 'bottom-end',
+  offset = 12,
+  viewportPadding = 16,
+  className = '',
+  style,
+}: {
+  children: ReactNode
+  placement?: RelayCardPlacement
+  anchor?: BubbleAnchor
+  preferredSide?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end'
+  offset?: number
+  viewportPadding?: number
+  className?: string
+  style?: CSSProperties
+}) {
+  const anchoredStyle: CSSProperties = {}
+  if (placement === 'anchored' && anchor && typeof window !== 'undefined') {
+    const cardWidth = Math.min(520, window.innerWidth - viewportPadding * 2)
+    const left = preferredSide.endsWith('end')
+      ? Math.min(Math.max(viewportPadding, anchor.right - cardWidth), window.innerWidth - cardWidth - viewportPadding)
+      : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - cardWidth - viewportPadding)
+    const estimatedHeight = Math.min(window.innerHeight * 0.6, window.innerHeight - viewportPadding * 2)
+    const belowTop = anchor.bottom + offset
+    const top = preferredSide.startsWith('top')
+      ? Math.max(viewportPadding, anchor.top - estimatedHeight - offset)
+      : belowTop + estimatedHeight <= window.innerHeight - viewportPadding
+        ? belowTop
+        : Math.max(viewportPadding, anchor.top - estimatedHeight - offset)
+    Object.assign(anchoredStyle, { top, left, width: cardWidth })
+  }
+  return <div className={`relay-card-anchor relay-card-placement-${placement}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
+}
+
 export function RelayFormSurface({
   children,
   title,
