@@ -67,11 +67,12 @@ body {
   width: min(100%, 460px);
   box-sizing: border-box;
   padding: 36px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: var(--relay-glass-surface-bg);
+  border: 1px solid var(--relay-glass-surface-border);
   border-radius: 24px;
   box-shadow: 0 20px 60px rgba(0, 122, 255, 0.12);
-  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+  backdrop-filter: var(--relay-glass-surface-filter);
 }
 .user-panel > .relay-form-surface {
   width: 100%;
@@ -308,7 +309,7 @@ body {
   padding: 10px 13px;
   border: 1px solid rgba(0, 122, 255, 0.24);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--relay-glass-soft-bg);
   color: var(--relay-text);
   font: inherit;
   outline: none;
@@ -320,7 +321,7 @@ body {
 }
 .account-section input:not([type='file']):focus {
   border-color: var(--relay-blue);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--relay-glass-surface-bg);
   box-shadow: 0 0 0 3px var(--relay-blue-tint);
 }
 .account-section input[type='file'] {
@@ -424,7 +425,7 @@ body {
   padding: 18px;
   border: 1.5px dashed rgba(0, 122, 255, 0.38);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.38);
+  background: var(--relay-glass-soft-bg);
   color: var(--relay-text);
   cursor: pointer;
   outline: none;
@@ -438,7 +439,7 @@ body {
 .image-dropzone:focus-visible,
 .image-dropzone-dragging {
   border-color: var(--relay-blue);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--relay-glass-surface-bg);
   box-shadow: 0 0 0 4px var(--relay-blue-tint);
 }
 .image-dropzone-dragging {

@@ -1,12 +1,13 @@
+.relay-glass-surface,
 .glass-card {
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: var(--relay-glass-surface-bg);
+  -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+  backdrop-filter: var(--relay-glass-surface-filter);
+  border: 1px solid var(--relay-glass-surface-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.74),
-    0 5px 18px rgba(0, 0, 0, 0.1);
+    var(--relay-glass-surface-shadow);
   pointer-events: auto;
 }
 @media (max-width: 700px) {
@@ -14,20 +15,21 @@
     position: relative;
     isolation: isolate;
     overflow: visible;
+    background: transparent;
   }
   .relay-mobile-sheet-surface::after {
     position: absolute;
     z-index: -1;
-    top: calc(100% - 1px);
+    top: 0;
     right: -1px;
     bottom: calc(-72px - env(safe-area-inset-bottom));
     left: -1px;
     content: '';
-    border-right: 1px solid rgba(255, 255, 255, 0.68);
-    border-left: 1px solid rgba(255, 255, 255, 0.68);
-    background: rgba(255, 255, 255, 0.78);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    backdrop-filter: blur(24px) saturate(1.6);
+    border-right: 1px solid var(--relay-glass-surface-border);
+    border-left: 1px solid var(--relay-glass-surface-border);
+    background: var(--relay-glass-surface-bg);
+    -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+    backdrop-filter: var(--relay-glass-surface-filter);
   }
 }
 .relay-card-anchor {
@@ -56,28 +58,29 @@
   to { opacity: 1; transform: translateY(-50%) scale(1); }
 }
 
+.relay-glass-control,
 .glass-pill {
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: var(--relay-glass-control-bg);
+  -webkit-backdrop-filter: var(--relay-glass-control-filter);
+  backdrop-filter: var(--relay-glass-control-filter);
+  border: 1px solid var(--relay-glass-control-border);
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.09),
     0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* Consistent liquid-glass treatment for compact floating controls. */
-.glass-control {
-  border: 1px solid rgba(255, 255, 255, 0.76);
+.glass-control,
+.relay-glass-control {
+  border: 1px solid var(--relay-glass-control-border);
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--relay-glass-control-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
-    0 10px 24px rgba(0, 0, 0, 0.13),
-    0 3px 8px rgba(0, 0, 0, 0.08);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
+    var(--relay-glass-control-shadow);
+  -webkit-backdrop-filter: var(--relay-glass-control-filter);
+  backdrop-filter: var(--relay-glass-control-filter);
   transition:
     transform 0.18s cubic-bezier(0.22, 1.25, 0.36, 1),
     background 0.18s ease,
@@ -92,6 +95,15 @@
   transform: translateY(2px) scale(0.955);
 }
 
+/* Shared translucent treatment for nested cards, list rows, and fields. */
+.relay-glass-soft {
+  border: 1px solid var(--relay-glass-soft-border);
+  background: var(--relay-glass-soft-bg);
+  box-shadow: var(--relay-glass-soft-shadow);
+  -webkit-backdrop-filter: var(--relay-glass-soft-filter);
+  backdrop-filter: var(--relay-glass-soft-filter);
+}
+
 .sheet-handle {
   width: 36px;
   height: 4px;
@@ -103,8 +115,8 @@
 .seg-control {
   display: flex;
   padding: 4px;
-  background: rgba(255, 255, 255, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: var(--relay-glass-soft-bg);
+  border: 1px solid var(--relay-glass-soft-border);
   border-radius: 20px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
@@ -149,14 +161,14 @@
   min-width: 0;
   padding: calc(4px * var(--relay-segment-scale));
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.68);
+  border: 1px solid var(--relay-glass-soft-border);
   border-radius: calc(22px * var(--relay-segment-scale));
   background: rgba(217, 239, 202, 0.78);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.74),
     0 5px 18px rgba(0, 0, 0, 0.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+  backdrop-filter: var(--relay-glass-surface-filter);
   isolation: isolate;
 }
 .relay-segmented-control-size-map {
@@ -250,13 +262,13 @@
 .relay-form-field-error small { color: var(--relay-red-dark); }
 .relay-form-field input:not([type='checkbox']):not([type='file']),
 .relay-form-field select,
-.relay-form-field textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: rgba(255,255,255,.62); color: inherit; font: inherit; }
+.relay-form-field textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; }
 .relay-form-field textarea { min-height: 88px; resize: vertical; }
 .relay-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .relay-list-item > div,
-.relay-list-item > button { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.68); border-radius: 16px; background: rgba(255,255,255,.46); color: inherit; font: inherit; text-align: left; }
+.relay-list-item > button { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--relay-glass-soft-border); border-radius: 16px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; text-align: left; -webkit-backdrop-filter: var(--relay-glass-soft-filter); backdrop-filter: var(--relay-glass-soft-filter); }
 .relay-list-item > button { cursor: pointer; transition: transform .16s ease, background .16s ease; }
-.relay-list-item > button:hover { transform: translateY(-1px); background: rgba(255,255,255,.68); }
+.relay-list-item > button:hover { transform: translateY(-1px); background: var(--relay-glass-surface-bg); }
 .relay-list-item-leading { flex: 0 0 auto; }
 .relay-list-item-content { display: grid; min-width: 0; flex: 1; gap: 3px; }
 .relay-list-item-content strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

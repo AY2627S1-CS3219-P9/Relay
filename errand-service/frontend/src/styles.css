@@ -19,7 +19,7 @@
 .errand-detail-header h2 { font-size: clamp(1.45rem, 3vw, 2rem); }
 .errand-eyebrow, .route-label { margin: 0 0 8px; color: var(--relay-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
 .errand-detail-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--relay-text-muted); font-size: .82rem; }
-.errand-person-card, .errand-route-card, .errand-info-card, .errand-reward-card { margin-top: 18px; border: 1px solid rgba(255,255,255,.72); border-radius: 18px; background: rgba(255,255,255,.46); }
+.errand-person-card, .errand-route-card, .errand-info-card, .errand-reward-card { margin-top: 18px; border: 1px solid var(--relay-glass-soft-border); border-radius: 18px; background: var(--relay-glass-soft-bg); -webkit-backdrop-filter: var(--relay-glass-soft-filter); backdrop-filter: var(--relay-glass-soft-filter); }
 .errand-person-card { display: flex; align-items: center; gap: 12px; padding: 13px 15px; }
 .errand-person-card div { display: grid; gap: 2px; }
 .errand-person-card span:not(.errand-avatar):not(.errand-online-dot) { color: var(--relay-text-muted); font-size: .8rem; }
@@ -49,7 +49,7 @@
 .errand-form { display: grid; gap: 14px; margin-top: 22px; }
 .errand-field { display: grid; gap: 7px; color: #3a334d; font-size: .84rem; font-weight: 700; }
 .errand-field em { color: var(--relay-text-muted); font-size: .75rem; font-weight: 500; font-style: normal; }
-.errand-field input, .errand-field select, .errand-field textarea { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: rgba(255,255,255,.62); color: inherit; font: inherit; font-weight: 500; outline: none; }
+.errand-field input, .errand-field select, .errand-field textarea { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; font-weight: 500; outline: none; }
 .errand-field textarea { resize: vertical; line-height: 1.4; }
 .errand-field input:focus, .errand-field select:focus, .errand-field textarea:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
 .errand-form-grid { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
@@ -58,10 +58,10 @@
 .errand-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }
 .errand-filter-panel legend { margin-bottom: 9px; color: var(--relay-text-muted); font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .errand-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.errand-filter-chip { padding: 10px 20px; border: 1px solid rgba(0,0,0,.08); border-radius: 999px; background: rgba(255,255,255,.5); color: inherit; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
+.errand-filter-chip { padding: 10px 20px; border: 1px solid var(--relay-glass-soft-border); border-radius: 999px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
 .errand-filter-chip.selected { border-color: #007aff; background: #007aff; color: white; }
 .errand-button-icon { width: 16px; height: 16px; margin-right: 5px; vertical-align: -3px; }
-.my-request-card { position: absolute; z-index: 6; left: 18px; bottom: 116px; display: grid; gap: 5px; width: min(360px, calc(100vw - 36px)); padding: 17px; border: 1px solid rgba(255,255,255,.8); border-radius: 22px; background: rgba(255,255,255,.74); box-shadow: 0 12px 32px rgba(0,0,0,.15); backdrop-filter: blur(28px) saturate(1.4); text-align: left; cursor: pointer; }
+.my-request-card { position: absolute; z-index: 6; left: 18px; bottom: 116px; display: grid; gap: 5px; width: min(360px, calc(100vw - 36px)); padding: 17px; border: 1px solid var(--relay-glass-soft-border); border-radius: 22px; background: var(--relay-glass-soft-bg); box-shadow: var(--relay-glass-soft-shadow); -webkit-backdrop-filter: var(--relay-glass-soft-filter); backdrop-filter: var(--relay-glass-soft-filter); text-align: left; cursor: pointer; }
 .request-card-label { display: flex; justify-content: space-between; align-items: center; color: var(--relay-text-muted); font-size: .78rem; }
 .my-request-card strong { font-size: 1.05rem; }
 .my-request-card small, .my-request-card em { color: var(--relay-text-muted); font-size: .78rem; font-style: normal; }

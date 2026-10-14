@@ -258,7 +258,7 @@ export function CardView({
   return (
     <Element
       {...props}
-      className={`relay-card-view glass-card${withGlow ? ' relay-card-view-with-glow' : ''}${className ? ` ${className}` : ''}`}
+      className={`relay-card-view relay-glass-surface glass-card${withGlow ? ' relay-card-view-with-glow' : ''}${className ? ` ${className}` : ''}`}
     >
       {children}
     </Element>
@@ -301,7 +301,7 @@ export function GlassCard({
   return (
     <Element
       {...props}
-      className={`${variant === 'glass' ? 'relay-glass-card glass-card' : ''}${className ? ` ${className}` : ''}`.trim()}
+      className={`${variant === 'glass' ? 'relay-glass-card relay-glass-surface glass-card' : ''}${className ? ` ${className}` : ''}`.trim()}
     >
       {children}
     </Element>
@@ -387,7 +387,7 @@ export function RelayFormSurface({
 }) {
   const Element = as
   return (
-    <Element style={style} className={`relay-form-surface glass-card${className ? ` ${className}` : ''}`}>
+    <Element style={style} className={`relay-form-surface relay-glass-surface glass-card${className ? ` ${className}` : ''}`}>
       <header className="relay-form-surface-header">
         <div>
           <h2>{title}</h2>

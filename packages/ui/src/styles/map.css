@@ -35,16 +35,16 @@
   width: 34px;
   height: 34px;
   border: 0;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--relay-glass-control-bg);
   color: #1c1c1e;
   line-height: 34px;
-  backdrop-filter: blur(28px);
+  backdrop-filter: var(--relay-glass-control-filter);
 }
 .relay-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--relay-glass-soft-bg);
   border-radius: 8px 0 0 0;
   font-size: 9px;
-  backdrop-filter: blur(24px);
+  backdrop-filter: var(--relay-glass-soft-filter);
 }
 .relay-leaflet-icon {
   background: transparent;
