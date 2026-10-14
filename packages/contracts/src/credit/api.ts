@@ -27,5 +27,5 @@ export interface CreditApi {
   transferCredit(command: TransferCreditCommand): Promise<void>
 
   /** Deletes user credit balance record. */
-  deleteUser(command: DeleteUserCreditCommand): Promise<void>
+  deleteUserCredit(command: DeleteUserCreditCommand): Promise<void>
 }
