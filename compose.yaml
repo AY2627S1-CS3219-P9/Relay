@@ -25,6 +25,9 @@ services:
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
+      USER_API_URL: http://user-api:3000
+      USER_API_TIMEOUT: '5000'
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
     depends_on:
       credit-postgres:
         condition: service_healthy
@@ -71,6 +74,8 @@ services:
       errand-frontend:
         condition: service_healthy
       credit-frontend:
+        condition: service_healthy
+      credit-api:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
