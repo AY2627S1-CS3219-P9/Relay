@@ -13,6 +13,8 @@ export type ErrandEnv = {
   userServiceInternalToken: string
   errandServiceInternalToken: string
   timeoutMs: number
+  kafkaBrokers: string
+  kafkaGroupId: string
 }
 
 export function getEnv(): ErrandEnv {
@@ -29,5 +31,7 @@ export function getEnv(): ErrandEnv {
     errandServiceInternalToken:
       process.env.ERRAND_SERVICE_INTERNAL_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),
+    kafkaBrokers: process.env.KAFKA_BROKERS ?? 'localhost:9092',
+    kafkaGroupId: process.env.KAFKA_GROUP_ID ?? 'errand-service',
   }
 }

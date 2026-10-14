@@ -5,8 +5,10 @@ import { ErrandServiceError } from './types/errand.types.js'
 import { sessionMiddleware } from './middleware/session.middleware.js'
 import { ErrandRepository } from './repositories/errand.repository.js'
 import { ErrandService } from './services/errand.service.js'
+import { EventService } from './services/event.service.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
+import { connectProducer, disconnectProducer } from './kafka/producer.js'
 
 export function createApp() {
   const app = express()
@@ -22,7 +24,8 @@ export function createApp() {
   })
 
   const repository = new ErrandRepository()
-  const service = new ErrandService(repository)
+  const eventService = new EventService()
+  const service = new ErrandService(repository, eventService)
   const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
 
@@ -50,13 +53,23 @@ export const app = createApp()
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
+  
+  // Connect Kafka producer on startup
+  connectProducer().catch((err) => {
+    console.error('Failed to connect Kafka producer:', err)
+    process.exit(1)
+  })
+
   const server = app.listen(env.port, () => {
     console.log(`Errand Service listening on port ${env.port}`)
   })
 
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
-    server.close(() => process.exit(0))
+    server.close(async () => {
+      await disconnectProducer()
+      process.exit(0)
+    })
   }
 
   process.once('SIGINT', () => shutdown('SIGINT'))
