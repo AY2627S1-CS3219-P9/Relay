@@ -21,6 +21,7 @@ services:
       - .env.development
     ports:
       - '5555:5555' # For prisma studio
+      - '127.0.0.1:3001:3000' # User API for local Postman requests
     environment:
       PORT: 3000
       AUTH_MODE: cognito

@@ -1,5 +1,9 @@
 import { PrismaClient } from '@prisma/client'
-import type { CreditBalance, TransactionRecord } from '@relay/contracts'
+import type {
+  AllocateInitialCreditCommand,
+  CreditBalance,
+  TransactionRecord,
+} from '@relay/contracts'
 import { getEnv } from '../config/env.js'
 
 export const prisma = new PrismaClient({
@@ -35,6 +39,41 @@ export class CreditRepository {
         amount: record.amount.toNumber(),
       }
     })
+  }
+
+  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
+    const reference = `${command.transactionReference.service}:${command.transactionReference.id}:${command.transactionReference.type}`
+    if (
+      command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
+      command.userId !== command.transactionReference.id
+    ) {
+      throw new Error('Invalid initial credit allocation command.')
+    }
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+        await tx.creditBalance.create({
+          data: { userId: command.userId, availableCredit: 100, reserveCredit: 0 },
+        })
+        await tx.transactionRecord.create({
+          data: {
+            reference,
+            senderId: 'SYSTEM',
+            receiverId: command.userId,
+            type: 'INITIAL_ALLOCATION',
+            amount: 100,
+          },
+        })
+      })
+    } catch (error) {
+      // A retry or concurrent consumer may win the unique-key race.
+      if (
+        (error as { code?: string }).code === 'P2002' &&
+        (await prisma.transactionRecord.findUnique({ where: { reference } }))
+      )
+        return
+      throw error
+    }
   }
 
   async checkTables(): Promise<void> {

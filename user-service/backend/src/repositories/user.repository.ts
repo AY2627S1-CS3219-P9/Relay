@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import type { NewUserEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
 export const prisma = new PrismaClient()
@@ -39,12 +40,22 @@ export class UserRepository {
   }
 
   async createProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
-    const profile = await prisma.userProfile.create({
-      data: {
-        cognitoSub,
-        username: update.username,
-        profilePictureKey: update.profilePictureKey,
-      },
+    const profile = await prisma.$transaction(async (tx) => {
+      const created = await tx.userProfile.create({
+        data: {
+          cognitoSub,
+          username: update.username,
+          profilePictureKey: update.profilePictureKey,
+        },
+      })
+      await tx.userOutboxEvent.create({
+        data: {
+          topic: 'relay.user.created',
+          key: cognitoSub,
+          payload: { cognitoSub } satisfies NewUserEvent,
+        },
+      })
+      return created
     })
     return toProfileRecord(profile)
   }

@@ -3,12 +3,17 @@ import type {
   ViewCreditResponse,
   ViewCreditHistoryRequest,
   ViewCreditHistoryResponse,
+  AllocateInitialCreditCommand,
 } from '@relay/contracts'
 import { CreditRepository } from '../repositories/credit.repository.js'
 import { CreditServiceError } from '../types/credit.types.js'
 
 export class CreditService {
   constructor(private readonly repository: CreditRepository) {}
+
+  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
+    await this.repository.allocateInitialCredit(command)
+  }
 
   async viewCredit(request: ViewCreditRequest): Promise<ViewCreditResponse> {
     const balance = await this.repository.findBalance(request.userId)

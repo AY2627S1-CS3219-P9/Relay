@@ -1,9 +1,12 @@
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
+import { UserEventPublisher } from './services/user-event-publisher.js'
 
 const env = getEnv()
 let server: Server | undefined
+const events = new UserEventPublisher()
+events.start()
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`${signal} received; shutting down User Service.`)
@@ -16,6 +19,7 @@ async function shutdown(signal: string): Promise<void> {
     server.close(() => resolve())
   })
 
+  await events.stop()
   await closeAppResources()
   process.exit(0)
 }

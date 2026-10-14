@@ -25,6 +25,7 @@ export type UserServiceEnv = {
   s3SecretAccessKey: string
   s3Bucket: string
   s3ForcePathStyle: boolean
+  kafkaBrokers: string[]
 }
 
 function required(name: string, fallback?: string): string {
@@ -73,5 +74,6 @@ export function getEnv(): UserServiceEnv {
     s3SecretAccessKey: required('S3_SECRET_ACCESS_KEY', 'test'),
     s3Bucket: required('S3_BUCKET', 'relay-user-profile-images'),
     s3ForcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
+    kafkaBrokers: required('KAFKA_BROKERS', 'kafka:9092').split(','),
   }
 }

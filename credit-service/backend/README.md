@@ -95,3 +95,18 @@ server implementing the User Service session-validation boundary. Fixtures use
 unique IDs and are removed afterward. Tests cover authentication forwarding,
 expired sessions, outages/timeouts, ownership checks, balance serialization,
 history filtering/ordering, and missing records.
+
+## New-user credit allocation
+
+When User Service creates a profile, it writes a `NewUserEvent` to its PostgreSQL
+outbox in the same transaction. Its publisher sends the event to the
+`relay.user.created` Kafka topic. The credit consumer in `src/consumers/`
+translates the event to `AllocateInitialCreditCommand` and creates a balance
+with 100 available credits and 0 reserved credits, plus one
+`INITIAL_ALLOCATION` transaction from `SYSTEM` to the Cognito subject.
+
+The reference `user:<cognitoSub>:INITIAL_ALLOCATION` is unique. The balance and
+transaction are written atomically, so a replay does not issue more credit.
+Configure `KAFKA_BROKERS` and `KAFKA_GROUP_ID` to match the local cluster.
+Kafbat UI is available at http://localhost:8081; Prisma Studio for credit is
+available at http://localhost:5556 when started in the credit container.
