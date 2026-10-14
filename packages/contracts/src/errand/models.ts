@@ -28,6 +28,13 @@ export type DeliveryDetails = {
   instructions?: string
 }
 
+/** Supplier details bundled together for errand creation. */
+export type SupplierDetails = {
+  supplierId: string
+  supplierName: string
+  serviceType: number
+}
+
 /** The public Errand Service representation of an errand. */
 export type Errand = {
   id: string
@@ -36,16 +43,15 @@ export type Errand = {
   requesterSub: string
   /** Cognito sub of the assigned courier, when accepted. */
   courierSub: string | null
-  supplierId: string
+  supplierDetails: SupplierDetails
   pickupLocation: ErrandLocation
+  targetLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
   status: ErrandStatus
   expiresAt: string
   createdAt: string
   updatedAt: string
-  supplierName: string
-  serviceType: number
 }
 
 /** Supplier change event for errand service notifications. */
@@ -59,6 +65,4 @@ export type SupplierInfoEvent = {
 }
 
 /** Privacy-safe errand projection used by supplier map and detail views. */
-export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub' | 'supplierId'> & {
-  supplierId: string
-}
+export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub' | 'supplierDetails'>

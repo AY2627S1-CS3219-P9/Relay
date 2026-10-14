@@ -15,17 +15,15 @@ export function createErrandRouter(controller: ErrandController): Router {
   // Errand lifecycle endpoints
   router.post('/:id/accept', controller.accept)
   router.post('/:id/cancel', controller.cancel)
-
-  // Errand lifecycle endpoints
   router.post('/:id/pickup', controller.pickUp)
   router.post('/:id/deliver', controller.deliver)
   router.post('/:id/confirm', controller.confirm)
 
   // Internal endpoint for supplier service notifications
   router.post(
-    '/internal/errand/supplier-events',
+    '/internal/supplier-event',
     internalServiceAuth,
-    controller.receiveSupplierEvents,
+    controller.receiveSupplierEvent,
   )
 
   return router

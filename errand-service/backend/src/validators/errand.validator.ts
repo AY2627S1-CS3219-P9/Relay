@@ -10,14 +10,19 @@ const errandLocationSchema = z.object({
 })
 
 const deliveryDetailsSchema = z.object({
-  description: z.string().trim().min(1),
+  description: z.string().trim().min(1).max(5000, 'Description must be no more than 5000 characters'),
   instructions: z.string().trim().min(1).optional(),
 })
 
 const createErrandSchema = z.object({
-  supplierId: z.string().trim().min(1),
+  supplierDetails: z.object({
+    supplierId: z.string().trim().min(1),
+    supplierName: z.string().trim().min(1),
+    serviceType: z.number().int(),
+  }),
   name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
   pickupLocation: errandLocationSchema,
+  targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().positive(),
   expiresAt: z
@@ -25,8 +30,6 @@ const createErrandSchema = z.object({
     .datetime({ offset: true })
     .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
     .optional(),
-  serviceType: z.number().int(),
-  supplierName: z.string().trim().min(1),
 })
 
 const supplierErrandViewSchema = z.object({

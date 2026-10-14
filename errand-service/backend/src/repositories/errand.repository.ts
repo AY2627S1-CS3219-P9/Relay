@@ -17,14 +17,18 @@ export class ErrandRepository {
     const row = await this.prisma.errand.create({
       data: {
         requesterSub,
-        supplierId: request.supplierId,
+        supplierId: request.supplierDetails.supplierId,
         name: request.name,
         pickupLat: request.pickupLocation.lat,
         pickupLng: request.pickupLocation.lng,
         pickupBuildingName: request.pickupLocation.buildingName,
         pickupFloorNumber: request.pickupLocation.floorNumber,
-        supplierName: request.supplierName,
-        serviceType: request.serviceType,
+        targetLat: request.targetLocation.lat,
+        targetLng: request.targetLocation.lng,
+        targetBuildingName: request.targetLocation.buildingName,
+        targetFloorNumber: request.targetLocation.floorNumber,
+        supplierName: request.supplierDetails.supplierName,
+        serviceType: request.supplierDetails.serviceType,
         deliveryDescription: request.deliveryDetails.description,
         deliveryInstructions: request.deliveryDetails.instructions,
         creditAmount: request.creditAmount,
@@ -246,12 +250,22 @@ function toContract(row: any): Errand {
     name: row.name,
     requesterSub: row.requesterSub,
     courierSub: row.courierSub,
-    supplierId: row.supplierId,
+    supplierDetails: {
+      supplierId: row.supplierId,
+      supplierName: row.supplierName,
+      serviceType: row.serviceType,
+    },
     pickupLocation: {
       lat: row.pickupLat,
       lng: row.pickupLng,
       buildingName: row.pickupBuildingName,
       floorNumber: row.pickupFloorNumber,
+    },
+    targetLocation: {
+      lat: row.targetLat,
+      lng: row.targetLng,
+      buildingName: row.targetBuildingName,
+      floorNumber: row.targetFloorNumber,
     },
     deliveryDetails: {
       description: row.deliveryDescription,
@@ -262,14 +276,10 @@ function toContract(row: any): Errand {
     expiresAt: row.expiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    supplierName: row.supplierName,
-    serviceType: row.serviceType,
   }
 }
 
 function toSupplierSummary(row: PrismaErrand): SupplierErrandSummary {
   const errand = toContract(row)
-  if (!errand.supplierId) throw new Error('Supplier errand summary requires a supplier.')
-  const { requesterSub: _requesterSub, courierSub: _courierSub, ...summary } = errand
-  return { ...summary, supplierId: errand.supplierId }
+  return errand
 }

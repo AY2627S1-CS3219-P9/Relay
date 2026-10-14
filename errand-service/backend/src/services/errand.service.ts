@@ -323,7 +323,7 @@ export class ErrandService {
     await this.eventService.onErrandDeleted(id, user.sub)
   }
 
-  async receiveSupplierEvents(event: {
+  async receiveSupplierEvent(event: {
     supplierId: string
     name?: string
     location?: ErrandLocation
