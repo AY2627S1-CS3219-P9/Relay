@@ -33,6 +33,11 @@ model Errand {
   pickupBuildingName String
   pickupFloorNumber  Int
 
+  targetLat          Float
+  targetLng          Float
+  targetBuildingName String
+  targetFloorNumber  Int
+
   name                 String
   supplierName         String
   serviceType          Int

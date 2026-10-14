@@ -142,7 +142,7 @@ export class ErrandController {
     }
   }
 
-  receiveSupplierEvents = async (
+  receiveSupplierEvent = async (
     req: Request,
     res: Response,
     next: NextFunction,
@@ -158,7 +158,7 @@ export class ErrandController {
         return
       }
 
-      const result = await this.service.receiveSupplierEvents({
+      const result = await this.service.receiveSupplierEvent({
         supplierId,
         name,
         location,

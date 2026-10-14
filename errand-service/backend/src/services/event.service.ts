@@ -14,7 +14,7 @@ export class EventService {
   async onErrandCreated(errand: Errand): Promise<void> {
     await this.eventBus.publishErrandCreated(errand.id, {
       requesterSub: errand.requesterSub,
-      supplierId: errand.supplierId ?? undefined,
+      supplierId: errand.supplierDetails.supplierId,
       creditAmount: errand.creditAmount,
       expiresAt: errand.expiresAt,
     })
