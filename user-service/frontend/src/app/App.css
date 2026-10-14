@@ -73,6 +73,18 @@ body {
   box-shadow: 0 20px 60px rgba(0, 122, 255, 0.12);
   backdrop-filter: blur(24px);
 }
+.user-panel > .relay-form-surface {
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  animation: none;
+}
 .user-complete-card {
   width: min(100%, 460px);
   box-sizing: border-box;
@@ -339,6 +351,7 @@ body {
   border-radius: 28px;
   font-weight: 700;
 }
+.account-options-list .relay-list-item-danger > button { color: var(--relay-red); }
 .glass-btn-red {
   min-height: 46px;
   border-radius: 12px;

@@ -7,8 +7,8 @@
 .errand-map-controls { position: absolute; z-index: 5; right: 24px; bottom: 126px; display: grid; gap: 10px; }
 .errand-bottom-controls { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; }
 .errand-bottom-controls .updates-action { display: inline-flex; align-items: center; }
-.errand-create-overlay { position: absolute; z-index: 9; inset: 0; display: grid; place-items: center; padding: 22px; background: rgba(20, 18, 30, .08); pointer-events: none; }
-.errand-create-overlay .create-errand-card { pointer-events: auto; box-shadow: 0 18px 55px rgba(0,0,0,.24); }
+.errand-create-popover { position: absolute; z-index: 9; top: 50%; right: clamp(18px, 7vw, 140px); width: min(540px, calc(100vw - 36px)); max-height: calc(100dvh - 150px); transform: translateY(-50%); }
+.errand-create-popover .create-errand-card { width: 100%; max-height: calc(100dvh - 150px); box-shadow: 0 18px 55px rgba(0,0,0,.24); }
 .errand-detail-popover { position: absolute; z-index: 8; top: 50%; right: clamp(18px, 7vw, 140px); width: min(490px, calc(100vw - 36px)); max-height: calc(100dvh - 150px); transform: translateY(-50%); overflow: auto; scrollbar-width: none; }
 .errand-detail-popover::-webkit-scrollbar { display: none; }
 .errand-detail-card, .create-errand-card { padding: clamp(22px, 3vw, 34px); }
@@ -70,4 +70,4 @@
 .errand-marker { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid white; border-radius: 50% 50% 50% 6px; background: var(--marker); color: white; box-shadow: 0 4px 12px rgba(0,0,0,.28); transform: rotate(-45deg); }
 .errand-marker b { transform: rotate(45deg); font-size: 13px; }
 .errand-marker-selected { box-shadow: 0 0 0 8px rgba(0,122,255,.25), 0 4px 12px rgba(0,0,0,.28); }
-@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-popover { top: auto; right: 16px; bottom: 88px; left: 16px; width: auto; max-height: calc(100dvh - 170px); transform: none; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-overlay { padding: 12px; } }
+@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-popover, .errand-create-popover { top: auto; right: 16px; bottom: 88px; left: 16px; width: auto; max-height: calc(100dvh - 170px); transform: none; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } }

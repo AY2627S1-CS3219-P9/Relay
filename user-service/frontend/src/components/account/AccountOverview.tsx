@@ -1,4 +1,5 @@
 import type { User } from '@relay/contracts'
+import { RelayList, RelayListItem } from '@relay/ui'
 
 export function AccountOverview({
   profile,
@@ -16,23 +17,16 @@ export function AccountOverview({
   return (
     <div className="account-section" style={{ marginTop: 0 }}>
       <h2>Personal details</h2>
-      <p className="account-email">
-        <span>Email</span>
-        {profile.email}
-      </p>
-      <button className="glass-btn-primary" onClick={onLoggedOut}>
-        Log out
-      </button>
+      <RelayList>
+        <RelayListItem title="Email" subtitle={profile.email} />
+      </RelayList>
       <h2>Account options</h2>
-      <button className="glass-btn-primary" onClick={onUpdateProfile}>
-        Update profile
-      </button>
-      <button className="glass-btn-primary" onClick={onChangePassword}>
-        Change password
-      </button>
-      <button className="glass-btn-red" onClick={onDeleteAccount}>
-        Delete account
-      </button>
+      <RelayList className="account-options-list">
+        <RelayListItem title="Log out" onClick={onLoggedOut} />
+        <RelayListItem title="Update profile" onClick={onUpdateProfile} />
+        <RelayListItem title="Change password" onClick={onChangePassword} />
+        <RelayListItem title="Delete account" className="relay-list-item-danger" onClick={onDeleteAccount} />
+      </RelayList>
     </div>
   )
 }
