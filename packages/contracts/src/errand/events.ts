@@ -7,6 +7,7 @@ export const ErrandEventTypes = {
   ERRAND_COMPLETED: 'ErrandCompleted',
   ERRAND_CANCELLED: 'ErrandCancelled',
   ERRAND_EXPIRED: 'ErrandExpired',
+  ERRAND_DELETED: 'ErrandDeleted',
 } as const
 
 export type ErrandEventType = (typeof ErrandEventTypes)[keyof typeof ErrandEventTypes]

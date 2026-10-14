@@ -98,4 +98,11 @@ export class EventBus {
   async publishErrandExpired(errandId: string): Promise<void> {
     await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_EXPIRED, { errandId })
   }
+
+  async publishErrandDeleted(errandId: string, requesterSub: string): Promise<void> {
+    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_DELETED, {
+      errandId,
+      requesterSub,
+    })
+  }
 }
