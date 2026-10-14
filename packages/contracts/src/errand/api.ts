@@ -25,6 +25,9 @@ export interface ErrandApi {
   /** List open errands for a specific supplier (for courier discovery when viewing supplier). */
   listOpenBySupplier(supplierId: string): Promise<ListOpenBySupplierResponse>
 
+  /** List all errands for a specific supplier (when viewing supplier details). */
+  listBySupplier(supplierId: string): Promise<GetErrandsResponse>
+
   /** Retrieve an errand visible to the authenticated user. */
   getErrand(id: string): Promise<GetErrandResponse>
 
@@ -45,11 +48,13 @@ export interface ErrandApi {
 
   /** Delete an eligible errand owned by the authenticated requester. */
   deleteErrand(id: string): Promise<DeleteErrandResponse>
+}
 
-  /**
-   * Supplier event receiver (internal).
-   * Receives supplier change notifications from the Supplier Service.
-   * Authenticates with `x-errand-service-token` header.
-   */
+/**
+ * Internal Errand Service boundary for supplier event processing.
+ * Not exposed to browsers; authenticated with service token.
+ */
+export interface ErrandInternalApi {
+  /** Receive supplier change notifications from Supplier Service. */
   receiveSupplierEvents(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
 }

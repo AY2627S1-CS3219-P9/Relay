@@ -31,6 +31,10 @@ export class ErrandService {
     return this.repository.listVisibleTo(user.sub)
   }
 
+  async listBySupplier(supplierId: string): Promise<Errand[]> {
+    return this.repository.listBySupplier(supplierId)
+  }
+
   async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
     return this.repository.listOpenBySupplier(supplierId)
   }
@@ -204,7 +208,7 @@ export class ErrandService {
       }
     }
 
-    const allErrands = await this.repository.findErrandsBySupplier(event.supplierId)
+    const allErrands = await this.repository.listBySupplier(event.supplierId)
     const affectedErrands = allErrands.filter((e) => e.status === 'OPEN' || e.status === 'ACCEPTED')
 
     const affectedIds = affectedErrands.map((e) => e.id)
