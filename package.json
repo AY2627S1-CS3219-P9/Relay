@@ -9,6 +9,7 @@
     "user-service/backend",
     "errand-service/frontend",
     "credit-service/frontend",
+    "credit-service/backend",
     "packages/*"
   ],
   "scripts": {

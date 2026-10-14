@@ -32,3 +32,6 @@ services:
     depends_on:
       floci:
         condition: service_healthy
+  credit-api:
+    ports:
+      - '127.0.0.1:5556:5555' # Credit Prisma Studio

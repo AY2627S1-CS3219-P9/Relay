@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  INITIAL_ALLOCATION
+  CREDIT_RESERVE
+  CREDIT_RELEASE
+  CREDIT_TRANSFER
+  USER_DELETION
+}
+
+model CreditBalance {
+  userId          String   @id @map("user_id")
+  availableCredit Decimal  @default(0) @map("available_credit")
+  reserveCredit   Decimal  @default(0) @map("reserve_credit")
+  lastUpdated     DateTime @updatedAt @map("last_updated")
+
+  @@map("credit_balances")
+}
+
+model TransactionRecord {
+  // Canonical service:id:type key from the contract enforces idempotency.
+  reference  String          @id
+  time       DateTime        @default(now())
+  senderId   String          @map("sender_id")
+  receiverId String          @map("receiver_id")
+  type       TransactionType
+  amount     Decimal
+
+  // History survives balance deletion; intentionally no balance foreign keys.
+  @@index([senderId, time])
+  @@index([receiverId, time])
+  @@map("transaction_records")
+}
