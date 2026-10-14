@@ -30,8 +30,7 @@ export type Errand = {
   requesterSub: string
   /** Cognito sub of the assigned courier, when accepted. */
   courierSub: string | null
-  /** Supplier Service identifier, when a supplier is selected. */
-  supplierId: string | null
+  supplierId: string
   pickupLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
@@ -39,6 +38,8 @@ export type Errand = {
   expiresAt: string
   createdAt: string
   updatedAt: string
+  supplierName: string
+  serviceType: number
 }
 
 /** Supplier change event for errand service notifications. */

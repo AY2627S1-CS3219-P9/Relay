@@ -25,6 +25,8 @@ const createErrandSchema = z.object({
     .datetime({ offset: true })
     .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
     .optional(),
+  serviceType: z.number().int(),
+  supplierName: z.string().trim().min(1),
 })
 
 export function validateCreateErrand(input: unknown): CreateErrandRequest {

@@ -21,6 +21,8 @@ export class ErrandRepository {
         pickupLng: request.pickupLocation.lng,
         pickupBuildingName: request.pickupLocation.buildingName,
         pickupFloorNumber: request.pickupLocation.floorNumber,
+        supplierName: request.supplierName,
+        serviceType: request.serviceType,
         deliveryDescription: request.deliveryDetails.description,
         deliveryInstructions: request.deliveryDetails.instructions,
         creditAmount: request.creditAmount,
@@ -112,6 +114,10 @@ export class ErrandRepository {
       rows.map(async (row: any) => {
         const changes: any = { updatedAt: new Date() }
 
+        if (updates.name !== undefined) {
+          changes.supplierName = updates.name
+        }
+
         if (updates.location) {
           changes.pickupLat = updates.location.lat
           changes.pickupLng = updates.location.lng
@@ -191,5 +197,7 @@ function toContract(row: any): Errand {
     expiresAt: row.expiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    supplierName: row.supplierName,
+    serviceType: row.serviceType,
   }
 }

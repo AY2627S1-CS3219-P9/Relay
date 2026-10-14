@@ -9,7 +9,6 @@ import {
 } from '@relay/contracts'
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
-import { validateCreateErrand } from '../validators/errand.validator.js'
 import { EventService } from './event.service.js'
 
 export class ErrandService {
@@ -18,9 +17,7 @@ export class ErrandService {
     private readonly eventService: EventService,
   ) {}
 
-  async createErrand(user: AuthenticatedUser, input: unknown): Promise<Errand> {
-    const request: CreateErrandRequest = validateCreateErrand(input)
-
+  async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
     if (!user.emailVerified) {
       throw new ErrandServiceError(
         ErrandErrors.FORBIDDEN,
@@ -168,7 +165,6 @@ export class ErrandService {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
 
-    // Only the requester can confirm
     if (errand.requesterSub !== user.sub) {
       throw new ErrandServiceError(
         ErrandErrors.FORBIDDEN,
@@ -243,7 +239,6 @@ export class ErrandService {
       )
     }
 
-    // Publish deletion event after successful DB delete
     await this.eventService.onErrandDeleted(id, user.sub)
   }
 

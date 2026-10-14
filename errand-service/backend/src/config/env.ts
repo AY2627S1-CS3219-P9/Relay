@@ -10,6 +10,7 @@ export type ErrandEnv = {
   port: number
   databaseUrl: string
   userApiUrl: string
+  supplierApiUrl: string
   userServiceInternalToken: string
   errandServiceInternalToken: string
   timeoutMs: number
@@ -26,6 +27,7 @@ export function getEnv(): ErrandEnv {
     port: positiveInteger(process.env.PORT, 3000),
     databaseUrl,
     userApiUrl: process.env.USER_API_URL ?? 'http://user-api:3000',
+    supplierApiUrl: process.env.SUPPLIER_API_URL ?? 'http://supplier-api:3000',
     userServiceInternalToken:
       process.env.USER_SERVICE_INTERNAL_TOKEN ?? 'local-internal-user-service-token',
     errandServiceInternalToken:
