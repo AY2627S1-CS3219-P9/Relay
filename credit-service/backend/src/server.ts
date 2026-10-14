@@ -1,7 +1,7 @@
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
-import { NewUserConsumer } from './consumers/new-user.consumer.js'
+import { NewUserConsumer } from './consumers/credit.consumer.js'
 import { CreditService } from './services/credit.service.js'
 import { CreditRepository } from './repositories/credit.repository.js'
 
