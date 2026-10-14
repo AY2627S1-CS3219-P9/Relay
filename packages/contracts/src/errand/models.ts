@@ -25,6 +25,7 @@ export type DeliveryDetails = {
 /** The public Errand Service representation of an errand. */
 export type Errand = {
   id: string
+  name: string
   /** Cognito sub of the user who created the errand. */
   requesterSub: string
   /** Cognito sub of the assigned courier, when accepted. */

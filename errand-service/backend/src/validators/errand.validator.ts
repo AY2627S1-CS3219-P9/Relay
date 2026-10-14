@@ -16,6 +16,7 @@ const deliveryDetailsSchema = z.object({
 
 const createErrandSchema = z.object({
   supplierId: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
   pickupLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().positive(),

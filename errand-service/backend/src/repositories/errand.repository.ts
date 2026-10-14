@@ -16,6 +16,7 @@ export class ErrandRepository {
       data: {
         requesterSub,
         supplierId: request.supplierId,
+        name: request.name,
         pickupLat: request.pickupLocation.lat,
         pickupLng: request.pickupLocation.lng,
         pickupBuildingName: request.pickupLocation.buildingName,
@@ -155,6 +156,13 @@ export class ErrandRepository {
     })
     return toContract(row)
   }
+
+  async findExpired(): Promise<Errand[]> {
+    const rows = await this.prisma.errand.findMany({
+      where: { status: 'OPEN', expiresAt: { lte: new Date() } },
+    })
+    return rows.map(toContract)
+  }
 }
 
 function defaultExpiry(): Date {
@@ -164,6 +172,7 @@ function defaultExpiry(): Date {
 function toContract(row: any): Errand {
   return {
     id: row.id,
+    name: row.name,
     requesterSub: row.requesterSub,
     courierSub: row.courierSub,
     supplierId: row.supplierId,

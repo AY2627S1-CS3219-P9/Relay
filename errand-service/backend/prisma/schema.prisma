@@ -33,6 +33,7 @@ model Errand {
   pickupBuildingName String
   pickupFloorNumber  Int
 
+  name                 String
   deliveryDescription  String
   deliveryInstructions String?
 
