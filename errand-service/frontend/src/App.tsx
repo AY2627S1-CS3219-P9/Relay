@@ -17,7 +17,7 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation, errandApi, supplierApi }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [showFilters, setShowFilters] = useState(false)
@@ -44,6 +44,12 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
   const handleViewportChange = useCallback((viewport: { center: { lat: number; lng: number }; zoom: number }) => {
     onMapViewportChange?.(viewport)
   }, [onMapViewportChange])
+
+  function persistCurrentViewport() {
+    if (!map) return
+    const center = map.getCenter()
+    handleViewportChange({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
+  }
 
   const visibleErrands = useMemo(() => {
     if (view === 'my-errands') return errands
@@ -113,10 +119,10 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
 
   return (
     <main className="errand-map-shell relay-design-system">
-      <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} />
+      <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} active={mapActive ?? true} />
       <div className="errand-top-controls map-top-menu">
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
-        <SlidingSegmentedControl size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
+        <SlidingSegmentedControl size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { persistCurrentViewport(); openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
       </div>
       <div className="errand-map-controls">

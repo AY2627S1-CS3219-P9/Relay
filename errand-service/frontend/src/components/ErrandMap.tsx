@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapViewport, UserLocation } from '@relay/contracts'
@@ -26,9 +26,23 @@ function markerIcon(errand: DemoErrand, selected: boolean) {
   })
 }
 
-function MapCenterController({ center }: { center: MapPoint }) {
+function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom: number; active: boolean }) {
   const map = useMap()
-  useEffect(() => { map.setView(center) }, [center, map])
+  useLayoutEffect(() => {
+    if (!active) return
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false, animate: false })
+      map.setView(center, zoom, { animate: false })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [active, center, map, zoom])
+  useEffect(() => {
+    if (!active) return
+    const currentCenter = map.getCenter()
+    const centerChanged = Math.abs(currentCenter.lat - center.lat) > 0.000001 || Math.abs(currentCenter.lng - center.lng) > 0.000001
+    const zoomChanged = map.getZoom() !== zoom
+    if (centerChanged || zoomChanged) map.setView(center, zoom, { animate: false })
+  }, [active, center, map, zoom])
   return null
 }
 
@@ -71,6 +85,7 @@ export function ErrandMap({
   onMapReady,
   zoom,
   onViewportChange,
+  active,
 }: {
   errands: DemoErrand[]
   center: MapPoint
@@ -80,10 +95,11 @@ export function ErrandMap({
   onMapReady?: (map: L.Map) => void
   zoom: number
   onViewportChange?: (viewport: MapViewport) => void
+  active: boolean
 }) {
   return (
     <MapContainer className="relay-map" center={center} zoom={zoom} zoomControl={false}>
-      <MapCenterController center={center} />
+      <MapCenterController center={center} zoom={zoom} active={active} />
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
       <ViewportController onChange={onViewportChange} />

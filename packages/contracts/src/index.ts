@@ -85,6 +85,8 @@ export type RemoteAppProps = {
   onErrandAccepted?: () => void
   mapViewport?: MapViewport
   onMapViewportChange?: (viewport: MapViewport) => void
+  /** Whether this remote's map is currently visible and can safely apply a viewport. */
+  mapActive?: boolean
   presentation?: 'full' | 'card'
 }
 

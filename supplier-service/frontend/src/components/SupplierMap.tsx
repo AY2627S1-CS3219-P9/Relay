@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapViewport, Supplier } from '@relay/contracts'
@@ -24,11 +24,23 @@ export function getSupplierAnchor(map: L.Map, supplier: Supplier): BubbleAnchor 
   return { top, left, right: left + markerSize, bottom: top + markerSize }
 }
 
-function MapCenterController({ center }: { center: MapPoint }) {
+function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom: number; active: boolean }) {
   const map = useMap()
+  useLayoutEffect(() => {
+    if (!active) return
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false, animate: false })
+      map.setView(center, zoom, { animate: false })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [active, center, map, zoom])
   useEffect(() => {
-    map.setView(center)
-  }, [center, map])
+    if (!active) return
+    const currentCenter = map.getCenter()
+    const centerChanged = Math.abs(currentCenter.lat - center.lat) > 0.000001 || Math.abs(currentCenter.lng - center.lng) > 0.000001
+    const zoomChanged = map.getZoom() !== zoom
+    if (centerChanged || zoomChanged) map.setView(center, zoom, { animate: false })
+  }, [active, center, map, zoom])
   return null
 }
 
@@ -177,6 +189,7 @@ export function SupplierMap({
   onMapReady,
   zoom,
   onViewportChange,
+  active,
 }: {
   center: MapPoint
   suppliers: Supplier[]
@@ -185,10 +198,11 @@ export function SupplierMap({
   onMapReady: (map: L.Map) => void
   zoom: number
   onViewportChange?: (viewport: MapViewport) => void
+  active: boolean
 }) {
   return (
     <MapContainer className="relay-map" center={center} zoom={zoom} zoomControl={false}>
-      <MapCenterController center={center} />
+      <MapCenterController center={center} zoom={zoom} active={active} />
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
       <MapZoomController onChange={onViewportChange} />

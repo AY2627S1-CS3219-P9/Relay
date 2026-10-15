@@ -44,6 +44,7 @@ export default function App({
   onErrandAccepted,
   mapViewport,
   onMapViewportChange,
+  mapActive,
   api,
 }: RemoteAppProps & { api?: SupplierApi }) {
   const activeApi = useMemo(
@@ -55,7 +56,7 @@ export default function App({
     [api],
   )
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [center, setCenter] = useState<MapPoint>(NUS_CENTER)
+  const [fallbackCenter, setFallbackCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
@@ -71,6 +72,7 @@ export default function App({
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
   const [adminAnchor, setAdminAnchor] = useState<BubbleAnchor>()
   const isAdmin = userProfile?.role === 'admin'
+  const mapCenter = mapViewport?.center ?? fallbackCenter
 
   useEffect(() => {
     setActiveMode(supplierMode ?? 'explore')
@@ -158,7 +160,7 @@ export default function App({
       ({ coords }) => {
         const location = { lat: coords.latitude, lng: coords.longitude }
         setUserLocation(location)
-        setCenter(location)
+        setFallbackCenter(location)
       },
       () => undefined,
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
@@ -168,11 +170,12 @@ export default function App({
   return (
     <main className="supplier-app">
       <SupplierMap
-        center={center}
+        center={mapCenter}
         suppliers={suppliers}
         userLocation={userLocation}
         zoom={mapViewport?.zoom ?? 16}
         onViewportChange={onMapViewportChange}
+        active={mapActive ?? true}
         onSelect={(supplier, anchor, nearby) => {
           setSelectedSupplier(undefined)
           setSelectedSupplierAnchor(anchor)
@@ -238,7 +241,7 @@ export default function App({
           variant="secondary"
           size="map-icon"
           aria-label="Center map"
-          onClick={() => map?.setView(userLocation ?? center)}
+          onClick={() => map?.setView(userLocation ?? mapCenter)}
         >
           <LocationIcon className="location-icon" />
         </RelayButton>

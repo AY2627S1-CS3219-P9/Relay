@@ -50,8 +50,7 @@ function App() {
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
   const [supplierMode, setSupplierMode] = useState<'explore' | 'requests' | 'my-errands'>('explore')
-  const [supplierMapViewport, setSupplierMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
-  const [errandMapViewport, setErrandMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
+  const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -219,12 +218,8 @@ function App() {
     ))
   }, [])
 
-  const handleSupplierMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
-    updateViewport(setSupplierMapViewport, nextViewport)
-  }, [updateViewport])
-
-  const handleErrandMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
-    updateViewport(setErrandMapViewport, nextViewport)
+  const handleMarketplaceMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
+    updateViewport(setMarketplaceMapViewport, nextViewport)
   }, [updateViewport])
 
   function closeProfile() {
@@ -274,12 +269,11 @@ function App() {
               userLocation,
               requestUserLocation,
               supplierMode: id === 'supplier' ? supplierMode : undefined,
-              mapViewport: id === 'errand' ? errandMapViewport : supplierMapViewport,
+              mapViewport: marketplaceMapViewport,
               onMapViewportChange: activeService === id
-                ? id === 'errand'
-                  ? handleErrandMapViewportChange
-                  : handleSupplierMapViewportChange
+                ? handleMarketplaceMapViewportChange
                 : undefined,
+              mapActive: activeService === id,
               closeProfile: id === 'user' ? closeProfile : undefined,
               presentation: id === 'user' && profileOpen
                 ? 'card'
