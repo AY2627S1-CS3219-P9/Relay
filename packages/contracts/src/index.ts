@@ -36,6 +36,9 @@ export type ErrandViewContext =
       view: 'requests'
     }
   | {
+      view: 'my-errands'
+    }
+  | {
       view: 'explore'
     }
   | {
@@ -68,7 +71,10 @@ export type RemoteAppProps = {
   errandViewContext?: ErrandViewContext
   userLocation?: UserLocation
   requestUserLocation?: () => Promise<UserLocation | undefined>
-  supplierMode?: 'explore' | 'requests'
+  supplierMode?: 'explore' | 'requests' | 'my-errands'
+  errandApi?: import('./errand/api').ErrandApi
+  supplierApi?: import('./supplier/api').SupplierApi
+  onErrandAccepted?: () => void
   mapViewport?: MapViewport
   onMapViewportChange?: (viewport: MapViewport) => void
   presentation?: 'full' | 'card'

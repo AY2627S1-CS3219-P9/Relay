@@ -4,7 +4,7 @@
 .errand-top-controls > * { pointer-events: auto; }
 .errand-control-icon { width: 20px; height: 20px; }
 .errand-top-controls .errand-control-icon { color: #1c1c1e; }
-.errand-segment-control { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); }
+.errand-segment-control { position: absolute; top: 62px; left: 50%; width: min(560px, 68vw); transform: translateX(-50%); }
 .errand-map-controls { position: absolute; z-index: 5; right: 24px; bottom: 126px; display: grid; gap: 10px; }
 .errand-bottom-controls { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; }
 .errand-bottom-controls .updates-action { display: inline-flex; align-items: center; }

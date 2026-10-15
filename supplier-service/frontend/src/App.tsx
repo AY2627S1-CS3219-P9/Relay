@@ -40,6 +40,8 @@ export default function App({
   userProfile,
   authVersion,
   supplierMode,
+  errandApi,
+  onErrandAccepted,
   mapViewport,
   onMapViewportChange,
   api,
@@ -63,7 +65,7 @@ export default function App({
     status: 'all',
     serviceTypes: Object.values(ServiceType),
   })
-  const [activeMode, setActiveMode] = useState<'explore' | 'requests'>(supplierMode ?? 'explore')
+  const [activeMode, setActiveMode] = useState<'explore' | 'requests' | 'my-errands'>(supplierMode ?? 'explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
@@ -196,12 +198,16 @@ export default function App({
             options={[
               { value: 'explore', label: 'Explore' },
               { value: 'requests', label: 'My Requests' },
+              { value: 'my-errands', label: 'My Errands' },
             ]}
             value={activeMode}
             onChange={(nextMode) => {
               setActiveMode(nextMode)
               if (nextMode === 'requests' && openErrandView) {
-                openErrandView({ view: 'requests' })
+                openErrandView({ view: 'requests' }); return
+              }
+              if (nextMode === 'my-errands' && openErrandView) {
+                openErrandView({ view: 'my-errands' })
                 return
               }
             }}
@@ -314,17 +320,8 @@ export default function App({
           {selectedSupplier ? (
             <SupplierDetailCard
               supplier={selectedSupplier}
-              onViewErrands={
-                openErrandView
-                  ? () =>
-                      openErrandView({
-                        view: 'supplier',
-                        supplierId: selectedSupplier.id,
-                        scope: activeMode === 'requests' ? 'mine' : 'explore',
-                        supplier: selectedSupplier,
-                      })
-                  : undefined
-              }
+              errandApi={errandApi}
+              onErrandAccepted={onErrandAccepted}
               style={
                 selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
               }

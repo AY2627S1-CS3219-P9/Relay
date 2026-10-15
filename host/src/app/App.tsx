@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
   SERVICE_METADATA,
   type FetchSessionHandler,
@@ -13,6 +13,8 @@ import {
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
 import { Hub } from 'aws-amplify/utils'
+import { hostErrandApi } from './errandApi'
+import { hostSupplierApi } from './supplierApi'
 
 function App() {
   /*
@@ -46,8 +48,9 @@ function App() {
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
-  const [supplierMode, setSupplierMode] = useState<'explore' | 'requests'>('explore')
-  const [mapViewport, setMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
+  const [supplierMode, setSupplierMode] = useState<'explore' | 'requests' | 'my-errands'>('explore')
+  const [supplierMapViewport, setSupplierMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
+  const [errandMapViewport, setErrandMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -186,6 +189,7 @@ function App() {
       setCreateErrandOnSupplierMap(false)
     }
     if (context.view === 'requests') setSupplierMode('requests')
+    if (context.view === 'my-errands') setSupplierMode('my-errands')
     setErrandViewContext(context)
     if (context.view !== 'create' || activeService !== 'supplier') setActiveService('errand')
   }
@@ -195,8 +199,11 @@ function App() {
     setProfileOpen(true)
   }
 
-  const handleMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
-    setMapViewport((currentViewport) => (
+  const updateViewport = useCallback((
+    setViewport: Dispatch<SetStateAction<{ center: UserLocation; zoom: number }>>,
+    nextViewport: { center: UserLocation; zoom: number },
+  ) => {
+    setViewport((currentViewport) => (
       currentViewport.zoom === nextViewport.zoom &&
       currentViewport.center.lat === nextViewport.center.lat &&
       currentViewport.center.lng === nextViewport.center.lng
@@ -204,6 +211,14 @@ function App() {
         : nextViewport
     ))
   }, [])
+
+  const handleSupplierMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
+    updateViewport(setSupplierMapViewport, nextViewport)
+  }, [updateViewport])
+
+  const handleErrandMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
+    updateViewport(setErrandMapViewport, nextViewport)
+  }, [updateViewport])
 
   function closeProfile() {
     setProfileOpen(false)
@@ -244,12 +259,19 @@ function App() {
               navigateTo,
               openProfile,
               openErrandView,
+              errandApi: hostErrandApi,
+              supplierApi: hostSupplierApi,
+              onErrandAccepted: () => openErrandView({ view: 'my-errands' }),
               errandViewContext: id === 'errand' ? errandViewContext : undefined,
               userLocation,
               requestUserLocation,
               supplierMode: id === 'supplier' ? supplierMode : undefined,
-              mapViewport,
-              onMapViewportChange: handleMapViewportChange,
+              mapViewport: id === 'errand' ? errandMapViewport : supplierMapViewport,
+              onMapViewportChange: activeService === id
+                ? id === 'errand'
+                  ? handleErrandMapViewportChange
+                  : handleSupplierMapViewportChange
+                : undefined,
               closeProfile: id === 'user' ? closeProfile : undefined,
               presentation: id === 'user' && profileOpen
                 ? 'card'

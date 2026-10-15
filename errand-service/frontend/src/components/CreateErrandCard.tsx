@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { ServiceType, Supplier } from '@relay/contracts'
+import type { ErrandApi, ServiceType, Supplier, SupplierApi } from '@relay/contracts'
 import { ErrorMessage, LoadingState, RelayButton, RelayFormField, RelayFormSurface } from '@relay/ui'
-import { httpSupplierApi } from '../supplierApi'
+import { createHttpSupplierApi } from '../supplierApi'
 import { SERVICE_TYPE_LABELS } from '../types'
 
 type CreateForm = {
@@ -22,10 +22,14 @@ export function CreateErrandCard({
   initialSupplierId,
   onClose,
   onCreated,
+  errandApi,
+  supplierApi,
 }: {
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
+  errandApi?: ErrandApi
+  supplierApi?: SupplierApi
 }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
@@ -40,8 +44,8 @@ export function CreateErrandCard({
   useEffect(() => {
     let cancelled = false
     setLoadingSuppliers(true)
-    // Supplier selection is intentionally owned by this remote and uses the Supplier Service API.
-    void httpSupplierApi.getSuppliers().then(({ suppliers: loaded }) => {
+    const activeSupplierApi = supplierApi ?? createHttpSupplierApi()
+    void activeSupplierApi.getSuppliers().then(({ suppliers: loaded }) => {
       if (cancelled) return
       setSuppliers(loaded)
       const selected = loaded.find((supplier) => supplier.id === initialSupplierId) ?? loaded[0]
@@ -58,7 +62,7 @@ export function CreateErrandCard({
       if (!cancelled) setErrorMessage(error instanceof Error ? error.message : 'Unable to load suppliers.')
     }).finally(() => { if (!cancelled) setLoadingSuppliers(false) })
     return () => { cancelled = true }
-  }, [initialSupplierId])
+  }, [initialSupplierId, supplierApi])
 
   const selectedSupplier = suppliers.find((supplier) => supplier.id === form.supplierId)
   const serviceTypes = useMemo(() => selectedSupplier?.serviceTypes ?? [], [selectedSupplier])
@@ -77,16 +81,23 @@ export function CreateErrandCard({
   function submit(event: FormEvent) {
     event.preventDefault()
     setErrorMessage('')
-    if (!form.name.trim() || !form.supplierId || form.serviceType === '' || !form.description.trim() || !form.deliveryBuildingName) {
+    if (!form.name.trim() || !form.supplierId || form.serviceType === '' || !form.description.trim() || !form.deliveryBuildingName || !selectedSupplier || !errandApi) {
       setErrorMessage('Complete the request name, supplier, service type, delivery location, and description.')
       return
     }
     setSubmitting(true)
-    // TODO: call Errand Service createErrand once the finalized F11 request contract is available.
-    window.setTimeout(() => {
-      setSubmitting(false)
-      onCreated()
-    }, 450)
+    void errandApi.createErrand({
+      supplierId: selectedSupplier.id,
+      pickupLocation: selectedSupplier.location,
+      deliveryDetails: {
+        description: form.description.trim(),
+        ...(form.instructions.trim() ? { instructions: form.instructions.trim() } : {}),
+      },
+      creditAmount: Number(form.creditAmount) || 0,
+      ...(form.expiresAt ? { expiresAt: new Date(form.expiresAt).toISOString() } : {}),
+    }).then(() => onCreated()).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to create the errand.')
+    }).finally(() => setSubmitting(false))
   }
 
   if (loadingSuppliers) return <LoadingState label="Loading suppliers" />

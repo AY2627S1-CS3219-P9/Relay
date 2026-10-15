@@ -21,6 +21,8 @@ export type DemoErrand = {
   courierName?: string
   courierProfilePictureUrl?: string
   supplier?: Supplier
+  requesterSub?: string
+  courierSub?: string | null
 }
 
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {

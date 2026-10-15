@@ -33,7 +33,7 @@ input {
   position: absolute;
   top: 62px;
   left: 50%;
-  width: min(520px, 62vw);
+  width: min(560px, 68vw);
   transform: translateX(-50%);
   pointer-events: auto;
 }
@@ -198,6 +198,16 @@ input {
   top: 50%;
   transform: translateY(-50%);
 }
+.supplier-errands { margin-top: 20px; border-top: 1px solid rgba(0,0,0,.08); padding-top: 16px; }
+.supplier-errands-heading { color: var(--relay-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.supplier-no-errands { margin: 12px 0 0; color: #8e8e93; font-size: .94rem; }
+.supplier-errand-list { display: grid; gap: 8px; margin-top: 10px; }
+.supplier-errand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 0; border: 0; border-bottom: 1px solid rgba(0,0,0,.06); background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.supplier-errand-row span { display: grid; gap: 4px; min-width: 0; }
+.supplier-errand-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.supplier-errand-row small { color: var(--relay-text-muted); font-size: .76rem; }
+.supplier-errand-row b { flex: 0 0 auto; color: #007aff; font-size: .82rem; }
+.supplier-errand-detail { margin-top: 20px; padding: 18px; }
 .supplier-filter-header,
 .supplier-card-header {
   display: flex;

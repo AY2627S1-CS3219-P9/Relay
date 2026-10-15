@@ -1,6 +1,8 @@
 import { Day, ServiceType } from '@relay/contracts'
-import { GlassCard, IconButton, RelayButton, StatusBadge } from '@relay/ui'
+import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
 import type { Supplier } from '@relay/contracts'
+import type { ErrandApi } from '@relay/contracts'
+import { SupplierErrandPanel } from './SupplierErrandPanel'
 import type { CSSProperties } from 'react'
 
 const serviceLabels: Record<ServiceType, string> = {
@@ -24,12 +26,14 @@ const dayLabels: Record<Day, string> = {
 export function SupplierDetailCard({
   supplier,
   onClose,
-  onViewErrands,
+  errandApi,
+  onErrandAccepted,
   style,
 }: {
   supplier: Supplier
   onClose: () => void
-  onViewErrands?: () => void
+  errandApi?: ErrandApi
+  onErrandAccepted?: () => void
   style?: CSSProperties
 }) {
   return (
@@ -71,13 +75,7 @@ export function SupplierDetailCard({
           </span>
         ))}
       </div>
-      {onViewErrands && (
-        <div className="errand-actions">
-          <RelayButton variant="primary" onClick={onViewErrands}>
-            View errands
-          </RelayButton>
-        </div>
-      )}
+      <SupplierErrandPanel supplierId={supplier.id} api={errandApi} onAccepted={onErrandAccepted} />
     </GlassCard>
   )
 }

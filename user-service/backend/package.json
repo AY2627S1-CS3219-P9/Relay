@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "predev": "npm run prisma:generate && npm run prisma:migrate:deploy",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "lint": "tsc --noEmit",
+    "lint": "prisma generate && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",

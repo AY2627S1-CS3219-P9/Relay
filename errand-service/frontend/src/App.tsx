@@ -2,9 +2,9 @@ import '@relay/ui/styles.css'
 import '@relay/ui/styles/map.css'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
+import type { Errand, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge, type BubbleAnchor } from '@relay/ui'
 import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
@@ -17,7 +17,7 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [showFilters, setShowFilters] = useState(false)
@@ -30,11 +30,23 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
   const selectedErrand = errands.find((errand) => errand.id === selectedErrandId)
   const isCourierView = view === 'explore' || (errandViewContext?.view === 'supplier' && errandViewContext.scope === 'explore')
   const role = isCourierView ? 'courier' : 'requester'
+
+  useEffect(() => {
+    if (!errandApi || view === 'create' || view === 'supplier') return
+    const load = view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
+    void load.then(({ errands: loaded }) => {
+      const accepted = view === 'my-errands'
+        ? loaded.filter((errand) => errand.courierSub === userProfile?.id)
+        : loaded
+      setErrands(accepted.map(toDemoErrand))
+    }).catch(() => undefined)
+  }, [errandApi, userProfile?.id, view])
   const handleViewportChange = useCallback((viewport: { center: { lat: number; lng: number }; zoom: number }) => {
     onMapViewportChange?.(viewport)
   }, [onMapViewportChange])
 
   const visibleErrands = useMemo(() => {
+    if (view === 'my-errands') return errands
     const filtered = errands.filter((errand) => filters.statuses.includes(errand.status) && filters.serviceTypes.includes(errand.serviceType))
     return [...filtered].sort((left, right) => {
       if (filters.sort === 'deadline') return left.expiresAt.localeCompare(right.expiresAt)
@@ -62,8 +74,15 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     openProfile(anchor)
   }
 
-  function updateErrand(action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'delete', id: string) {
-    // TODO: call the corresponding Errand Service lifecycle endpoint and refresh the errand.
+  async function updateErrand(action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'delete', id: string) {
+    if (errandApi) {
+      const actions = { accept: errandApi.acceptErrand, pickup: errandApi.pickupErrand, deliver: errandApi.deliverErrand, confirm: errandApi.confirmErrand, cancel: errandApi.cancelErrand, delete: errandApi.deleteErrand }
+      if (action === 'delete') { await actions.delete(id); setErrands((current) => current.filter((errand) => errand.id !== id)); setSelectedErrandId(undefined); return }
+      const response = await actions[action](id)
+      setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand) } : errand))
+      if (action === 'accept') openErrandView?.({ view: 'my-errands' })
+      return
+    }
     const nextStatus: Partial<Record<typeof action, DemoErrand['status']>> = { accept: 'ACCEPTED', pickup: 'PICKED_UP', deliver: 'DELIVERED', confirm: 'CONFIRMED', cancel: 'CANCELLED' }
     const next = nextStatus[action]
     if (next) setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, status: next } : errand))
@@ -81,6 +100,8 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
         initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined}
         onClose={closeRemote}
         onCreated={() => openErrandView?.({ view: 'requests' })}
+        errandApi={errandApi}
+        supplierApi={supplierApi}
       />
     </RelayCardAnchor>
   )
@@ -94,11 +115,11 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} />
       <div className="errand-top-controls map-top-menu">
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
-        <SlidingSegmentedControl className="errand-segment-control" size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }]} value={isCourierView ? 'explore' : 'requests'} onChange={(next) => { /* TODO: load the selected map mode from Errand Service. */ openErrandView?.(next === 'explore' ? { view: 'explore' } : { view: 'requests' }) }} />
+        <SlidingSegmentedControl className="errand-segment-control" size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
       </div>
       <div className="errand-map-controls">
-        <RelayButton variant="secondary" size="map-icon" onClick={() => setShowFilters(true)} aria-label="Open errand filters"><FilterIcon /></RelayButton>
+        {view !== 'my-errands' && <RelayButton variant="secondary" size="map-icon" onClick={() => setShowFilters(true)} aria-label="Open errand filters"><FilterIcon /></RelayButton>}
         <RelayButton variant="secondary" size="map-icon" onClick={() => void locateMe()} aria-label="Center map"><LocationIcon /></RelayButton>
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomIn()} aria-label="Zoom in"><PlusIcon /></RelayButton>
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
@@ -113,3 +134,20 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
 }
 
 function distance(errand: DemoErrand, location: { lat: number; lng: number }) { const lat = errand.pickupLocation.lat - location.lat; const lng = errand.pickupLocation.lng - location.lng; return lat * lat + lng * lng }
+
+function toDemoErrand(errand: Errand): DemoErrand {
+  return {
+    id: errand.id,
+    name: errand.deliveryDetails.description,
+    serviceType: 0,
+    pickupLocation: errand.pickupLocation,
+    deliveryLocation: errand.pickupLocation,
+    description: errand.deliveryDetails.description,
+    instructions: errand.deliveryDetails.instructions ?? '',
+    creditAmount: errand.creditAmount,
+    status: errand.status,
+    expiresAt: errand.expiresAt,
+    requesterSub: errand.requesterSub,
+    courierSub: errand.courierSub,
+  }
+}
