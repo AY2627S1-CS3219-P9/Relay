@@ -128,18 +128,18 @@ npm run dev
 
 The local development topology is:
 
-| Component | Address |
-| --- | --- |
-| Host frontend | `http://localhost:8080` |
-| Supplier frontend | `http://localhost:5001` |
-| User frontend | `http://localhost:5002` |
-| Order frontend | `http://localhost:5003` |
-| Credit frontend | `http://localhost:5004` |
-| Supplier API | `http://localhost:3000` |
-| User API | `http://localhost:3001` |
-| Floci | `http://localhost:4566` |
-| User PostgreSQL | `localhost:5432` |
-| Supplier PostgreSQL | `localhost:5433` |
+| Component           | Address                 |
+| ------------------- | ----------------------- |
+| Host frontend       | `http://localhost:8080` |
+| Supplier frontend   | `http://localhost:5001` |
+| User frontend       | `http://localhost:5002` |
+| Order frontend      | `http://localhost:5003` |
+| Credit frontend     | `http://localhost:5004` |
+| Supplier API        | `http://localhost:3000` |
+| User API            | `http://localhost:3001` |
+| Floci               | `http://localhost:4566` |
+| User PostgreSQL     | `localhost:5432`        |
+| Supplier PostgreSQL | `localhost:5433`        |
 
 The local Vite host proxies `/api/user` to the user API and `/api/supplier`
 to the supplier API. The user backend generates Prisma Client and applies

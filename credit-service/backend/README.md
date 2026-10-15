@@ -55,11 +55,11 @@ npm run dev --workspace @relay/credit-backend
 
 ## HTTP API
 
-| Method | Route | Response |
-| ------ | ----- | -------- |
-| GET | `/api/credit` | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
-| GET | `/api/credit/history` | `{ records: TransactionRecord[] }` |
-| POST | `/api/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS' | 'ALREADY_RESERVED' }` |
+| Method | Route                 | Response                                                  |
+| ------ | --------------------- | --------------------------------------------------------- |
+| GET    | `/api/credit`         | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
+| GET    | `/api/credit/history` | `{ records: TransactionRecord[] }`                        |
+| POST   | `/api/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS'              | 'ALREADY_RESERVED' }` |
 
 All routes forward the browser's Cookie header and the configured internal
 service token to `POST /internal/user/session/validate` on User Service.

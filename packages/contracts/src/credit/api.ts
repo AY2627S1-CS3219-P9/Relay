@@ -5,7 +5,11 @@ import type {
   TransferCreditCommand,
 } from './commands'
 import type { ReserveCreditRequest, ViewCreditHistoryRequest, ViewCreditRequest } from './requests'
-import type { ReserveCreditResponse, ViewCreditHistoryResponse, ViewCreditResponse } from './responses'
+import type {
+  ReserveCreditResponse,
+  ViewCreditHistoryResponse,
+  ViewCreditResponse,
+} from './responses'
 
 /** Credit Service methods for backend to implement */
 export interface CreditApi {

@@ -34,12 +34,10 @@ export const sessionMiddleware: RequestHandler = async (
 ) => {
   const cookie = readSessionCookie(req)
   if (!cookie) {
-    res
-      .status(401)
-      .json({
-        ok: false,
-        error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
-      })
+    res.status(401).json({
+      ok: false,
+      error: { code: 'UNAUTHENTICATED', message: 'Authentication is required.' },
+    })
     return
   }
   try {

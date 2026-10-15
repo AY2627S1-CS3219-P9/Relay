@@ -40,9 +40,9 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       res.writeHead(401).end()
       return
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' }).end(
-      JSON.stringify({ ok: true, data: { user: { subject } } }),
-    )
+    res
+      .writeHead(200, { 'Content-Type': 'application/json' })
+      .end(JSON.stringify({ ok: true, data: { user: { subject } } }))
   })
   await new Promise((resolve) => userService.listen(0, '127.0.0.1', resolve))
   process.env.USER_API_URL = `http://127.0.0.1:${userService.address().port}`
@@ -60,26 +60,36 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     return { status: response.status, body: await response.json() }
   }
-  const producer = new Kafka({ clientId: 'relay-credit-workflow-test', brokers: ['kafka:9092'] }).producer()
-  const send = (topic, key, value) => producer.send({
-    topic, messages: [{ key, value: JSON.stringify(value) }],
-  })
+  const producer = new Kafka({
+    clientId: 'relay-credit-workflow-test',
+    brokers: ['kafka:9092'],
+  }).producer()
+  const send = (topic, key, value) =>
+    producer.send({
+      topic,
+      messages: [{ key, value: JSON.stringify(value) }],
+    })
   const errand = (id, status, creditAmount) => ({
     errand: {
-      id, requesterSub: requester, courierSub: courier, supplierId: null,
+      id,
+      requesterSub: requester,
+      courierSub: courier,
+      supplierId: null,
       pickupLocation: { lat: 0, lng: 0, buildingName: 'Test', floorNumber: 1 },
       deliveryDetails: { description: 'Test delivery' },
-      creditAmount, status,
+      creditAmount,
+      status,
       expiresAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
   })
-  const reserve = (id, amount) => request('requester', '/api/credit/reserve', {
-    transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
-    userId: requester,
-    amount,
-  })
+  const reserve = (id, amount) =>
+    request('requester', '/api/credit/reserve', {
+      transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
+      userId: requester,
+      amount,
+    })
   try {
     await producer.connect()
     for (const userId of ids) await send(topics.userRegistered, userId, { cognitoSub: userId })
@@ -88,7 +98,11 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal((await request('requester')).body.availableCredit, 100)
     assert.equal((await request('courier')).body.availableCredit, 100)
 
-    for (const [id, amount] of [[confirmId, 10], [cancelId, 5], [expireId, 5]]) {
+    for (const [id, amount] of [
+      [confirmId, 10],
+      [cancelId, 5],
+      [expireId, 5],
+    ]) {
       const response = await reserve(id, amount)
       assert.equal(response.status, 200)
       assert.equal(response.body.status, 'RESERVE_SUCCESS')
@@ -103,9 +117,11 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     await until(async () => {
       const requesterCredit = await request('requester')
       const courierCredit = await request('courier')
-      return requesterCredit.body.availableCredit === 90 &&
+      return (
+        requesterCredit.body.availableCredit === 90 &&
         requesterCredit.body.reserveCredit === 0 &&
         courierCredit.body.availableCredit === 110
+      )
     })
     const finalRequester = await request('requester')
     assert.equal(finalRequester.body.availableCredit, 90)

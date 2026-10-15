@@ -1,4 +1,4 @@
-import type { CreditBalance, TransactionRecord } from "./models";
+import type { CreditBalance, TransactionRecord } from './models'
 
 export type ViewCreditResponse = CreditBalance
 
@@ -7,6 +7,5 @@ export type ViewCreditHistoryResponse = {
 }
 
 export type ReserveCreditResponse = CreditBalance & {
-  status: 'RESERVE_SUCCESS' | 'ALREADY_RESERVED';
+  status: 'RESERVE_SUCCESS' | 'ALREADY_RESERVED'
 }
-

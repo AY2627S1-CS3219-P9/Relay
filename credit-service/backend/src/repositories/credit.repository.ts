@@ -16,7 +16,9 @@ export const prisma = new PrismaClient({
   datasources: { db: { url: getEnv().databaseUrl } },
 })
 
-function referenceOf(command: { transactionReference: { service: string; id: string; type: string } }): string {
+function referenceOf(command: {
+  transactionReference: { service: string; id: string; type: string }
+}): string {
   const { service, id, type } = command.transactionReference
   if (!service || !id || service.includes(':') || id.includes(':')) {
     throw new Error('Invalid transaction reference.')
@@ -66,14 +68,18 @@ export class CreditRepository {
       command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
       command.transactionReference.service !== 'user' ||
       command.userId !== command.transactionReference.id
-    ) throw new Error('Invalid initial credit allocation command.')
+    )
+      throw new Error('Invalid initial credit allocation command.')
     try {
       await prisma.$transaction(async (tx: any) => {
         if (await tx.transactionRecord.findUnique({ where: { reference } })) return
         // A delayed registration event must never recreate a deleted user's balance.
-        if (await tx.transactionRecord.findUnique({
-          where: { reference: `user:${command.userId}:USER_DELETION` },
-        })) return
+        if (
+          await tx.transactionRecord.findUnique({
+            where: { reference: `user:${command.userId}:USER_DELETION` },
+          })
+        )
+          return
         await tx.creditBalance.create({
           data: { userId: command.userId, availableCredit: 100, reserveCredit: 0 },
         })
@@ -91,7 +97,8 @@ export class CreditRepository {
       if (
         (error as { code?: string }).code === 'P2002' &&
         (await prisma.transactionRecord.findUnique({ where: { reference } }))
-      ) return
+      )
+        return
       throw error
     }
   }
@@ -102,9 +109,14 @@ export class CreditRepository {
       request.transactionReference.service !== 'errand' ||
       request.transactionReference.type !== 'CREDIT_RESERVE' ||
       !request.userId
-    ) throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
+    )
+      throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
     if (!Number.isFinite(request.amount) || request.amount <= 0) {
-      throw new CreditServiceError('INVALID_CREDIT_AMOUNT', 'Credit amount must be a positive number.', 422)
+      throw new CreditServiceError(
+        'INVALID_CREDIT_AMOUNT',
+        'Credit amount must be a positive number.',
+        422,
+      )
     }
     const amount = new Prisma.Decimal(request.amount)
 
@@ -115,9 +127,19 @@ export class CreditRepository {
         record.senderId !== request.userId ||
         record.receiverId !== request.userId ||
         !record.amount.equals(amount)
-      ) throw new CreditServiceError('INVALID_REQUEST', 'Reservation reference was already used for different details.', 400)
+      )
+        throw new CreditServiceError(
+          'INVALID_REQUEST',
+          'Reservation reference was already used for different details.',
+          400,
+        )
       const balance = await this.findBalance(request.userId)
-      if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
+      if (!balance)
+        throw new CreditServiceError(
+          'USER_NOT_FOUND',
+          'The user has no credit balance record.',
+          404,
+        )
       return { ...balance, status: 'ALREADY_RESERVED' }
     }
 
@@ -129,9 +151,19 @@ export class CreditRepository {
             prior.senderId !== request.userId ||
             prior.receiverId !== request.userId ||
             !prior.amount.equals(amount)
-          ) throw new CreditServiceError('INVALID_REQUEST', 'Reservation reference was already used for different details.', 400)
+          )
+            throw new CreditServiceError(
+              'INVALID_REQUEST',
+              'Reservation reference was already used for different details.',
+              400,
+            )
           const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
-          if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
+          if (!balance)
+            throw new CreditServiceError(
+              'USER_NOT_FOUND',
+              'The user has no credit balance record.',
+              404,
+            )
           return {
             userId: balance.userId,
             availableCredit: balance.availableCredit.toNumber(),
@@ -146,8 +178,17 @@ export class CreditRepository {
         })
         if (updated.count !== 1) {
           const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
-          if (!balance) throw new CreditServiceError('USER_NOT_FOUND', 'The user has no credit balance record.', 404)
-          throw new CreditServiceError('INSUFFICIENT_CREDITS', 'The available credit balance is too low.', 422)
+          if (!balance)
+            throw new CreditServiceError(
+              'USER_NOT_FOUND',
+              'The user has no credit balance record.',
+              404,
+            )
+          throw new CreditServiceError(
+            'INSUFFICIENT_CREDITS',
+            'The available credit balance is too low.',
+            422,
+          )
         }
         await tx.transactionRecord.create({
           data: {
@@ -158,7 +199,9 @@ export class CreditRepository {
             amount,
           },
         })
-        const balance = await tx.creditBalance.findUniqueOrThrow({ where: { userId: request.userId } })
+        const balance = await tx.creditBalance.findUniqueOrThrow({
+          where: { userId: request.userId },
+        })
         return {
           userId: balance.userId,
           availableCredit: balance.availableCredit.toNumber(),
@@ -184,7 +227,8 @@ export class CreditRepository {
       command.transactionReference.service !== 'errand' ||
       command.transactionReference.type !== 'CREDIT_RELEASE' ||
       !command.userId
-    ) throw new Error('Invalid release credit command.')
+    )
+      throw new Error('Invalid release credit command.')
     const amount = positiveAmount(command.amount)
     await prisma.$transaction(async (tx: any) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
@@ -199,8 +243,11 @@ export class CreditRepository {
       if (updated.count !== 1) throw new Error('Insufficient reserved credit for release.')
       await tx.transactionRecord.create({
         data: {
-          reference, senderId: command.userId, receiverId: command.userId,
-          type: 'CREDIT_RELEASE', amount,
+          reference,
+          senderId: command.userId,
+          receiverId: command.userId,
+          type: 'CREDIT_RELEASE',
+          amount,
         },
       })
     })
@@ -211,9 +258,11 @@ export class CreditRepository {
     if (
       command.transactionReference.service !== 'errand' ||
       command.transactionReference.type !== 'CREDIT_TRANSFER' ||
-      !command.senderId || !command.receiverId ||
+      !command.senderId ||
+      !command.receiverId ||
       command.senderId === command.receiverId
-    ) throw new Error('Invalid transfer credit command.')
+    )
+      throw new Error('Invalid transfer credit command.')
     const amount = positiveAmount(command.amount)
     await prisma.$transaction(async (tx: any) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
@@ -232,8 +281,11 @@ export class CreditRepository {
       })
       await tx.transactionRecord.create({
         data: {
-          reference, senderId: command.senderId, receiverId: command.receiverId,
-          type: 'CREDIT_TRANSFER', amount,
+          reference,
+          senderId: command.senderId,
+          receiverId: command.receiverId,
+          type: 'CREDIT_TRANSFER',
+          amount,
         },
       })
     })
@@ -245,13 +297,16 @@ export class CreditRepository {
       command.transactionReference.service !== 'user' ||
       command.transactionReference.type !== 'USER_DELETION' ||
       command.transactionReference.id !== command.userId
-    ) throw new Error('Invalid user deletion command.')
+    )
+      throw new Error('Invalid user deletion command.')
     await prisma.$transaction(async (tx: any) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
       await tx.transactionRecord.create({
         data: {
-          reference, senderId: command.userId, receiverId: 'SYSTEM',
+          reference,
+          senderId: command.userId,
+          receiverId: 'SYSTEM',
           type: 'USER_DELETION',
           amount: balance
             ? balance.availableCredit.plus(balance.reserveCredit)

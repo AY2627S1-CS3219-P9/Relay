@@ -192,16 +192,55 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
     await t.test('reserve validates ownership, amount, and reference', async () => {
       const reference = { service: 'errand', id: `${prefix}-reserve`, type: 'CREDIT_RESERVE' }
       const body = { transactionReference: reference, userId: owner, amount: 10.25 }
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST')).status, 400)
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', { ...body, userId: other })).status, 403)
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', { ...body, amount: 0 })).body.code, 'INVALID_CREDIT_AMOUNT')
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', { ...body, amount: '10' })).status, 422)
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
-        ...body, transactionReference: { ...reference, type: 'CREDIT_TRANSFER' },
-      })).status, 400)
-      assert.equal((await request('/api/credit/reserve', 'relay_session=empty', 'POST', {
-        ...body, userId: empty,
-      })).status, 404)
+      assert.equal(
+        (await request('/api/credit/reserve', 'relay_session=owner', 'POST')).status,
+        400,
+      )
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            ...body,
+            userId: other,
+          })
+        ).status,
+        403,
+      )
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            ...body,
+            amount: 0,
+          })
+        ).body.code,
+        'INVALID_CREDIT_AMOUNT',
+      )
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            ...body,
+            amount: '10',
+          })
+        ).status,
+        422,
+      )
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            ...body,
+            transactionReference: { ...reference, type: 'CREDIT_TRANSFER' },
+          })
+        ).status,
+        400,
+      )
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=empty', 'POST', {
+            ...body,
+            userId: empty,
+          })
+        ).status,
+        404,
+      )
       const first = await request('/api/credit/reserve', 'relay_session=owner', 'POST', body)
       assert.equal(first.status, 200)
       assert.equal(first.body.status, 'RESERVE_SUCCESS')
@@ -210,32 +249,54 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       const replay = await request('/api/credit/reserve', 'relay_session=owner', 'POST', body)
       assert.equal(replay.body.status, 'ALREADY_RESERVED')
       assert.equal(replay.body.availableCredit, 65)
-      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
-        ...body, amount: 9,
-      })).status, 400)
+      assert.equal(
+        (
+          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            ...body,
+            amount: 9,
+          })
+        ).status,
+        400,
+      )
       const insufficient = await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
-        ...body, transactionReference: { ...reference, id: `${prefix}-too-much` }, amount: 100,
+        ...body,
+        transactionReference: { ...reference, id: `${prefix}-too-much` },
+        amount: 100,
       })
       assert.equal(insufficient.status, 422)
       assert.equal(insufficient.body.code, 'INSUFFICIENT_CREDITS')
       const history = await request('/api/credit/history', 'relay_session=owner')
-      assert.equal(history.body.records.filter((record) => record.reference.id === reference.id).length, 1)
+      assert.equal(
+        history.body.records.filter((record) => record.reference.id === reference.id).length,
+        1,
+      )
     })
-    await t.test('concurrent reservations cannot spend the same available balance twice', async () => {
-      const reserve = (id) => request('/api/credit/reserve', 'relay_session=owner', 'POST', {
-        transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
-        userId: owner,
-        amount: 40,
-      })
-      const responses = await Promise.all([reserve(`${prefix}-race-a`), reserve(`${prefix}-race-b`)])
-      assert.deepEqual(responses.map((response) => response.status).sort(), [200, 422])
-      const balance = await request('/api/credit', 'relay_session=owner')
-      assert.equal(balance.body.availableCredit, 25)
-      assert.equal(balance.body.reserveCredit, 62.75)
-    })
+    await t.test(
+      'concurrent reservations cannot spend the same available balance twice',
+      async () => {
+        const reserve = (id) =>
+          request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+            transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
+            userId: owner,
+            amount: 40,
+          })
+        const responses = await Promise.all([
+          reserve(`${prefix}-race-a`),
+          reserve(`${prefix}-race-b`),
+        ])
+        assert.deepEqual(responses.map((response) => response.status).sort(), [200, 422])
+        const balance = await request('/api/credit', 'relay_session=owner')
+        assert.equal(balance.body.availableCredit, 25)
+        assert.equal(balance.body.reserveCredit, 62.75)
+      },
+    )
     await t.test('simultaneous retries of one reservation charge only once', async () => {
       const body = {
-        transactionReference: { service: 'errand', id: `${prefix}-same-reference`, type: 'CREDIT_RESERVE' },
+        transactionReference: {
+          service: 'errand',
+          id: `${prefix}-same-reference`,
+          type: 'CREDIT_RESERVE',
+        },
         userId: owner,
         amount: 10,
       }
@@ -243,10 +304,10 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
         request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
       ])
-      assert.deepEqual(
-        responses.map((response) => response.body.status).sort(),
-        ['ALREADY_RESERVED', 'RESERVE_SUCCESS'],
-      )
+      assert.deepEqual(responses.map((response) => response.body.status).sort(), [
+        'ALREADY_RESERVED',
+        'RESERVE_SUCCESS',
+      ])
       const balance = await request('/api/credit', 'relay_session=owner')
       assert.equal(balance.body.availableCredit, 15)
       assert.equal(balance.body.reserveCredit, 72.75)

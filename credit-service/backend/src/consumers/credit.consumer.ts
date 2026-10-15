@@ -51,7 +51,11 @@ export class CreditEventConsumer {
         if (topic === this.topics.userRegistered) {
           const event: UserRegisteredEvent = userEventSchema.parse(payload)
           const command: AllocateInitialCreditCommand = {
-            transactionReference: { service: 'user', id: event.cognitoSub, type: 'INITIAL_ALLOCATION' },
+            transactionReference: {
+              service: 'user',
+              id: event.cognitoSub,
+              type: 'INITIAL_ALLOCATION',
+            },
             userId: event.cognitoSub,
           }
           await this.creditService.allocateInitialCredit(command)
@@ -65,8 +69,10 @@ export class CreditEventConsumer {
         } else {
           const { errand } = errandEventSchema.parse(payload)
           if (topic === this.topics.errandConfirmed) {
-            const status: ErrandConfirmedEvent['errand']['status'] = errand.status as ErrandConfirmedEvent['errand']['status']
-            if (status !== 'CONFIRMED' || !errand.courierSub) throw new Error('Invalid confirmed errand event.')
+            const status: ErrandConfirmedEvent['errand']['status'] =
+              errand.status as ErrandConfirmedEvent['errand']['status']
+            if (status !== 'CONFIRMED' || !errand.courierSub)
+              throw new Error('Invalid confirmed errand event.')
             const command: TransferCreditCommand = {
               transactionReference: { service: 'errand', id: errand.id, type: 'CREDIT_TRANSFER' },
               senderId: errand.requesterSub,
@@ -75,11 +81,14 @@ export class CreditEventConsumer {
             }
             await this.creditService.transferCredit(command)
           } else {
-            const status: ErrandCancelledEvent['errand']['status'] | ErrandExpiredEvent['errand']['status'] = errand.status as ErrandCancelledEvent['errand']['status']
+            const status:
+              ErrandCancelledEvent['errand']['status'] | ErrandExpiredEvent['errand']['status'] =
+              errand.status as ErrandCancelledEvent['errand']['status']
             if (
               (topic === this.topics.errandCancelled && status !== 'CANCELLED') ||
               (topic === this.topics.errandExpired && status !== 'EXPIRED')
-            ) throw new Error('Invalid released errand event.')
+            )
+              throw new Error('Invalid released errand event.')
             const command: ReleaseCreditCommand = {
               transactionReference: { service: 'errand', id: errand.id, type: 'CREDIT_RELEASE' },
               userId: errand.requesterSub,

@@ -44,7 +44,11 @@ export function reserveCreditRequest(req: Request, res: Response): ReserveCredit
     throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
   }
   if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0) {
-    throw new CreditServiceError('INVALID_CREDIT_AMOUNT', 'Credit amount must be a positive number.', 422)
+    throw new CreditServiceError(
+      'INVALID_CREDIT_AMOUNT',
+      'Credit amount must be a positive number.',
+      422,
+    )
   }
   return {
     transactionReference: { service: ref.service, id: ref.id, type: ref.type },

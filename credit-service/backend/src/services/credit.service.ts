@@ -23,7 +23,7 @@ export class CreditService {
   async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
     return this.repository.reserveCredit(request)
   }
-  
+
   async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
     await this.repository.releaseCredit(command)
   }
