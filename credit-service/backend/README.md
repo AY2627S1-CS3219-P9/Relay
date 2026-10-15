@@ -32,7 +32,7 @@ docker compose up -d --build --wait credit-api credit-postgres
 ```
 
 The database uses the named `credit-postgres-data` volume and is available on
-localhost port 5434. The API uses port 3000 inside the Compose network. Startup
+localhost port 5435. The API uses port 3000 inside the Compose network. Startup
 runs `prisma migrate deploy` before starting Express. `/health` and `/healthz`
 query both models and return HTTP 503 if their tables or columns cannot be read.
 

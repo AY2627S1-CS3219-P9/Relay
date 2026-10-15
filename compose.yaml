@@ -55,12 +55,12 @@ services:
 
   errand-postgres:
     image: postgres:16-alpine
-    ports:
-      - '5434:5432'
     environment:
       POSTGRES_DB: relay_errand
       POSTGRES_USER: relay
       POSTGRES_PASSWORD: relay
+    ports:
+      - '5434:5432'
     volumes:
       - errand-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -76,7 +76,7 @@ services:
       POSTGRES_PASSWORD: relay
       POSTGRES_DB: relay
     ports:
-      - '5434:5432'
+      - '5435:5432'
     volumes:
       - credit-postgres-data:/var/lib/postgresql/data
     healthcheck:
