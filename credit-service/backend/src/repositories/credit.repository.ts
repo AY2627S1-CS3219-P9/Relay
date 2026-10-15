@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-import { Decimal } from '@prisma/client/runtime/library'
+import { PrismaClient, Prisma } from '@generated/prisma-client'
 import type {
   AllocateInitialCreditCommand,
   CreditBalance,
@@ -25,9 +24,9 @@ function referenceOf(command: { transactionReference: { service: string; id: str
   return `${service}:${id}:${type}`
 }
 
-function positiveAmount(amount: number): Decimal {
+function positiveAmount(amount: number): Prisma.Decimal {
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.')
-  return new Decimal(amount)
+  return new Prisma.Decimal(amount)
 }
 
 export class CreditRepository {
@@ -107,7 +106,7 @@ export class CreditRepository {
     if (!Number.isFinite(request.amount) || request.amount <= 0) {
       throw new CreditServiceError('INVALID_CREDIT_AMOUNT', 'Credit amount must be a positive number.', 422)
     }
-    const amount = new Decimal(request.amount)
+    const amount = new Prisma.Decimal(request.amount)
 
     const existingResponse = async (): Promise<ReserveCreditResponse | null> => {
       const record = await prisma.transactionRecord.findUnique({ where: { reference } })
@@ -256,7 +255,7 @@ export class CreditRepository {
           type: 'USER_DELETION',
           amount: balance
             ? balance.availableCredit.plus(balance.reserveCredit)
-            : new Decimal(0),
+            : new Prisma.Decimal(0),
         },
       })
       if (balance) await tx.creditBalance.delete({ where: { userId: command.userId } })

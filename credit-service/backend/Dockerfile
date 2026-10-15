@@ -17,6 +17,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/credit-service/backend/package.json ./credit-service/backend/
 COPY --from=build /app/credit-service/backend/dist ./credit-service/backend/dist
+COPY --from=build /app/credit-service/backend/node_modules/@generated/prisma-client ./credit-service/backend/node_modules/@generated/prisma-client
 COPY --from=build /app/credit-service/backend/prisma ./credit-service/backend/prisma
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy --schema=credit-service/backend/prisma/schema.prisma && node credit-service/backend/dist/server.js"]
