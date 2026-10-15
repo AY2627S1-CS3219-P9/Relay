@@ -3,21 +3,29 @@ import type { ServiceMetadata } from '@relay/contracts'
 export { ErrorMessage } from './ErrorMessage'
 export type { MessageVariant } from './ErrorMessage'
 export {
+  BellIcon,
+  BoltIcon,
   CardView,
+  BubblePopover,
+  ClipboardPlusIcon,
   FilterIcon,
   GlassCard,
   GlassWindow,
   IconButton,
   LoadingState,
   LocationIcon,
+  PencilIcon,
+  PlusIcon,
   RelayBrand,
   RelayButton,
+  Spacer,
+  StorePlusIcon,
   SlidingSegmentedControl,
   Spinner,
   StatusBadge,
   TextButton,
 } from './components'
-export type { RelayButtonVariant } from './components'
+export type { BubbleAnchor, RelayButtonVariant } from './components'
 
 export function ServiceCard({
   label,

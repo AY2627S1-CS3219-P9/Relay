@@ -142,11 +142,7 @@ export class ErrandController {
     }
   }
 
-  receiveSupplierEvent = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  receiveSupplierEvent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { supplierId, name, location, operatingHours, isOperational, serviceTypes } = req.body
 

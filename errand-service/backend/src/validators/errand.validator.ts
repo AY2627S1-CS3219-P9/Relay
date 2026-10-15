@@ -10,7 +10,11 @@ const errandLocationSchema = z.object({
 })
 
 const deliveryDetailsSchema = z.object({
-  description: z.string().trim().min(1).max(5000, 'Description must be no more than 5000 characters'),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000, 'Description must be no more than 5000 characters'),
   instructions: z.string().trim().min(1).optional(),
 })
 

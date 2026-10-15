@@ -117,6 +117,7 @@ function App() {
       const session = await fetchSession({ forceRefresh: true })
       if (!session.userData.profileCreated) {
         setUserProfile(null)
+        setAuthVersion((version) => version + 1)
         return
       }
       const response = await fetch('/api/user/me', { credentials: 'include' })
@@ -124,8 +125,10 @@ function App() {
         const body = (await response.json()) as { ok?: boolean; data?: User }
         if (body.ok && body.data) setUserProfile(body.data)
       } else if (response.status === 404) setUserProfile(null)
+      setAuthVersion((version) => version + 1)
     } catch {
       setUserProfile(null)
+      setAuthVersion((version) => version + 1)
     }
   }
 
@@ -173,6 +176,7 @@ function App() {
             overlay={id === 'user' && profileOpen}
             card={id === 'user' && profileOpen}
             cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
+            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
             appProps={{
               fetchSession,
               authVersion,
