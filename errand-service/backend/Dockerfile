@@ -29,4 +29,4 @@ COPY --from=build /app/errand-service/backend/prisma ./errand-service/backend/pr
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=errand-service/backend/prisma/schema.prisma && npx tsx errand-service/backend/src/server.ts"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=errand-service/backend/prisma/schema.prisma && npx tsx errand-service/backend/src/app.ts"]

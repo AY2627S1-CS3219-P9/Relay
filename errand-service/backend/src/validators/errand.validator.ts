@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ErrandErrors, type CreateErrandRequest } from '@relay/contracts'
+import { ErrandErrors, SupplierErrandViewRequest, type CreateErrandRequest } from '@relay/contracts'
 import { ErrandServiceError } from '../types/errand.types.js'
 
 const errandLocationSchema = z.object({
@@ -10,19 +10,35 @@ const errandLocationSchema = z.object({
 })
 
 const deliveryDetailsSchema = z.object({
-  description: z.string().trim().min(1),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000, 'Description must be no more than 5000 characters'),
   instructions: z.string().trim().min(1).optional(),
 })
 
 const createErrandSchema = z.object({
-  supplierId: z.string().trim().min(1).optional(),
+  supplierDetails: z.object({
+    supplierId: z.string().trim().min(1),
+    supplierName: z.string().trim().min(1),
+    serviceType: z.number().int(),
+  }),
+  name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
   pickupLocation: errandLocationSchema,
+  targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().positive(),
-  expiresAt: z.string().datetime({ offset: true }).refine(
-    (value) => new Date(value).getTime() > Date.now(),
-    'Expiry must be in the future',
-  ).optional(),
+  expiresAt: z
+    .string()
+    .datetime({ offset: true })
+    .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
+    .optional(),
+})
+
+const supplierErrandViewSchema = z.object({
+  scope: z.enum(['explore', 'mine']),
+  supplierId: z.string().trim().min(1).optional(),
 })
 
 export function validateCreateErrand(input: unknown): CreateErrandRequest {
@@ -38,6 +54,24 @@ export function validateCreateErrand(input: unknown): CreateErrandRequest {
   throw new ErrandServiceError(
     ErrandErrors.INVALID_ERRAND,
     'The errand request is invalid.',
+    400,
+    fieldErrors,
+  )
+}
+
+export function validateSupplierErrandView(input: unknown): SupplierErrandViewRequest {
+  const result = supplierErrandViewSchema.safeParse(input)
+  if (result.success) return result.data
+
+  const fieldErrors: Record<string, string> = {}
+  for (const issue of result.error.issues) {
+    const field = issue.path.join('.') || 'request'
+    fieldErrors[field] ??= issue.message
+  }
+
+  throw new ErrandServiceError(
+    ErrandErrors.INVALID_ERRAND,
+    'The supplier errand view request is invalid.',
     400,
     fieldErrors,
   )
