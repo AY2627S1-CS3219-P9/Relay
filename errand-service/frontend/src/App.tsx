@@ -17,7 +17,7 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation, errandApi, supplierApi }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [showFilters, setShowFilters] = useState(false)
@@ -36,11 +36,11 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     const load = view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
     void load.then(({ errands: loaded }) => {
       const accepted = view === 'my-errands'
-        ? loaded.filter((errand) => errand.courierSub === userProfile?.id)
+        ? loaded.filter((errand) => errand.courierSub === authenticatedSubject)
         : loaded
       setErrands(accepted.map(toDemoErrand))
     }).catch(() => undefined)
-  }, [errandApi, userProfile?.id, view])
+  }, [errandApi, authenticatedSubject, view])
   const handleViewportChange = useCallback((viewport: { center: { lat: number; lng: number }; zoom: number }) => {
     onMapViewportChange?.(viewport)
   }, [onMapViewportChange])
@@ -94,8 +94,9 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     if (next) setLocation(next)
   }
 
+  const createAnchorForView = createAnchor ?? (errandViewContext?.view === 'create' ? errandViewContext.anchor : undefined)
   const createCard = view === 'create' && (
-    <RelayCardAnchor placement={createAnchor ? 'anchored' : 'center-right'} anchor={createAnchor} className="errand-create-popover">
+    <RelayCardAnchor placement={createAnchorForView ? 'anchored' : 'center-right'} anchor={createAnchorForView} preferredSide="top-end" className="errand-create-popover">
       <CreateErrandCard
         initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined}
         onClose={closeRemote}
@@ -115,7 +116,7 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} />
       <div className="errand-top-controls map-top-menu">
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
-        <SlidingSegmentedControl className="errand-segment-control" size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
+        <SlidingSegmentedControl size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
       </div>
       <div className="errand-map-controls">

@@ -31,6 +31,12 @@ export type ErrandViewContext =
   | {
       view: 'create'
       supplierId?: string
+      anchor?: {
+        top: number
+        left: number
+        right: number
+        bottom: number
+      }
     }
   | {
       view: 'requests'
@@ -61,6 +67,8 @@ export type MapViewport = {
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
   authVersion?: number
+  /** Cognito subject from the authenticated session, distinct from the profile database id. */
+  authenticatedSubject?: string
   userProfile?: import('./user/models').User | null
   refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void

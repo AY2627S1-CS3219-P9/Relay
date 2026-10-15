@@ -79,10 +79,10 @@ export function RemotePage({
     >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
         {card && bubbleAnchor ? (
-          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} style={cardStyle}>
+          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} className="remote-profile-anchor" style={cardStyle}>
           <GlassCard
             variant="glass"
-            className="remote-profile-card"
+            className="remote-profile-card relay-mobile-sheet-surface"
           >
             <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
               <RemoteApp {...appProps} />

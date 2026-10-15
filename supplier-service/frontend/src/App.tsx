@@ -191,8 +191,7 @@ export default function App({
           <BoltIcon className="supplier-control-icon" />
           <span>0 cr</span>
         </RelayButton>
-        <div className="supplier-segment-control">
-          <SlidingSegmentedControl
+        <SlidingSegmentedControl
             size="map"
             ariaLabel="Supplier view"
             options={[
@@ -211,8 +210,7 @@ export default function App({
                 return
               }
             }}
-          />
-        </div>
+        />
         <RelayButton
           variant="secondary"
           size="map-pill"
@@ -302,7 +300,10 @@ export default function App({
           variant="primary"
           size="map-action"
           className="new-request-action"
-          onClick={() => openErrandView?.({ view: 'create' })}
+          onClick={(event) => {
+            const { top, left, right, bottom } = event.currentTarget.getBoundingClientRect()
+            openErrandView?.({ view: 'create', anchor: { top, left, right, bottom } })
+          }}
         >
           <ClipboardPlusIcon className="supplier-control-icon" />
           <span className="supplier-control-label">New request</span>
@@ -352,7 +353,7 @@ export default function App({
         </BubblePopover>
       )}
       {isAdmin && adminMode && adminAnchor && (
-        <RelayCardAnchor placement="anchored" anchor={adminAnchor} className="supplier-admin-anchor">
+        <RelayCardAnchor placement="anchored" anchor={adminAnchor} preferredSide="top-end" className="supplier-admin-anchor">
           <SupplierAdminPanel
             api={activeApi}
             supplier={adminMode === 'edit' ? selectedSupplier : undefined}

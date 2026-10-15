@@ -30,6 +30,7 @@
     pointer-events: none;
     border-right: 1px solid var(--relay-glass-surface-border);
     border-left: 1px solid var(--relay-glass-surface-border);
+    border-radius: inherit;
     background: var(--relay-glass-surface-bg);
     -webkit-backdrop-filter: var(--relay-glass-surface-filter);
     backdrop-filter: var(--relay-glass-surface-filter);
@@ -49,7 +50,7 @@
 }
 .relay-card-anchor {
   position: absolute;
-  z-index: 900;
+  z-index: var(--relay-layer-card);
   width: min(var(--relay-card-max-width, 540px), calc(100vw - 32px));
   max-height: var(--relay-card-max-height, calc(100dvh - 150px));
   box-sizing: border-box;
@@ -236,6 +237,9 @@
   transform: scale(0.97);
 }
 @media (max-width: 700px) {
+  .relay-card-anchor {
+    overflow: visible;
+  }
   .relay-card-placement-center-right,
   .relay-card-placement-anchored {
     top: auto !important;
@@ -245,6 +249,12 @@
     width: auto !important;
     max-height: calc(100dvh - 104px);
     transform: none;
+  }
+  .relay-card-anchor.supplier-admin-anchor,
+  .relay-card-anchor.errand-create-popover {
+    right: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
   }
   .relay-segmented-control-size-map {
     width: calc(100vw - 32px);

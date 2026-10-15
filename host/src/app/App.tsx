@@ -44,6 +44,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
+  const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
@@ -115,6 +116,7 @@ function App() {
     const loadProfile = async () => {
       try {
         const session = await fetchSession()
+        if (!cancelled) setAuthenticatedSubject(session.userData.id)
         if (!session.userData.profileCreated) {
           if (!cancelled) setUserProfile(null)
           return
@@ -126,7 +128,10 @@ function App() {
           if (body.ok && body.data) setUserProfile(body.data)
         } else if (response.status === 404) setUserProfile(null)
       } catch {
-        if (!cancelled) setUserProfile(null)
+        if (!cancelled) {
+          setAuthenticatedSubject(undefined)
+          setUserProfile(null)
+        }
       }
     }
     void loadProfile()
@@ -149,6 +154,7 @@ function App() {
   async function refreshUserProfile() {
     try {
       const session = await fetchSession({ forceRefresh: true })
+      setAuthenticatedSubject(session.userData.id)
       if (!session.userData.profileCreated) {
         setUserProfile(null)
         setAuthVersion((version) => version + 1)
@@ -161,6 +167,7 @@ function App() {
       } else if (response.status === 404) setUserProfile(null)
       setAuthVersion((version) => version + 1)
     } catch {
+      setAuthenticatedSubject(undefined)
       setUserProfile(null)
       setAuthVersion((version) => version + 1)
     }
@@ -254,6 +261,7 @@ function App() {
             appProps={{
               fetchSession,
               authVersion,
+              authenticatedSubject,
               userProfile,
               refreshUserProfile,
               navigateTo,

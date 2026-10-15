@@ -38,6 +38,12 @@
   --relay-control-bg: rgba(118, 118, 128, 0.1);
   --relay-control-bg-hover: rgba(118, 118, 128, 0.18);
   --relay-control-font-size: 1.05rem;
+  /* Shared stacking layers. Keep map controls and sheets in one ordering system. */
+  --relay-layer-map: 0;
+  --relay-layer-map-controls: 500;
+  --relay-layer-card: 900;
+  --relay-layer-toolbar: 1100;
+  --relay-layer-modal: 1300;
   --ios-blue: var(--relay-blue);
   --ios-blue-dark: var(--relay-blue-dark);
   --ios-green: #34c759;

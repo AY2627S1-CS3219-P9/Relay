@@ -348,6 +348,8 @@ export function RelayCardAnchor({
   className?: string
   style?: CSSProperties
 }) {
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const [measuredHeight, setMeasuredHeight] = useState<number>()
   const anchoredStyle: CSSProperties = {}
   if (placement === 'anchored' && anchor && typeof window !== 'undefined') {
     const cardWidth = Math.min(520, window.innerWidth - viewportPadding * 2)
@@ -355,15 +357,27 @@ export function RelayCardAnchor({
       ? Math.min(Math.max(viewportPadding, anchor.right - cardWidth), window.innerWidth - cardWidth - viewportPadding)
       : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - cardWidth - viewportPadding)
     const estimatedHeight = Math.min(window.innerHeight * 0.6, window.innerHeight - viewportPadding * 2)
+    const cardHeight = measuredHeight ?? estimatedHeight
     const belowTop = anchor.bottom + offset
     const top = preferredSide.startsWith('top')
-      ? Math.max(viewportPadding, anchor.top - estimatedHeight - offset)
-      : belowTop + estimatedHeight <= window.innerHeight - viewportPadding
+      ? Math.max(viewportPadding, anchor.top - cardHeight - offset)
+      : belowTop + cardHeight <= window.innerHeight - viewportPadding
         ? belowTop
-        : Math.max(viewportPadding, anchor.top - estimatedHeight - offset)
+        : Math.max(viewportPadding, anchor.top - cardHeight - offset)
     Object.assign(anchoredStyle, { top, left, width: cardWidth })
   }
-  return <div className={`relay-card-anchor relay-card-placement-${placement}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
+  useLayoutEffect(() => {
+    if (placement !== 'anchored' || !anchor || typeof window === 'undefined') {
+      setMeasuredHeight(undefined)
+      return
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const height = anchorRef.current?.getBoundingClientRect().height
+      if (height && height !== measuredHeight) setMeasuredHeight(height)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [anchor, measuredHeight, placement, preferredSide, viewportPadding])
+  return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
 }
 
 export function RelayFormSurface({

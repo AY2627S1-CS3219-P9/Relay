@@ -1,7 +1,7 @@
 .relay-map {
   position: absolute !important;
   inset: 0;
-  z-index: 0;
+  z-index: var(--relay-layer-map);
   isolation: isolate;
   touch-action: none;
   background: #dbe8ee;
@@ -11,6 +11,13 @@
   top: max(20px, env(safe-area-inset-top));
   right: 20px;
   left: 20px;
+}
+.map-top-menu > .relay-segmented-control-size-map {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  width: min(560px, 68vw);
+  transform: translateX(-50%);
 }
 .map-bottom-menu {
   right: 20px;
@@ -127,6 +134,9 @@
   }
   .map-top-menu .glass-pill > span:nth-child(2) {
     font-size: 16px;
+  }
+  .map-top-menu > .relay-segmented-control-size-map {
+    width: calc(100vw - 32px);
   }
   .top-menu-icon {
     width: 48px;

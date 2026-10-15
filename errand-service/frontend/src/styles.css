@@ -1,14 +1,13 @@
 .errand-map-shell { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
 .errand-card-shell { min-height: 100%; padding: 22px; box-sizing: border-box; }
-.errand-top-controls { position: absolute; z-index: 5; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
+.errand-top-controls { position: absolute; z-index: var(--relay-layer-map-controls); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; pointer-events: none; }
 .errand-top-controls > * { pointer-events: auto; }
 .errand-control-icon { width: 20px; height: 20px; }
 .errand-top-controls .errand-control-icon { color: #1c1c1e; }
-.errand-segment-control { position: absolute; top: 62px; left: 50%; width: min(560px, 68vw); transform: translateX(-50%); }
-.errand-map-controls { position: absolute; z-index: 5; right: 24px; bottom: 126px; display: grid; gap: 10px; }
-.errand-bottom-controls { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; }
+.errand-map-controls { position: absolute; z-index: var(--relay-layer-map-controls); right: 24px; bottom: 126px; display: grid; gap: 10px; }
+.errand-bottom-controls { position: absolute; z-index: var(--relay-layer-toolbar); display: flex; align-items: center; gap: 12px; }
 .errand-bottom-controls .updates-action { display: inline-flex; align-items: center; }
-.errand-create-popover, .errand-detail-popover { z-index: 9; }
+.errand-create-popover, .errand-detail-popover { z-index: var(--relay-layer-card); }
 .errand-create-popover .create-errand-card, .errand-detail-popover .errand-detail-card { width: 100%; max-height: calc(100dvh - 150px); box-shadow: 0 18px 55px rgba(0,0,0,.24); }
 .errand-detail-card, .create-errand-card { padding: clamp(22px, 3vw, 34px); }
 .create-errand-card { width: min(540px, 100%); margin: 0 auto; max-height: calc(100dvh - 44px); overflow: auto; scrollbar-width: none; }
@@ -54,14 +53,14 @@
 .errand-field input:focus, .errand-field select:focus, .errand-field textarea:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
 .errand-form-grid { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
 .errand-form-note { margin: -2px 0 0; color: var(--relay-text-muted); font-size: .78rem; }
-.errand-filter-panel { position: absolute; z-index: 10; top: 78px; left: 18px; width: min(350px, calc(100vw - 36px)); padding: 24px; }
+.errand-filter-panel { position: absolute; z-index: var(--relay-layer-card); top: 78px; left: 18px; width: min(350px, calc(100vw - 36px)); padding: 24px; }
 .errand-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }
 .errand-filter-panel legend { margin-bottom: 9px; color: var(--relay-text-muted); font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .errand-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.errand-filter-chip { padding: 10px 20px; border: 1px solid var(--relay-glass-soft-border); border-radius: 999px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
-.errand-filter-chip.selected { border-color: #007aff; background: #007aff; color: white; }
+.errand-filter-chip { padding: 10px 20px; border: 1px solid var(--relay-glass-soft-border); border-radius: 999px; background: var(--relay-glass-soft-bg); color: #8e8e93; font: inherit; font-size: var(--relay-control-font-size, 1.05rem); cursor: pointer; }
+.errand-filter-chip.selected { border-color: #007aff; background: #007aff; color: #1c1c1e; }
 .errand-button-icon { width: 16px; height: 16px; margin-right: 5px; vertical-align: -3px; }
-.my-request-card { position: absolute; z-index: 6; left: 18px; bottom: 116px; display: grid; gap: 5px; width: min(360px, calc(100vw - 36px)); padding: 17px; border: 1px solid var(--relay-glass-soft-border); border-radius: 22px; background: var(--relay-glass-soft-bg); box-shadow: var(--relay-glass-soft-shadow); -webkit-backdrop-filter: var(--relay-glass-soft-filter); backdrop-filter: var(--relay-glass-soft-filter); text-align: left; cursor: pointer; }
+.my-request-card { position: absolute; z-index: var(--relay-layer-card); left: 18px; bottom: 116px; display: grid; gap: 5px; width: min(360px, calc(100vw - 36px)); padding: 17px; border: 1px solid var(--relay-glass-soft-border); border-radius: 22px; background: var(--relay-glass-soft-bg); box-shadow: var(--relay-glass-soft-shadow); -webkit-backdrop-filter: var(--relay-glass-soft-filter); backdrop-filter: var(--relay-glass-soft-filter); text-align: left; cursor: pointer; }
 .request-card-label { display: flex; justify-content: space-between; align-items: center; color: var(--relay-text-muted); font-size: .78rem; }
 .my-request-card strong { font-size: 1.05rem; }
 .my-request-card small, .my-request-card em { color: var(--relay-text-muted); font-size: .78rem; font-style: normal; }
@@ -69,4 +68,4 @@
 .errand-marker { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid white; border-radius: 50% 50% 50% 6px; background: var(--marker); color: white; box-shadow: 0 4px 12px rgba(0,0,0,.28); transform: rotate(-45deg); }
 .errand-marker b { transform: rotate(45deg); font-size: 13px; }
 .errand-marker-selected { box-shadow: 0 0 0 8px rgba(0,122,255,.25), 0 4px 12px rgba(0,0,0,.28); }
-@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-segment-control { top: 62px; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-popover, .errand-detail-popover { bottom: calc(72px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 96px); } .errand-filter-panel { top: auto; right: 16px; bottom: 92px; left: 16px; width: auto; max-height: calc(100dvh - 120px); overflow: auto; } .errand-bottom-controls .errand-control-label { font-size: inherit !important; } .updates-action .errand-control-label, .new-request-action .errand-control-label { display: none; } }
+@media (max-width: 700px) { .errand-top-controls { gap: 10px; } .errand-detail-card { padding: 20px; } .errand-form-grid { grid-template-columns: 1fr; } .my-request-card { bottom: 92px; } .errand-create-popover { right: 0; bottom: calc(72px + env(safe-area-inset-bottom)); left: 0; width: 100%; max-height: calc(100dvh - 96px); } .errand-create-popover .create-errand-card { width: 100%; max-width: none; } .errand-detail-popover { bottom: calc(72px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 96px); } .errand-filter-panel { top: auto; right: 0; bottom: 92px; left: 0; width: 100%; max-height: calc(100dvh - 120px); overflow: auto; } .errand-bottom-controls .errand-control-label { font-size: inherit !important; } .updates-action .errand-control-label, .new-request-action .errand-control-label { display: none; } }
