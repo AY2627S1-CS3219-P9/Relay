@@ -2,7 +2,7 @@ services:
   kafka:
     image: apache/kafka:latest
     ports:
-      - '127.0.0.1:9094:9094'
+      - '9094:9094'
     environment:
       KAFKA_NODE_ID: '1'
       KAFKA_PROCESS_ROLES: broker,controller
@@ -37,51 +37,6 @@ services:
       kafka:
         condition: service_healthy
 
-  credit-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-      POSTGRES_DB: relay
-    ports:
-      - '5434:5432'
-    volumes:
-      - credit-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  credit-api:
-    build:
-      context: .
-      dockerfile: credit-service/backend/Dockerfile
-    expose:
-      - '3000'
-    environment:
-      NODE_ENV: production
-      PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
-      USER_API_URL: http://user-api:3000
-      USER_API_TIMEOUT: '5000'
-      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
-      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
-      KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
-      KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
-      KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
-    depends_on:
-      credit-postgres:
-        condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
   user-postgres:
     image: postgres:16-alpine
     environment:
@@ -110,6 +65,22 @@ services:
       - errand-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U relay -d relay_errand']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  credit-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: relay
+    ports:
+      - '5434:5432'
+    volumes:
+      - credit-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -324,7 +295,37 @@ services:
       timeout: 3s
       retries: 5
   #
+  credit-api:
+    build:
+      context: .
+      dockerfile: credit-service/backend/Dockerfile
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
+      USER_API_URL: http://user-api:3000
+      USER_API_TIMEOUT: '5000'
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
+      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
+      KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
+      KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
+      KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
+    depends_on:
+      credit-postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   user-postgres-data:
   errand-postgres-data:
+  credit-postgres-data:
+  kafka-data:
