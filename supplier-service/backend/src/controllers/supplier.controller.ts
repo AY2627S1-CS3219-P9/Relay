@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { SupplierErrors } from '@relay/contracts/supplier'
+import type { GetSuppliersFilterParams, ServiceType } from '@relay/contracts/supplier'
 import type { ApiResult, ValidateSessionResponse } from '@relay/contracts/user'
 import { SupplierService } from '../services/supplier.service'
 import { validateLocation, validateOperatingHours, validateServiceTypes } from '../validators/supplier.validator'
@@ -67,7 +68,39 @@ export class SupplierController {
         return
       }
 
-      const suppliers = await this.service.getAllSuppliers()
+      const { status, serviceTypes } = req.query
+      const filters: GetSuppliersFilterParams = {}
+
+      if (status !== undefined) {
+        if (status !== 'all' && status !== 'operational' && status !== 'not-operational') {
+          res
+            .status(400)
+            .json({ code: SupplierErrors.INVALID_REQUEST, message: 'Invalid status filter' })
+          return
+        }
+        filters.status = status as GetSuppliersFilterParams['status']
+      }
+
+      if (serviceTypes !== undefined) {
+        let parsedServiceTypes: unknown
+        try {
+          parsedServiceTypes = JSON.parse(serviceTypes as string)
+        } catch {
+          parsedServiceTypes = undefined
+        }
+        if (
+          !Array.isArray(parsedServiceTypes) ||
+          !parsedServiceTypes.every((value) => typeof value === 'number')
+        ) {
+          res
+            .status(400)
+            .json({ code: SupplierErrors.INVALID_REQUEST, message: 'Invalid serviceTypes filter' })
+          return
+        }
+        filters.serviceTypes = parsedServiceTypes as ServiceType[]
+      }
+
+      const suppliers = await this.service.getAllSuppliers(filters)
       res.json({ suppliers: suppliers })
     } catch (error) {
       next(error)

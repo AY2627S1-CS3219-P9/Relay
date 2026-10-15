@@ -1,6 +1,8 @@
 services:
   floci:
     build: ./floci/
+    environment:
+      FLOCI_INIT_HOOKS_TIMEOUT_SECONDS: '120'
     ports:
       - '4566:4566'
     env_file:

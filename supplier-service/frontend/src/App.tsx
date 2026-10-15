@@ -2,15 +2,32 @@ import '@relay/ui/styles.css'
 import '@relay/ui/styles/map.css'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
-import type { ServiceType, Supplier, SupplierApi } from '@relay/contracts'
-import { FilterIcon, LocationIcon, RelayButton, SlidingSegmentedControl } from '@relay/ui'
+import { ServiceType } from '@relay/contracts'
+import type { Supplier, SupplierApi } from '@relay/contracts'
+import {
+  BellIcon,
+  BoltIcon,
+  BubblePopover,
+  ClipboardPlusIcon,
+  FilterIcon,
+  LocationIcon,
+  PencilIcon,
+  PlusIcon,
+  RelayButton,
+  SlidingSegmentedControl,
+  Spacer,
+  StorePlusIcon,
+  type BubbleAnchor,
+} from '@relay/ui'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
-import { SupplierMap, type MapPoint } from './components/SupplierMap'
+import { getSupplierAnchor, SupplierMap, type MapPoint } from './components/SupplierMap'
+import { SupplierList } from './components/SupplierList'
+import { SupplierRowButton } from './components/SupplierRowButton'
 import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
 import { createHttpSupplierApi } from './supplierApi'
 
@@ -34,13 +51,18 @@ export default function App({
   const [center, setCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
+  const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
+  const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState<SupplierFilters>({ status: 'all', serviceTypes: [] })
-  const [sort, setSort] = useState<'operational' | 'service-type'>('operational')
+  const [filters, setFilters] = useState<SupplierFilters>({
+    status: 'all',
+    serviceTypes: Object.values(ServiceType),
+  })
   const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
+  const [adminAnchor, setAdminAnchor] = useState<BubbleAnchor>()
   const isAdmin = userProfile?.role === 'admin'
 
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
@@ -63,16 +85,63 @@ export default function App({
     returnToAccount()
   }
 
+  function openAdminPanel(mode: 'add' | 'edit', button: HTMLButtonElement) {
+    const { top, left, right, bottom } = button.getBoundingClientRect()
+    setAdminAnchor({ top, left, right, bottom })
+    setAdminMode(mode)
+  }
+
+  function getSupplierCardStyle(anchor: BubbleAnchor): CSSProperties | undefined {
+    if (window.innerWidth <= 700) return undefined
+    const margin = 24
+    const gap = 16
+    const cardWidth = Math.min(360, window.innerWidth - margin * 2)
+    const cardHeight = 300
+    const canPlaceRight = anchor.right + gap + cardWidth <= window.innerWidth - margin
+    const canPlaceLeft = anchor.left - gap - cardWidth >= margin
+    const left = canPlaceRight
+      ? anchor.right + gap
+      : canPlaceLeft
+        ? anchor.left - gap - cardWidth
+        : Math.max(margin, (window.innerWidth - cardWidth) / 2)
+    const markerCenterY = (anchor.top + anchor.bottom) / 2
+    const top = Math.min(
+      Math.max(margin, markerCenterY - cardHeight / 2),
+      window.innerHeight - cardHeight - margin,
+    )
+
+    return { left, top, width: cardWidth, transform: 'none' }
+  }
+
+  // Debounce filter changes to reduce API calls
+  function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setDebouncedValue(value)
+      }, delay)
+      return () => clearTimeout(timer)
+    }, [value, delay])
+
+    return debouncedValue
+  }
+
+  const debouncedFilters = useDebounce(filters, 300)
+
   useEffect(() => {
     void activeApi
-      .getSuppliers()
+      .getSuppliers({ status: debouncedFilters.status, serviceTypes: debouncedFilters.serviceTypes })
       .then(({ suppliers: loadedSuppliers }) => {
         setSuppliers(loadedSuppliers)
         setErrorMessage('')
       })
-      .catch((error) => {
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load suppliers.')
+      .catch((error: Error) => {
+        setErrorMessage(error.message)
       })
+  }, [activeApi, authVersion, debouncedFilters])
+
+  useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
@@ -83,48 +152,31 @@ export default function App({
       () => undefined,
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
     )
-  }, [activeApi, authVersion])
-
-  const visibleSuppliers = useMemo(() => {
-    const filtered = suppliers.filter((supplier) => {
-      const matchesStatus =
-        filters.status === 'all' ||
-        (filters.status === 'operational' && supplier.isOperational) ||
-        (filters.status === 'not-operational' && !supplier.isOperational)
-      const matchesServiceTypes =
-        filters.serviceTypes.length === 0 ||
-        filters.serviceTypes.some((serviceType: ServiceType) =>
-          supplier.serviceTypes.includes(serviceType),
-        )
-      return matchesStatus && matchesServiceTypes
-    })
-    return [...filtered].sort((left, right) => {
-      if (sort === 'operational' && left.isOperational !== right.isOperational)
-        return left.isOperational ? -1 : 1
-      return (
-        (left.serviceTypes[0] ?? Number.MAX_SAFE_INTEGER) -
-          (right.serviceTypes[0] ?? Number.MAX_SAFE_INTEGER) || left.name.localeCompare(right.name)
-      )
-    })
-  }, [filters, sort, suppliers])
+  }, [])
 
   return (
     <main className="supplier-app">
       <SupplierMap
         center={center}
-        suppliers={visibleSuppliers}
+        suppliers={suppliers}
         userLocation={userLocation}
-        onSelect={setSelectedSupplier}
+        onSelect={(supplier, anchor, nearby) => {
+          setSelectedSupplier(undefined)
+          setSelectedSupplierAnchor(anchor)
+          setNearbySuppliers(nearby.length > 1 ? nearby : undefined)
+          if (nearby.length === 1) setSelectedSupplier(supplier)
+        }}
         onMapReady={handleMapReady}
       />
       <div className="supplier-top-controls map-top-menu">
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="glass-pill glass-control mock-control"
           aria-label="Credits"
         >
-          ⚡ 0 cr
+          <BoltIcon className="supplier-control-icon" />
+          <span>0 cr</span>
         </RelayButton>
         <div className="supplier-segment-control">
           <SlidingSegmentedControl
@@ -141,7 +193,7 @@ export default function App({
         </div>
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="glass-pill glass-control profile-chip mock-control"
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
@@ -155,7 +207,7 @@ export default function App({
       <div className="map-stub-controls">
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="map-control-button filter-map-control"
           onClick={() => setShowFilters(true)}
           aria-label="Open supplier filters"
@@ -164,7 +216,7 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="map-control-button"
           aria-label="Center map"
           onClick={() => map?.setView(userLocation ?? center)}
@@ -173,16 +225,16 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="map-control-button"
           aria-label="Zoom in"
           onClick={() => map?.zoomIn()}
         >
-          +
+          <PlusIcon className="location-icon" />
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1.25}
+          scale={1}
           className="map-control-button"
           aria-label="Zoom out"
           onClick={() => map?.zoomOut()}
@@ -191,60 +243,112 @@ export default function App({
         </RelayButton>
       </div>
       <div className="supplier-bottom-controls map-bottom-menu">
-        <RelayButton variant="secondary" scale={1.5} className="updates-action glass-pill">
-          ♟ Updates <b>1</b>
-        </RelayButton>
-        <RelayButton variant="primary" scale={1.5} className="new-request-action glass-btn-primary">
-          ＋ New request
-        </RelayButton>
+        <SupplierRowButton className="updates-action">
+          <BellIcon className="supplier-control-icon" />
+          <span className="supplier-control-label">Updates</span>
+        </SupplierRowButton>
+        <Spacer />
+        {isAdmin && (
+          <>
+            {selectedSupplier && (
+              <SupplierRowButton
+                variant="secondary"
+                className="supplier-admin-action"
+                onClick={(event) => openAdminPanel('edit', event.currentTarget)}
+                aria-label="Edit selected supplier"
+                title="Edit selected supplier"
+              >
+                <span className="supplier-action-icon" aria-hidden="true">
+                  <PencilIcon />
+                </span>
+                <span className="supplier-action-label">Edit selected</span>
+              </SupplierRowButton>
+            )}
+            <SupplierRowButton
+              variant="primary"
+              className="supplier-admin-action"
+              onClick={(event) => openAdminPanel('add', event.currentTarget)}
+              aria-label="Add supplier"
+              title="Add supplier"
+            >
+              <span className="supplier-action-icon" aria-hidden="true">
+                <StorePlusIcon />
+              </span>
+              <span className="supplier-action-label">Add supplier</span>
+            </SupplierRowButton>
+          </>
+        )}
+        <SupplierRowButton variant="primary" className="new-request-action">
+          <ClipboardPlusIcon className="supplier-control-icon" />
+          <span className="supplier-control-label">New request</span>
+        </SupplierRowButton>
       </div>
       {showFilters && (
         <SupplierFilterPanel
           filters={filters}
-          sort={sort}
           onChange={setFilters}
-          onSortChange={setSort}
           onClose={() => setShowFilters(false)}
         />
       )}
-      {selectedSupplier && (
-        <SupplierDetailCard
-          supplier={selectedSupplier}
-          onClose={() => setSelectedSupplier(undefined)}
-        />
-      )}
-      {isAdmin && (
-        <div className="supplier-admin-toolbar">
-          <RelayButton variant="primary" onClick={() => setAdminMode('add')}>
-            Add supplier
-          </RelayButton>
-          {selectedSupplier && (
-            <RelayButton variant="secondary" onClick={() => setAdminMode('edit')}>
-              Edit selected
-            </RelayButton>
+      {(selectedSupplier || nearbySuppliers) && (
+        <BubblePopover anchor={selectedSupplierAnchor}>
+          {selectedSupplier ? (
+            <SupplierDetailCard
+              supplier={selectedSupplier}
+              style={
+                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
+              }
+              onClose={() => {
+                setSelectedSupplier(undefined)
+                setSelectedSupplierAnchor(undefined)
+                setNearbySuppliers(undefined)
+              }}
+            />
+          ) : (
+            <SupplierList
+              suppliers={nearbySuppliers ?? []}
+              style={
+                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
+              }
+              onSelect={(supplier) => {
+                if (!map) return
+                setSelectedSupplier(supplier)
+                setSelectedSupplierAnchor(getSupplierAnchor(map, supplier))
+                setNearbySuppliers(undefined)
+              }}
+              onClose={() => {
+                setSelectedSupplierAnchor(undefined)
+                setNearbySuppliers(undefined)
+              }}
+            />
           )}
-        </div>
+        </BubblePopover>
       )}
       {isAdmin && adminMode && (
-        <SupplierAdminPanel
-          api={activeApi}
-          supplier={adminMode === 'edit' ? selectedSupplier : undefined}
-          onSaved={(supplier) => {
-            setSuppliers((current) => {
-              const index = current.findIndex((item) => item.id === supplier.id)
-              if (index < 0) return [...current, supplier]
-              const next = [...current]
-              next[index] = supplier
-              return next
-            })
-            setSelectedSupplier(supplier)
-          }}
-          onDeleted={(id) => {
-            setSuppliers((current) => current.filter((supplier) => supplier.id !== id))
-            setSelectedSupplier(undefined)
-          }}
-          onClose={() => setAdminMode(undefined)}
-        />
+        <BubblePopover anchor={adminAnchor}>
+          <SupplierAdminPanel
+            api={activeApi}
+            supplier={adminMode === 'edit' ? selectedSupplier : undefined}
+            onSaved={(supplier) => {
+              setSuppliers((current) => {
+                const index = current.findIndex((item) => item.id === supplier.id)
+                if (index < 0) return [...current, supplier]
+                const next = [...current]
+                next[index] = supplier
+                return next
+              })
+              setSelectedSupplier(supplier)
+            }}
+            onDeleted={(id) => {
+              setSuppliers((current) => current.filter((supplier) => supplier.id !== id))
+              setSelectedSupplier(undefined)
+            }}
+            onClose={() => {
+              setAdminMode(undefined)
+              setAdminAnchor(undefined)
+            }}
+          />
+        </BubblePopover>
       )}
       {errorMessage && (
         <div className="supplier-error" role="alert">

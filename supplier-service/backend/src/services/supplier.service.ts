@@ -1,12 +1,16 @@
-import { SupplierErrors, type Supplier } from '@relay/contracts/supplier'
+import {
+  SupplierErrors,
+  type Supplier,
+  type GetSuppliersFilterParams,
+} from '@relay/contracts/supplier'
 import { SupplierRepository } from '../repositories/supplier.repository'
 
 
 export class SupplierService {
   constructor(private readonly repository: SupplierRepository) {}
 
-  async getAllSuppliers(): Promise<Supplier[]> {
-    return await this.repository.findAll()
+  async getAllSuppliers(filters?: GetSuppliersFilterParams): Promise<Supplier[]> {
+    return await this.repository.findAll(filters)
   }
 
   async getSupplierById(id: string): Promise<Supplier | null> {

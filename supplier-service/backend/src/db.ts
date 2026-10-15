@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 import type { SupplierRow } from './types/supplier.types'
-import { SupplierErrors } from '@relay/contracts'
+import { SupplierErrors, type GetSuppliersFilterParams } from '@relay/contracts'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -17,8 +17,39 @@ export async function query<T>(text: string, params?: any[]): Promise<T[]> {
   return result.rows as T[]
 }
 
-export async function getSuppliers(): Promise<SupplierRow[]> {
-  return query<SupplierRow>('SELECT * FROM suppliers ORDER BY name')
+/** Builds the supplier filter WHERE clause and its bound params. Exported for the self-check. */
+export function buildSupplierFilter(filters?: GetSuppliersFilterParams): {
+  where: string
+  params: any[]
+} {
+  // Empty serviceTypes (frontend sends nothing for empty) means no filter applied.
+  // If frontend sends empty array, it means no service types selected - return empty result.
+  if (filters?.serviceTypes?.length === 0) {
+    return { where: 'FALSE', params: [] }
+  }
+
+  const conditions: string[] = []
+  const params: any[] = []
+
+  if (filters?.status && filters.status !== 'all') {
+    params.push(filters.status === 'operational')
+    conditions.push(`is_operational = $${params.length}`)
+  }
+
+  // serviceTypes is only present when non-empty (frontend filters it out)
+  if (filters?.serviceTypes) {
+    // Use && (overlap) to check if supplier's service_types overlaps with requested types
+    params.push(filters.serviceTypes)
+    conditions.push(`service_types && $${params.length}`)
+  }
+
+  return { where: conditions.join(' AND '), params }
+}
+
+export async function getSuppliers(filters?: GetSuppliersFilterParams): Promise<SupplierRow[]> {
+  const { where, params } = buildSupplierFilter(filters)
+  const clause = where ? ` WHERE ${where}` : ''
+  return query<SupplierRow>(`SELECT * FROM suppliers${clause} ORDER BY name`, params)
 }
 
 export async function getSupplierById(id: string): Promise<SupplierRow[] | null> {

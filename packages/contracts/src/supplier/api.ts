@@ -1,4 +1,8 @@
-import type { CreateSupplierRequest, UpdateSupplierRequest } from './requests'
+import type {
+  CreateSupplierRequest,
+  GetSuppliersFilterParams,
+  UpdateSupplierRequest,
+} from './requests'
 import type {
   GetSuppliersResponse,
   GetSupplierResponse,
@@ -8,8 +12,8 @@ import type {
 
 /** Async boundary implemented by an HTTP adapter in the Supplier UI */
 export interface SupplierApi {
-  /** Get all suppliers (public) */
-  getSuppliers(): Promise<GetSuppliersResponse>
+  /** Get all suppliers, optionally filtered (public) */
+  getSuppliers(filters?: GetSuppliersFilterParams): Promise<GetSuppliersResponse>
   /** Get a single supplier by ID (public) */
   getSupplier(id: string): Promise<GetSupplierResponse>
   /** Add a new supplier (admin only - validated via SessionId) */
