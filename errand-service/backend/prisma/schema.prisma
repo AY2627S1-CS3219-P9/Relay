@@ -26,13 +26,21 @@ model Errand {
   courierSub   String?
 
   // Supplier Service identifier. Supplier data is owned by another service.
-  supplierId String?
+  supplierId String
 
   pickupLat          Float
   pickupLng          Float
   pickupBuildingName String
   pickupFloorNumber  Int
 
+  targetLat          Float
+  targetLng          Float
+  targetBuildingName String
+  targetFloorNumber  Int
+
+  name                 String
+  supplierName         String
+  serviceType          Int
   deliveryDescription  String
   deliveryInstructions String?
 

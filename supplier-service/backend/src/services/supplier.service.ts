@@ -56,13 +56,17 @@ export class SupplierService {
       throw new Error('Supplier not found')
     }
 
-    return await this.repository.update(id, {
+    const updated = await this.repository.update(id, {
       name: data.name,
       location: data.location,
       isOperational: data.isOperational,
       operatingHours: data.operatingHours,
       serviceTypes: data.serviceTypes,
     })
+
+    void this.notifyErrandService(id, updated)
+
+    return updated
   }
 
   async deleteSupplier(id: string): Promise<void> {
@@ -72,5 +76,50 @@ export class SupplierService {
     }
 
     await this.repository.delete(id)
+  }
+
+  async notifyErrandService(
+    supplierId: string,
+    updates: Partial<Supplier>
+  ): Promise<void> {
+    const ERRAND_API_URL = process.env.ERRAND_API_URL || 'http://errand-api:3000'
+    const ERRAND_SERVICE_INTERNAL_TOKEN =
+      process.env.ERRAND_SERVICE_INTERNAL_TOKEN || 'local-internal-errand-service-token'
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(`${ERRAND_API_URL}/internal/errand/supplier-events`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-errand-service-token': ERRAND_SERVICE_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify({
+            supplierId,
+            name: updates.name,
+            location: updates.location,
+            operatingHours: updates.operatingHours,
+            isOperational: updates.isOperational,
+            serviceTypes: updates.serviceTypes,
+          }),
+        })
+
+        if (response.ok) {
+          console.log(`Successfully notified Errand Service for supplier ${supplierId}`)
+          return
+        }
+
+        console.error(`Errand notification attempt ${attempt} failed: ${response.status} ${response.statusText}`)
+      } catch (err) {
+        console.error(`Errand notification attempt ${attempt} network error:`, err)
+      }
+
+      if (attempt < 3) {
+        const delay = 1000 * Math.pow(2, attempt - 1)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+
+    console.error(`Failed to notify Errand Service after 3 attempts for supplier ${supplierId}`)
   }
 }

@@ -1,3 +1,5 @@
+import type { Location, ServiceType, OperatingHours } from '../supplier/models'
+
 /** States in the errand lifecycle. */
 export const ErrandStatus = {
   Open: 'OPEN',
@@ -11,13 +13,14 @@ export const ErrandStatus = {
 
 export type ErrandStatus = (typeof ErrandStatus)[keyof typeof ErrandStatus]
 
-/** A location snapshot stored with an errand. */
-export type ErrandLocation = {
-  lat: number
-  lng: number
-  buildingName: string
-  floorNumber: number
-}
+/** Public listing scopes supported by the Errand Service. */
+export type ErrandListScope = 'mine' | 'visible'
+
+/** Supplier-facing views served through an authenticated backend boundary. */
+export type SupplierErrandViewScope = 'explore' | 'mine'
+
+/** A location snapshot stored with an errand (same shape as supplier.Location). */
+export type ErrandLocation = Location
 
 /** Delivery information owned by the Errand Service. */
 export type DeliveryDetails = {
@@ -25,16 +28,24 @@ export type DeliveryDetails = {
   instructions?: string
 }
 
+/** Supplier details bundled together for errand creation. */
+export type SupplierDetails = {
+  supplierId: string
+  supplierName: string
+  serviceType: number
+}
+
 /** The public Errand Service representation of an errand. */
 export type Errand = {
   id: string
+  name: string
   /** Cognito sub of the user who created the errand. */
   requesterSub: string
   /** Cognito sub of the assigned courier, when accepted. */
   courierSub: string | null
-  /** Supplier Service identifier, when a supplier is selected. */
-  supplierId: string | null
+  supplierDetails: SupplierDetails
   pickupLocation: ErrandLocation
+  targetLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
   status: ErrandStatus
@@ -42,3 +53,16 @@ export type Errand = {
   createdAt: string
   updatedAt: string
 }
+
+/** Supplier change event for errand service notifications. */
+export type SupplierInfoEvent = {
+  supplierId: string
+  name?: string
+  location?: ErrandLocation
+  operatingHours?: OperatingHours
+  isOperational?: boolean
+  serviceTypes?: ServiceType[]
+}
+
+/** Privacy-safe errand projection used by supplier map and detail views. */
+export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub' | 'supplierDetails'>
