@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
   SERVICE_METADATA,
   type FetchSessionHandler,
+  type ErrandViewContext,
   type ProfileAnchor,
   type ServiceId,
   type SessionError,
   type User,
+  type UserLocation,
 } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
 import { Hub } from 'aws-amplify/utils'
+import { hostErrandApi } from './errandApi'
+import { hostSupplierApi } from './supplierApi'
 
 function App() {
   /*
@@ -40,7 +44,37 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
+  const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
+  const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
+  const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
+  const [userLocation, setUserLocation] = useState<UserLocation>()
+  const [supplierMode, setSupplierMode] = useState<'explore' | 'requests' | 'my-errands'>('explore')
+  const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => setUserLocation({ lat: coords.latitude, lng: coords.longitude }),
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+    )
+  }, [])
+
+  async function requestUserLocation(): Promise<UserLocation | undefined> {
+    if (!navigator.geolocation) return undefined
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const next = { lat: coords.latitude, lng: coords.longitude }
+          setUserLocation(next)
+          resolve(next)
+        },
+        () => resolve(undefined),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+      )
+    })
+  }
 
   const fetchSession: FetchSessionHandler = async (options) => {
     const response = await fetch('/api/user/session', {
@@ -81,6 +115,7 @@ function App() {
     const loadProfile = async () => {
       try {
         const session = await fetchSession()
+        if (!cancelled) setAuthenticatedSubject(session.userData.id)
         if (!session.userData.profileCreated) {
           if (!cancelled) setUserProfile(null)
           return
@@ -92,7 +127,10 @@ function App() {
           if (body.ok && body.data) setUserProfile(body.data)
         } else if (response.status === 404) setUserProfile(null)
       } catch {
-        if (!cancelled) setUserProfile(null)
+        if (!cancelled) {
+          setAuthenticatedSubject(undefined)
+          setUserProfile(null)
+        }
       }
     }
     void loadProfile()
@@ -115,6 +153,7 @@ function App() {
   async function refreshUserProfile() {
     try {
       const session = await fetchSession({ forceRefresh: true })
+      setAuthenticatedSubject(session.userData.id)
       if (!session.userData.profileCreated) {
         setUserProfile(null)
         setAuthVersion((version) => version + 1)
@@ -127,6 +166,7 @@ function App() {
       } else if (response.status === 404) setUserProfile(null)
       setAuthVersion((version) => version + 1)
     } catch {
+      setAuthenticatedSubject(undefined)
       setUserProfile(null)
       setAuthVersion((version) => version + 1)
     }
@@ -135,13 +175,52 @@ function App() {
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
+    if (service !== 'errand') {
+      setErrandViewContext(undefined)
+      setCreateErrandOnSupplierMap(false)
+    }
+    if (service === 'supplier') setSupplierMode('explore')
     setActiveService(service)
+  }
+
+  function openErrandView(context: ErrandViewContext) {
+    if (context.view === 'explore') {
+      setSupplierMode('explore')
+      navigateTo('supplier')
+      return
+    }
+    if (context.view === 'create') {
+      setCreateErrandOnSupplierMap(activeService === 'supplier')
+    } else {
+      setCreateErrandOnSupplierMap(false)
+    }
+    if (context.view === 'requests') setSupplierMode('requests')
+    if (context.view === 'my-errands') setSupplierMode('my-errands')
+    setErrandViewContext(context)
+    if (context.view !== 'create' || activeService !== 'supplier') setActiveService('errand')
   }
 
   function openProfile(anchor: ProfileAnchor) {
     setProfileAnchor(anchor)
     setProfileOpen(true)
   }
+
+  const updateViewport = useCallback((
+    setViewport: Dispatch<SetStateAction<{ center: UserLocation; zoom: number }>>,
+    nextViewport: { center: UserLocation; zoom: number },
+  ) => {
+    setViewport((currentViewport) => (
+      currentViewport.zoom === nextViewport.zoom &&
+      currentViewport.center.lat === nextViewport.center.lat &&
+      currentViewport.center.lng === nextViewport.center.lng
+        ? currentViewport
+        : nextViewport
+    ))
+  }, [])
+
+  const handleMarketplaceMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
+    updateViewport(setMarketplaceMapViewport, nextViewport)
+  }, [updateViewport])
 
   function closeProfile() {
     setProfileOpen(false)
@@ -172,21 +251,46 @@ function App() {
             key={id}
             service={id}
             serviceLabel={label}
-            visible={activeService === id || (id === 'user' && profileOpen)}
-            overlay={id === 'user' && profileOpen}
-            card={id === 'user' && profileOpen}
-            cardStyle={id === 'user' && profileOpen ? profileCardStyle() : undefined}
+            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)}
             bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
             appProps={{
               fetchSession,
               authVersion,
+              authenticatedSubject,
               userProfile,
               refreshUserProfile,
               navigateTo,
-              openProfile: id === 'supplier' ? openProfile : undefined,
+              openProfile,
+              openErrandView,
+              errandApi: hostErrandApi,
+              supplierApi: hostSupplierApi,
+              onErrandAccepted: () => openErrandView({ view: 'my-errands' }),
+              errandViewContext: id === 'errand' ? errandViewContext : undefined,
+              userLocation,
+              requestUserLocation,
+              supplierMode: id === 'supplier' ? supplierMode : undefined,
+              mapViewport: marketplaceMapViewport,
+              onMapViewportChange: activeService === id
+                ? handleMarketplaceMapViewportChange
+                : undefined,
+              mapActive: activeService === id,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'user' && profileOpen ? 'card' : 'full',
+              presentation: id === 'user' && profileOpen
+                ? 'card'
+                : id === 'errand' && createErrandOnSupplierMap
+                  ? 'card'
+                  : 'full',
             }}
+            overlay={
+              (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)
+            }
+            overlayClassName={id === 'errand' && createErrandOnSupplierMap ? 'errand-create-overlay-page' : undefined}
+            card={
+              id === 'user' && profileOpen
+            }
+            cardStyle={
+              id === 'user' && profileOpen ? profileCardStyle() : undefined
+            }
           />
         ))}
       </div>

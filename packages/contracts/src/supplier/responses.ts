@@ -5,6 +5,24 @@ export interface GetSuppliersResponse {
   suppliers: Supplier[]
 }
 
+export type SupplierValidationFailureCode =
+  | 'SUPPLIER_NOT_FOUND'
+  | 'SUPPLIER_INACTIVE'
+  | 'SERVICE_TYPE_NOT_OFFERED'
+
+export type ValidateSupplierSelectionResponse =
+  | {
+      valid: true
+      supplierId: string
+      serviceType?: number
+    }
+  | {
+      valid: false
+      supplierId: string
+      code: SupplierValidationFailureCode
+      message: string
+    }
+
 /** Response when retrieving a single supplier */
 export interface GetSupplierResponse {
   supplier: Supplier

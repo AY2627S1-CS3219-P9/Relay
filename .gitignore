@@ -3,6 +3,12 @@ dist/
 build/
 out/
 node_modules/
+packages/*/generated/
+
+# Prisma generated artifacts
+**/prisma/generated/
+**/generated/prisma/
+**/.prisma/
 
 # Diagnostics
 .mf/

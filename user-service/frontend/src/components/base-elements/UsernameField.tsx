@@ -8,8 +8,8 @@ export function UsernameField({
   required?: boolean
 }) {
   return (
-    <label>
-      Username
+    <label className="relay-form-field">
+      <span className="relay-form-field-label">Username</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}

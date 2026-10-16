@@ -27,15 +27,66 @@ type FetchSessionOptions = { forceRefresh?: boolean }
 
 export type FetchSessionHandler = (options?: FetchSessionOptions) => Promise<Session>
 
+export type ErrandViewContext =
+  | {
+      view: 'create'
+      supplierId?: string
+      anchor?: {
+        top: number
+        left: number
+        right: number
+        bottom: number
+      }
+    }
+  | {
+      view: 'requests'
+    }
+  | {
+      view: 'my-errands'
+    }
+  | {
+      view: 'explore'
+    }
+  | {
+      view: 'supplier'
+      supplierId: string
+      scope: 'explore' | 'mine'
+      supplier?: import('./supplier/models').Supplier
+    }
+
+export type UserLocation = {
+  lat: number
+  lng: number
+}
+
+export type MapViewport = {
+  center: UserLocation
+  zoom: number
+}
+
 export type RemoteAppProps = {
   fetchSession?: FetchSessionHandler
   authVersion?: number
+  /** Cognito subject from the authenticated session, distinct from the profile database id. */
+  authenticatedSubject?: string
   userProfile?: import('./user/models').User | null
   refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void
   closeProfile?: () => void
+  openErrandView?: (context: ErrandViewContext) => void
+  errandViewContext?: ErrandViewContext
+  userLocation?: UserLocation
+  requestUserLocation?: () => Promise<UserLocation | undefined>
+  supplierMode?: 'explore' | 'requests' | 'my-errands'
+  errandApi?: import('./errand/api').ErrandApi
+  supplierApi?: import('./supplier/api').SupplierApi
+  onErrandAccepted?: () => void
+  mapViewport?: MapViewport
+  onMapViewportChange?: (viewport: MapViewport) => void
+  /** Whether this remote's map is currently visible and can safely apply a viewport. */
+  mapActive?: boolean
   presentation?: 'full' | 'card'
 }
 

@@ -2,9 +2,9 @@ import '@relay/ui/styles.css'
 import '@relay/ui/styles/map.css'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
+import type { ProfileAnchor, RemoteAppProps, SupplierErrandSummary } from '@relay/contracts'
 import { ServiceType } from '@relay/contracts'
 import type { Supplier, SupplierApi } from '@relay/contracts'
 import {
@@ -17,11 +17,13 @@ import {
   PencilIcon,
   PlusIcon,
   RelayButton,
+  RelayCardAnchor,
   SlidingSegmentedControl,
   Spacer,
   StorePlusIcon,
   type BubbleAnchor,
 } from '@relay/ui'
+import { ErrandDetailCard } from './components/SupplierErrandPanel'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
@@ -35,8 +37,15 @@ const NUS_CENTER: MapPoint = { lat: 1.2966, lng: 103.7764 }
 export default function App({
   navigateTo,
   openProfile,
+  openErrandView,
   userProfile,
   authVersion,
+  supplierMode,
+  errandApi,
+  onErrandAccepted,
+  mapViewport,
+  onMapViewportChange,
+  mapActive,
   api,
 }: RemoteAppProps & { api?: SupplierApi }) {
   const activeApi = useMemo(
@@ -48,9 +57,10 @@ export default function App({
     [api],
   )
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [center, setCenter] = useState<MapPoint>(NUS_CENTER)
+  const [fallbackCenter, setFallbackCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
+  const [selectedErrand, setSelectedErrand] = useState<SupplierErrandSummary>()
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
   const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
@@ -58,12 +68,17 @@ export default function App({
     status: 'all',
     serviceTypes: Object.values(ServiceType),
   })
-  const [activeMode, setActiveMode] = useState<'explore' | 'requests'>('explore')
+  const [activeMode, setActiveMode] = useState<'explore' | 'requests' | 'my-errands'>(supplierMode ?? 'explore')
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
   const [adminAnchor, setAdminAnchor] = useState<BubbleAnchor>()
   const isAdmin = userProfile?.role === 'admin'
+  const mapCenter = mapViewport?.center ?? fallbackCenter
+
+  useEffect(() => {
+    setActiveMode(supplierMode ?? 'explore')
+  }, [supplierMode])
 
   const handleMapReady = useCallback((nextMap: LeafletMap) => setMap(nextMap), [])
 
@@ -89,28 +104,6 @@ export default function App({
     const { top, left, right, bottom } = button.getBoundingClientRect()
     setAdminAnchor({ top, left, right, bottom })
     setAdminMode(mode)
-  }
-
-  function getSupplierCardStyle(anchor: BubbleAnchor): CSSProperties | undefined {
-    if (window.innerWidth <= 700) return undefined
-    const margin = 24
-    const gap = 16
-    const cardWidth = Math.min(360, window.innerWidth - margin * 2)
-    const cardHeight = 300
-    const canPlaceRight = anchor.right + gap + cardWidth <= window.innerWidth - margin
-    const canPlaceLeft = anchor.left - gap - cardWidth >= margin
-    const left = canPlaceRight
-      ? anchor.right + gap
-      : canPlaceLeft
-        ? anchor.left - gap - cardWidth
-        : Math.max(margin, (window.innerWidth - cardWidth) / 2)
-    const markerCenterY = (anchor.top + anchor.bottom) / 2
-    const top = Math.min(
-      Math.max(margin, markerCenterY - cardHeight / 2),
-      window.innerHeight - cardHeight - margin,
-    )
-
-    return { left, top, width: cardWidth, transform: 'none' }
   }
 
   // Debounce filter changes to reduce API calls
@@ -147,7 +140,7 @@ export default function App({
       ({ coords }) => {
         const location = { lat: coords.latitude, lng: coords.longitude }
         setUserLocation(location)
-        setCenter(location)
+        setFallbackCenter(location)
       },
       () => undefined,
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
@@ -157,44 +150,61 @@ export default function App({
   return (
     <main className="supplier-app">
       <SupplierMap
-        center={center}
+        center={mapCenter}
         suppliers={suppliers}
         userLocation={userLocation}
+        zoom={mapViewport?.zoom ?? 16}
+        onViewportChange={onMapViewportChange}
+        active={mapActive ?? true}
         onSelect={(supplier, anchor, nearby) => {
           setSelectedSupplier(undefined)
+          setSelectedErrand(undefined)
           setSelectedSupplierAnchor(anchor)
           setNearbySuppliers(nearby.length > 1 ? nearby : undefined)
           if (nearby.length === 1) setSelectedSupplier(supplier)
+        }}
+        onMapClick={() => {
+          setSelectedSupplier(undefined)
+          setSelectedErrand(undefined)
+          setSelectedSupplierAnchor(undefined)
+          setNearbySuppliers(undefined)
         }}
         onMapReady={handleMapReady}
       />
       <div className="supplier-top-controls map-top-menu">
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="glass-pill glass-control mock-control"
+          size="map-pill"
+          className="glass-pill glass-control"
           aria-label="Credits"
         >
           <BoltIcon className="supplier-control-icon" />
           <span>0 cr</span>
         </RelayButton>
-        <div className="supplier-segment-control">
-          <SlidingSegmentedControl
-            className="mock-control-group"
-            scale={1}
+        <SlidingSegmentedControl
+            size="map"
             ariaLabel="Supplier view"
             options={[
               { value: 'explore', label: 'Explore' },
               { value: 'requests', label: 'My Requests' },
+              { value: 'my-errands', label: 'My Errands' },
             ]}
             value={activeMode}
-            onChange={setActiveMode}
-          />
-        </div>
+            onChange={(nextMode) => {
+              setActiveMode(nextMode)
+              if (nextMode === 'requests' && openErrandView) {
+                openErrandView({ view: 'requests' }); return
+              }
+              if (nextMode === 'my-errands' && openErrandView) {
+                openErrandView({ view: 'my-errands' })
+                return
+              }
+            }}
+        />
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="glass-pill glass-control profile-chip mock-control"
+          size="map-pill"
+          className="glass-pill glass-control profile-chip"
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
         >
@@ -207,8 +217,8 @@ export default function App({
       <div className="map-stub-controls">
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button filter-map-control"
+          size="map-icon"
+          className="filter-map-control"
           onClick={() => setShowFilters(true)}
           aria-label="Open supplier filters"
         >
@@ -216,17 +226,15 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Center map"
-          onClick={() => map?.setView(userLocation ?? center)}
+          onClick={() => map?.setView(userLocation ?? mapCenter)}
         >
           <LocationIcon className="location-icon" />
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Zoom in"
           onClick={() => map?.zoomIn()}
         >
@@ -234,8 +242,7 @@ export default function App({
         </RelayButton>
         <RelayButton
           variant="secondary"
-          scale={1}
-          className="map-control-button"
+          size="map-icon"
           aria-label="Zoom out"
           onClick={() => map?.zoomOut()}
         >
@@ -243,7 +250,7 @@ export default function App({
         </RelayButton>
       </div>
       <div className="supplier-bottom-controls map-bottom-menu">
-        <SupplierRowButton className="updates-action">
+        <SupplierRowButton size="map-action" className="updates-action">
           <BellIcon className="supplier-control-icon" />
           <span className="supplier-control-label">Updates</span>
         </SupplierRowButton>
@@ -266,6 +273,7 @@ export default function App({
             )}
             <SupplierRowButton
               variant="primary"
+              size="map-action"
               className="supplier-admin-action"
               onClick={(event) => openAdminPanel('add', event.currentTarget)}
               aria-label="Add supplier"
@@ -278,7 +286,15 @@ export default function App({
             </SupplierRowButton>
           </>
         )}
-        <SupplierRowButton variant="primary" className="new-request-action">
+        <SupplierRowButton
+          variant="primary"
+          size="map-action"
+          className="new-request-action"
+          onClick={(event) => {
+            const { top, left, right, bottom } = event.currentTarget.getBoundingClientRect()
+            openErrandView?.({ view: 'create', anchor: { top, left, right, bottom } })
+          }}
+        >
           <ClipboardPlusIcon className="supplier-control-icon" />
           <span className="supplier-control-label">New request</span>
         </SupplierRowButton>
@@ -293,13 +309,20 @@ export default function App({
       {(selectedSupplier || nearbySuppliers) && (
         <BubblePopover anchor={selectedSupplierAnchor}>
           {selectedSupplier ? (
-            <SupplierDetailCard
+            selectedErrand ? (
+              <ErrandDetailCard
+                errand={selectedErrand}
+                api={errandApi}
+                onBack={() => setSelectedErrand(undefined)}
+                onAccepted={onErrandAccepted}
+              />
+            ) : <SupplierDetailCard
               supplier={selectedSupplier}
-              style={
-                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
-              }
+              errandApi={errandApi}
+              onErrandSelect={setSelectedErrand}
               onClose={() => {
                 setSelectedSupplier(undefined)
+                setSelectedErrand(undefined)
                 setSelectedSupplierAnchor(undefined)
                 setNearbySuppliers(undefined)
               }}
@@ -307,11 +330,9 @@ export default function App({
           ) : (
             <SupplierList
               suppliers={nearbySuppliers ?? []}
-              style={
-                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
-              }
               onSelect={(supplier) => {
                 if (!map) return
+                setSelectedErrand(undefined)
                 setSelectedSupplier(supplier)
                 setSelectedSupplierAnchor(getSupplierAnchor(map, supplier))
                 setNearbySuppliers(undefined)
@@ -324,8 +345,8 @@ export default function App({
           )}
         </BubblePopover>
       )}
-      {isAdmin && adminMode && (
-        <BubblePopover anchor={adminAnchor}>
+      {isAdmin && adminMode && adminAnchor && (
+        <RelayCardAnchor placement="anchored" anchor={adminAnchor} preferredSide="top-end" className="supplier-admin-anchor">
           <SupplierAdminPanel
             api={activeApi}
             supplier={adminMode === 'edit' ? selectedSupplier : undefined}
@@ -348,7 +369,7 @@ export default function App({
               setAdminAnchor(undefined)
             }}
           />
-        </BubblePopover>
+        </RelayCardAnchor>
       )}
       {errorMessage && (
         <div className="supplier-error" role="alert">

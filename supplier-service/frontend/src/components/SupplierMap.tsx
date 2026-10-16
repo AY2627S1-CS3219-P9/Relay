@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import type { Supplier } from '@relay/contracts'
+import type { MapViewport, Supplier } from '@relay/contracts'
 import type { BubbleAnchor } from '@relay/ui'
 
 export type MapPoint = { lat: number; lng: number }
@@ -24,11 +24,23 @@ export function getSupplierAnchor(map: L.Map, supplier: Supplier): BubbleAnchor 
   return { top, left, right: left + markerSize, bottom: top + markerSize }
 }
 
-function MapCenterController({ center }: { center: MapPoint }) {
+function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom: number; active: boolean }) {
   const map = useMap()
+  useLayoutEffect(() => {
+    if (!active) return
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false, animate: false })
+      map.setView(center, zoom, { animate: false })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [active, center, map, zoom])
   useEffect(() => {
-    map.setView(center)
-  }, [center, map])
+    if (!active) return
+    const currentCenter = map.getCenter()
+    const centerChanged = Math.abs(currentCenter.lat - center.lat) > 0.000001 || Math.abs(currentCenter.lng - center.lng) > 0.000001
+    const zoomChanged = map.getZoom() !== zoom
+    if (centerChanged || zoomChanged) map.setView(center, zoom, { animate: false })
+  }, [active, center, map, zoom])
   return null
 }
 
@@ -56,6 +68,17 @@ function MapReadyController({ onReady }: { onReady: (map: L.Map) => void }) {
     onReady(map)
   }, [map, onReady])
 
+  return null
+}
+
+function MapZoomController({ onChange }: { onChange?: (viewport: MapViewport) => void }) {
+  const map = useMap()
+  const reportViewport = () => {
+    const center = map.getCenter()
+    onChange?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
+  }
+  useEffect(() => { reportViewport() }, [map, onChange])
+  useMapEvents({ zoomend: reportViewport, moveend: reportViewport })
   return null
 }
 
@@ -109,6 +132,7 @@ function SupplierMarkers({
   }, [map, suppliers, zoomRevision])
 
   function selectCluster(cluster: Supplier[], event: L.LeafletMouseEvent) {
+    event.originalEvent.stopPropagation()
     const element = (event.target as L.Marker).getElement()
     if (!element) return
     const { top, left, right, bottom } = element.getBoundingClientRect()
@@ -163,19 +187,29 @@ export function SupplierMap({
   suppliers,
   userLocation,
   onSelect,
+  onMapClick,
   onMapReady,
+  zoom,
+  onViewportChange,
+  active,
 }: {
   center: MapPoint
   suppliers: Supplier[]
   userLocation?: MapPoint
   onSelect: (supplier: Supplier, anchor: BubbleAnchor, nearbySuppliers: Supplier[]) => void
+  onMapClick?: () => void
   onMapReady: (map: L.Map) => void
+  zoom: number
+  onViewportChange?: (viewport: MapViewport) => void
+  active: boolean
 }) {
   return (
-    <MapContainer className="relay-map" center={center} zoom={16} zoomControl={false}>
-      <MapCenterController center={center} />
+    <MapContainer className="relay-map" center={center} zoom={zoom} zoomControl={false}>
+      <MapCenterController center={center} zoom={zoom} active={active} />
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
+      <MapZoomController onChange={onViewportChange} />
+      <MapClickController onClick={onMapClick} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -190,4 +224,9 @@ export function SupplierMap({
       <SupplierMarkers suppliers={suppliers} onSelect={onSelect} />
     </MapContainer>
   )
+}
+
+function MapClickController({ onClick }: { onClick?: () => void }) {
+  useMapEvents({ click: () => onClick?.() })
+  return null
 }

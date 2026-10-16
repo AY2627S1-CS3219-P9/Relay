@@ -12,6 +12,8 @@ export type ErrandEnv = {
   userApiUrl: string
   supplierApiUrl: string
   userServiceInternalToken: string
+  supplierServiceToken: string
+  supplierTimeoutMs: number
   internalServiceToken: string
   timeoutMs: number
   kafkaBrokers: string
@@ -31,10 +33,15 @@ export function getEnv(): ErrandEnv {
     supplierApiUrl: process.env.SUPPLIER_API_URL ?? 'http://supplier-api:3000',
     userServiceInternalToken:
       process.env.USER_SERVICE_INTERNAL_TOKEN ?? 'local-internal-user-service-token',
+    supplierServiceToken:
+      process.env.INTERNAL_SUPPLIER_SERVICE_TOKEN ?? 'local-internal-supplier-service-token',
+    supplierTimeoutMs: positiveInteger(process.env.SUPPLIER_SERVICE_TIMEOUT_MS, 5000),
     internalServiceToken:
       process.env.INTERNAL_ERRAND_SERVICE_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),
-    kafkaBrokers: process.env.KAFKA_BROKERS ?? 'localhost:9092',
+    // Local Node processes use Kafka's host-published listener; Compose uses
+    // KAFKA_BROKERS=kafka:9092 for the internal listener.
+    kafkaBrokers: process.env.KAFKA_BROKERS ?? 'localhost:29092',
     kafkaTopicErrandEvents: process.env.KAFKA_TOPIC_ERRAND_EVENTS ?? 'errand-events',
     kafkaGroupId: process.env.KAFKA_GROUP_ID ?? 'errand-service',
   }

@@ -56,6 +56,7 @@ export class ErrandService {
   }
 
   async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
+    await this.repository.expireOpenErrands()
     return this.repository.listOpenBySupplier(supplierId)
   }
 
@@ -69,6 +70,7 @@ export class ErrandService {
   }
 
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
+    await this.repository.expireOpenErrands()
     const errand = await this.repository.findOpenById(id)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)

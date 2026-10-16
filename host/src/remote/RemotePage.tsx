@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { RemoteAppProps, ServiceId } from '@relay/contracts'
-import { BubblePopover, GlassCard, LoadingState, type BubbleAnchor } from '@relay/ui'
+import { GlassCard, LoadingState, RelayCardAnchor, type BubbleAnchor } from '@relay/ui'
 import { loadServiceRemote } from './RemoteLoader'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
 
@@ -18,6 +18,7 @@ type RemotePageProps = {
   visible: boolean
   appProps?: RemoteAppProps
   overlay?: boolean
+  overlayClassName?: string
   card?: boolean
   cardStyle?: CSSProperties
   bubbleAnchor?: BubbleAnchor
@@ -63,6 +64,7 @@ export function RemotePage({
   visible,
   appProps,
   overlay,
+  overlayClassName,
   card,
   cardStyle,
   bubbleAnchor,
@@ -71,22 +73,29 @@ export function RemotePage({
 
   return (
     <section
-      className={`remote-page${overlay ? ' remote-page-overlay' : ''}`}
+      className={`remote-page${overlay ? ' remote-page-overlay' : ''}${overlayClassName ? ` ${overlayClassName}` : ''}`}
       aria-label={serviceLabel}
       style={{ display: visible ? undefined : 'none' }}
     >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-        <BubblePopover anchor={bubbleAnchor} open={card && Boolean(bubbleAnchor)}>
+        {card && bubbleAnchor ? (
+          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} className="remote-profile-anchor" style={cardStyle}>
           <GlassCard
-            variant={card ? 'glass' : 'plain'}
-            className={card ? 'remote-profile-card' : ''}
-            style={card ? cardStyle : undefined}
+            variant="glass"
+            className="remote-profile-card relay-mobile-sheet-surface"
           >
             <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
               <RemoteApp {...appProps} />
             </Suspense>
           </GlassCard>
-        </BubblePopover>
+          </RelayCardAnchor>
+        ) : (
+          <GlassCard variant="plain">
+            <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
+              <RemoteApp {...appProps} />
+            </Suspense>
+          </GlassCard>
+        )}
       </RemoteFailureBoundary>
     </section>
   )

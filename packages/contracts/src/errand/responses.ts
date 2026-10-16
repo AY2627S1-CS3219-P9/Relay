@@ -48,6 +48,11 @@ export type CancelErrandResponse = {
   errand: Errand
 }
 
+/** Response from dropping an accepted errand. */
+export type DropErrandResponse = {
+  errand: Errand
+}
+
 /** Response from supplier event processing. */
 export type SupplierEventsResponse = {
   processed: boolean

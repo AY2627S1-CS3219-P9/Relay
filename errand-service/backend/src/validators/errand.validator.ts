@@ -28,17 +28,16 @@ const createErrandSchema = z.object({
   pickupLocation: errandLocationSchema,
   targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
-  creditAmount: z.number().int().positive(),
-  expiresAt: z
-    .string()
-    .datetime({ offset: true })
-    .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
-    .optional(),
+  creditAmount: z.number().int().nonnegative(),
+  expiresAt: z.string().datetime({ offset: true }).refine(
+    (value) => new Date(value).getTime() > Date.now(),
+    'Expiry must be in the future',
+  ).optional(),
 })
 
 const supplierErrandViewSchema = z.object({
   scope: z.enum(['explore', 'mine']),
-  supplierId: z.string().trim().min(1).optional(),
+  supplierId: z.string().trim().min(1),
 })
 
 export function validateCreateErrand(input: unknown): CreateErrandRequest {

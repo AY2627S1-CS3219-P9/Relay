@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@relay/user-prisma'
 import { getEnv } from '../config/env.js'
 import { UserEventTypes, type UserDeletedEvent, type UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'

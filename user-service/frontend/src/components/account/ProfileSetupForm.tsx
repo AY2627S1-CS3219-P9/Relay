@@ -1,6 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, Session, UpdateUserResponse } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
 import { ImageUploadField } from '../base-elements/ImageUploadField'
 import { UsernameField } from '../base-elements/UsernameField'
 import { usernameError } from '../../validation/validation'
@@ -45,17 +45,15 @@ export function ProfileSetupForm({
   }
 
   return (
-    <form className="user-form" onSubmit={submit}>
-      <div className="user-form-heading">
-        <h1>Set up your profile</h1>
-        <p>Choose how other Relay users will see you.</p>
-      </div>
+    <RelayFormSurface title="Set up your profile" description="Choose how other Relay users will see you.">
+      <form onSubmit={submit}>
       <UsernameField value={username} onChange={setUsername} />
       <ImageUploadField value={picture} onChange={setPicture} />
       <ErrorMessage message={errorMessage} />
-      <button className="glass-btn-primary user-submit" disabled={loading}>
+      <RelayButton variant="primary" type="submit" disabled={loading}>
         {loading ? 'Saving profile…' : 'Finish setup'}
-      </button>
-    </form>
+      </RelayButton>
+      </form>
+    </RelayFormSurface>
   )
 }

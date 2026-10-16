@@ -18,6 +18,12 @@ export {
   PlusIcon,
   RelayBrand,
   RelayButton,
+  RelayCardAnchor,
+  RelayFormField,
+  RelayFormOverlay,
+  RelayFormSurface,
+  RelayList,
+  RelayListItem,
   Spacer,
   StorePlusIcon,
   SlidingSegmentedControl,
@@ -25,7 +31,7 @@ export {
   StatusBadge,
   TextButton,
 } from './components'
-export type { BubbleAnchor, RelayButtonVariant } from './components'
+export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant, RelayCardPlacement, RelayCardSize } from './components'
 
 export function ServiceCard({
   label,

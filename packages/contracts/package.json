@@ -7,6 +7,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./errand": "./src/errand/index.ts",
+    "./supplier": "./src/supplier/index.ts",
+    "./user": "./src/user/index.ts"
   }
 }
