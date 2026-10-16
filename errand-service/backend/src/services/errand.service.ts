@@ -107,6 +107,9 @@ export class ErrandService {
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
+    if (errand.expiresAt <= new Date().toISOString()) {
+      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand has expired.', 404)
+    }
 
     if (errand.courierSub !== null) {
       throw new ErrandServiceError(
@@ -121,6 +124,15 @@ export class ErrandService {
         ErrandErrors.FORBIDDEN,
         'Requesters cannot accept their own errands.',
         403,
+      )
+    }
+
+    const maxReached = await this.repository.checkCourierReachMaxErrand(courier.sub)
+    if (maxReached) {
+      throw new ErrandServiceError(
+        ErrandErrors.CONFLICT,
+        `You already have the maximum number of errands assigned`,
+        409,
       )
     }
 
