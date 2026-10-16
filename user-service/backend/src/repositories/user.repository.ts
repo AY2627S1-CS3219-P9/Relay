@@ -1,4 +1,6 @@
 import { PrismaClient } from '@relay/user-prisma'
+import { getEnv } from '../config/env.js'
+import { UserEventTypes, type UserDeletedEvent, type UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
 export const prisma = new PrismaClient()
@@ -39,12 +41,28 @@ export class UserRepository {
   }
 
   async createProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
-    const profile = await prisma.userProfile.create({
-      data: {
-        cognitoSub,
-        username: update.username,
-        profilePictureKey: update.profilePictureKey,
-      },
+    const profile = await prisma.$transaction(async (tx: any) => {
+      const created = await tx.userProfile.create({
+        data: {
+          cognitoSub,
+          username: update.username,
+          profilePictureKey: update.profilePictureKey,
+        },
+      })
+      await tx.userOutboxEvent.create({
+        data: {
+          topic: getEnv().kafkaTopicUserEvents,
+          key: cognitoSub,
+          payload: {
+            eventId: crypto.randomUUID(),
+            eventType: UserEventTypes.USER_REGISTERED,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload: { cognitoSub },
+          } satisfies UserRegisteredEvent,
+        },
+      })
+      return created
     })
     return toProfileRecord(profile)
   }
@@ -63,8 +81,22 @@ export class UserRepository {
   }
 
   async deleteProfile(cognitoSub: string): Promise<UserProfileRecord> {
-    const profile = await prisma.userProfile.delete({
-      where: { cognitoSub },
+    const profile = await prisma.$transaction(async (tx: any) => {
+      const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
+      await tx.userOutboxEvent.create({
+        data: {
+          topic: getEnv().kafkaTopicUserEvents,
+          key: cognitoSub,
+          payload: {
+            eventId: crypto.randomUUID(),
+            eventType: UserEventTypes.USER_DELETED,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload: { cognitoSub },
+          } satisfies UserDeletedEvent,
+        },
+      })
+      return deleted
     })
     return toProfileRecord(profile)
   }

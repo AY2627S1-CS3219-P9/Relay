@@ -18,6 +18,7 @@ export type ErrandEnv = {
   timeoutMs: number
   kafkaBrokers: string
   kafkaGroupId: string
+  kafkaTopicErrandEvents: string
 }
 
 export function getEnv(): ErrandEnv {
@@ -41,6 +42,7 @@ export function getEnv(): ErrandEnv {
     // Local Node processes use Kafka's host-published listener; Compose uses
     // KAFKA_BROKERS=kafka:9092 for the internal listener.
     kafkaBrokers: process.env.KAFKA_BROKERS ?? 'localhost:29092',
+    kafkaTopicErrandEvents: process.env.KAFKA_TOPIC_ERRAND_EVENTS ?? 'errand-events',
     kafkaGroupId: process.env.KAFKA_GROUP_ID ?? 'errand-service',
   }
 }

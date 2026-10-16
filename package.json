@@ -10,6 +10,7 @@
     "errand-service/frontend",
     "errand-service/backend",
     "credit-service/frontend",
+    "credit-service/backend",
     "packages/*"
   ],
   "scripts": {
