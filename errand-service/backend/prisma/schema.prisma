@@ -16,6 +16,7 @@ enum ErrandStatus {
   CANCELLED
   EXPIRED
   CONFIRMED
+  DELETED
 }
 
 model Errand {

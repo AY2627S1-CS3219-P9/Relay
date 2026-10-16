@@ -240,7 +240,6 @@ export class ErrandService {
 
     const updated = await this.repository.dropCourier(id, status, courier.sub)
 
-
     return updated
   }
 
@@ -250,11 +249,11 @@ export class ErrandService {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
 
-    const allowedStatuses: ErrandStatus[] = ['CANCELLED', 'EXPIRED', 'CONFIRMED']
+    const allowedStatuses: ErrandStatus[] = ['CANCELLED', 'EXPIRED', 'CONFIRMED', 'DELETED']
     if (!allowedStatuses.includes(existing.status)) {
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Errands in this state cannot be deleted. Only cancelled, expired, or confirmed errands can be deleted.',
+        'Errands in this state cannot be deleted. Only cancelled, expired, confirmed, or deleted errands can be deleted.',
         409,
       )
     }
@@ -286,8 +285,23 @@ export class ErrandService {
     }
 
     const allErrands = await this.repository.listBySupplier(event.supplierId)
-    const affectedErrands = allErrands.filter((e) => e.status === 'OPEN' || e.status === 'ACCEPTED')
 
+    // If supplier is no longer operational, mark open/accepted errands as DELETED
+    if (event.isOperational === false) {
+      const openAcceptedErrands = allErrands.filter(
+        (e) => e.status === 'OPEN' || e.status === 'ACCEPTED',
+      )
+      for (const errand of openAcceptedErrands) {
+        await this.repository.deleteErrand(errand.id, errand.requesterSub)
+      }
+      return {
+        processed: true,
+        affectedErrandIds: openAcceptedErrands.map((e) => e.id),
+      }
+    }
+
+    // Otherwise, update errands with new supplier information
+    const affectedErrands = allErrands.filter((e) => e.status === 'OPEN' || e.status === 'ACCEPTED')
     const affectedIds = affectedErrands.map((e) => e.id)
 
     if (affectedIds.length === 0) {
@@ -297,9 +311,6 @@ export class ErrandService {
     await this.repository.updateErrandsBySupplier(event.supplierId, {
       name: event.name,
       location: event.location,
-      operatingHours: event.operatingHours,
-      isOperational: event.isOperational,
-      serviceTypes: event.serviceTypes,
     })
 
     return { processed: true, affectedErrandIds: affectedIds }

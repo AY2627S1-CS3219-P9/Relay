@@ -41,11 +41,12 @@ export const STATUS_LABELS: Record<ErrandStatus, string> = {
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   CONFIRMED: 'Confirmed',
+  DELETED: 'Deleted',
 }
 
 export function statusTone(status: ErrandStatus): 'neutral' | 'success' | 'danger' | 'warning' {
   if (status === 'OPEN' || status === 'DELIVERED' || status === 'CONFIRMED') return 'success'
-  if (status === 'CANCELLED' || status === 'EXPIRED') return 'danger'
+  if (status === 'CANCELLED' || status === 'EXPIRED' || status === 'DELETED') return 'danger'
   if (status === 'ACCEPTED' || status === 'PICKED_UP') return 'warning'
   return 'neutral'
 }
