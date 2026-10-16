@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapViewport, UserLocation } from '@relay/contracts'
+import type { BubbleAnchor } from '@relay/ui'
 import type { DemoErrand } from '../types'
 
 export type MapPoint = { lat: number; lng: number }
@@ -82,6 +83,7 @@ export function ErrandMap({
   userLocation,
   selectedId,
   onSelect,
+  onMapClick,
   onMapReady,
   zoom,
   onViewportChange,
@@ -91,7 +93,8 @@ export function ErrandMap({
   center: MapPoint
   userLocation?: UserLocation
   selectedId?: string
-  onSelect: (errand: DemoErrand) => void
+  onSelect: (errand: DemoErrand, anchor: BubbleAnchor) => void
+  onMapClick?: () => void
   onMapReady?: (map: L.Map) => void
   zoom: number
   onViewportChange?: (viewport: MapViewport) => void
@@ -103,6 +106,7 @@ export function ErrandMap({
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
       <ViewportController onChange={onViewportChange} />
+      <MapClickController onClick={onMapClick} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -119,9 +123,20 @@ export function ErrandMap({
           key={errand.id}
           position={[errand.pickupLocation.lat, errand.pickupLocation.lng]}
           icon={markerIcon(errand, errand.id === selectedId)}
-          eventHandlers={{ click: () => onSelect(errand) }}
+          eventHandlers={{ click: (event) => {
+            event.originalEvent.stopPropagation()
+            const element = (event.target as L.Marker).getElement()
+            if (!element) return
+            const { top, left, right, bottom } = element.getBoundingClientRect()
+            onSelect(errand, { top, left, right, bottom })
+          } }}
         />
       ))}
     </MapContainer>
   )
+}
+
+function MapClickController({ onClick }: { onClick?: () => void }) {
+  useMapEvents({ click: () => onClick?.() })
+  return null
 }

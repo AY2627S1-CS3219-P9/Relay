@@ -132,6 +132,7 @@ function SupplierMarkers({
   }, [map, suppliers, zoomRevision])
 
   function selectCluster(cluster: Supplier[], event: L.LeafletMouseEvent) {
+    event.originalEvent.stopPropagation()
     const element = (event.target as L.Marker).getElement()
     if (!element) return
     const { top, left, right, bottom } = element.getBoundingClientRect()
@@ -186,6 +187,7 @@ export function SupplierMap({
   suppliers,
   userLocation,
   onSelect,
+  onMapClick,
   onMapReady,
   zoom,
   onViewportChange,
@@ -195,6 +197,7 @@ export function SupplierMap({
   suppliers: Supplier[]
   userLocation?: MapPoint
   onSelect: (supplier: Supplier, anchor: BubbleAnchor, nearbySuppliers: Supplier[]) => void
+  onMapClick?: () => void
   onMapReady: (map: L.Map) => void
   zoom: number
   onViewportChange?: (viewport: MapViewport) => void
@@ -206,6 +209,7 @@ export function SupplierMap({
       <MapSizeController />
       <MapReadyController onReady={onMapReady} />
       <MapZoomController onChange={onViewportChange} />
+      <MapClickController onClick={onMapClick} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -220,4 +224,9 @@ export function SupplierMap({
       <SupplierMarkers suppliers={suppliers} onSelect={onSelect} />
     </MapContainer>
   )
+}
+
+function MapClickController({ onClick }: { onClick?: () => void }) {
+  useMapEvents({ click: () => onClick?.() })
+  return null
 }

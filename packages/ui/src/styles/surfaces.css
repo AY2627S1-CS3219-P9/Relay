@@ -57,6 +57,9 @@
   overflow: auto;
   animation: relay-card-anchor-in 0.46s cubic-bezier(0.22, 1.16, 0.36, 1) both;
 }
+.relay-card-size-small { --relay-card-max-width: 405px; }
+.relay-card-size-medium { --relay-card-max-width: 540px; }
+.relay-card-size-large { --relay-card-max-width: 680px; }
 .relay-card-placement-top-left { top: var(--relay-card-margin, 24px); left: var(--relay-card-margin, 24px); }
 .relay-card-placement-top-right { top: var(--relay-card-margin, 24px); right: var(--relay-card-margin, 24px); }
 .relay-card-placement-center-right { top: 50%; right: clamp(18px, 7vw, 140px); transform: translateY(-50%); animation-name: relay-card-center-right-in; }

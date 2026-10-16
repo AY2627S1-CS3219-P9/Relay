@@ -2,9 +2,9 @@ import '@relay/ui/styles.css'
 import '@relay/ui/styles/map.css'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { ProfileAnchor, RemoteAppProps } from '@relay/contracts'
+import type { ProfileAnchor, RemoteAppProps, SupplierErrandSummary } from '@relay/contracts'
 import { ServiceType } from '@relay/contracts'
 import type { Supplier, SupplierApi } from '@relay/contracts'
 import {
@@ -23,6 +23,7 @@ import {
   StorePlusIcon,
   type BubbleAnchor,
 } from '@relay/ui'
+import { ErrandDetailCard } from './components/SupplierErrandPanel'
 import { SupplierDetailCard } from './components/SupplierDetailCard'
 import { SupplierAdminPanel } from './components/SupplierAdminPanel'
 import { SupplierFilterPanel, type SupplierFilters } from './components/SupplierFilterPanel'
@@ -59,6 +60,7 @@ export default function App({
   const [fallbackCenter, setFallbackCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
+  const [selectedErrand, setSelectedErrand] = useState<SupplierErrandSummary>()
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
   const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
@@ -102,28 +104,6 @@ export default function App({
     const { top, left, right, bottom } = button.getBoundingClientRect()
     setAdminAnchor({ top, left, right, bottom })
     setAdminMode(mode)
-  }
-
-  function getSupplierCardStyle(anchor: BubbleAnchor): CSSProperties | undefined {
-    if (window.innerWidth <= 700) return undefined
-    const margin = 24
-    const gap = 16
-    const cardWidth = Math.min(360, window.innerWidth - margin * 2)
-    const cardHeight = 300
-    const canPlaceRight = anchor.right + gap + cardWidth <= window.innerWidth - margin
-    const canPlaceLeft = anchor.left - gap - cardWidth >= margin
-    const left = canPlaceRight
-      ? anchor.right + gap
-      : canPlaceLeft
-        ? anchor.left - gap - cardWidth
-        : Math.max(margin, (window.innerWidth - cardWidth) / 2)
-    const markerCenterY = (anchor.top + anchor.bottom) / 2
-    const top = Math.min(
-      Math.max(margin, markerCenterY - cardHeight / 2),
-      window.innerHeight - cardHeight - margin,
-    )
-
-    return { left, top, width: cardWidth, transform: 'none' }
   }
 
   // Debounce filter changes to reduce API calls
@@ -178,9 +158,16 @@ export default function App({
         active={mapActive ?? true}
         onSelect={(supplier, anchor, nearby) => {
           setSelectedSupplier(undefined)
+          setSelectedErrand(undefined)
           setSelectedSupplierAnchor(anchor)
           setNearbySuppliers(nearby.length > 1 ? nearby : undefined)
           if (nearby.length === 1) setSelectedSupplier(supplier)
+        }}
+        onMapClick={() => {
+          setSelectedSupplier(undefined)
+          setSelectedErrand(undefined)
+          setSelectedSupplierAnchor(undefined)
+          setNearbySuppliers(undefined)
         }}
         onMapReady={handleMapReady}
       />
@@ -322,15 +309,20 @@ export default function App({
       {(selectedSupplier || nearbySuppliers) && (
         <BubblePopover anchor={selectedSupplierAnchor}>
           {selectedSupplier ? (
-            <SupplierDetailCard
+            selectedErrand ? (
+              <ErrandDetailCard
+                errand={selectedErrand}
+                api={errandApi}
+                onBack={() => setSelectedErrand(undefined)}
+                onAccepted={onErrandAccepted}
+              />
+            ) : <SupplierDetailCard
               supplier={selectedSupplier}
               errandApi={errandApi}
-              onErrandAccepted={onErrandAccepted}
-              style={
-                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
-              }
+              onErrandSelect={setSelectedErrand}
               onClose={() => {
                 setSelectedSupplier(undefined)
+                setSelectedErrand(undefined)
                 setSelectedSupplierAnchor(undefined)
                 setNearbySuppliers(undefined)
               }}
@@ -338,11 +330,9 @@ export default function App({
           ) : (
             <SupplierList
               suppliers={nearbySuppliers ?? []}
-              style={
-                selectedSupplierAnchor ? getSupplierCardStyle(selectedSupplierAnchor) : undefined
-              }
               onSelect={(supplier) => {
                 if (!map) return
+                setSelectedErrand(undefined)
                 setSelectedSupplier(supplier)
                 setSelectedSupplierAnchor(getSupplierAnchor(map, supplier))
                 setNearbySuppliers(undefined)

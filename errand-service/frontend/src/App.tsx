@@ -5,7 +5,7 @@ import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { Errand, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
-import { BellIcon, BoltIcon, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge, type BubbleAnchor } from '@relay/ui'
+import { BellIcon, BoltIcon, BubblePopover, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge, type BubbleAnchor } from '@relay/ui'
 import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
@@ -20,6 +20,7 @@ const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED:
 export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
+  const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
   const [location, setLocation] = useState(userLocation)
   const [map, setMap] = useState<LeafletMap>()
@@ -119,7 +120,7 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
 
   return (
     <main className="errand-map-shell relay-design-system">
-      <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand) => setSelectedErrandId(errand.id)} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} active={mapActive ?? true} />
+      <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand, anchor) => { setSelectedErrandId(errand.id); setSelectedErrandAnchor(anchor) }} onMapClick={() => { setSelectedErrandId(undefined); setSelectedErrandAnchor(undefined) }} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} active={mapActive ?? true} />
       <div className="errand-top-controls map-top-menu">
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
         <SlidingSegmentedControl size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { persistCurrentViewport(); openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
@@ -132,7 +133,7 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
         <RelayButton variant="secondary" size="map-icon" onClick={() => map?.zoomOut()} aria-label="Zoom out">−</RelayButton>
       </div>
       <div className="errand-bottom-controls map-bottom-menu"><RelayButton variant="secondary" size="map-action" className="updates-action" aria-label="Updates"><span className="relay-button-icon-badge"><BellIcon className="errand-control-icon" />{notificationCount > 0 && <span className="relay-button-notification-dot" aria-hidden="true" />}</span><span className="errand-control-label">Updates</span></RelayButton><Spacer /><RelayButton variant="primary" size="map-action" className="new-request-action" onClick={(event) => { const { top, left, right, bottom } = event.currentTarget.getBoundingClientRect(); setCreateAnchor({ top, left, right, bottom }); openErrandView?.({ view: 'create' }) }}><ClipboardPlusIcon className="errand-control-icon" /><span className="errand-control-label">New request</span></RelayButton></div>
-      {selectedErrand && <RelayCardAnchor placement="center-right" className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => setSelectedErrandId(undefined)} onAction={(action) => updateErrand(action, selectedErrand.id)} /></RelayCardAnchor>}
+      {selectedErrand && <BubblePopover anchor={selectedErrandAnchor} maxWidth={405} className="errand-detail-popover"><ErrandDetailCard errand={selectedErrand} role={role} onClose={() => { setSelectedErrandId(undefined); setSelectedErrandAnchor(undefined) }} onAction={(action) => updateErrand(action, selectedErrand.id)} /></BubblePopover>}
       {createCard}
       {!selectedErrand && view === 'requests' && visibleErrands[0] && <button className="my-request-card" type="button" onClick={() => setSelectedErrandId(visibleErrands[0].id)}><span className="request-card-label">My request <StatusBadge tone={statusTone(visibleErrands[0].status)}>{STATUS_LABELS[visibleErrands[0].status]}</StatusBadge></span><strong>{visibleErrands[0].name}</strong><small>{formatRoute(visibleErrands[0].pickupLocation)} → {formatRoute(visibleErrands[0].deliveryLocation)}</small><em>{visibleErrands[0].creditAmount} cr reserved · Due {formatDeadline(visibleErrands[0].expiresAt)}</em></button>}
       {showFilters && <ErrandFilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)} />}

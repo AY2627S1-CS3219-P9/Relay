@@ -1,7 +1,7 @@
 import { Day, ServiceType } from '@relay/contracts'
 import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
 import type { Supplier } from '@relay/contracts'
-import type { ErrandApi } from '@relay/contracts'
+import type { ErrandApi, SupplierErrandSummary } from '@relay/contracts'
 import { SupplierErrandPanel } from './SupplierErrandPanel'
 import type { CSSProperties } from 'react'
 
@@ -27,13 +27,13 @@ export function SupplierDetailCard({
   supplier,
   onClose,
   errandApi,
-  onErrandAccepted,
+  onErrandSelect,
   style,
 }: {
   supplier: Supplier
   onClose: () => void
   errandApi?: ErrandApi
-  onErrandAccepted?: () => void
+  onErrandSelect: (errand: SupplierErrandSummary) => void
   style?: CSSProperties
 }) {
   return (
@@ -75,7 +75,7 @@ export function SupplierDetailCard({
           </span>
         ))}
       </div>
-      <SupplierErrandPanel supplierId={supplier.id} api={errandApi} onAccepted={onErrandAccepted} />
+      <SupplierErrandPanel supplierId={supplier.id} api={errandApi} onSelect={onErrandSelect} />
     </GlassCard>
   )
 }

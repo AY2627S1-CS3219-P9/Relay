@@ -62,35 +62,105 @@ export function BubblePopover({
   children,
   className = '',
   open = true,
+  maxWidth = 360,
 }: {
   anchor?: BubbleAnchor
   children: ReactNode
   className?: string
   open?: boolean
+  maxWidth?: number
 }) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
 
   useLayoutEffect(() => {
     setReady(false)
-    if (!open || !anchor || !contentRef.current) return
-    const content = contentRef.current.firstElementChild
+    if (!open || !contentRef.current) return
+    const content = contentRef.current.firstElementChild as HTMLElement | null
     if (!content) return
-    const card = content.getBoundingClientRect()
-    const anchorX = (anchor.left + anchor.right) / 2
-    const anchorY = (anchor.top + anchor.bottom) / 2
-    contentRef.current.style.setProperty('--relay-bubble-origin-x', `${anchorX - card.left}px`)
-    contentRef.current.style.setProperty('--relay-bubble-origin-y', `${anchorY - card.top}px`)
-    const frame = window.requestAnimationFrame(() => setReady(true))
-    return () => window.cancelAnimationFrame(frame)
-  }, [anchor, open])
+    if (!anchor) {
+      content.style.removeProperty('top')
+      content.style.removeProperty('right')
+      content.style.removeProperty('bottom')
+      content.style.removeProperty('left')
+      content.style.removeProperty('width')
+      content.style.removeProperty('max-height')
+      content.style.removeProperty('overflow')
+      content.style.removeProperty('transform')
+      setReady(true)
+      return
+    }
+
+    let frame: number | undefined
+    const schedulePosition = () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined
+        const isMobile = window.innerWidth <= 700
+        if (isMobile) {
+          content.style.removeProperty('top')
+          content.style.removeProperty('right')
+          content.style.removeProperty('bottom')
+          content.style.removeProperty('left')
+          content.style.removeProperty('width')
+          content.style.removeProperty('max-height')
+          content.style.removeProperty('overflow')
+          content.style.removeProperty('transform')
+          setReady(true)
+          return
+        }
+
+        const margin = 24
+        const gap = 16
+        const width = Math.min(maxWidth, window.innerWidth - margin * 2)
+        const maxHeight = Math.max(0, window.innerHeight - margin * 2)
+        content.style.width = `${width}px`
+        content.style.maxHeight = `${maxHeight}px`
+        content.style.overflow = 'auto'
+        content.style.right = 'auto'
+        content.style.bottom = 'auto'
+        content.style.transform = 'none'
+
+        const measured = content.getBoundingClientRect()
+        const canPlaceRight = anchor.right + gap + measured.width <= window.innerWidth - margin
+        const canPlaceLeft = anchor.left - gap - measured.width >= margin
+        const left = canPlaceRight
+          ? anchor.right + gap
+          : canPlaceLeft
+            ? anchor.left - gap - measured.width
+            : Math.max(margin, (window.innerWidth - measured.width) / 2)
+        const top = Math.min(
+          Math.max(margin, (anchor.top + anchor.bottom - measured.height) / 2),
+          window.innerHeight - measured.height - margin,
+        )
+        content.style.left = `${left}px`
+        content.style.top = `${top}px`
+        const positioned = content.getBoundingClientRect()
+        const anchorX = (anchor.left + anchor.right) / 2
+        const anchorY = (anchor.top + anchor.bottom) / 2
+        contentRef.current?.style.setProperty('--relay-bubble-origin-x', `${anchorX - positioned.left}px`)
+        contentRef.current?.style.setProperty('--relay-bubble-origin-y', `${anchorY - positioned.top}px`)
+        setReady(true)
+      })
+    }
+
+    const observer = new ResizeObserver(schedulePosition)
+    observer.observe(content)
+    window.addEventListener('resize', schedulePosition)
+    schedulePosition()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', schedulePosition)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+    }
+  }, [anchor, maxWidth, open])
 
   if (!open) return <>{children}</>
 
   return (
     <div
       ref={contentRef}
-      className={`relay-bubble-popover${ready ? ' relay-bubble-popover-ready' : ''}${className ? ` ${className}` : ''}`}
+      className={`relay-bubble-popover${ready ? ' relay-bubble-popover-ready' : ' relay-bubble-popover-measuring'}${className ? ` ${className}` : ''}`}
     >
       {children}
     </div>
@@ -328,10 +398,18 @@ export function RelayFormOverlay({
 }
 
 export type RelayCardPlacement = 'top-left' | 'top-right' | 'center-right' | 'bottom-left' | 'bottom-right' | 'anchored'
+export type RelayCardSize = 'small' | 'medium' | 'large'
+
+const relayCardWidths: Record<RelayCardSize, number> = {
+  small: 405,
+  medium: 540,
+  large: 680,
+}
 
 export function RelayCardAnchor({
   children,
   placement = 'center-right',
+  size = 'medium',
   anchor,
   preferredSide = 'bottom-end',
   offset = 12,
@@ -341,6 +419,7 @@ export function RelayCardAnchor({
 }: {
   children: ReactNode
   placement?: RelayCardPlacement
+  size?: RelayCardSize
   anchor?: BubbleAnchor
   preferredSide?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end'
   offset?: number
@@ -351,11 +430,13 @@ export function RelayCardAnchor({
   const anchorRef = useRef<HTMLDivElement>(null)
   const [measuredHeight, setMeasuredHeight] = useState<number>()
   const anchoredStyle: CSSProperties = {}
+  const cardWidth = relayCardWidths[size]
   if (placement === 'anchored' && anchor && typeof window !== 'undefined') {
-    const cardWidth = Math.min(520, window.innerWidth - viewportPadding * 2)
+    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+    const anchoredCardWidth = Math.min(cardWidth, availableWidth)
     const left = preferredSide.endsWith('end')
-      ? Math.min(Math.max(viewportPadding, anchor.right - cardWidth), window.innerWidth - cardWidth - viewportPadding)
-      : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - cardWidth - viewportPadding)
+      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), window.innerWidth - anchoredCardWidth - viewportPadding)
+      : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - anchoredCardWidth - viewportPadding)
     const estimatedHeight = Math.min(window.innerHeight * 0.6, window.innerHeight - viewportPadding * 2)
     const cardHeight = measuredHeight ?? estimatedHeight
     const belowTop = anchor.bottom + offset
@@ -364,7 +445,7 @@ export function RelayCardAnchor({
       : belowTop + cardHeight <= window.innerHeight - viewportPadding
         ? belowTop
         : Math.max(viewportPadding, anchor.top - cardHeight - offset)
-    Object.assign(anchoredStyle, { top, left, width: cardWidth })
+    Object.assign(anchoredStyle, { top, left, width: anchoredCardWidth })
   }
   useLayoutEffect(() => {
     if (placement !== 'anchored' || !anchor || typeof window === 'undefined') {
@@ -377,7 +458,7 @@ export function RelayCardAnchor({
     })
     return () => window.cancelAnimationFrame(frame)
   }, [anchor, measuredHeight, placement, preferredSide, viewportPadding])
-  return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
+  return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement} relay-card-size-${size}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
 }
 
 export function RelayFormSurface({
