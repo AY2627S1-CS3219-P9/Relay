@@ -59,7 +59,7 @@ npm run dev --workspace @relay/credit-backend
 | ------ | --------------------- | --------------------------------------------------------- |
 | GET    | `/api/credit`         | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
 | GET    | `/api/credit/history` | `{ records: TransactionRecord[] }`                        |
-| POST   | `/api/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS'              | 'ALREADY_RESERVED' }` |
+| POST   | `/internal/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS' }` |
 
 All routes forward the browser's Cookie header and the configured internal
 service token to `POST /internal/user/session/validate` on User Service.
@@ -72,9 +72,9 @@ Reserve accepts the contract body
 `{ transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' }, userId, amount }`.
 The body userId must match the authenticated subject. The amount must be a
 positive number. The balance and a `CREDIT_RESERVE` history record are updated
-atomically. Repeating the same reference and details returns `ALREADY_RESERVED`
-without charging again; reusing the reference with different details returns
-`INVALID_REQUEST` (400). A missing balance returns `USER_NOT_FOUND` (404);
+atomically. Repeating a reservation reference returns HTTP 409 with TRANSACTION_CONFLICT
+without charging again. The same conflict applies when a release or transfer
+transaction already exists for that reference. A missing balance returns `USER_NOT_FOUND` (404);
 invalid amounts and insufficient available credit return 422.
 
 History includes transactions where the user is sender or receiver, newest

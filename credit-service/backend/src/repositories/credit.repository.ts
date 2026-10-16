@@ -127,57 +127,27 @@ export class CreditRepository {
     }
     const amount = new Prisma.Decimal(request.amount)
 
-    const existingResponse = async (): Promise<ReserveCreditResponse | null> => {
-      const record = await prisma.transactionRecord.findUnique({ where: { reference } })
-      if (!record) return null
-      if (
-        record.senderId !== request.userId ||
-        record.receiverId !== request.userId ||
-        !record.amount.equals(amount)
-      )
-        throw new CreditServiceError(
-          'INVALID_REQUEST',
-          'Reservation reference was already used for different details.',
-          400,
-        )
-      const balance = await this.findBalance(request.userId)
-      if (!balance)
-        throw new CreditServiceError(
-          'USER_NOT_FOUND',
-          'The user has no credit balance record.',
-          404,
-        )
-      return { ...balance, status: 'ALREADY_RESERVED' }
-    }
-
     try {
       return await prisma.$transaction(async (tx: any) => {
-        const prior = await tx.transactionRecord.findUnique({ where: { reference } })
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${request.transactionReference.id}))::text`
+        const transactionId = request.transactionReference.id
+        const prior = await tx.transactionRecord.findFirst({
+          where: {
+            reference: {
+              in: [
+                reference,
+                'errand:' + transactionId + ':CREDIT_RELEASE',
+                'errand:' + transactionId + ':CREDIT_TRANSFER',
+              ],
+            },
+          },
+        })
         if (prior) {
-          if (
-            prior.senderId !== request.userId ||
-            prior.receiverId !== request.userId ||
-            !prior.amount.equals(amount)
+          throw new CreditServiceError(
+            'TRANSACTION_CONFLICT',
+            'Transaction reference has already been used.',
+            409,
           )
-            throw new CreditServiceError(
-              'INVALID_REQUEST',
-              'Reservation reference was already used for different details.',
-              400,
-            )
-          const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
-          if (!balance)
-            throw new CreditServiceError(
-              'USER_NOT_FOUND',
-              'The user has no credit balance record.',
-              404,
-            )
-          return {
-            userId: balance.userId,
-            availableCredit: balance.availableCredit.toNumber(),
-            reserveCredit: balance.reserveCredit.toNumber(),
-            lastUpdated: balance.lastUpdated,
-            status: 'ALREADY_RESERVED' as const,
-          }
         }
         const updated = await tx.creditBalance.updateMany({
           where: { userId: request.userId, availableCredit: { gte: amount } },
@@ -218,12 +188,12 @@ export class CreditRepository {
         }
       })
     } catch (error) {
-      if (
-        (error as { code?: string }).code === 'P2002' ||
-        (error instanceof CreditServiceError && error.code === 'INSUFFICIENT_CREDITS')
-      ) {
-        const previous = await existingResponse()
-        if (previous) return previous
+      if ((error as { code?: string }).code === 'P2002') {
+        throw new CreditServiceError(
+          'TRANSACTION_CONFLICT',
+          'Transaction reference has already been used.',
+          409,
+        )
       }
       throw error
     }

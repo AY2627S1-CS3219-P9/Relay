@@ -5,6 +5,8 @@ import { CreditController } from './controllers/credit.controller.js'
 import { UserSessionService } from './services/user-session.service.js'
 import { createCreditRouter } from './routes/credit.routes.js'
 import { CreditServiceError } from './types/credit.types.js'
+import { getEnv } from './config/env.js'
+import { timingSafeEqual } from 'node:crypto'
 
 export function createApp(
   repository = new CreditRepository(),
@@ -21,10 +23,17 @@ export function createApp(
       res.status(503).json({ status: 'unavailable', database: 'unavailable' })
     }
   })
-  app.use(
-    '/api/credit',
-    createCreditRouter(new CreditController(new CreditService(repository)), sessions),
-  )
+  const controller = new CreditController(new CreditService(repository))
+  app.post('/internal/credit/reserve', (req, res, next) => {
+    const expected = Buffer.from(getEnv().internalCreditServiceToken)
+    const supplied = Buffer.from(req.header('x-credit-service-token') ?? '')
+    if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+      res.status(401).json({ code: 'UNAUTHENTICATED', message: 'Invalid service token.' })
+      return
+    }
+    next()
+  }, controller.reserveInternalCredit)
+  app.use('/api/credit', createCreditRouter(controller, sessions))
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof CreditServiceError) {
       res.status(error.statusCode).json({ code: error.code, message: error.message })

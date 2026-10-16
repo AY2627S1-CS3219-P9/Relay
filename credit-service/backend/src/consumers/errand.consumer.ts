@@ -1,46 +1,79 @@
-import { Kafka, logLevel, type Consumer, type Producer } from 'kafkajs'
-import {
-  ErrandEventTypes,
-  type ErrandEvent,
-  type ErrandErrorEvent,
-  type ReleaseCreditCommand,
-  type TransferCreditCommand,
-} from '@relay/contracts'
+import { randomUUID } from 'node:crypto'
+import { Kafka, logLevel, type Consumer, type KafkaMessage, type Producer } from 'kafkajs'
+import { ErrandEventTypes, type ErrandEvent, type ErrandErrorEvent } from '@relay/contracts'
 import { z } from 'zod'
 import { getEnv } from '../config/env.js'
 import { CreditService } from '../services/credit.service.js'
 
 const errandCreditErrorCodes = {
+  INVALID_EVENT: 'ERRAND_EVENT_INVALID',
   RESERVATION_NOT_FOUND: 'ERRAND_RESERVATION_NOT_FOUND',
   REQUESTER_MISMATCH: 'ERRAND_REQUESTER_MISMATCH',
   COURIER_MISSING: 'ERRAND_COURIER_MISSING',
+  COURIER_MISMATCH: 'ERRAND_COURIER_MISMATCH',
+  OUTCOME_CONFLICT: 'ERRAND_CREDIT_OUTCOME_CONFLICT',
+  INSUFFICIENT_RESERVED_CREDIT: 'ERRAND_INSUFFICIENT_RESERVED_CREDIT',
+  CREDIT_OPERATION_FAILED: 'ERRAND_CREDIT_OPERATION_FAILED',
 } as const
+type ErrorCode = (typeof errandCreditErrorCodes)[keyof typeof errandCreditErrorCodes]
 
-type ErrandCreditError = {
-  code: (typeof errandCreditErrorCodes)[keyof typeof errandCreditErrorCodes]
-  message: string
+class EventError extends Error {
+  constructor(readonly code: ErrorCode, message: string) { super(message) }
 }
 
-const errandEventSchema = z.object({
+const eventSchema = z.object({
   eventId: z.string().uuid(),
   timestamp: z.iso.datetime(),
   version: z.literal(1),
   eventType: z.enum([
     ErrandEventTypes.ERRAND_CREATED,
+    ErrandEventTypes.ERRAND_CREATION_FAILED,
     ErrandEventTypes.ERRAND_STATUS_CHANGED,
     ErrandEventTypes.ERRAND_COMPLETED,
     ErrandEventTypes.ERRAND_CANCELLED,
     ErrandEventTypes.ERRAND_EXPIRED,
     ErrandEventTypes.ERRAND_DELETED,
   ]),
-  payload: z
-    .object({
-      errandId: z.string().min(1),
-      requesterSub: z.string().min(1).optional(),
-      courierSub: z.string().min(1).optional(),
-    })
-    .passthrough(),
+  payload: z.object({
+    errandId: z.string().min(1),
+    requesterSub: z.string().min(1).optional(),
+    courierSub: z.string().min(1).optional(),
+  }).passthrough(),
 })
+
+function classify(error: unknown): EventError {
+  if (error instanceof EventError) return error
+  if (error instanceof SyntaxError || error instanceof z.ZodError) {
+    return new EventError(errandCreditErrorCodes.INVALID_EVENT, 'The event is not a valid errand event.')
+  }
+  const message = error instanceof Error ? error.message : ''
+  if (message.startsWith('Cannot release credit') || message.startsWith('Cannot transfer credit')) {
+    return new EventError(errandCreditErrorCodes.OUTCOME_CONFLICT, 'A conflicting credit outcome was already recorded.')
+  }
+  if (message.startsWith('Insufficient reserved credit')) {
+    return new EventError(errandCreditErrorCodes.INSUFFICIENT_RESERVED_CREDIT, 'The reserved credit is insufficient.')
+  }
+  return new EventError(errandCreditErrorCodes.CREDIT_OPERATION_FAILED, 'The credit operation could not be completed.')
+}
+
+function dlqEvent(value: unknown, key: string | undefined): ErrandEvent {
+  const valid = eventSchema.safeParse(value)
+  if (valid.success) return valid.data as ErrandEvent
+  const envelope = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const payload = envelope.payload && typeof envelope.payload === 'object'
+    ? envelope.payload as Record<string, unknown> : {}
+  return {
+    eventId: typeof envelope.eventId === 'string' && z.uuid().safeParse(envelope.eventId).success
+      ? envelope.eventId : randomUUID(),
+    eventType: ErrandEventTypes.ERRAND_EVENT_INVALID,
+    timestamp: new Date().toISOString(),
+    version: 1,
+    payload: {
+      errandId: typeof payload.errandId === 'string' && payload.errandId ? payload.errandId : key || 'unknown',
+      metadata: { rawEvent: JSON.stringify(value) ?? 'null' },
+    },
+  }
+}
 
 export class ErrandEventConsumer {
   private readonly consumer: Consumer
@@ -57,7 +90,6 @@ export class ErrandEventConsumer {
       brokers: env.kafkaBrokers,
       logLevel: logLevel.ERROR,
     })
-    // Retain the existing group's offsets for errand events.
     this.consumer = kafka.consumer({
       groupId: 'relay-credit-events',
       allowAutoTopicCreation: false,
@@ -65,58 +97,63 @@ export class ErrandEventConsumer {
     this.producer = kafka.producer({ allowAutoTopicCreation: false })
   }
 
-  private async rejectErrandEvent(event: ErrandEvent, error: ErrandCreditError): Promise<void> {
-    const failedEvent: ErrandErrorEvent = {
-      ...event,
-      error: { code: error.code, message: error.message },
-    }
-    await this.producer.send({
-      topic: this.dlqTopic,
-      messages: [{ key: event.payload.errandId, value: JSON.stringify(failedEvent) }],
-    })
-    console.warn(`Rejected ${event.eventType} for ${event.payload.errandId}: ${error.code}`)
-  }
-
-  private async processErrandOutcome(event: ErrandEvent): Promise<void> {
+  private async process(event: ErrandEvent): Promise<void> {
     const { errandId, requesterSub, courierSub } = event.payload
+    const handled: readonly string[] = [ErrandEventTypes.ERRAND_CREATION_FAILED, ErrandEventTypes.ERRAND_COMPLETED,
+      ErrandEventTypes.ERRAND_CANCELLED, ErrandEventTypes.ERRAND_EXPIRED]
+    if (!handled.includes(event.eventType)) return
     const reservation = await this.creditService.findReservation(errandId)
     if (!reservation) {
-      await this.rejectErrandEvent(event, {
-        code: errandCreditErrorCodes.RESERVATION_NOT_FOUND,
-        message: `Errand ${errandId} has no prior credit reservation.`,
-      })
-      return
+      if (event.eventType === ErrandEventTypes.ERRAND_CREATION_FAILED) return
+      throw new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
     }
     if (requesterSub && requesterSub !== reservation.userId) {
-      await this.rejectErrandEvent(event, {
-        code: errandCreditErrorCodes.REQUESTER_MISMATCH,
-        message: `Errand ${errandId} requester does not match its credit reservation.`,
-      })
-      return
+      throw new EventError(errandCreditErrorCodes.REQUESTER_MISMATCH, 'The requester does not match the credit reservation.')
     }
-
     if (event.eventType === ErrandEventTypes.ERRAND_COMPLETED) {
-      if (!courierSub) {
-        await this.rejectErrandEvent(event, {
-          code: errandCreditErrorCodes.COURIER_MISSING,
-          message: `Completed errand ${errandId} has no courier.`,
-        })
-        return
+      if (!courierSub) throw new EventError(errandCreditErrorCodes.COURIER_MISSING, 'The courier is missing.')
+      if (courierSub === reservation.userId) {
+        throw new EventError(errandCreditErrorCodes.COURIER_MISMATCH, 'The courier and requester must differ.')
       }
-      const command: TransferCreditCommand = {
+      await this.creditService.transferCredit({
         transactionReference: { service: 'errand', id: errandId, type: 'CREDIT_TRANSFER' },
         senderId: reservation.userId,
         receiverId: courierSub,
         amount: reservation.amount,
-      }
-      await this.creditService.transferCredit(command)
+      })
     } else {
-      const command: ReleaseCreditCommand = {
+      await this.creditService.releaseCredit({
         transactionReference: { service: 'errand', id: errandId, type: 'CREDIT_RELEASE' },
         userId: reservation.userId,
         amount: reservation.amount,
+      })
+    }
+  }
+
+  // Kafka may commit the source offset only after processing or DLQ publication succeeds.
+  async handleMessage(message: Pick<KafkaMessage, 'key' | 'value'>): Promise<void> {
+    const key = message.key?.toString()
+    let value: unknown = null
+    let event: ErrandEvent | undefined
+    try {
+      const raw = message.value?.toString() ?? 'null'
+      value = raw
+      value = JSON.parse(raw)
+      event = eventSchema.parse(value) as ErrandEvent
+      await this.process(event)
+      console.log('Processed ' + this.topic + ' for ' + (key ?? 'unknown'))
+    } catch (error) {
+      const rejection = classify(error)
+      const failed: ErrandErrorEvent = {
+        ...(event ?? dlqEvent(value, key)),
+        error: { code: rejection.code, message: rejection.message },
       }
-      await this.creditService.releaseCredit(command)
+      // Propagate a DLQ failure; acknowledging the source then would lose the event.
+      await this.producer.send({
+        topic: this.dlqTopic,
+        messages: [{ key: failed.payload.errandId, value: JSON.stringify(failed) }],
+      })
+      console.warn('Rejected ' + failed.eventType + ' for ' + failed.payload.errandId + ': ' + rejection.code)
     }
   }
 
@@ -124,20 +161,7 @@ export class ErrandEventConsumer {
     await this.producer.connect()
     await this.consumer.connect()
     await this.consumer.subscribe({ topic: this.topic, fromBeginning: true })
-    await this.consumer.run({
-      eachMessage: async ({ message }) => {
-        const value: unknown = JSON.parse(message.value?.toString() ?? 'null')
-        const event: ErrandEvent = errandEventSchema.parse(value)
-        if (
-          event.eventType === ErrandEventTypes.ERRAND_COMPLETED ||
-          event.eventType === ErrandEventTypes.ERRAND_CANCELLED ||
-          event.eventType === ErrandEventTypes.ERRAND_EXPIRED
-        ) {
-          await this.processErrandOutcome(event)
-        }
-        console.log(`Processed ${this.topic} for ${message.key?.toString() ?? 'unknown'}`)
-      },
-    })
+    await this.consumer.run({ eachMessage: async ({ message }) => this.handleMessage(message) })
   }
 
   async stop(): Promise<void> {

@@ -36,13 +36,14 @@ export async function disconnectProducer(): Promise<void> {
 export async function publishEvent(
   eventType: ErrandEventType,
   payload: ErrandEventPayload,
+  eventId: string = crypto.randomUUID(),
 ): Promise<RecordMetadata[]> {
   if (!payload.errandId) {
     throw new Error('errandId is required for Kafka message key')
   }
 
   const event: ErrandEvent = {
-    eventId: crypto.randomUUID(),
+    eventId,
     eventType,
     timestamp: new Date().toISOString(),
     version: 1,

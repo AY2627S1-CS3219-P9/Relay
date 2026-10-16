@@ -29,6 +29,8 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const requesterMismatchId = randomUUID()
   const courierMissingId = randomUUID()
   const unreservedId = randomUUID()
+  const failedReservedId = randomUUID()
+  const failedUnreservedId = randomUUID()
   const ids = [requester, courier]
   const userService = createServer((req, res) => {
     const subject =
@@ -142,6 +144,33 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(finalRequester.body.availableCredit, 90)
     assert.equal(finalRequester.body.reserveCredit, 0)
 
+    assert.equal((await reserve(failedReservedId, 7)).status, 200)
+    await send(topics.errandEvents, failedReservedId, 'ErrandCreationFailed', {
+      errandId: failedReservedId,
+      requesterSub: requester,
+    })
+    await send(topics.errandEvents, failedUnreservedId, 'ErrandCreationFailed', {
+      errandId: failedUnreservedId,
+      requesterSub: requester,
+    })
+    await until(async () => {
+      const credit = await request('requester')
+      const released = await prisma.transactionRecord.count({
+        where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+      })
+      return released === 1 && credit.body.availableCredit === 90 && credit.body.reserveCredit === 0
+    })
+    const lateReservation = await reserve(failedReservedId, 7)
+    assert.equal(lateReservation.status, 409)
+    assert.equal(lateReservation.body.code, 'TRANSACTION_CONFLICT')
+    assert.equal((await reserve(confirmId, 10)).status, 409)
+    assert.equal(await prisma.transactionRecord.count({
+      where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+    }), 1)
+    assert.equal(await prisma.transactionRecord.count({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RESERVE` },
+    }), 0)
+
     assert.equal((await reserve(requesterMismatchId, 1)).status, 200)
     assert.equal((await reserve(courierMissingId, 1)).status, 200)
     await send(topics.errandEvents, unreservedId, 'ErrandExpired', {
@@ -174,6 +203,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     const afterRejectedEvents = await request('requester')
     assert.equal(afterRejectedEvents.body.availableCredit, 88)
     assert.equal(afterRejectedEvents.body.reserveCredit, 2)
+    assert.equal((await reserve(failedUnreservedId, 7)).status, 200)
 
     await send(topics.userEvents, requester, 'UserDeleted', { cognitoSub: requester })
     await until(async () => (await request('requester')).status === 404)

@@ -13,11 +13,13 @@ import {
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { EventService } from './event.service.js'
+import { CreditClient } from '../clients/credit.client.js'
 
 export class ErrandService {
   constructor(
     private readonly repository: ErrandRepository,
-    private readonly eventService: EventService,
+    private readonly eventService: EventService = new EventService(),
+    private readonly creditClient: CreditClient = new CreditClient(),
   ) {}
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
@@ -29,11 +31,9 @@ export class ErrandService {
       )
     }
 
-    const errand = await this.repository.create(user.sub, request)
-
-    await this.eventService.onErrandCreated(errand)
-
-    return errand
+    const id = await this.repository.createPending(user.sub)
+    await this.creditClient.reserve(id, user.sub, request.creditAmount)
+    return this.repository.completePending(id, user.sub, request)
   }
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {

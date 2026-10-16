@@ -13,29 +13,97 @@ import type {
 export class ErrandRepository {
   constructor(private readonly prisma: PrismaClient = new PrismaClient()) {}
 
-  async create(requesterSub: string, request: CreateErrandRequest): Promise<Errand> {
-    const row = await this.prisma.errand.create({
-      data: {
-        requesterSub,
-        supplierId: request.supplierDetails.supplierId,
-        name: request.name,
-        pickupLat: request.pickupLocation.lat,
-        pickupLng: request.pickupLocation.lng,
-        pickupBuildingName: request.pickupLocation.buildingName,
-        pickupFloorNumber: request.pickupLocation.floorNumber,
-        targetLat: request.targetLocation.lat,
-        targetLng: request.targetLocation.lng,
-        targetBuildingName: request.targetLocation.buildingName,
-        targetFloorNumber: request.targetLocation.floorNumber,
-        supplierName: request.supplierDetails.supplierName,
-        serviceType: request.supplierDetails.serviceType,
-        deliveryDescription: request.deliveryDetails.description,
-        deliveryInstructions: request.deliveryDetails.instructions,
-        creditAmount: request.creditAmount,
-        expiresAt: request.expiresAt ? new Date(request.expiresAt) : defaultExpiry(),
-      },
+  async createPending(requesterSub: string): Promise<string> {
+    const id = crypto.randomUUID()
+    await this.prisma.pendingErrand.create({ data: { id, requesterSub } })
+    return id
+  }
+
+  async completePending(id: string, requesterSub: string, request: CreateErrandRequest): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const pending = await tx.pendingErrand.findUnique({ where: { id } })
+      if (!pending || pending.requesterSub !== requesterSub) {
+        throw new Error('Pending errand was already recovered.')
+      }
+      const row = await tx.errand.create({
+        data: {
+          id,
+          requesterSub,
+          supplierId: request.supplierDetails.supplierId,
+          name: request.name,
+          pickupLat: request.pickupLocation.lat,
+          pickupLng: request.pickupLocation.lng,
+          pickupBuildingName: request.pickupLocation.buildingName,
+          pickupFloorNumber: request.pickupLocation.floorNumber,
+          targetLat: request.targetLocation.lat,
+          targetLng: request.targetLocation.lng,
+          targetBuildingName: request.targetLocation.buildingName,
+          targetFloorNumber: request.targetLocation.floorNumber,
+          supplierName: request.supplierDetails.supplierName,
+          serviceType: request.supplierDetails.serviceType,
+          deliveryDescription: request.deliveryDetails.description,
+          deliveryInstructions: request.deliveryDetails.instructions,
+          creditAmount: request.creditAmount,
+          expiresAt: request.expiresAt ? new Date(request.expiresAt) : defaultExpiry(),
+        },
+      })
+      await tx.pendingErrand.delete({ where: { id } })
+      await tx.errandEventOutbox.create({
+        data: {
+          id: crypto.randomUUID(),
+          eventType: 'ErrandCreated',
+          payload: {
+            errandId: id,
+            requesterSub,
+            supplierId: row.supplierId,
+            creditAmount: row.creditAmount,
+            expiresAt: row.expiresAt.toISOString(),
+          },
+        },
+      })
+      return toContract(row)
     })
-    return toContract(row)
+  }
+
+  async recoverExpiredPending(cutoff = new Date(Date.now() - 30_000)): Promise<number> {
+    const rows = await this.prisma.pendingErrand.findMany({
+      where: { createdAt: { lt: cutoff } },
+      take: 100,
+      orderBy: { createdAt: 'asc' },
+    })
+    let count = 0
+    for (const row of rows) {
+      await this.prisma.$transaction(async (tx) => {
+        const removed = await tx.pendingErrand.deleteMany({
+          where: { id: row.id, createdAt: { lt: cutoff } },
+        })
+        if (!removed.count) return
+        await tx.errandEventOutbox.create({
+          data: {
+            id: crypto.randomUUID(),
+            eventType: 'ErrandCreationFailed',
+            payload: { errandId: row.id, requesterSub: row.requesterSub },
+          },
+        })
+        count++
+      })
+    }
+    return count
+  }
+
+  async unpublishedEvents() {
+    return this.prisma.errandEventOutbox.findMany({
+      where: { publishedAt: null },
+      take: 100,
+      orderBy: { createdAt: 'asc' },
+    })
+  }
+
+  async markEventPublished(id: string): Promise<void> {
+    await this.prisma.errandEventOutbox.update({
+      where: { id },
+      data: { publishedAt: new Date() },
+    })
   }
 
   async listVisibleTo(userSub: string): Promise<Errand[]> {

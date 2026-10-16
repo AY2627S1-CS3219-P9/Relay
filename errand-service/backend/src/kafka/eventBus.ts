@@ -1,8 +1,12 @@
-import { ErrandEventTypes, type ErrandEventPayload, type ErrandStatus } from '@relay/contracts'
+import { ErrandEventTypes, type ErrandEventPayload, type ErrandEventType, type ErrandStatus } from '@relay/contracts'
 import { publishEvent } from './producer.js'
 
 /** Publishes errand lifecycle events to the topic provisioned by kafka-init. */
 export class EventBus {
+  async publishStoredEvent(id: string, eventType: ErrandEventType, payload: ErrandEventPayload): Promise<void> {
+    await publishEvent(eventType, payload, id)
+  }
+
   async publishErrandCreated(
     errandId: string,
     payload: {

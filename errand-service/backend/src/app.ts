@@ -11,6 +11,7 @@ import { createErrandRouter } from './routes/errand.routes.js'
 import { connectProducer, disconnectProducer } from './kafka/producer.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
+import { PendingErrandWorker } from './workers/pending-errand.worker.js'
 
 export function createApp() {
   const app = express()
@@ -59,7 +60,8 @@ if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
 
   // Connect Kafka producer on startup
-  connectProducer().catch((err) => {
+  const worker = new PendingErrandWorker(new ErrandRepository())
+  connectProducer().then(() => worker.start()).catch((err) => {
     console.error('Failed to connect Kafka producer:', err)
     process.exit(1)
   })
@@ -70,6 +72,7 @@ if (process.env.NODE_ENV !== 'test') {
 
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
+    worker.stop()
     server.close(async () => {
       await disconnectProducer()
       process.exit(0)

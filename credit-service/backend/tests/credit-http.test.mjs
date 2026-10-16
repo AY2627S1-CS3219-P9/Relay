@@ -247,8 +247,8 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       assert.equal(first.body.availableCredit, 65)
       assert.equal(first.body.reserveCredit, 22.75)
       const replay = await request('/api/credit/reserve', 'relay_session=owner', 'POST', body)
-      assert.equal(replay.body.status, 'ALREADY_RESERVED')
-      assert.equal(replay.body.availableCredit, 65)
+      assert.equal(replay.status, 409)
+      assert.equal(replay.body.code, 'TRANSACTION_CONFLICT')
       assert.equal(
         (
           await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
@@ -256,7 +256,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
             amount: 9,
           })
         ).status,
-        400,
+        409,
       )
       const insufficient = await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
         ...body,
@@ -304,10 +304,8 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
         request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
       ])
-      assert.deepEqual(responses.map((response) => response.body.status).sort(), [
-        'ALREADY_RESERVED',
-        'RESERVE_SUCCESS',
-      ])
+      assert.deepEqual(responses.map((response) => response.status).sort(), [200, 409])
+      assert.equal(responses.find((response) => response.status === 409).body.code, 'TRANSACTION_CONFLICT')
       const balance = await request('/api/credit', 'relay_session=owner')
       assert.equal(balance.body.availableCredit, 15)
       assert.equal(balance.body.reserveCredit, 72.75)
