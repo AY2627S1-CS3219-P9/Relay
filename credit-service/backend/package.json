@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^6.16.0",
     "@relay/contracts": "*",
+    "@relay/credit-prisma": "*",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "kafkajs": "^2.2.4",

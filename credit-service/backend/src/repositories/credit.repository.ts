@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@generated/prisma-client'
+import { PrismaClient, Prisma } from '@relay/credit-prisma'
 import type {
   AllocateInitialCreditCommand,
   CreditBalance,
