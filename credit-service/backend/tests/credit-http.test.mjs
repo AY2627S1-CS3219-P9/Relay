@@ -191,7 +191,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       },
     )
     await t.test('internal reserve validates service token, amount, and reference', async () => {
-      const reference = { service: 'errand', id: `${prefix}-reserve`, type: 'CREDIT_RESERVE' }
+      const reference = { service: 'delivery', id: `${prefix}-reserve`, type: 'CREDIT_RESERVE' }
       const body = { transactionReference: reference, userId: owner, amount: 10.25 }
       assert.equal(
         (await request('/internal/credit/reserve', 'relay_session=owner', 'POST')).status,

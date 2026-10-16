@@ -35,7 +35,9 @@ export function reserveCreditRequest(req: Request, res: Response): ReserveCredit
   }
   const ref = reference as Record<string, unknown>
   if (
-    ref.service !== 'errand' ||
+    typeof ref.service !== 'string' ||
+    !ref.service.trim() ||
+    ref.service.includes(':') ||
     typeof ref.id !== 'string' ||
     !ref.id.trim() ||
     ref.id.includes(':') ||

@@ -106,10 +106,11 @@ export class ErrandEventConsumer {
     if (event.eventType === ErrandEventTypes.ERRAND_CREATION_FAILED) {
       if (!requesterSub)
         throw new EventError(errandCreditErrorCodes.INVALID_EVENT, 'The requester is missing.')
-      await this.creditService.closeUnreservedCredit(errandId, requesterSub)
+      await this.creditService.closeUnreservedCredit(
+        { service: 'errand', id: errandId, type: 'CREDIT_RELEASE' }, requesterSub)
       return
     }
-    const reservation = await this.creditService.findReservation(errandId)
+    const reservation = await this.creditService.findReservation({ service: 'errand', id: errandId })
     if (!reservation)
       throw new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
     if (reservation.amount === 0)
