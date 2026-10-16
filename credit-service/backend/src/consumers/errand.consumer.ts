@@ -47,6 +47,12 @@ function classify(error: unknown): EventError {
     return new EventError(errandCreditErrorCodes.INVALID_EVENT, 'The event is not a valid errand event.')
   }
   const message = error instanceof Error ? error.message : ''
+  if (message.startsWith('Reservation requester mismatch')) {
+    return new EventError(errandCreditErrorCodes.REQUESTER_MISMATCH, 'The requester does not match the credit reservation.')
+  }
+  if (message.startsWith('No prior credit reservation')) {
+    return new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
+  }
   if (message.startsWith('Cannot release credit') || message.startsWith('Cannot transfer credit')) {
     return new EventError(errandCreditErrorCodes.OUTCOME_CONFLICT, 'A conflicting credit outcome was already recorded.')
   }
@@ -97,11 +103,17 @@ export class ErrandEventConsumer {
     const handled: readonly string[] = [ErrandEventTypes.ERRAND_CREATION_FAILED, ErrandEventTypes.ERRAND_COMPLETED,
       ErrandEventTypes.ERRAND_CANCELLED, ErrandEventTypes.ERRAND_EXPIRED]
     if (!handled.includes(event.eventType)) return
-    const reservation = await this.creditService.findReservation(errandId)
-    if (!reservation) {
-      if (event.eventType === ErrandEventTypes.ERRAND_CREATION_FAILED) return
-      throw new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
+    if (event.eventType === ErrandEventTypes.ERRAND_CREATION_FAILED) {
+      if (!requesterSub)
+        throw new EventError(errandCreditErrorCodes.INVALID_EVENT, 'The requester is missing.')
+      await this.creditService.closeUnreservedCredit(errandId, requesterSub)
+      return
     }
+    const reservation = await this.creditService.findReservation(errandId)
+    if (!reservation)
+      throw new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
+    if (reservation.amount === 0)
+      throw new EventError(errandCreditErrorCodes.OUTCOME_CONFLICT, 'A conflicting credit outcome was already recorded.')
     if (requesterSub && requesterSub !== reservation.userId) {
       throw new EventError(errandCreditErrorCodes.REQUESTER_MISMATCH, 'The requester does not match the credit reservation.')
     }

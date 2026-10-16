@@ -20,6 +20,7 @@ function harness(overrides = {}) {
     findReservation: async () => ({ userId: 'requester', amount: 10 }),
     releaseCredit: async () => { calls.push('release') },
     transferCredit: async () => { calls.push('transfer') },
+    closeUnreservedCredit: async () => { calls.push('close') },
     ...overrides,
   }
   const kafka = {
@@ -56,12 +57,27 @@ test('missing reservation and credit write errors reach the DLQ', async () => {
   await missing.handle(event('ErrandExpired', {}))
   assert.equal(missing.sent[0].error.code, 'ERRAND_RESERVATION_NOT_FOUND')
 
+  const earlyFailure = harness({ findReservation: async () => null })
+  await earlyFailure.handle(event('ErrandCreationFailed', { requesterSub: 'requester' }))
+  assert.deepEqual(earlyFailure.calls, ['close'])
+  assert.equal(earlyFailure.sent.length, 0)
+
+  const missingRequester = harness()
+  await missingRequester.handle(event('ErrandCreationFailed', {}))
+  assert.equal(missingRequester.sent[0].error.code, 'ERRAND_EVENT_INVALID')
+  assert.equal(missingRequester.calls.length, 0)
+
+  const closed = harness({ findReservation: async () => ({ userId: 'requester', amount: 0 }) })
+  await closed.handle(event('ErrandCompleted', { requesterSub: 'requester', courierSub: 'courier' }))
+  assert.equal(closed.sent[0].error.code, 'ERRAND_CREDIT_OUTCOME_CONFLICT')
+  assert.equal(closed.calls.length, 0)
+
   const conflict = harness({ releaseCredit: async () => { throw new Error('Cannot release credit for a confirmed errand.') } })
   await conflict.handle(event('ErrandCancelled', {}))
   assert.equal(conflict.sent[0].error.code, 'ERRAND_CREDIT_OUTCOME_CONFLICT')
 
-  const database = harness({ findReservation: async () => { throw new Error('database unavailable') } })
-  await database.handle(event('ErrandCreationFailed', {}))
+  const database = harness({ closeUnreservedCredit: async () => { throw new Error('database unavailable') } })
+  await database.handle(event('ErrandCreationFailed', { requesterSub: 'requester' }))
   assert.equal(database.sent[0].error.code, 'ERRAND_CREDIT_OPERATION_FAILED')
 })
 

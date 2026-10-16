@@ -126,12 +126,19 @@ Credit Service consumes `KAFKA_TOPIC_ERRAND_EVENTS`. It maps
 `ErrandCompleted` to a credit transfer, and `ErrandCancelled` or
 `ErrandExpired` to a release. It ignores the other errand event types.
 Credit Service uses the errand ID to read the prior reservation and takes
-the requester and amount from that record. If no reservation exists, it
-publishes an `ErrandErrorEvent` to `KAFKA_TOPIC_ERRAND_DLQ` with a credit
-error code and message. It also checks the requester when provided and
-requires a courier for completed errands. If DLQ publication fails, the
-source event is retried. Transaction references make successful replays
-idempotent and reject conflicting outcomes.
+the requester and amount from that record. A completion, cancellation, or
+expiry without a reservation is sent as an `ErrandErrorEvent` to
+`KAFKA_TOPIC_ERRAND_DLQ`. When `ErrandCreationFailed` arrives before its
+reservation, Credit Service atomically records a zero-amount reserve and
+release without changing the balance. This prevents a delayed HTTP
+reservation from charging the user. If a reservation already exists, that
+failure event releases its reserved amount instead.
+
+Release and transfer take the same per-reference database lock as reserve.
+Exactly one terminal credit outcome can be recorded for an errand; a later
+conflicting event goes to the DLQ. Duplicate events with the same outcome
+are idempotent. Credit Service checks the requester and requires a courier
+for completed errands. If DLQ publication fails, the source event is retried.
 
 A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
 leaves a history record for the remaining total. A delayed registration event

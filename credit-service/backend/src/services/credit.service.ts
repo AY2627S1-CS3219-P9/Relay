@@ -24,6 +24,10 @@ export class CreditService {
     await this.repository.allocateInitialCredit(command)
   }
 
+  async closeUnreservedCredit(referenceId: string, userId: string): Promise<void> {
+    await this.repository.closeUnreservedCredit(referenceId, userId)
+  }
+
   async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
     return this.repository.reserveCredit(request)
   }

@@ -168,9 +168,17 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(await prisma.transactionRecord.count({
       where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
     }), 1)
-    assert.equal(await prisma.transactionRecord.count({
+    await until(async () => (await prisma.transactionRecord.count({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+    })) === 1)
+    const zeroReserve = await prisma.transactionRecord.findUniqueOrThrow({
       where: { reference: `errand:${failedUnreservedId}:CREDIT_RESERVE` },
-    }), 0)
+    })
+    const zeroRelease = await prisma.transactionRecord.findUniqueOrThrow({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+    })
+    assert.equal(zeroReserve.amount.toNumber(), 0)
+    assert.equal(zeroRelease.amount.toNumber(), 0)
 
     assert.equal((await reserve(requesterMismatchId, 1)).status, 200)
     assert.equal((await reserve(courierMissingId, 1)).status, 200)
@@ -201,10 +209,23 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       assert.ok(event.payload.errandId)
       assert.ok(event.error.message)
     }
+    await send(topics.errandEvents, confirmId, 'ErrandCancelled', {
+      errandId: confirmId, requesterSub: requester,
+    })
+    await send(topics.errandEvents, cancelId, 'ErrandCompleted', {
+      errandId: cancelId, requesterSub: requester, courierSub: courier,
+    })
+    await until(async () => dlqEvents.length === 5)
+    assert.deepEqual(
+      new Set(dlqEvents.filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
+        .map((item) => item.payload.errandId)),
+      new Set([confirmId, cancelId]),
+    )
+
     const afterRejectedEvents = await request('requester')
     assert.equal(afterRejectedEvents.body.availableCredit, 88)
     assert.equal(afterRejectedEvents.body.reserveCredit, 2)
-    assert.equal((await reserve(failedUnreservedId, 7)).status, 200)
+    assert.equal((await reserve(failedUnreservedId, 7)).status, 409)
 
     await send(topics.userEvents, requester, 'UserDeleted', { cognitoSub: requester })
     await until(async () => (await request('requester')).status === 404)

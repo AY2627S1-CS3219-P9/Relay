@@ -17,9 +17,9 @@ describe.skipIf(!enabled)('transactional errand outbox', () => {
   it('stores lifecycle payloads alongside their errand changes', async () => {
     const prisma = new PrismaClient()
     const repository = new ErrandRepository(prisma)
-    const id = await repository.createPending('requester')
+    const id = await repository.addPendingErrand('requester')
     try {
-      await repository.completePending(id, 'requester', request)
+      await repository.createErrand(id, 'requester', request)
       await repository.assignCourier(id, 'courier')
       await repository.pickUp(id, 'courier')
       await repository.deliver(id, 'courier')
@@ -60,13 +60,13 @@ describe.skipIf(!enabled)('transactional errand outbox', () => {
   it('preserves cancellation and expiry payload differences', async () => {
     const prisma = new PrismaClient()
     const repository = new ErrandRepository(prisma)
-    const cancelId = await repository.createPending('requester')
-    const expiryId = await repository.createPending('requester')
+    const cancelId = await repository.addPendingErrand('requester')
+    const expiryId = await repository.addPendingErrand('requester')
     try {
-      await repository.completePending(cancelId, 'requester', request)
+      await repository.createErrand(cancelId, 'requester', request)
       await repository.assignCourier(cancelId, 'courier')
       await repository.cancel(cancelId, 'requester')
-      await repository.completePending(expiryId, 'requester', request)
+      await repository.createErrand(expiryId, 'requester', request)
       await repository.assignCourier(expiryId, 'courier')
       await repository.dropCourier(expiryId, 'EXPIRED', 'courier')
       const cancelled = await prisma.errandEventOutbox.findFirstOrThrow({
@@ -101,11 +101,11 @@ describe.skipIf(!enabled)('transactional errand outbox', () => {
   it('records automatic expiry and prunes only published outbox rows', async () => {
     const prisma = new PrismaClient()
     const repository = new ErrandRepository(prisma)
-    const id = await repository.createPending('requester')
+    const id = await repository.addPendingErrand('requester')
     const oldId = crypto.randomUUID()
     const pendingId = crypto.randomUUID()
     try {
-      await repository.completePending(id, 'requester', {
+      await repository.createErrand(id, 'requester', {
         ...request, expiresAt: '2000-01-01T00:00:00.000Z',
       })
       expect(await repository.expireOpenErrands(new Date('2000-01-02T00:00:00.000Z'))).toBe(1)
