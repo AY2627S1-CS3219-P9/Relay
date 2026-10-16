@@ -13,6 +13,8 @@ import type {
   SupplierErrandViewRequest,
 } from '@relay/contracts'
 
+export const MAX_ERRANDS_PER_COURIER = 5
+
 async function appendEvent(
   tx: Prisma.TransactionClient,
   event: { eventType: ErrandEventType; payload: ErrandEventPayload },
@@ -236,7 +238,11 @@ export class ErrandRepository {
 
   async findOpenById(errandId: string): Promise<Errand | null> {
     const row = await this.prisma.errand.findFirst({
-      where: { id: errandId, status: 'OPEN', courierSub: null },
+      where: {
+        id: errandId,
+        status: 'OPEN',
+        courierSub: null,
+      },
     })
     return row ? toContract(row) : null
   }
@@ -246,6 +252,17 @@ export class ErrandRepository {
       where: { id: errandId, status: 'ACCEPTED' },
     })
     return row ? toContract(row) : null
+  }
+
+  async checkCourierReachMaxErrand(courierSub: string): Promise<boolean> {
+    // Max errands in ACCEPTED, PICKED_UP, or DELIVERED states
+    const result = await this.prisma.errand.count({
+      where: {
+        courierSub,
+        status: { in: ['ACCEPTED', 'PICKED_UP', 'DELIVERED'] },
+      },
+    })
+    return result >= MAX_ERRANDS_PER_COURIER
   }
 
   async assignCourier(errandId: string, courierSub: string): Promise<Errand> {
