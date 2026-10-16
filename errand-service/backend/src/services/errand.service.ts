@@ -13,11 +13,24 @@ import {
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { CreditClient } from '../clients/credit.client.js'
+import { SupplierClient } from '../clients/supplier.client.js'
+
+export const LIFECYCLE_ORDER: Record<ErrandStatus, number> = {
+  DELIVERED: 0,
+  PICKED_UP: 1,
+  ACCEPTED: 2,
+  OPEN: 3,
+  EXPIRED: 4,
+  CANCELLED: 5,
+  CONFIRMED: 6,
+  DELETED: 7,
+}
 
 export class ErrandService {
   constructor(
     private readonly repository: ErrandRepository,
     private readonly creditClient: CreditClient = new CreditClient(),
+    private readonly supplierClient: SupplierClient,
   ) {}
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
@@ -27,6 +40,27 @@ export class ErrandService {
         'A verified email is required to create an errand.',
         403,
       )
+    }
+
+    try {
+      await this.supplierClient.validateSelection({
+        supplierId: request.supplierDetails.supplierId,
+        serviceType: request.supplierDetails.serviceType as ServiceType,
+      })
+    } catch (error) {
+      if (error instanceof ErrandServiceError) {
+        if (error.code === ErrandErrors.SUPPLIER_UNAVAILABLE) {
+          throw error
+        }
+
+        throw new ErrandServiceError(
+          ErrandErrors.INVALID_ERRAND,
+          error.message,
+          error.statusCode,
+          error.fieldErrors,
+        )
+      }
+      throw error
     }
 
     const id = await this.repository.addPendingErrand(user.sub)

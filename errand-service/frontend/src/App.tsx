@@ -30,14 +30,14 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = {
-  OPEN: 0,
-  ACCEPTED: 1,
-  PICKED_UP: 2,
-  DELIVERED: 3,
-  CONFIRMED: 4,
+  DELIVERED: 0,
+  PICKED_UP: 1,
+  ACCEPTED: 2,
+  OPEN: 3,
+  EXPIRED: 4,
   CANCELLED: 5,
-  EXPIRED: 6,
-  DELETED: 6,
+  CONFIRMED: 6,
+  DELETED: 7,
 }
 
 export default function App({
