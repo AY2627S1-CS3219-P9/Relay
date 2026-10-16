@@ -16,11 +16,8 @@ async function until(check) {
 
 test('new users view, reserve, and transfer credit through HTTP and Kafka', async () => {
   const topics = {
-    userRegistered: process.env.KAFKA_TOPIC_USER_REGISTERED,
-    userDeleted: process.env.KAFKA_TOPIC_USER_DELETED,
-    errandConfirmed: process.env.KAFKA_TOPIC_ERRAND_CONFIRMED,
-    errandCancelled: process.env.KAFKA_TOPIC_ERRAND_CANCELLED,
-    errandExpired: process.env.KAFKA_TOPIC_ERRAND_EXPIRED,
+    userEvents: process.env.KAFKA_TOPIC_USER_EVENTS,
+    errandEvents: process.env.KAFKA_TOPIC_ERRAND_EVENTS,
   }
   assert.ok(Object.values(topics).every(Boolean))
   const requester = randomUUID()
@@ -62,28 +59,24 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   }
   const producer = new Kafka({
     clientId: 'relay-credit-workflow-test',
-    brokers: ['kafka:9092'],
+    brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
   }).producer()
-  const send = (topic, key, value) =>
+  const send = (topic, key, eventType, payload) =>
     producer.send({
       topic,
-      messages: [{ key, value: JSON.stringify(value) }],
+      messages: [
+        {
+          key,
+          value: JSON.stringify({
+            eventId: randomUUID(),
+            eventType,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload,
+          }),
+        },
+      ],
     })
-  const errand = (id, status, creditAmount) => ({
-    errand: {
-      id,
-      requesterSub: requester,
-      courierSub: courier,
-      supplierId: null,
-      pickupLocation: { lat: 0, lng: 0, buildingName: 'Test', floorNumber: 1 },
-      deliveryDetails: { description: 'Test delivery' },
-      creditAmount,
-      status,
-      expiresAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  })
   const reserve = (id, amount) =>
     request('requester', '/api/credit/reserve', {
       transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
@@ -92,7 +85,8 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
   try {
     await producer.connect()
-    for (const userId of ids) await send(topics.userRegistered, userId, { cognitoSub: userId })
+    for (const userId of ids)
+      await send(topics.userEvents, userId, 'UserRegistered', { cognitoSub: userId })
     await until(async () => (await request('requester')).status === 200)
     await until(async () => (await request('courier')).status === 200)
     assert.equal((await request('requester')).body.availableCredit, 100)
@@ -111,9 +105,16 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(reserved.body.availableCredit, 80)
     assert.equal(reserved.body.reserveCredit, 20)
 
-    await send(topics.errandConfirmed, confirmId, errand(confirmId, 'CONFIRMED', 10))
-    await send(topics.errandCancelled, cancelId, errand(cancelId, 'CANCELLED', 5))
-    await send(topics.errandExpired, expireId, errand(expireId, 'EXPIRED', 5))
+    await send(topics.errandEvents, confirmId, 'ErrandCompleted', {
+      errandId: confirmId,
+      requesterSub: requester,
+      courierSub: courier,
+    })
+    await send(topics.errandEvents, cancelId, 'ErrandCancelled', {
+      errandId: cancelId,
+      requesterSub: requester,
+    })
+    await send(topics.errandEvents, expireId, 'ErrandExpired', { errandId: expireId })
     await until(async () => {
       const requesterCredit = await request('requester')
       const courierCredit = await request('courier')
@@ -127,7 +128,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(finalRequester.body.availableCredit, 90)
     assert.equal(finalRequester.body.reserveCredit, 0)
 
-    await send(topics.userDeleted, requester, { cognitoSub: requester })
+    await send(topics.userEvents, requester, 'UserDeleted', { cognitoSub: requester })
     await until(async () => (await request('requester')).status === 404)
   } finally {
     await producer.disconnect()

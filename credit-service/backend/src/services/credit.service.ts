@@ -16,6 +16,10 @@ import { CreditServiceError } from '../types/credit.types.js'
 export class CreditService {
   constructor(private readonly repository: CreditRepository) {}
 
+  async findReservation(errandId: string): Promise<{ userId: string; amount: number } | null> {
+    return this.repository.findReservation(errandId)
+  }
+
   async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
     await this.repository.allocateInitialCredit(command)
   }

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { getEnv } from '../config/env.js'
-import type { UserDeletedEvent, UserRegisteredEvent } from '@relay/contracts'
+import { UserEventTypes, type UserDeletedEvent, type UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
 export const prisma = new PrismaClient()
@@ -51,9 +51,15 @@ export class UserRepository {
       })
       await tx.userOutboxEvent.create({
         data: {
-          topic: getEnv().kafkaTopicUserRegistered,
+          topic: getEnv().kafkaTopicUserEvents,
           key: cognitoSub,
-          payload: { cognitoSub } satisfies UserRegisteredEvent,
+          payload: {
+            eventId: crypto.randomUUID(),
+            eventType: UserEventTypes.USER_REGISTERED,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload: { cognitoSub },
+          } satisfies UserRegisteredEvent,
         },
       })
       return created
@@ -79,9 +85,15 @@ export class UserRepository {
       const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
       await tx.userOutboxEvent.create({
         data: {
-          topic: getEnv().kafkaTopicUserDeleted,
+          topic: getEnv().kafkaTopicUserEvents,
           key: cognitoSub,
-          payload: { cognitoSub } satisfies UserDeletedEvent,
+          payload: {
+            eventId: crypto.randomUUID(),
+            eventType: UserEventTypes.USER_DELETED,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload: { cognitoSub },
+          } satisfies UserDeletedEvent,
         },
       })
       return deleted

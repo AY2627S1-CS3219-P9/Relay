@@ -174,10 +174,10 @@ The following items are intentionally left for the Kubernetes deployment step:
 
 ## Local credit-allocation flow
 
-Docker Compose includes a single-node Kafka broker (host port `9094`) and
+Docker Compose includes a single-node Kafka broker (host port `9092`) and
 Kafbat UI at http://localhost:8081. In the development override, User API is
 available to Postman at http://localhost:3001. Creating a verified user's
-profile publishes `KAFKA_TOPIC_USER_REGISTERED`; Credit Service consumes that event and
+profile publishes `KAFKA_TOPIC_USER_EVENTS`; Credit Service consumes that event and
 allocates 100 credits once. Floci's verification mailbox is at
 http://localhost:4566/_aws/ses.
 

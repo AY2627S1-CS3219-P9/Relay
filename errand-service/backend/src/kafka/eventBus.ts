@@ -4,7 +4,7 @@ import {
   type ErrandEventPayload,
   type ErrandStatus,
 } from '@relay/contracts'
-import { ErrandTopics } from '@relay/contracts'
+import { getEnv } from '../config/env.js'
 import { publishEvent } from './producer.js'
 
 /**
@@ -34,7 +34,11 @@ export class EventBus {
       },
     }
 
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_CREATED, event.payload)
+    await publishEvent(
+      getEnv().kafkaTopicErrandEvents,
+      ErrandEventTypes.ERRAND_CREATED,
+      event.payload,
+    )
   }
 
   async publishErrandStatusChanged(
@@ -54,7 +58,11 @@ export class EventBus {
       requesterSub,
     }
 
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_STATUS_CHANGED, payload)
+    await publishEvent(
+      getEnv().kafkaTopicErrandEvents,
+      ErrandEventTypes.ERRAND_STATUS_CHANGED,
+      payload,
+    )
   }
 
   async publishErrandCompleted(
@@ -76,7 +84,11 @@ export class EventBus {
       },
     }
 
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_COMPLETED, event.payload)
+    await publishEvent(
+      getEnv().kafkaTopicErrandEvents,
+      ErrandEventTypes.ERRAND_COMPLETED,
+      event.payload,
+    )
   }
 
   async publishErrandCancelled(
@@ -92,15 +104,17 @@ export class EventBus {
     if (reason !== undefined) payload.reason = reason
     if (requesterSub !== undefined) payload.requesterSub = requesterSub
 
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_CANCELLED, payload)
+    await publishEvent(getEnv().kafkaTopicErrandEvents, ErrandEventTypes.ERRAND_CANCELLED, payload)
   }
 
   async publishErrandExpired(errandId: string): Promise<void> {
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_EXPIRED, { errandId })
+    await publishEvent(getEnv().kafkaTopicErrandEvents, ErrandEventTypes.ERRAND_EXPIRED, {
+      errandId,
+    })
   }
 
   async publishErrandDeleted(errandId: string, requesterSub: string): Promise<void> {
-    await publishEvent(ErrandTopics.ERRAND_EVENTS, ErrandEventTypes.ERRAND_DELETED, {
+    await publishEvent(getEnv().kafkaTopicErrandEvents, ErrandEventTypes.ERRAND_DELETED, {
       errandId,
       requesterSub,
     })

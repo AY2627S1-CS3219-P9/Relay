@@ -26,8 +26,7 @@ export type UserServiceEnv = {
   s3Bucket: string
   s3ForcePathStyle: boolean
   kafkaBrokers: string[]
-  kafkaTopicUserRegistered: string
-  kafkaTopicUserDeleted: string
+  kafkaTopicUserEvents: string
 }
 
 function required(name: string, fallback?: string): string {
@@ -77,7 +76,6 @@ export function getEnv(): UserServiceEnv {
     s3Bucket: required('S3_BUCKET', 'relay-user-profile-images'),
     s3ForcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
     kafkaBrokers: required('KAFKA_BROKERS', 'kafka:9092').split(','),
-    kafkaTopicUserRegistered: required('KAFKA_TOPIC_USER_REGISTERED'),
-    kafkaTopicUserDeleted: required('KAFKA_TOPIC_USER_DELETED'),
+    kafkaTopicUserEvents: required('KAFKA_TOPIC_USER_EVENTS'),
   }
 }

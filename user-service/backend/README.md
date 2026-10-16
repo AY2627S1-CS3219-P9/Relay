@@ -21,11 +21,12 @@ npm run dev
 ## New user event
 
 The first successful `PATCH /api/user/me` profile creation stores a
-`KAFKA_TOPIC_USER_REGISTERED` outbox event in the same PostgreSQL transaction as the
-profile. The background publisher sends its `UserRegisteredEvent` payload
-`{ cognitoSub }` to Kafka and marks it published only after Kafka acknowledges
+`UserRegistered` envelope in the PostgreSQL outbox in the same transaction
+as the profile. The background publisher sends it to `KAFKA_TOPIC_USER_EVENTS`
+with `payload: { cognitoSub }`, and marks it published after Kafka acknowledges
 it. Pending events are retried after transient broker failures or restarts.
-Configure `KAFKA_BROKERS` for local runs; Compose uses `kafka:9092`.
+Compose uses `kafka:9092`.
 
-Deleting a profile also writes a `UserDeletedEvent` to the same outbox in the
-profile deletion transaction. The publisher sends it to `KAFKA_TOPIC_USER_DELETED`.
+Deleting a profile writes a `UserDeleted` envelope to the same outbox and
+topic in the profile deletion transaction. Both envelopes include an event ID,
+timestamp, event type, and version 1.

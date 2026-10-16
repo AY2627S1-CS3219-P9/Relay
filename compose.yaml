@@ -26,17 +26,16 @@ services:
       timeout: 5s
       retries: 12
 
-#   kafka-init:
-#     build: ./kafka
-#     environment:
-#       KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
-#       KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
-#       KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
-#       KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
-#       KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
-#     depends_on:
-#       kafka:
-#         condition: service_healthy
+  kafka-init:
+    build: ./kafka
+    environment:
+      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+      KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
+    depends_on:
+      kafka:
+        condition: service_healthy
 
   user-postgres:
     image: postgres:16-alpine
@@ -224,6 +223,7 @@ services:
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      KAFKA_BROKERS: kafka:9092
     depends_on:
       errand-api:
         condition: service_healthy
@@ -258,8 +258,8 @@ services:
       S3_BUCKET: relay-user-profile-images
       S3_FORCE_PATH_STYLE: 'true'
       INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
-      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
-      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -286,6 +286,7 @@ services:
       INTERNAL_ERRAND_SERVICE_TOKEN: local-internal-errand-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
       KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
     depends_on:
       errand-postgres:
         condition: service_healthy
@@ -312,11 +313,9 @@ services:
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      KAFKA_TOPIC_USER_REGISTERED: ${KAFKA_TOPIC_USER_REGISTERED:?Set KAFKA_TOPIC_USER_REGISTERED}
-      KAFKA_TOPIC_USER_DELETED: ${KAFKA_TOPIC_USER_DELETED:?Set KAFKA_TOPIC_USER_DELETED}
-      KAFKA_TOPIC_ERRAND_CONFIRMED: ${KAFKA_TOPIC_ERRAND_CONFIRMED:?Set KAFKA_TOPIC_ERRAND_CONFIRMED}
-      KAFKA_TOPIC_ERRAND_CANCELLED: ${KAFKA_TOPIC_ERRAND_CANCELLED:?Set KAFKA_TOPIC_ERRAND_CANCELLED}
-      KAFKA_TOPIC_ERRAND_EXPIRED: ${KAFKA_TOPIC_ERRAND_EXPIRED:?Set KAFKA_TOPIC_ERRAND_EXPIRED}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
     depends_on:
       credit-postgres:
         condition: service_healthy

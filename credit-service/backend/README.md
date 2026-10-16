@@ -109,30 +109,29 @@ spending, and the Kafka registration-to-transfer workflow.
 
 ## New-user credit allocation
 
-When User Service creates a profile, it writes a `UserRegisteredEvent` to its PostgreSQL
-outbox in the same transaction. Its publisher sends the event to the
-`KAFKA_TOPIC_USER_REGISTERED` Kafka topic. The credit consumer in `src/consumers/`
-translates the event to `AllocateInitialCreditCommand` and creates a balance
-with 100 available credits and 0 reserved credits, plus one
-`INITIAL_ALLOCATION` transaction from `SYSTEM` to the Cognito subject.
+User Service writes a version 1 `UserRegistered` envelope to its PostgreSQL
+outbox when a profile is created. Its publisher sends the envelope to
+`KAFKA_TOPIC_USER_EVENTS`. Credit Service reads `payload.cognitoSub` and
+allocates 100 available credits and 0 reserved credits, with one
+`INITIAL_ALLOCATION` transaction from `SYSTEM` to that user.
 
-The reference `user:<cognitoSub>:INITIAL_ALLOCATION` is unique. The balance and
-transaction are written atomically, so a replay does not issue more credit.
-Configure `KAFKA_BROKERS` to match the local cluster.
-Kafbat UI is available at http://localhost:8081; Prisma Studio for credit is
-available at http://localhost:5556 when started in the credit container.
+The `user:<cognitoSub>:INITIAL_ALLOCATION` reference makes replay safe.
+Kafbat UI is available at http://localhost:8081; Prisma Studio for credit
+is available at http://localhost:5556 when started in the credit container.
 
 ## Errand outcomes and user deletion
 
-The consumer maps `ErrandConfirmedEvent` to `TransferCreditCommand`: it moves the
-errand amount from the requester reserved balance to the courier available
-balance. `ErrandCancelledEvent` and `ErrandExpiredEvent` map to
-`ReleaseCreditCommand`, returning the amount from reserved to available.
-These operations require the errand amount to have been reserved already.
-Both operations use `errand:<id>:<transaction type>` as an idempotency key,
-and a conflicting release or transfer for the same errand is rejected.
+Credit Service consumes `KAFKA_TOPIC_ERRAND_EVENTS`. It maps
+`ErrandCompleted` to a credit transfer, and `ErrandCancelled` or
+`ErrandExpired` to a release. It ignores the other errand event types.
+The outcome payload contains an errand ID; Credit Service reads the matching
+reservation record for the requester and amount. A completed event must also
+contain the courier ID. Transaction references make replays idempotent and
+reject conflicting outcomes.
 
-`UserDeletedEvent` maps to `DeleteUserCreditCommand`. It removes the balance
-and leaves a `USER_DELETION` history record containing the remaining total.
-A delayed registration event cannot recreate a deleted balance. Compose's
-`kafka-init` builds `kafka/Dockerfile` and runs `kafka/init.sh` to create all five configured event topics before the APIs start.
+A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
+leaves a history record for the remaining total. A delayed registration event
+cannot recreate a deleted balance. `kafka-init` creates `user-events`,
+`user-events-dlq`, `errand-events`, and `errand-events-dlq` before APIs start.
+The DLQ topics are provisioned; these consumers do not publish failed messages
+to them.

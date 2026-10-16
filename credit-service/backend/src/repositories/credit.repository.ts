@@ -62,6 +62,13 @@ export class CreditRepository {
     })
   }
 
+  async findReservation(errandId: string): Promise<{ userId: string; amount: number } | null> {
+    const record = await prisma.transactionRecord.findUnique({
+      where: { reference: `errand:${errandId}:CREDIT_RESERVE` },
+    })
+    return record ? { userId: record.senderId, amount: record.amount.toNumber() } : null
+  }
+
   async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
     const reference = referenceOf(command)
     if (
