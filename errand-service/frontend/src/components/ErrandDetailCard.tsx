@@ -33,9 +33,9 @@ export function ErrandDetailCard({
   const canPickup = role === 'courier' && errand.status === 'ACCEPTED'
   const canDeliver = role === 'courier' && errand.status === 'PICKED_UP'
   const canConfirm = role === 'requester' && errand.status === 'DELIVERED'
-  const canCancel = role === 'requester' && errand.status === 'OPEN'
+  const canCancel = (role === 'requester' || role === 'courier') && errand.status === 'ACCEPTED'
   const canDrop = role === 'courier' && errand.status === 'ACCEPTED'
-  const canDelete = role === 'requester' && errand.status === 'OPEN'
+  const canDelete = role === 'requester' && ['CANCELLED', 'EXPIRED', 'CONFIRMED'].includes(errand.status)
 
   return (
     <GlassCard className="errand-detail-card relay-mobile-sheet-surface" aria-label={`${errand.name} details`}>

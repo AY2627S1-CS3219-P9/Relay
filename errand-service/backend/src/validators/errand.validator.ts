@@ -1,9 +1,5 @@
 import { z } from 'zod'
-import {
-  ErrandErrors,
-  type CreateErrandRequest,
-  type SupplierErrandViewRequest,
-} from '@relay/contracts'
+import { ErrandErrors, SupplierErrandViewRequest, type CreateErrandRequest } from '@relay/contracts'
 import { ErrandServiceError } from '../types/errand.types.js'
 
 const errandLocationSchema = z.object({
@@ -14,13 +10,23 @@ const errandLocationSchema = z.object({
 })
 
 const deliveryDetailsSchema = z.object({
-  description: z.string().trim().min(1),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000, 'Description must be no more than 5000 characters'),
   instructions: z.string().trim().min(1).optional(),
 })
 
 const createErrandSchema = z.object({
-  supplierId: z.string().trim().min(1),
+  supplierDetails: z.object({
+    supplierId: z.string().trim().min(1),
+    supplierName: z.string().trim().min(1),
+    serviceType: z.number().int(),
+  }),
+  name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
   pickupLocation: errandLocationSchema,
+  targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().nonnegative(),
   expiresAt: z.string().datetime({ offset: true }).refine(

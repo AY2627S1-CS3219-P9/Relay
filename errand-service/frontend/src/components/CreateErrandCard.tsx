@@ -121,11 +121,14 @@ export function CreateErrandCard({
     if (!errandApi || !selectedSupplier || !deadline) return
     setSubmitting(true)
     void errandApi.createErrand({
-      // TODO: persist these temporary fields in the backend errand model.
+      supplierDetails: {
+        supplierId: selectedSupplier.id,
+        supplierName: selectedSupplier.name,
+        serviceType: form.serviceType as ServiceType,
+      },
       name: form.name.trim(),
-      supplierId: selectedSupplier.id,
       pickupLocation: selectedSupplier.location,
-      deliveryLocation: {
+      targetLocation: {
         // TODO: replace placeholder coordinates with target-location integration.
         lat: 0,
         lng: 0,

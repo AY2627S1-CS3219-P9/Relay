@@ -1,15 +1,16 @@
 import type { NextFunction, Request, Response } from 'express'
-import { ErrandErrors, SupplierEventErrors } from '@relay/contracts'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
-import { validateSupplierErrandView } from '../validators/errand.validator.js'
+import { validateCreateErrand, validateSupplierErrandView } from '../validators/errand.validator.js'
+import { ErrandErrors, SupplierEventErrors } from '@relay/contracts'
 
 export class ErrandController {
   constructor(private readonly service: ErrandService) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const errand = await this.service.createErrand(requireUser(req), req.body)
+      const validated = validateCreateErrand(req.body)
+      const errand = await this.service.createErrand(requireUser(req), validated)
       res.status(201).json({ errand })
     } catch (error) {
       next(error)
@@ -56,6 +57,27 @@ export class ErrandController {
     try {
       const supplierId = String(req.params.supplierId)
       const errands = await this.service.listOpenBySupplier(supplierId)
+      res.json({ errands })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  listBySupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const supplierId = String(req.params.supplierId)
+      const scope = req.query.scope
+      if (scope !== undefined && scope !== 'open' && scope !== 'all') {
+        res.status(400).json({
+          code: ErrandErrors.INVALID_ERRAND,
+          message: 'Invalid supplier errand scope.',
+          fieldErrors: { scope: 'Scope must be open or all.' },
+        })
+        return
+      }
+      const errands = scope === 'open'
+        ? await this.service.listOpenBySupplier(supplierId)
+        : await this.service.listBySupplier(supplierId)
       res.json({ errands })
     } catch (error) {
       next(error)
@@ -126,6 +148,15 @@ export class ErrandController {
     }
   }
 
+  drop = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const errand = await this.service.dropErrand(requireUser(req), String(req.params.id))
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.service.deleteErrand(requireUser(req), String(req.params.id))
@@ -135,11 +166,7 @@ export class ErrandController {
     }
   }
 
-  receiveSupplierEvents = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  receiveSupplierEvent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { supplierId, name, location, operatingHours, isOperational, serviceTypes } = req.body
 
@@ -151,7 +178,7 @@ export class ErrandController {
         return
       }
 
-      const result = await this.service.receiveSupplierEvents({
+      const result = await this.service.receiveSupplierEvent({
         supplierId,
         name,
         location,

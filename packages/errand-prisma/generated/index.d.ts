@@ -899,6 +899,10 @@ export namespace Prisma {
     pickupLat: number | null
     pickupLng: number | null
     pickupFloorNumber: number | null
+    targetLat: number | null
+    targetLng: number | null
+    targetFloorNumber: number | null
+    serviceType: number | null
     creditAmount: number | null
   }
 
@@ -906,6 +910,10 @@ export namespace Prisma {
     pickupLat: number | null
     pickupLng: number | null
     pickupFloorNumber: number | null
+    targetLat: number | null
+    targetLng: number | null
+    targetFloorNumber: number | null
+    serviceType: number | null
     creditAmount: number | null
   }
 
@@ -918,6 +926,13 @@ export namespace Prisma {
     pickupLng: number | null
     pickupBuildingName: string | null
     pickupFloorNumber: number | null
+    targetLat: number | null
+    targetLng: number | null
+    targetBuildingName: string | null
+    targetFloorNumber: number | null
+    name: string | null
+    supplierName: string | null
+    serviceType: number | null
     deliveryDescription: string | null
     deliveryInstructions: string | null
     creditAmount: number | null
@@ -936,6 +951,13 @@ export namespace Prisma {
     pickupLng: number | null
     pickupBuildingName: string | null
     pickupFloorNumber: number | null
+    targetLat: number | null
+    targetLng: number | null
+    targetBuildingName: string | null
+    targetFloorNumber: number | null
+    name: string | null
+    supplierName: string | null
+    serviceType: number | null
     deliveryDescription: string | null
     deliveryInstructions: string | null
     creditAmount: number | null
@@ -954,6 +976,13 @@ export namespace Prisma {
     pickupLng: number
     pickupBuildingName: number
     pickupFloorNumber: number
+    targetLat: number
+    targetLng: number
+    targetBuildingName: number
+    targetFloorNumber: number
+    name: number
+    supplierName: number
+    serviceType: number
     deliveryDescription: number
     deliveryInstructions: number
     creditAmount: number
@@ -969,6 +998,10 @@ export namespace Prisma {
     pickupLat?: true
     pickupLng?: true
     pickupFloorNumber?: true
+    targetLat?: true
+    targetLng?: true
+    targetFloorNumber?: true
+    serviceType?: true
     creditAmount?: true
   }
 
@@ -976,6 +1009,10 @@ export namespace Prisma {
     pickupLat?: true
     pickupLng?: true
     pickupFloorNumber?: true
+    targetLat?: true
+    targetLng?: true
+    targetFloorNumber?: true
+    serviceType?: true
     creditAmount?: true
   }
 
@@ -988,6 +1025,13 @@ export namespace Prisma {
     pickupLng?: true
     pickupBuildingName?: true
     pickupFloorNumber?: true
+    targetLat?: true
+    targetLng?: true
+    targetBuildingName?: true
+    targetFloorNumber?: true
+    name?: true
+    supplierName?: true
+    serviceType?: true
     deliveryDescription?: true
     deliveryInstructions?: true
     creditAmount?: true
@@ -1006,6 +1050,13 @@ export namespace Prisma {
     pickupLng?: true
     pickupBuildingName?: true
     pickupFloorNumber?: true
+    targetLat?: true
+    targetLng?: true
+    targetBuildingName?: true
+    targetFloorNumber?: true
+    name?: true
+    supplierName?: true
+    serviceType?: true
     deliveryDescription?: true
     deliveryInstructions?: true
     creditAmount?: true
@@ -1024,6 +1075,13 @@ export namespace Prisma {
     pickupLng?: true
     pickupBuildingName?: true
     pickupFloorNumber?: true
+    targetLat?: true
+    targetLng?: true
+    targetBuildingName?: true
+    targetFloorNumber?: true
+    name?: true
+    supplierName?: true
+    serviceType?: true
     deliveryDescription?: true
     deliveryInstructions?: true
     creditAmount?: true
@@ -1124,11 +1182,18 @@ export namespace Prisma {
     id: string
     requesterSub: string
     courierSub: string | null
-    supplierId: string | null
+    supplierId: string
     pickupLat: number
     pickupLng: number
     pickupBuildingName: string
     pickupFloorNumber: number
+    targetLat: number
+    targetLng: number
+    targetBuildingName: string
+    targetFloorNumber: number
+    name: string
+    supplierName: string
+    serviceType: number
     deliveryDescription: string
     deliveryInstructions: string | null
     creditAmount: number
@@ -1166,6 +1231,13 @@ export namespace Prisma {
     pickupLng?: boolean
     pickupBuildingName?: boolean
     pickupFloorNumber?: boolean
+    targetLat?: boolean
+    targetLng?: boolean
+    targetBuildingName?: boolean
+    targetFloorNumber?: boolean
+    name?: boolean
+    supplierName?: boolean
+    serviceType?: boolean
     deliveryDescription?: boolean
     deliveryInstructions?: boolean
     creditAmount?: boolean
@@ -1184,6 +1256,13 @@ export namespace Prisma {
     pickupLng?: boolean
     pickupBuildingName?: boolean
     pickupFloorNumber?: boolean
+    targetLat?: boolean
+    targetLng?: boolean
+    targetBuildingName?: boolean
+    targetFloorNumber?: boolean
+    name?: boolean
+    supplierName?: boolean
+    serviceType?: boolean
     deliveryDescription?: boolean
     deliveryInstructions?: boolean
     creditAmount?: boolean
@@ -1202,6 +1281,13 @@ export namespace Prisma {
     pickupLng?: boolean
     pickupBuildingName?: boolean
     pickupFloorNumber?: boolean
+    targetLat?: boolean
+    targetLng?: boolean
+    targetBuildingName?: boolean
+    targetFloorNumber?: boolean
+    name?: boolean
+    supplierName?: boolean
+    serviceType?: boolean
     deliveryDescription?: boolean
     deliveryInstructions?: boolean
     creditAmount?: boolean
@@ -1220,6 +1306,13 @@ export namespace Prisma {
     pickupLng?: boolean
     pickupBuildingName?: boolean
     pickupFloorNumber?: boolean
+    targetLat?: boolean
+    targetLng?: boolean
+    targetBuildingName?: boolean
+    targetFloorNumber?: boolean
+    name?: boolean
+    supplierName?: boolean
+    serviceType?: boolean
     deliveryDescription?: boolean
     deliveryInstructions?: boolean
     creditAmount?: boolean
@@ -1229,7 +1322,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ErrandOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "requesterSub" | "courierSub" | "supplierId" | "pickupLat" | "pickupLng" | "pickupBuildingName" | "pickupFloorNumber" | "deliveryDescription" | "deliveryInstructions" | "creditAmount" | "status" | "expiresAt" | "createdAt" | "updatedAt", ExtArgs["result"]["errand"]>
+  export type ErrandOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "requesterSub" | "courierSub" | "supplierId" | "pickupLat" | "pickupLng" | "pickupBuildingName" | "pickupFloorNumber" | "targetLat" | "targetLng" | "targetBuildingName" | "targetFloorNumber" | "name" | "supplierName" | "serviceType" | "deliveryDescription" | "deliveryInstructions" | "creditAmount" | "status" | "expiresAt" | "createdAt" | "updatedAt", ExtArgs["result"]["errand"]>
 
   export type $ErrandPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Errand"
@@ -1238,11 +1331,18 @@ export namespace Prisma {
       id: string
       requesterSub: string
       courierSub: string | null
-      supplierId: string | null
+      supplierId: string
       pickupLat: number
       pickupLng: number
       pickupBuildingName: string
       pickupFloorNumber: number
+      targetLat: number
+      targetLng: number
+      targetBuildingName: string
+      targetFloorNumber: number
+      name: string
+      supplierName: string
+      serviceType: number
       deliveryDescription: string
       deliveryInstructions: string | null
       creditAmount: number
@@ -1681,6 +1781,13 @@ export namespace Prisma {
     readonly pickupLng: FieldRef<"Errand", 'Float'>
     readonly pickupBuildingName: FieldRef<"Errand", 'String'>
     readonly pickupFloorNumber: FieldRef<"Errand", 'Int'>
+    readonly targetLat: FieldRef<"Errand", 'Float'>
+    readonly targetLng: FieldRef<"Errand", 'Float'>
+    readonly targetBuildingName: FieldRef<"Errand", 'String'>
+    readonly targetFloorNumber: FieldRef<"Errand", 'Int'>
+    readonly name: FieldRef<"Errand", 'String'>
+    readonly supplierName: FieldRef<"Errand", 'String'>
+    readonly serviceType: FieldRef<"Errand", 'Int'>
     readonly deliveryDescription: FieldRef<"Errand", 'String'>
     readonly deliveryInstructions: FieldRef<"Errand", 'String'>
     readonly creditAmount: FieldRef<"Errand", 'Int'>
@@ -2077,6 +2184,13 @@ export namespace Prisma {
     pickupLng: 'pickupLng',
     pickupBuildingName: 'pickupBuildingName',
     pickupFloorNumber: 'pickupFloorNumber',
+    targetLat: 'targetLat',
+    targetLng: 'targetLng',
+    targetBuildingName: 'targetBuildingName',
+    targetFloorNumber: 'targetFloorNumber',
+    name: 'name',
+    supplierName: 'supplierName',
+    serviceType: 'serviceType',
     deliveryDescription: 'deliveryDescription',
     deliveryInstructions: 'deliveryInstructions',
     creditAmount: 'creditAmount',
@@ -2198,11 +2312,18 @@ export namespace Prisma {
     id?: UuidFilter<"Errand"> | string
     requesterSub?: StringFilter<"Errand"> | string
     courierSub?: StringNullableFilter<"Errand"> | string | null
-    supplierId?: StringNullableFilter<"Errand"> | string | null
+    supplierId?: StringFilter<"Errand"> | string
     pickupLat?: FloatFilter<"Errand"> | number
     pickupLng?: FloatFilter<"Errand"> | number
     pickupBuildingName?: StringFilter<"Errand"> | string
     pickupFloorNumber?: IntFilter<"Errand"> | number
+    targetLat?: FloatFilter<"Errand"> | number
+    targetLng?: FloatFilter<"Errand"> | number
+    targetBuildingName?: StringFilter<"Errand"> | string
+    targetFloorNumber?: IntFilter<"Errand"> | number
+    name?: StringFilter<"Errand"> | string
+    supplierName?: StringFilter<"Errand"> | string
+    serviceType?: IntFilter<"Errand"> | number
     deliveryDescription?: StringFilter<"Errand"> | string
     deliveryInstructions?: StringNullableFilter<"Errand"> | string | null
     creditAmount?: IntFilter<"Errand"> | number
@@ -2216,11 +2337,18 @@ export namespace Prisma {
     id?: SortOrder
     requesterSub?: SortOrder
     courierSub?: SortOrderInput | SortOrder
-    supplierId?: SortOrderInput | SortOrder
+    supplierId?: SortOrder
     pickupLat?: SortOrder
     pickupLng?: SortOrder
     pickupBuildingName?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetBuildingName?: SortOrder
+    targetFloorNumber?: SortOrder
+    name?: SortOrder
+    supplierName?: SortOrder
+    serviceType?: SortOrder
     deliveryDescription?: SortOrder
     deliveryInstructions?: SortOrderInput | SortOrder
     creditAmount?: SortOrder
@@ -2237,11 +2365,18 @@ export namespace Prisma {
     NOT?: ErrandWhereInput | ErrandWhereInput[]
     requesterSub?: StringFilter<"Errand"> | string
     courierSub?: StringNullableFilter<"Errand"> | string | null
-    supplierId?: StringNullableFilter<"Errand"> | string | null
+    supplierId?: StringFilter<"Errand"> | string
     pickupLat?: FloatFilter<"Errand"> | number
     pickupLng?: FloatFilter<"Errand"> | number
     pickupBuildingName?: StringFilter<"Errand"> | string
     pickupFloorNumber?: IntFilter<"Errand"> | number
+    targetLat?: FloatFilter<"Errand"> | number
+    targetLng?: FloatFilter<"Errand"> | number
+    targetBuildingName?: StringFilter<"Errand"> | string
+    targetFloorNumber?: IntFilter<"Errand"> | number
+    name?: StringFilter<"Errand"> | string
+    supplierName?: StringFilter<"Errand"> | string
+    serviceType?: IntFilter<"Errand"> | number
     deliveryDescription?: StringFilter<"Errand"> | string
     deliveryInstructions?: StringNullableFilter<"Errand"> | string | null
     creditAmount?: IntFilter<"Errand"> | number
@@ -2255,11 +2390,18 @@ export namespace Prisma {
     id?: SortOrder
     requesterSub?: SortOrder
     courierSub?: SortOrderInput | SortOrder
-    supplierId?: SortOrderInput | SortOrder
+    supplierId?: SortOrder
     pickupLat?: SortOrder
     pickupLng?: SortOrder
     pickupBuildingName?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetBuildingName?: SortOrder
+    targetFloorNumber?: SortOrder
+    name?: SortOrder
+    supplierName?: SortOrder
+    serviceType?: SortOrder
     deliveryDescription?: SortOrder
     deliveryInstructions?: SortOrderInput | SortOrder
     creditAmount?: SortOrder
@@ -2281,11 +2423,18 @@ export namespace Prisma {
     id?: UuidWithAggregatesFilter<"Errand"> | string
     requesterSub?: StringWithAggregatesFilter<"Errand"> | string
     courierSub?: StringNullableWithAggregatesFilter<"Errand"> | string | null
-    supplierId?: StringNullableWithAggregatesFilter<"Errand"> | string | null
+    supplierId?: StringWithAggregatesFilter<"Errand"> | string
     pickupLat?: FloatWithAggregatesFilter<"Errand"> | number
     pickupLng?: FloatWithAggregatesFilter<"Errand"> | number
     pickupBuildingName?: StringWithAggregatesFilter<"Errand"> | string
     pickupFloorNumber?: IntWithAggregatesFilter<"Errand"> | number
+    targetLat?: FloatWithAggregatesFilter<"Errand"> | number
+    targetLng?: FloatWithAggregatesFilter<"Errand"> | number
+    targetBuildingName?: StringWithAggregatesFilter<"Errand"> | string
+    targetFloorNumber?: IntWithAggregatesFilter<"Errand"> | number
+    name?: StringWithAggregatesFilter<"Errand"> | string
+    supplierName?: StringWithAggregatesFilter<"Errand"> | string
+    serviceType?: IntWithAggregatesFilter<"Errand"> | number
     deliveryDescription?: StringWithAggregatesFilter<"Errand"> | string
     deliveryInstructions?: StringNullableWithAggregatesFilter<"Errand"> | string | null
     creditAmount?: IntWithAggregatesFilter<"Errand"> | number
@@ -2299,11 +2448,18 @@ export namespace Prisma {
     id?: string
     requesterSub: string
     courierSub?: string | null
-    supplierId?: string | null
+    supplierId: string
     pickupLat: number
     pickupLng: number
     pickupBuildingName: string
     pickupFloorNumber: number
+    targetLat: number
+    targetLng: number
+    targetBuildingName: string
+    targetFloorNumber: number
+    name: string
+    supplierName: string
+    serviceType: number
     deliveryDescription: string
     deliveryInstructions?: string | null
     creditAmount: number
@@ -2317,11 +2473,18 @@ export namespace Prisma {
     id?: string
     requesterSub: string
     courierSub?: string | null
-    supplierId?: string | null
+    supplierId: string
     pickupLat: number
     pickupLng: number
     pickupBuildingName: string
     pickupFloorNumber: number
+    targetLat: number
+    targetLng: number
+    targetBuildingName: string
+    targetFloorNumber: number
+    name: string
+    supplierName: string
+    serviceType: number
     deliveryDescription: string
     deliveryInstructions?: string | null
     creditAmount: number
@@ -2335,11 +2498,18 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     requesterSub?: StringFieldUpdateOperationsInput | string
     courierSub?: NullableStringFieldUpdateOperationsInput | string | null
-    supplierId?: NullableStringFieldUpdateOperationsInput | string | null
+    supplierId?: StringFieldUpdateOperationsInput | string
     pickupLat?: FloatFieldUpdateOperationsInput | number
     pickupLng?: FloatFieldUpdateOperationsInput | number
     pickupBuildingName?: StringFieldUpdateOperationsInput | string
     pickupFloorNumber?: IntFieldUpdateOperationsInput | number
+    targetLat?: FloatFieldUpdateOperationsInput | number
+    targetLng?: FloatFieldUpdateOperationsInput | number
+    targetBuildingName?: StringFieldUpdateOperationsInput | string
+    targetFloorNumber?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    supplierName?: StringFieldUpdateOperationsInput | string
+    serviceType?: IntFieldUpdateOperationsInput | number
     deliveryDescription?: StringFieldUpdateOperationsInput | string
     deliveryInstructions?: NullableStringFieldUpdateOperationsInput | string | null
     creditAmount?: IntFieldUpdateOperationsInput | number
@@ -2353,11 +2523,18 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     requesterSub?: StringFieldUpdateOperationsInput | string
     courierSub?: NullableStringFieldUpdateOperationsInput | string | null
-    supplierId?: NullableStringFieldUpdateOperationsInput | string | null
+    supplierId?: StringFieldUpdateOperationsInput | string
     pickupLat?: FloatFieldUpdateOperationsInput | number
     pickupLng?: FloatFieldUpdateOperationsInput | number
     pickupBuildingName?: StringFieldUpdateOperationsInput | string
     pickupFloorNumber?: IntFieldUpdateOperationsInput | number
+    targetLat?: FloatFieldUpdateOperationsInput | number
+    targetLng?: FloatFieldUpdateOperationsInput | number
+    targetBuildingName?: StringFieldUpdateOperationsInput | string
+    targetFloorNumber?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    supplierName?: StringFieldUpdateOperationsInput | string
+    serviceType?: IntFieldUpdateOperationsInput | number
     deliveryDescription?: StringFieldUpdateOperationsInput | string
     deliveryInstructions?: NullableStringFieldUpdateOperationsInput | string | null
     creditAmount?: IntFieldUpdateOperationsInput | number
@@ -2371,11 +2548,18 @@ export namespace Prisma {
     id?: string
     requesterSub: string
     courierSub?: string | null
-    supplierId?: string | null
+    supplierId: string
     pickupLat: number
     pickupLng: number
     pickupBuildingName: string
     pickupFloorNumber: number
+    targetLat: number
+    targetLng: number
+    targetBuildingName: string
+    targetFloorNumber: number
+    name: string
+    supplierName: string
+    serviceType: number
     deliveryDescription: string
     deliveryInstructions?: string | null
     creditAmount: number
@@ -2389,11 +2573,18 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     requesterSub?: StringFieldUpdateOperationsInput | string
     courierSub?: NullableStringFieldUpdateOperationsInput | string | null
-    supplierId?: NullableStringFieldUpdateOperationsInput | string | null
+    supplierId?: StringFieldUpdateOperationsInput | string
     pickupLat?: FloatFieldUpdateOperationsInput | number
     pickupLng?: FloatFieldUpdateOperationsInput | number
     pickupBuildingName?: StringFieldUpdateOperationsInput | string
     pickupFloorNumber?: IntFieldUpdateOperationsInput | number
+    targetLat?: FloatFieldUpdateOperationsInput | number
+    targetLng?: FloatFieldUpdateOperationsInput | number
+    targetBuildingName?: StringFieldUpdateOperationsInput | string
+    targetFloorNumber?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    supplierName?: StringFieldUpdateOperationsInput | string
+    serviceType?: IntFieldUpdateOperationsInput | number
     deliveryDescription?: StringFieldUpdateOperationsInput | string
     deliveryInstructions?: NullableStringFieldUpdateOperationsInput | string | null
     creditAmount?: IntFieldUpdateOperationsInput | number
@@ -2407,11 +2598,18 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     requesterSub?: StringFieldUpdateOperationsInput | string
     courierSub?: NullableStringFieldUpdateOperationsInput | string | null
-    supplierId?: NullableStringFieldUpdateOperationsInput | string | null
+    supplierId?: StringFieldUpdateOperationsInput | string
     pickupLat?: FloatFieldUpdateOperationsInput | number
     pickupLng?: FloatFieldUpdateOperationsInput | number
     pickupBuildingName?: StringFieldUpdateOperationsInput | string
     pickupFloorNumber?: IntFieldUpdateOperationsInput | number
+    targetLat?: FloatFieldUpdateOperationsInput | number
+    targetLng?: FloatFieldUpdateOperationsInput | number
+    targetBuildingName?: StringFieldUpdateOperationsInput | string
+    targetFloorNumber?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    supplierName?: StringFieldUpdateOperationsInput | string
+    serviceType?: IntFieldUpdateOperationsInput | number
     deliveryDescription?: StringFieldUpdateOperationsInput | string
     deliveryInstructions?: NullableStringFieldUpdateOperationsInput | string | null
     creditAmount?: IntFieldUpdateOperationsInput | number
@@ -2517,6 +2715,13 @@ export namespace Prisma {
     pickupLng?: SortOrder
     pickupBuildingName?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetBuildingName?: SortOrder
+    targetFloorNumber?: SortOrder
+    name?: SortOrder
+    supplierName?: SortOrder
+    serviceType?: SortOrder
     deliveryDescription?: SortOrder
     deliveryInstructions?: SortOrder
     creditAmount?: SortOrder
@@ -2530,6 +2735,10 @@ export namespace Prisma {
     pickupLat?: SortOrder
     pickupLng?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetFloorNumber?: SortOrder
+    serviceType?: SortOrder
     creditAmount?: SortOrder
   }
 
@@ -2542,6 +2751,13 @@ export namespace Prisma {
     pickupLng?: SortOrder
     pickupBuildingName?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetBuildingName?: SortOrder
+    targetFloorNumber?: SortOrder
+    name?: SortOrder
+    supplierName?: SortOrder
+    serviceType?: SortOrder
     deliveryDescription?: SortOrder
     deliveryInstructions?: SortOrder
     creditAmount?: SortOrder
@@ -2560,6 +2776,13 @@ export namespace Prisma {
     pickupLng?: SortOrder
     pickupBuildingName?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetBuildingName?: SortOrder
+    targetFloorNumber?: SortOrder
+    name?: SortOrder
+    supplierName?: SortOrder
+    serviceType?: SortOrder
     deliveryDescription?: SortOrder
     deliveryInstructions?: SortOrder
     creditAmount?: SortOrder
@@ -2573,6 +2796,10 @@ export namespace Prisma {
     pickupLat?: SortOrder
     pickupLng?: SortOrder
     pickupFloorNumber?: SortOrder
+    targetLat?: SortOrder
+    targetLng?: SortOrder
+    targetFloorNumber?: SortOrder
+    serviceType?: SortOrder
     creditAmount?: SortOrder
   }
 

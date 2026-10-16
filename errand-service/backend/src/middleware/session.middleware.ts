@@ -1,18 +1,7 @@
-import type { 
-  NextFunction, 
-  Request, 
-  RequestHandler, 
-  Response 
-} from 'express'
-import type { ApiResult, ValidateSessionResponse } from '@relay/contracts'
-import { ErrandErrors } from '@relay/contracts'
-import { 
-  getEnv 
-} from '../config/env.js'
-import { 
-  ErrandServiceError, 
-  type AuthenticatedUser 
-} from '../types/errand.types.js'
+import type { NextFunction, Request, RequestHandler, Response } from 'express'
+import { ApiResult, ErrandErrors, ValidateSessionResponse } from '@relay/contracts'
+import { getEnv } from '../config/env.js'
+import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 
 declare global {
   namespace Express {
@@ -46,14 +35,26 @@ export const sessionMiddleware: RequestHandler = async (
     })
 
     if (!response.ok) {
-      next(new ErrandServiceError(ErrandErrors.UNAUTHENTICATED, 'The session is invalid or expired.', 401))
+      next(
+        new ErrandServiceError(
+          ErrandErrors.UNAUTHENTICATED,
+          'The session is invalid or expired.',
+          401,
+        ),
+      )
       return
     }
 
     const body = (await response.json()) as ApiResult<ValidateSessionResponse>
     const user = body.ok ? body.data.user : undefined
     if (!body.ok || !user?.subject || !user.email) {
-      next(new ErrandServiceError(ErrandErrors.UNAUTHENTICATED, 'The session response is invalid.', 401))
+      next(
+        new ErrandServiceError(
+          ErrandErrors.UNAUTHENTICATED,
+          'The session response is invalid.',
+          401,
+        ),
+      )
       return
     }
 

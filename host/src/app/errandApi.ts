@@ -11,11 +11,13 @@ export const hostErrandApi: ErrandApi = {
     return request(query)
   },
   async listOpenBySupplier(supplierId) {
-    return request(`/by-supplier/${encodeURIComponent(supplierId)}`)
+    return request(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=open`)
   },
   async getSupplierErrandView(options) {
-    const query = new URLSearchParams({ scope: options.scope, supplierId: options.supplierId })
-    return request(`/supplier-view?${query.toString()}`)
+    return request(`/suppliers/${encodeURIComponent(options.supplierId)}/errands?scope=${options.scope === 'explore' ? 'open' : 'all'}`)
+  },
+  async listBySupplier(supplierId) {
+    return request(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=all`)
   },
   async getErrand(id) { return request(`/${encodeURIComponent(id)}`) },
   async acceptErrand(id) { return request(`/${encodeURIComponent(id)}/accept`, { method: 'POST' }) },
@@ -23,10 +25,7 @@ export const hostErrandApi: ErrandApi = {
   async deliverErrand(id) { return request(`/${encodeURIComponent(id)}/deliver`, { method: 'POST' }) },
   async confirmErrand(id) { return request(`/${encodeURIComponent(id)}/confirm`, { method: 'POST' }) },
   async cancelErrand(id) { return request(`/${encodeURIComponent(id)}/cancel`, { method: 'POST' }) },
-  async dropErrand(_id) {
-    // TODO: replace this placeholder with the backend Accepted -> Open endpoint.
-    throw new Error('Dropping an errand is not wired to the backend yet.')
-  },
+  async dropErrand(id) { return request(`/${encodeURIComponent(id)}/drop`, { method: 'POST' }) },
   async deleteErrand(id) { return request(`/${encodeURIComponent(id)}`, { method: 'DELETE' }) },
 }
 

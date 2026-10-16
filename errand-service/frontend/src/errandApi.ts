@@ -57,15 +57,12 @@ export function createHttpErrandApi(): ErrandApi {
       const query = options?.scope ? `?scope=${encodeURIComponent(options.scope)}` : ''
       return request<GetErrandsResponse>(query)
     },
-    getSupplierErrandView: (requestBody: SupplierErrandViewRequest) => {
-      const params = new URLSearchParams({
-        scope: requestBody.scope,
-        supplierId: requestBody.supplierId,
-      })
-      return request<GetSupplierErrandViewResponse>(`/supplier-view?${params.toString()}`)
-    },
+    getSupplierErrandView: (requestBody: SupplierErrandViewRequest) =>
+      request<GetSupplierErrandViewResponse>(`/suppliers/${encodeURIComponent(requestBody.supplierId)}/errands?scope=${requestBody.scope === 'explore' ? 'open' : 'all'}`),
     listOpenBySupplier: (supplierId: string) =>
-      request<GetErrandsResponse>(`/by-supplier/${encodeURIComponent(supplierId)}`),
+      request<GetErrandsResponse>(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=open`),
+    listBySupplier: (supplierId: string) =>
+      request<GetErrandsResponse>(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=all`),
     getErrand: (id: string) => request<GetErrandResponse>(`/${encodeURIComponent(id)}`),
     acceptErrand: (id: string) =>
       request<import('@relay/contracts/errand').AcceptErrandResponse>(
@@ -92,10 +89,11 @@ export function createHttpErrandApi(): ErrandApi {
         `/${encodeURIComponent(id)}/cancel`,
         { method: 'POST' },
       ),
-    dropErrand: async (_id: string) => {
-      // TODO: replace this placeholder with the backend Accepted -> Open endpoint.
-      throw new Error('Dropping an errand is not wired to the backend yet.')
-    },
+    dropErrand: (id: string) =>
+      request<import('@relay/contracts/errand').DropErrandResponse>(
+        `/${encodeURIComponent(id)}/drop`,
+        { method: 'POST' },
+      ),
     deleteErrand: (id: string) =>
       request<DeleteErrandResponse>(`/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   }

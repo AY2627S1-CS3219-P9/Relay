@@ -48,7 +48,7 @@ export type CancelErrandResponse = {
   errand: Errand
 }
 
-/** Response from dropping an accepted errand. TODO: add the backend endpoint. */
+/** Response from dropping an accepted errand. */
 export type DropErrandResponse = {
   errand: Errand
 }
