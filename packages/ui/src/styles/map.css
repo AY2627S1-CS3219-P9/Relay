@@ -1,7 +1,7 @@
 .relay-map {
   position: absolute !important;
   inset: 0;
-  z-index: 0;
+  z-index: var(--relay-layer-map);
   isolation: isolate;
   touch-action: none;
   background: #dbe8ee;
@@ -11,6 +11,13 @@
   top: max(20px, env(safe-area-inset-top));
   right: 20px;
   left: 20px;
+}
+.map-top-menu > .relay-segmented-control-size-map {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  width: min(560px, 68vw);
+  transform: translateX(-50%);
 }
 .map-bottom-menu {
   right: 20px;
@@ -35,16 +42,16 @@
   width: 34px;
   height: 34px;
   border: 0;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--relay-glass-control-bg);
   color: #1c1c1e;
   line-height: 34px;
-  backdrop-filter: blur(28px);
+  backdrop-filter: var(--relay-glass-control-filter);
 }
 .relay-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--relay-glass-soft-bg);
   border-radius: 8px 0 0 0;
   font-size: 9px;
-  backdrop-filter: blur(24px);
+  backdrop-filter: var(--relay-glass-soft-filter);
 }
 .relay-leaflet-icon {
   background: transparent;
@@ -128,6 +135,9 @@
   .map-top-menu .glass-pill > span:nth-child(2) {
     font-size: 16px;
   }
+  .map-top-menu > .relay-segmented-control-size-map {
+    width: calc(100vw - 32px);
+  }
   .top-menu-icon {
     width: 48px;
     height: 48px;
@@ -165,24 +175,6 @@
     bottom: max(16px, env(safe-area-inset-bottom));
     left: 16px;
     gap: 10px;
-  }
-  .updates-action {
-    height: calc(56px * var(--relay-button-scale, 1)) !important;
-    padding-inline: calc(14px * var(--relay-button-scale, 1)) !important;
-    gap: calc(8px * var(--relay-button-scale, 1)) !important;
-    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
-  }
-  .updates-action svg {
-    width: 21px !important;
-    height: 21px !important;
-  }
-  .new-request-action {
-    height: calc(56px * var(--relay-button-scale, 1)) !important;
-    padding-inline: calc(17px * var(--relay-button-scale, 1)) !important;
-    font-size: calc(17px * var(--relay-button-scale, 1)) !important;
-  }
-  .new-request-action > span {
-    font-size: 24px !important;
   }
   .my-request-card {
     bottom: 92px;

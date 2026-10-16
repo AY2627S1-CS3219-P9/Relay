@@ -1,4 +1,4 @@
-import type { CreateErrandRequest, GetErrandsOptions } from './requests'
+import type { CreateErrandRequest, GetErrandsOptions, SupplierErrandViewRequest } from './requests'
 import type { SupplierInfoEvent } from './models'
 import type {
   CreateErrandResponse,
@@ -11,6 +11,8 @@ import type {
   DeliverErrandResponse,
   ConfirmErrandResponse,
   CancelErrandResponse,
+  DropErrandResponse,
+  GetSupplierErrandViewResponse,
   SupplierEventsResponse,
 } from './responses'
 
@@ -25,6 +27,10 @@ export interface ErrandApi {
   /** List open errands for a specific supplier (for courier discovery when viewing supplier). */
   listOpenBySupplier(supplierId: string): Promise<ListOpenBySupplierResponse>
 
+  /** List errands for a selected supplier in the authenticated user's view. */
+  getSupplierErrandView(
+    request: SupplierErrandViewRequest,
+  ): Promise<GetSupplierErrandViewResponse>
   /** List all errands for a specific supplier (when viewing supplier details). */
   listBySupplier(supplierId: string): Promise<GetErrandsResponse>
 
@@ -46,7 +52,10 @@ export interface ErrandApi {
   /** Cancel an accepted errand (courier or requester). */
   cancelErrand(id: string): Promise<CancelErrandResponse>
 
-  /** Delete an eligible errand owned by the authenticated requester. */
+  /** Drop an accepted errand (courier only). */
+  dropErrand(id: string): Promise<DropErrandResponse>
+
+  /** Delete a cancelled, expired, or confirmed errand owned by the requester. */
   deleteErrand(id: string): Promise<DeleteErrandResponse>
 }
 

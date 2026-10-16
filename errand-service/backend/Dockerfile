@@ -4,11 +4,13 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/errand-prisma/package.json ./packages/errand-prisma/
 COPY errand-service/backend/package.json ./errand-service/backend/
 
 RUN npm ci
 
 COPY packages/contracts ./packages/contracts
+COPY packages/errand-prisma ./packages/errand-prisma
 COPY errand-service/backend ./errand-service/backend
 
 RUN npx prisma generate --schema=errand-service/backend/prisma/schema.prisma
@@ -22,6 +24,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
+COPY --from=build /app/packages/errand-prisma ./packages/errand-prisma
 COPY --from=build /app/errand-service/backend/package.json ./errand-service/backend/
 COPY --from=build /app/errand-service/backend/dist ./errand-service/backend/dist
 COPY --from=build /app/errand-service/backend/src ./errand-service/backend/src

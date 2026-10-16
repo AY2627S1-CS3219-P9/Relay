@@ -35,14 +35,15 @@ services:
     image: apache/kafka:4.0.0
     ports:
       - '9092:9092'
+      - '29092:29092'
     environment:
       KAFKA_NODE_ID: '1'
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
@@ -191,9 +192,9 @@ services:
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
+      SUPPLIER_TIMEZONE: Asia/Singapore
     depends_on:
-      errand-api:
-        condition: service_healthy
       supplier-db:
         condition: service_healthy
       user-api:
@@ -246,7 +247,9 @@ services:
       DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      INTERNAL_ERRAND_SERVICE_TOKEN: local-internal-errand-service-token
+      SUPPLIER_API_URL: http://supplier-api:3000
+      SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
+      INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
       KAFKA_BROKERS: kafka:9092
     depends_on:

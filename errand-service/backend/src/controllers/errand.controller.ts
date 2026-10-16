@@ -39,9 +39,13 @@ export class ErrandController {
 
   supplierView = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const supplierId = typeof req.query.supplierId === 'string' ? req.query.supplierId : undefined
       const errands = await this.service.getSupplierErrandView(
         requireUser(req),
-        validateSupplierErrandView(req.body),
+        validateSupplierErrandView({
+          scope: req.query.scope,
+          ...(supplierId !== undefined ? { supplierId } : {}),
+        }),
       )
       res.json({ errands })
     } catch (error) {
@@ -62,7 +66,18 @@ export class ErrandController {
   listBySupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const supplierId = String(req.params.supplierId)
-      const errands = await this.service.listBySupplier(supplierId)
+      const scope = req.query.scope
+      if (scope !== undefined && scope !== 'open' && scope !== 'all') {
+        res.status(400).json({
+          code: ErrandErrors.INVALID_ERRAND,
+          message: 'Invalid supplier errand scope.',
+          fieldErrors: { scope: 'Scope must be open or all.' },
+        })
+        return
+      }
+      const errands = scope === 'open'
+        ? await this.service.listOpenBySupplier(supplierId)
+        : await this.service.listBySupplier(supplierId)
       res.json({ errands })
     } catch (error) {
       next(error)
@@ -127,6 +142,15 @@ export class ErrandController {
       const id = String(req.params.id)
       const requester = requireUser(req)
       const errand = await this.service.confirmErrand(requester, id)
+      res.status(200).json({ errand })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  drop = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const errand = await this.service.dropErrand(requireUser(req), String(req.params.id))
       res.status(200).json({ errand })
     } catch (error) {
       next(error)

@@ -65,4 +65,4 @@ export type SupplierInfoEvent = {
 }
 
 /** Privacy-safe errand projection used by supplier map and detail views. */
-export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub' | 'supplierDetails'>
+export type SupplierErrandSummary = Omit<Errand, 'requesterSub' | 'courierSub'>

@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient, type Errand as PrismaErrand } from '@prisma/client'
+import { Prisma, PrismaClient, type Errand as PrismaErrand } from '@relay/errand-prisma'
 import type {
   CreateErrandRequest,
   Errand,

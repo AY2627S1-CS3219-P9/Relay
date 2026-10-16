@@ -81,14 +81,25 @@ npm install
 ```
 
 For a non-Docker local federation session, the root workspace points to the
-service-owned frontend directories:
+service-owned frontend directories. The standard command starts the local
+databases, prepares the Errand Prisma schema, and starts all frontends and
+backends:
 
 ```bash
-npm run build --workspace=@relay/supplier-frontend
-npm run build --workspace=@relay/user-frontend
-npm run build --workspace=@relay/errand-frontend
-npm run build --workspace=@relay/credit-frontend
-npm run dev --workspace=@relay/host
+npm run dev
+```
+
+`npm run dev` starts `user-postgres`, `supplier-db`, and `errand-postgres`,
+generates the Errand Prisma client, and applies the Errand schema with
+`prisma db push` before starting the APIs. The User API generates its Prisma
+client and applies its migrations through its `predev` script.
+
+Local authentication also requires Floci. Ensure `.env.development` exists,
+then start Floci in a separate terminal before using the application:
+
+```bash
+docker build -t floci-sa ./floci
+./floci/local-floci.sh
 ```
 
 The host uses stable same-origin remote paths, so no per-machine remote URL
@@ -107,10 +118,10 @@ Install dependencies first:
 npm install
 ```
 
-Start the PostgreSQL containers needed by the local backends:
+If you want to start only the infrastructure manually, use:
 
 ```bash
-docker compose up -d user-postgres supplier-db
+docker compose up -d user-postgres supplier-db errand-postgres
 ```
 
 Build the local Floci image once, then start it in a separate terminal:
@@ -133,24 +144,27 @@ The local development topology is:
 | Host frontend | `http://localhost:8080` |
 | Supplier frontend | `http://localhost:5001` |
 | User frontend | `http://localhost:5002` |
-| Order frontend | `http://localhost:5003` |
+| Errand frontend | `http://localhost:5003` |
 | Credit frontend | `http://localhost:5004` |
 | Supplier API | `http://localhost:3000` |
 | User API | `http://localhost:3001` |
+| Errand API | `http://localhost:3002` |
 | Floci | `http://localhost:4566` |
 | User PostgreSQL | `localhost:5432` |
 | Supplier PostgreSQL | `localhost:5433` |
+| Errand PostgreSQL | `localhost:5434` |
 
-The local Vite host proxies `/api/user` to the user API and `/api/supplier`
-to the supplier API. The user backend generates Prisma Client and applies
-pending migrations when it starts.
+The local Vite host proxies `/api/user` to the User API, `/api/supplier` to the
+Supplier API, and `/api/errands` to the Errand API. Open the application at
+`http://localhost:8080`; the individual frontend ports are mainly useful for
+debugging a remote in isolation.
 
 Do not run the full `docker compose up` workflow at the same time as
-`npm run dev`; both workflows use the same host ports. To stop the minimal
+`npm run dev`; both workflows use the same host ports. To stop the local
 development dependencies, run:
 
 ```bash
-docker compose stop user-postgres supplier-db
+docker compose stop user-postgres supplier-db errand-postgres
 ```
 
 ## Deployment preparation

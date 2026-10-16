@@ -4,11 +4,13 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/user-prisma/package.json ./packages/user-prisma/
 COPY user-service/backend/package.json ./user-service/backend/
 
 RUN npm ci
 
 COPY packages/contracts ./packages/contracts
+COPY packages/user-prisma ./packages/user-prisma
 COPY user-service/backend ./user-service/backend
 
 RUN npx prisma generate --schema=user-service/backend/prisma/schema.prisma
@@ -22,6 +24,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
+COPY --from=build /app/packages/user-prisma ./packages/user-prisma
 COPY --from=build /app/user-service/backend/package.json ./user-service/backend/
 COPY --from=build /app/user-service/backend/dist ./user-service/backend/dist
 COPY --from=build /app/user-service/backend/prisma ./user-service/backend/prisma

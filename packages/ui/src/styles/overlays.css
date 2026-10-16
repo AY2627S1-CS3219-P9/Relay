@@ -1,9 +1,37 @@
+.relay-glass-overlay,
+.sheet-overlay,
+.relay-form-overlay {
+  -webkit-backdrop-filter: var(--relay-glass-overlay-filter);
+  backdrop-filter: var(--relay-glass-overlay-filter);
+}
 .sheet-overlay {
-  background: rgba(0, 0, 0, 0.32);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
+  background: var(--relay-glass-overlay-dark-bg);
+  -webkit-backdrop-filter: var(--relay-glass-overlay-dark-filter);
+  backdrop-filter: var(--relay-glass-overlay-dark-filter);
   animation: swift-overlay-in 0.32s ease-out both;
   pointer-events: auto;
+}
+.relay-form-overlay {
+  position: fixed;
+  z-index: var(--relay-layer-modal);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--relay-glass-overlay-bg);
+  animation: relay-form-overlay-in 0.32s ease-out both;
+}
+.relay-form-overlay > .relay-form-surface {
+  animation: relay-form-surface-in 0.46s cubic-bezier(0.22, 1.16, 0.36, 1) both;
+}
+@keyframes relay-form-overlay-in {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: var(--relay-glass-overlay-filter); }
+}
+@keyframes relay-form-surface-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.975); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.004); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .swift-sheet-root,
 .map-detail-root {
@@ -34,7 +62,7 @@
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(24px);
+    backdrop-filter: var(--relay-glass-overlay-dark-filter);
   }
 }
 @keyframes swift-sheet-mobile-in {
