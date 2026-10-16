@@ -23,6 +23,10 @@ export const hostErrandApi: ErrandApi = {
   async deliverErrand(id) { return request(`/${encodeURIComponent(id)}/deliver`, { method: 'POST' }) },
   async confirmErrand(id) { return request(`/${encodeURIComponent(id)}/confirm`, { method: 'POST' }) },
   async cancelErrand(id) { return request(`/${encodeURIComponent(id)}/cancel`, { method: 'POST' }) },
+  async dropErrand(_id) {
+    // TODO: replace this placeholder with the backend Accepted -> Open endpoint.
+    throw new Error('Dropping an errand is not wired to the backend yet.')
+  },
   async deleteErrand(id) { return request(`/${encodeURIComponent(id)}`, { method: 'DELETE' }) },
 }
 
@@ -34,8 +38,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!response.ok) {
     let message = `Errand service request failed (${response.status}).`
-    try { message = ((await response.json()) as { message?: string }).message ?? message } catch { /* status message */ }
-    throw new Error(message)
+    let fieldErrors: Record<string, string> | undefined
+    try {
+      const body = (await response.json()) as { message?: string; fieldErrors?: Record<string, string> }
+      message = body.message ?? message
+      fieldErrors = body.fieldErrors
+    } catch { /* status message */ }
+    const error = new Error(message) as Error & { fieldErrors?: Record<string, string> }
+    error.fieldErrors = fieldErrors
+    throw error
   }
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>

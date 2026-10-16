@@ -17,27 +17,31 @@ export function ErrandDetailCard({
   errand: DemoErrand
   role: 'requester' | 'courier'
   onClose: () => void
-  onAction: (action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'delete') => void
+  onAction: (action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'drop' | 'delete') => void | Promise<void>
 }) {
   const [errorMessage, setErrorMessage] = useState('')
-  const action = (value: Parameters<typeof onAction>[0]) => {
+  const action = async (value: Parameters<typeof onAction>[0]) => {
     setErrorMessage('')
-    // TODO: replace this handler with the matching Errand Service mutation.
-    onAction(value)
+    try {
+      await onAction(value)
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to update the errand.')
+    }
   }
 
   const canAccept = role === 'courier' && errand.status === 'OPEN'
   const canPickup = role === 'courier' && errand.status === 'ACCEPTED'
   const canDeliver = role === 'courier' && errand.status === 'PICKED_UP'
   const canConfirm = role === 'requester' && errand.status === 'DELIVERED'
-  const canCancel = (role === 'requester' || role === 'courier') && errand.status === 'ACCEPTED'
-  const canDelete = role === 'requester' && ['CANCELLED', 'EXPIRED', 'CONFIRMED'].includes(errand.status)
+  const canCancel = role === 'requester' && errand.status === 'OPEN'
+  const canDrop = role === 'courier' && errand.status === 'ACCEPTED'
+  const canDelete = role === 'requester' && errand.status === 'OPEN'
 
   return (
     <GlassCard className="errand-detail-card relay-mobile-sheet-surface" aria-label={`${errand.name} details`}>
       <div className="errand-detail-header">
         <div>
-          <p className="errand-eyebrow">{role === 'courier' ? 'AVAILABLE ERRAND' : 'ACTIVE ERRAND'}</p>
+          <p>{role === 'courier' ? 'AVAILABLE ERRAND' : 'ACTIVE ERRAND'}</p>
           <h2>{errand.name}</h2>
           <div className="errand-detail-meta">
             <StatusBadge tone={statusTone(errand.status)}>{STATUS_LABELS[errand.status]}</StatusBadge>
@@ -90,7 +94,8 @@ export function ErrandDetailCard({
         {canPickup && <RelayButton variant="primary" onClick={() => action('pickup')}>✓ Mark as collected</RelayButton>}
         {canDeliver && <RelayButton variant="primary" onClick={() => action('deliver')}>Mark as delivered</RelayButton>}
         {canConfirm && <RelayButton variant="primary" onClick={() => action('confirm')}>Confirm delivery — transfer {errand.creditAmount} cr</RelayButton>}
-        {canCancel && <RelayButton variant="danger" onClick={() => action('cancel')}>Cancel errand</RelayButton>}
+        {canCancel && <RelayButton variant="danger" onClick={() => void action('cancel')}>Cancel errand</RelayButton>}
+        {canDrop && <RelayButton variant="danger" onClick={() => void action('drop')}>Drop errand</RelayButton>}
         {canDelete && <RelayButton variant="plain" onClick={() => action('delete')}>Delete request</RelayButton>}
       </div>
     </GlassCard>

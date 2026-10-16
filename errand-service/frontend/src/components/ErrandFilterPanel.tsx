@@ -15,6 +15,7 @@ const statuses: Array<{ value: ErrandStatus; label: string }> = [
   { value: 'PICKED_UP', label: 'Collected' },
   { value: 'DELIVERED', label: 'Delivered' },
   { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'EXPIRED', label: 'Expired' },
 ]
 
 export function ErrandFilterPanel({

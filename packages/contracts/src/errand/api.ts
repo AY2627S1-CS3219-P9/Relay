@@ -14,6 +14,7 @@ import type {
   DeliverErrandResponse,
   ConfirmErrandResponse,
   CancelErrandResponse,
+  DropErrandResponse,
   GetSupplierErrandViewResponse,
 } from './responses'
 
@@ -48,8 +49,11 @@ export interface ErrandApi {
   /** Confirm the delivered errand has been received (requester only). */
   confirmErrand(id: string): Promise<ConfirmErrandResponse>
 
-  /** Cancel an accepted errand (courier or requester). */
+  /** Cancel an open errand (requester only). */
   cancelErrand(id: string): Promise<CancelErrandResponse>
+
+  /** Drop an accepted errand (courier only). TODO: wire the backend endpoint. */
+  dropErrand(id: string): Promise<DropErrandResponse>
 
   /** Delete an eligible errand owned by the authenticated requester. */
   deleteErrand(id: string): Promise<DeleteErrandResponse>

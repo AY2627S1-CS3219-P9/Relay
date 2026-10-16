@@ -13,7 +13,7 @@ import type {
 const errandApiBaseUrl = import.meta.env.VITE_ERRAND_API_URL ?? '/api/errands'
 
 export class ErrandApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  constructor(message: string, public readonly status: number, public readonly fieldErrors?: Record<string, string>) {
     super(message)
     this.name = 'ErrandApiError'
   }
@@ -32,13 +32,15 @@ export function createHttpErrandApi(): ErrandApi {
 
     if (!response.ok) {
       let message = `Errand service request failed (${response.status}).`
+      let fieldErrors: Record<string, string> | undefined
       try {
-        const body = (await response.json()) as { message?: string }
+        const body = (await response.json()) as { message?: string; fieldErrors?: Record<string, string> }
         if (body.message) message = body.message
+        fieldErrors = body.fieldErrors
       } catch {
         // Keep the status-based message when the backend returned no JSON.
       }
-      throw new ErrandApiError(message, response.status)
+      throw new ErrandApiError(message, response.status, fieldErrors)
     }
 
     if (response.status === 204) return undefined as T
@@ -90,6 +92,10 @@ export function createHttpErrandApi(): ErrandApi {
         `/${encodeURIComponent(id)}/cancel`,
         { method: 'POST' },
       ),
+    dropErrand: async (_id: string) => {
+      // TODO: replace this placeholder with the backend Accepted -> Open endpoint.
+      throw new Error('Dropping an errand is not wired to the backend yet.')
+    },
     deleteErrand: (id: string) =>
       request<DeleteErrandResponse>(`/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   }

@@ -25,7 +25,7 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
   const [location, setLocation] = useState(userLocation)
   const [map, setMap] = useState<LeafletMap>()
   const [createAnchor, setCreateAnchor] = useState<BubbleAnchor>()
-  const [filters, setFilters] = useState<ErrandFilters>({ statuses: ['OPEN', 'ACCEPTED', 'PICKED_UP', 'DELIVERED', 'CONFIRMED'], serviceTypes: [0, 1, 2, 3, 4], sort: 'lifecycle' })
+  const [filters, setFilters] = useState<ErrandFilters>({ statuses: ['OPEN', 'ACCEPTED', 'PICKED_UP', 'DELIVERED', 'CONFIRMED', 'EXPIRED'], serviceTypes: [0, 1, 2, 3, 4], sort: 'lifecycle' })
   const view = errandViewContext?.view ?? 'requests'
   const notificationCount = 2
   const selectedErrand = errands.find((errand) => errand.id === selectedErrandId)
@@ -81,18 +81,23 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     openProfile(anchor)
   }
 
-  async function updateErrand(action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'delete', id: string) {
+  async function updateErrand(action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'drop' | 'delete', id: string) {
     if (errandApi) {
-      const actions = { accept: errandApi.acceptErrand, pickup: errandApi.pickupErrand, deliver: errandApi.deliverErrand, confirm: errandApi.confirmErrand, cancel: errandApi.cancelErrand, delete: errandApi.deleteErrand }
+      const actions = { accept: errandApi.acceptErrand, pickup: errandApi.pickupErrand, deliver: errandApi.deliverErrand, confirm: errandApi.confirmErrand, cancel: errandApi.cancelErrand, drop: errandApi.dropErrand, delete: errandApi.deleteErrand }
       if (action === 'delete') { await actions.delete(id); setErrands((current) => current.filter((errand) => errand.id !== id)); setSelectedErrandId(undefined); return }
+      if (action === 'drop') {
+        const response = await actions.drop(id)
+        setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand), courierName: undefined, courierProfilePictureUrl: undefined } : errand))
+        return
+      }
       const response = await actions[action](id)
       setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand) } : errand))
       if (action === 'accept') openErrandView?.({ view: 'my-errands' })
       return
     }
-    const nextStatus: Partial<Record<typeof action, DemoErrand['status']>> = { accept: 'ACCEPTED', pickup: 'PICKED_UP', deliver: 'DELIVERED', confirm: 'CONFIRMED', cancel: 'CANCELLED' }
+    const nextStatus: Partial<Record<typeof action, DemoErrand['status']>> = { accept: 'ACCEPTED', pickup: 'PICKED_UP', deliver: 'DELIVERED', confirm: 'CONFIRMED', cancel: 'CANCELLED', drop: 'OPEN' }
     const next = nextStatus[action]
-    if (next) setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, status: next } : errand))
+    if (next) setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, status: next, ...(action === 'drop' ? { courierName: undefined, courierSub: null } : {}) } : errand))
     if (action === 'delete') { setErrands((current) => current.filter((errand) => errand.id !== id)); setSelectedErrandId(undefined) }
   }
 

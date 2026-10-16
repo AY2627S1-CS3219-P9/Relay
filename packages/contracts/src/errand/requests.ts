@@ -7,8 +7,12 @@ import type {
 
 /** Request to create an errand. The requester is taken from the session. */
 export type CreateErrandRequest = {
+  /** TODO: persist and validate this request name in the backend. */
+  name?: string
   supplierId: string
   pickupLocation: ErrandLocation
+  /** TODO: persist and validate this target location in the backend. */
+  deliveryLocation?: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
   expiresAt?: string

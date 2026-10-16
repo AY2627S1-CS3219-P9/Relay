@@ -48,6 +48,11 @@ export type CancelErrandResponse = {
   errand: Errand
 }
 
+/** Response from dropping an accepted errand. TODO: add the backend endpoint. */
+export type DropErrandResponse = {
+  errand: Errand
+}
+
 /** Response from supplier event processing. */
 export type SupplierEventsResponse = {
   processed: boolean
