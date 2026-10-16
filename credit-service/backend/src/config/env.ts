@@ -10,6 +10,7 @@ const schema = z.object({
   KAFKA_BROKERS: z.string().min(1).default('kafka:9092'),
   KAFKA_TOPIC_USER_EVENTS: z.string().min(1),
   KAFKA_TOPIC_ERRAND_EVENTS: z.string().min(1),
+  KAFKA_TOPIC_ERRAND_DLQ: z.string().min(1),
 })
 
 export function getEnv() {
@@ -24,6 +25,7 @@ export function getEnv() {
     kafkaTopics: {
       userEvents: env.KAFKA_TOPIC_USER_EVENTS,
       errandEvents: env.KAFKA_TOPIC_ERRAND_EVENTS,
+      errandDlq: env.KAFKA_TOPIC_ERRAND_DLQ,
     },
   }
 }

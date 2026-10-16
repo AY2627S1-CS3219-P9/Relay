@@ -30,7 +30,6 @@ services:
     build: ./kafka
     environment:
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
-      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
     depends_on:
@@ -290,8 +289,8 @@ services:
     depends_on:
       errand-postgres:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       user-api:
         condition: service_healthy
     healthcheck:
@@ -316,6 +315,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+      KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
     depends_on:
       credit-postgres:
         condition: service_healthy

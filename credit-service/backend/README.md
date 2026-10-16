@@ -124,14 +124,17 @@ is available at http://localhost:5556 when started in the credit container.
 Credit Service consumes `KAFKA_TOPIC_ERRAND_EVENTS`. It maps
 `ErrandCompleted` to a credit transfer, and `ErrandCancelled` or
 `ErrandExpired` to a release. It ignores the other errand event types.
-The outcome payload contains an errand ID; Credit Service reads the matching
-reservation record for the requester and amount. A completed event must also
-contain the courier ID. Transaction references make replays idempotent and
-reject conflicting outcomes.
+Credit Service uses the errand ID to read the prior reservation and takes
+the requester and amount from that record. If no reservation exists, it
+publishes an `ErrandErrorEvent` to `KAFKA_TOPIC_ERRAND_DLQ` with a credit
+error code and message. It also checks the requester when provided and
+requires a courier for completed errands. If DLQ publication fails, the
+source event is retried. Transaction references make successful replays
+idempotent and reject conflicting outcomes.
 
 A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
 leaves a history record for the remaining total. A delayed registration event
 cannot recreate a deleted balance. `kafka-init` creates `user-events`,
-`user-events-dlq`, `errand-events`, and `errand-events-dlq` before APIs start.
-The DLQ topics are provisioned; these consumers do not publish failed messages
-to them.
+`errand-events` and `errand-events-dlq` before APIs start.
+Credit Service publishes rejected errand outcomes to the errand DLQ. The
+User Service has no DLQ topic.

@@ -14,11 +14,16 @@ export type ErrandEventType = (typeof ErrandEventTypes)[keyof typeof ErrandEvent
 
 /** Kafka event envelope for all errand events. */
 export interface ErrandEvent {
-  eventId: string                   // UUID v4 for deduplication
+  eventId: string // UUID v4 for deduplication
   eventType: ErrandEventType
-  timestamp: string                 // ISO 8601
+  timestamp: string // ISO 8601
   version: 1
   payload: ErrandEventPayload
+}
+
+/** An errand event rejected by a downstream service. */
+export interface ErrandErrorEvent extends ErrandEvent {
+  error: { code: string; message: string }
 }
 
 /** Common payload for all errand events. */
@@ -26,14 +31,14 @@ export interface ErrandEventPayload {
   errandId: string
   errandStatus?: ErrandStatus
   previousStatus?: ErrandStatus
-  actorSub?: string                 // Who triggered the change (user/courier/system)
+  actorSub?: string // Who triggered the change (user/courier/system)
   actorType?: 'user' | 'courier' | 'system'
-  requesterSub?: string             // Optional for some events (e.g., status change, expiry)
+  requesterSub?: string // Optional for some events (e.g., status change, expiry)
   courierSub?: string
   supplierId?: string
   creditAmount?: number
   expiresAt?: string
-  reason?: string                   // Optional reason for cancellation
+  reason?: string // Optional reason for cancellation
   metadata?: Record<string, string>
 }
 

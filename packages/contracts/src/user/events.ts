@@ -25,7 +25,6 @@ export type UserDeletedEvent = UserEvent & {
 
 export const UserTopics = {
   USER_EVENTS: 'user-events',
-  USER_DLQ: 'user-events-dlq',
 } as const
 
 export type UserTopic = (typeof UserTopics)[keyof typeof UserTopics]

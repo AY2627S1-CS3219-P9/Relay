@@ -18,6 +18,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const topics = {
     userEvents: process.env.KAFKA_TOPIC_USER_EVENTS,
     errandEvents: process.env.KAFKA_TOPIC_ERRAND_EVENTS,
+    errandDlq: process.env.KAFKA_TOPIC_ERRAND_DLQ,
   }
   assert.ok(Object.values(topics).every(Boolean))
   const requester = randomUUID()
@@ -25,6 +26,9 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const confirmId = randomUUID()
   const cancelId = randomUUID()
   const expireId = randomUUID()
+  const requesterMismatchId = randomUUID()
+  const courierMissingId = randomUUID()
+  const unreservedId = randomUUID()
   const ids = [requester, courier]
   const userService = createServer((req, res) => {
     const subject =
@@ -57,10 +61,13 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     return { status: response.status, body: await response.json() }
   }
-  const producer = new Kafka({
+  const kafka = new Kafka({
     clientId: 'relay-credit-workflow-test',
     brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
-  }).producer()
+  })
+  const producer = kafka.producer()
+  const dlqConsumer = kafka.consumer({ groupId: `relay-credit-dlq-test-${randomUUID()}` })
+  const dlqEvents = []
   const send = (topic, key, eventType, payload) =>
     producer.send({
       topic,
@@ -85,6 +92,13 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
   try {
     await producer.connect()
+    await dlqConsumer.connect()
+    await dlqConsumer.subscribe({ topic: topics.errandDlq, fromBeginning: false })
+    await dlqConsumer.run({
+      eachMessage: async ({ message }) => {
+        dlqEvents.push(JSON.parse(message.value.toString()))
+      },
+    })
     for (const userId of ids)
       await send(topics.userEvents, userId, 'UserRegistered', { cognitoSub: userId })
     await until(async () => (await request('requester')).status === 200)
@@ -128,9 +142,43 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(finalRequester.body.availableCredit, 90)
     assert.equal(finalRequester.body.reserveCredit, 0)
 
+    assert.equal((await reserve(requesterMismatchId, 1)).status, 200)
+    assert.equal((await reserve(courierMissingId, 1)).status, 200)
+    await send(topics.errandEvents, unreservedId, 'ErrandExpired', {
+      errandId: unreservedId,
+    })
+    await send(topics.errandEvents, requesterMismatchId, 'ErrandCancelled', {
+      errandId: requesterMismatchId,
+      requesterSub: courier,
+    })
+    await send(topics.errandEvents, courierMissingId, 'ErrandCompleted', {
+      errandId: courierMissingId,
+      requesterSub: requester,
+    })
+    await until(async () => dlqEvents.length === 3)
+    assert.deepEqual(
+      new Set(dlqEvents.map((event) => event.error.code)),
+      new Set([
+        'ERRAND_RESERVATION_NOT_FOUND',
+        'ERRAND_REQUESTER_MISMATCH',
+        'ERRAND_COURIER_MISSING',
+      ]),
+    )
+    for (const event of dlqEvents) {
+      assert.equal(event.version, 1)
+      assert.ok(event.eventId)
+      assert.ok(event.timestamp)
+      assert.ok(event.payload.errandId)
+      assert.ok(event.error.message)
+    }
+    const afterRejectedEvents = await request('requester')
+    assert.equal(afterRejectedEvents.body.availableCredit, 88)
+    assert.equal(afterRejectedEvents.body.reserveCredit, 2)
+
     await send(topics.userEvents, requester, 'UserDeleted', { cognitoSub: requester })
     await until(async () => (await request('requester')).status === 404)
   } finally {
+    await dlqConsumer.disconnect()
     await producer.disconnect()
     await prisma.transactionRecord.deleteMany({
       where: { OR: [{ senderId: { in: ids } }, { receiverId: { in: ids } }] },
