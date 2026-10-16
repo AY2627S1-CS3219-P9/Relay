@@ -38,8 +38,3 @@ export interface CreditApi {
   /** Deletes user credit balance record. */
   deleteUserCredit(command: DeleteUserCreditCommand): Promise<void>
 }
-
-/** Internal service-token boundary used by Errand Service during creation. */
-export interface CreditInternalApi {
-  reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse>
-}

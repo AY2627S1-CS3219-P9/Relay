@@ -32,7 +32,7 @@ export function createApp(
       return
     }
     next()
-  }, controller.reserveInternalCredit)
+  }, controller.reserveCredit)
   app.use('/api/credit', createCreditRouter(controller, sessions))
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof CreditServiceError) {

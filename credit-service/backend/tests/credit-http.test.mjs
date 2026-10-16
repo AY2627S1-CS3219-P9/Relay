@@ -57,11 +57,13 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
   const api = createApp().listen(0, '127.0.0.1')
   await new Promise((resolve) => api.once('listening', resolve))
   const url = `http://127.0.0.1:${api.address().port}`
-  async function request(path, cookie, method = 'GET', body) {
+  async function request(path, cookie, method = 'GET', body, serviceToken = true) {
     const response = await fetch(url + path, {
       method,
       headers: {
         ...(cookie ? { Cookie: cookie } : {}),
+        ...(path === '/internal/credit/reserve' && serviceToken
+          ? { 'x-credit-service-token': process.env.INTERNAL_CREDIT_SERVICE_TOKEN } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -111,19 +113,18 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
     })
     await t.test('missing cookie is rejected without contacting User Service', async () => {
       const count = authRequests.length
-      for (const path of ['/api/credit', '/api/credit/history', '/api/credit/reserve']) {
-        const response = await request(path, undefined, path.endsWith('reserve') ? 'POST' : 'GET')
+      for (const path of ['/api/credit', '/api/credit/history']) {
+        const response = await request(path, undefined, 'GET')
         assert.equal(response.status, 401)
         assert.equal(response.body.code, 'UNAUTHENTICATED')
       }
       assert.equal(authRequests.length, count)
     })
     await t.test('expired sessions and User Service failures fail closed', async () => {
-      for (const path of ['/api/credit', '/api/credit/history', '/api/credit/reserve']) {
-        const method = path.endsWith('reserve') ? 'POST' : 'GET'
-        assert.equal((await request(path, 'relay_session=expired', method)).status, 401)
-        assert.equal((await request(path, 'relay_session=unavailable', method)).status, 503)
-        assert.equal((await request(path, 'relay_session=timeout', method)).status, 503)
+      for (const path of ['/api/credit', '/api/credit/history']) {
+        assert.equal((await request(path, 'relay_session=expired')).status, 401)
+        assert.equal((await request(path, 'relay_session=unavailable')).status, 503)
+        assert.equal((await request(path, 'relay_session=timeout')).status, 503)
       }
     })
     await t.test('balance matches the contract and forwards service authentication', async () => {
@@ -189,25 +190,20 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         })
       },
     )
-    await t.test('reserve validates ownership, amount, and reference', async () => {
+    await t.test('internal reserve validates service token, amount, and reference', async () => {
       const reference = { service: 'errand', id: `${prefix}-reserve`, type: 'CREDIT_RESERVE' }
       const body = { transactionReference: reference, userId: owner, amount: 10.25 }
       assert.equal(
-        (await request('/api/credit/reserve', 'relay_session=owner', 'POST')).status,
+        (await request('/internal/credit/reserve', 'relay_session=owner', 'POST')).status,
         400,
       )
       assert.equal(
-        (
-          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
-            ...body,
-            userId: other,
-          })
-        ).status,
-        403,
+        (await request('/internal/credit/reserve', undefined, 'POST', body, false)).status,
+        401,
       )
       assert.equal(
         (
-          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+          await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             ...body,
             amount: 0,
           })
@@ -216,7 +212,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       )
       assert.equal(
         (
-          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+          await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             ...body,
             amount: '10',
           })
@@ -225,7 +221,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       )
       assert.equal(
         (
-          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+          await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             ...body,
             transactionReference: { ...reference, type: 'CREDIT_TRANSFER' },
           })
@@ -234,31 +230,31 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       )
       assert.equal(
         (
-          await request('/api/credit/reserve', 'relay_session=empty', 'POST', {
+          await request('/internal/credit/reserve', 'relay_session=empty', 'POST', {
             ...body,
             userId: empty,
           })
         ).status,
         404,
       )
-      const first = await request('/api/credit/reserve', 'relay_session=owner', 'POST', body)
+      const first = await request('/internal/credit/reserve', 'relay_session=owner', 'POST', body)
       assert.equal(first.status, 200)
       assert.equal(first.body.status, 'RESERVE_SUCCESS')
       assert.equal(first.body.availableCredit, 65)
       assert.equal(first.body.reserveCredit, 22.75)
-      const replay = await request('/api/credit/reserve', 'relay_session=owner', 'POST', body)
+      const replay = await request('/internal/credit/reserve', 'relay_session=owner', 'POST', body)
       assert.equal(replay.status, 409)
       assert.equal(replay.body.code, 'TRANSACTION_CONFLICT')
       assert.equal(
         (
-          await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+          await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             ...body,
             amount: 9,
           })
         ).status,
         409,
       )
-      const insufficient = await request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+      const insufficient = await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
         ...body,
         transactionReference: { ...reference, id: `${prefix}-too-much` },
         amount: 100,
@@ -275,7 +271,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       'concurrent reservations cannot spend the same available balance twice',
       async () => {
         const reserve = (id) =>
-          request('/api/credit/reserve', 'relay_session=owner', 'POST', {
+          request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
             userId: owner,
             amount: 40,
@@ -301,8 +297,8 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         amount: 10,
       }
       const responses = await Promise.all([
-        request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
-        request('/api/credit/reserve', 'relay_session=owner', 'POST', body),
+        request('/internal/credit/reserve', 'relay_session=owner', 'POST', body),
+        request('/internal/credit/reserve', 'relay_session=owner', 'POST', body),
       ])
       assert.deepEqual(responses.map((response) => response.status).sort(), [200, 409])
       assert.equal(responses.find((response) => response.status === 409).body.code, 'TRANSACTION_CONFLICT')
@@ -310,8 +306,10 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       assert.equal(balance.body.availableCredit, 15)
       assert.equal(balance.body.reserveCredit, 72.75)
     })
-    await t.test('no other credit mutation endpoint is exposed', async () => {
+    await t.test('no public credit mutation endpoint is exposed', async () => {
       assert.equal((await request('/api/credit', 'relay_session=owner', 'POST')).status, 404)
+      assert.equal((await request('/api/credit/reserve', 'relay_session=owner', 'POST', { amount: 1 })).status, 404)
+      assert.equal((await request('/api/credit/reserve', undefined, 'POST', { amount: 1 })).status, 404)
     })
   } finally {
     await prisma.transactionRecord.deleteMany({

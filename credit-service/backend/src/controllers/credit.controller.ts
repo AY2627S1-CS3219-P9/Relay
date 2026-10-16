@@ -24,7 +24,7 @@ export class CreditController {
     }
   }
 
-  reserveInternalCredit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  reserveCredit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.body?.userId
       if (typeof userId !== 'string' || !userId.trim()) {
@@ -33,13 +33,5 @@ export class CreditController {
       res.locals.creditUserId = userId
       res.json(await this.service.reserveCredit(reserveCreditRequest(req, res)))
     } catch (error) { next(error) }
-  }
-
-  reserveCredit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      res.json(await this.service.reserveCredit(reserveCreditRequest(req, res)))
-    } catch (error) {
-      next(error)
-    }
   }
 }

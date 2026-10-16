@@ -61,8 +61,8 @@ npm run dev --workspace @relay/credit-backend
 | GET    | `/api/credit/history` | `{ records: TransactionRecord[] }`                        |
 | POST   | `/internal/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS' }` |
 
-All routes forward the browser's Cookie header and the configured internal
-service token to `POST /internal/user/session/validate` on User Service.
+The two read routes forward the browser's Cookie header and the configured internal
+user-service token to `POST /internal/user/session/validate` on User Service.
 The validated Cognito subject selects the user's records. An optional `userId`
 query parameter must match that subject; another user's ID returns 403.
 Responses use the credit contract directly, without User Service's
@@ -70,7 +70,8 @@ Responses use the credit contract directly, without User Service's
 
 Reserve accepts the contract body
 `{ transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' }, userId, amount }`.
-The body userId must match the authenticated subject. The amount must be a
+The internal route requires the configured x-credit-service-token header. The body
+userId selects the balance to reserve. The amount must be a
 positive number. The balance and a `CREDIT_RESERVE` history record are updated
 atomically. Repeating a reservation reference returns HTTP 409 with TRANSACTION_CONFLICT
 without charging again. The same conflict applies when a release or transfer

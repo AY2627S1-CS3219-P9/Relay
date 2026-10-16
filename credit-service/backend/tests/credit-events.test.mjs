@@ -58,6 +58,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       headers: {
         Cookie: `relay_session=${cookie}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.INTERNAL_CREDIT_SERVICE_TOKEN } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -87,7 +88,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       ],
     })
   const reserve = (id, amount) =>
-    request('requester', '/api/credit/reserve', {
+    request('requester', '/internal/credit/reserve', {
       transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
       userId: requester,
       amount,
