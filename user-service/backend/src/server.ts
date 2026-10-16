@@ -1,7 +1,7 @@
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
-import { UserEventPublisher } from './services/user-event-publisher.js'
+import { UserEventPublisher } from './workers/user-event-publisher.js'
 
 const env = getEnv()
 let server: Server | undefined

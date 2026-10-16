@@ -1,4 +1,5 @@
 import type { Server } from 'node:http'
+import { Kafka, logLevel } from 'kafkajs'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
 import { ErrandEventConsumer } from './consumers/errand.consumer.js'
@@ -8,8 +9,9 @@ import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
-const errandConsumer = new ErrandEventConsumer(creditService)
-const userConsumer = new UserEventConsumer(creditService)
+const kafka = new Kafka({ clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR })
+const errandConsumer = new ErrandEventConsumer(creditService, kafka)
+const userConsumer = new UserEventConsumer(creditService, kafka)
 let server: Server | undefined
 let stopping = false
 

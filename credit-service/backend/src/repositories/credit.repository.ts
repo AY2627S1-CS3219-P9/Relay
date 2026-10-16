@@ -78,7 +78,7 @@ export class CreditRepository {
     )
       throw new Error('Invalid initial credit allocation command.')
     try {
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
         if (await tx.transactionRecord.findUnique({ where: { reference } })) return
         // A delayed registration event must never recreate a deleted user's balance.
         if (
@@ -128,7 +128,7 @@ export class CreditRepository {
     const amount = new Prisma.Decimal(request.amount)
 
     try {
-      return await prisma.$transaction(async (tx: any) => {
+      return await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${request.transactionReference.id}))::text`
         const transactionId = request.transactionReference.id
         const prior = await tx.transactionRecord.findFirst({
@@ -207,7 +207,7 @@ export class CreditRepository {
     )
       throw new Error('Invalid release credit command.')
     const amount = positiveAmount(command.amount)
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const conflicting = await tx.transactionRecord.findUnique({
         where: { reference: `errand:${command.transactionReference.id}:CREDIT_TRANSFER` },
@@ -241,7 +241,7 @@ export class CreditRepository {
     )
       throw new Error('Invalid transfer credit command.')
     const amount = positiveAmount(command.amount)
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const conflicting = await tx.transactionRecord.findUnique({
         where: { reference: `errand:${command.transactionReference.id}:CREDIT_RELEASE` },
@@ -276,7 +276,7 @@ export class CreditRepository {
       command.transactionReference.id !== command.userId
     )
       throw new Error('Invalid user deletion command.')
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
       await tx.transactionRecord.create({

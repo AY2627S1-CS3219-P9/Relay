@@ -22,8 +22,12 @@ function harness(overrides = {}) {
     transferCredit: async () => { calls.push('transfer') },
     ...overrides,
   }
-  const consumer = new ErrandEventConsumer(service)
-  consumer.producer.send = async (record) => { sent.push(JSON.parse(record.messages[0].value)) }
+  const kafka = {
+    consumer: () => ({ connect: async () => {}, disconnect: async () => {} }),
+    producer: () => ({ send: async (record) => { sent.push(JSON.parse(record.messages[0].value)) },
+      connect: async () => {}, disconnect: async () => {} }),
+  }
+  const consumer = new ErrandEventConsumer(service, kafka)
   const handle = async (value) => consumer.handleMessage({
     key: Buffer.from('source-key'),
     value: Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)),

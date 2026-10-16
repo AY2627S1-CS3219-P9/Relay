@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Kafka, logLevel, type Consumer, type KafkaMessage, type Producer } from 'kafkajs'
+import type { Kafka, Consumer, KafkaMessage, Producer } from 'kafkajs'
 import { ErrandEventTypes, type ErrandEvent, type ErrandErrorEvent } from '@relay/contracts'
 import { z } from 'zod'
 import { getEnv } from '../config/env.js'
@@ -81,15 +81,10 @@ export class ErrandEventConsumer {
   private readonly topic: string
   private readonly dlqTopic: string
 
-  constructor(private readonly creditService: CreditService) {
+  constructor(private readonly creditService: CreditService, kafka: Kafka) {
     const env = getEnv()
     this.topic = env.kafkaTopics.errandEvents
     this.dlqTopic = env.kafkaTopics.errandDlq
-    const kafka = new Kafka({
-      clientId: 'relay-credit-errand-consumer',
-      brokers: env.kafkaBrokers,
-      logLevel: logLevel.ERROR,
-    })
     this.consumer = kafka.consumer({
       groupId: 'relay-credit-events',
       allowAutoTopicCreation: false,

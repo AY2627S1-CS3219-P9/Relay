@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type { CreateErrandRequest } from '@relay/contracts'
 import { ErrandService } from '../src/services/errand.service.js'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
-import type { EventService } from '../src/services/event.service.js'
 import type { CreditClient } from '../src/clients/credit.client.js'
 
 const user = {
@@ -20,13 +19,12 @@ const request: CreateErrandRequest = {
 
 function setup() {
   const repository = {
-    createPending: vi.fn().mockResolvedValue('pending-id'),
-    completePending: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
+    addPendingErrand: vi.fn().mockResolvedValue('pending-id'),
+    createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
   const service = new ErrandService(
     repository as unknown as ErrandRepository,
-    {} as EventService,
     credit as unknown as CreditClient,
   )
   return { service, repository, credit }
@@ -36,20 +34,20 @@ describe('errand creation and credit reservation', () => {
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit } = setup()
     await service.createErrand(user, request)
-    expect(repository.createPending).toHaveBeenCalledWith(user.sub)
+    expect(repository.addPendingErrand).toHaveBeenCalledWith(user.sub)
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 10)
-    expect(repository.completePending).toHaveBeenCalledWith('pending-id', user.sub, request)
-    expect(repository.createPending.mock.invocationCallOrder[0])
+    expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, request)
+    expect(repository.addPendingErrand.mock.invocationCallOrder[0])
       .toBeLessThan(credit.reserve.mock.invocationCallOrder[0])
     expect(credit.reserve.mock.invocationCallOrder[0])
-      .toBeLessThan(repository.completePending.mock.invocationCallOrder[0])
+      .toBeLessThan(repository.createErrand.mock.invocationCallOrder[0])
   })
 
   it('leaves the pending row for recovery if reservation fails', async () => {
     const { service, repository, credit } = setup()
     credit.reserve.mockRejectedValue(new Error('Credit unavailable'))
     await expect(service.createErrand(user, request)).rejects.toThrow('Credit unavailable')
-    expect(repository.completePending).not.toHaveBeenCalled()
+    expect(repository.createErrand).not.toHaveBeenCalled()
   })
 
   it('rejects unverified users before inserting a pending row', async () => {
@@ -57,7 +55,8 @@ describe('errand creation and credit reservation', () => {
     await expect(service.createErrand({ ...user, emailVerified: false }, request)).rejects.toMatchObject({
       statusCode: 403,
     })
-    expect(repository.createPending).not.toHaveBeenCalled()
+    expect(repository.addPendingErrand).not.toHaveBeenCalled()
     expect(credit.reserve).not.toHaveBeenCalled()
   })
 })
+

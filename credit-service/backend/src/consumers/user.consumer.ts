@@ -1,4 +1,4 @@
-import { Kafka, logLevel, type Consumer } from 'kafkajs'
+import type { Kafka, Consumer } from 'kafkajs'
 import {
   UserEventTypes,
   type UserEvent,
@@ -21,14 +21,9 @@ export class UserEventConsumer {
   private readonly consumer: Consumer
   private readonly topic: string
 
-  constructor(private readonly creditService: CreditService) {
+  constructor(private readonly creditService: CreditService, kafka: Kafka) {
     const env = getEnv()
     this.topic = env.kafkaTopics.userEvents
-    const kafka = new Kafka({
-      clientId: 'relay-credit-user-consumer',
-      brokers: env.kafkaBrokers,
-      logLevel: logLevel.ERROR,
-    })
     this.consumer = kafka.consumer({
       groupId: 'relay-credit-user-events',
       allowAutoTopicCreation: false,
