@@ -6,6 +6,8 @@ import { ErrandServiceError } from './types/errand.types.js'
 import { sessionMiddleware } from './middleware/session.middleware.js'
 import { ErrandRepository } from './repositories/errand.repository.js'
 import { ErrandService } from './services/errand.service.js'
+import { CreditClient } from './clients/credit.client.js'
+import { SupplierClient } from './clients/supplier.client.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
 import { ErrandConsumer } from './consumers/consumer.js'
@@ -28,7 +30,9 @@ export function createApp() {
   })
 
   const repository = new ErrandRepository()
-  const service = new ErrandService(repository)
+  const creditClient = new CreditClient()
+  const supplierClient = new SupplierClient()
+  const service = new ErrandService(repository, creditClient, supplierClient)
   const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
   const internalErrandRouter = createInternalErrandRouter(controller)
