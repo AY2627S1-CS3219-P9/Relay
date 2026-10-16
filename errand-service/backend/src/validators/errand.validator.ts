@@ -29,10 +29,11 @@ const createErrandSchema = z.object({
   targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
   creditAmount: z.number().int().nonnegative(),
-  expiresAt: z.string().datetime({ offset: true }).refine(
-    (value) => new Date(value).getTime() > Date.now(),
-    'Expiry must be in the future',
-  ).optional(),
+  expiresAt: z
+    .string()
+    .datetime({ offset: true })
+    .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
+    .optional(),
 })
 
 const supplierErrandViewSchema = z.object({

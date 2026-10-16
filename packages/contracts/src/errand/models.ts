@@ -9,6 +9,7 @@ export const ErrandStatus = {
   Cancelled: 'CANCELLED',
   Expired: 'EXPIRED',
   Confirmed: 'CONFIRMED',
+  Deleted: 'DELETED',
 } as const
 
 export type ErrandStatus = (typeof ErrandStatus)[keyof typeof ErrandStatus]

@@ -66,7 +66,11 @@ if (process.env.NODE_ENV !== 'test') {
   })
   const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())
-  const publisher = new ErrandEventPublisher(kafka, new ErrandRepository(), env.kafkaTopicErrandEvents)
+  const publisher = new ErrandEventPublisher(
+    kafka,
+    new ErrandRepository(),
+    env.kafkaTopicErrandEvents,
+  )
   worker.start()
   publisher.start().catch((err) => {
     console.error('Failed to connect Kafka producer:', err)

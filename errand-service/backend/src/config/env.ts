@@ -34,7 +34,8 @@ export function getEnv(): ErrandEnv {
     userApiUrl: process.env.USER_API_URL ?? 'http://user-api:3000',
     supplierApiUrl: process.env.SUPPLIER_API_URL ?? 'http://supplier-api:3000',
     creditApiUrl: process.env.CREDIT_API_URL ?? 'http://credit-api:3000',
-    creditServiceToken: process.env.CREDIT_SERVICE_INTERNAL_TOKEN ?? 'local-internal-credit-service-token',
+    creditServiceToken:
+      process.env.CREDIT_SERVICE_INTERNAL_TOKEN ?? 'local-internal-credit-service-token',
     userServiceInternalToken:
       process.env.USER_SERVICE_INTERNAL_TOKEN ?? 'local-internal-user-service-token',
     supplierServiceToken:

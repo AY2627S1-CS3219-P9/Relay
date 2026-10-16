@@ -75,9 +75,10 @@ export class ErrandController {
         })
         return
       }
-      const errands = scope === 'open'
-        ? await this.service.listOpenBySupplier(supplierId)
-        : await this.service.listBySupplier(supplierId)
+      const errands =
+        scope === 'open'
+          ? await this.service.listOpenBySupplier(supplierId)
+          : await this.service.listBySupplier(supplierId)
       res.json({ errands })
     } catch (error) {
       next(error)
