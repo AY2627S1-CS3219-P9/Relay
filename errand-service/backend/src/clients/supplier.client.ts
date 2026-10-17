@@ -36,12 +36,9 @@ export class SupplierClient {
       const result = (await response.json()) as ValidateSupplierSelectionResponse
       if (result.valid) return
 
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_ERRAND,
-        result.message,
-        400,
-        { supplierId: result.message },
-      )
+      throw new ErrandServiceError(ErrandErrors.INVALID_ERRAND, result.message, 400, {
+        supplierId: result.message,
+      })
     } catch (error) {
       if (error instanceof ErrandServiceError) throw error
       throw new ErrandServiceError(
