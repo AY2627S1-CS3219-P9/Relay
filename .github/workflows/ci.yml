@@ -31,6 +31,12 @@ jobs:
         run: docker compose up --build --detach --wait
 
       - name: Run tests
+        env:
+          DATABASE_URL: postgresql://relay:relay@localhost:5435/relay?schema=public
+          KAFKA_BROKERS: localhost:29092
+          KAFKA_TOPIC_USER_EVENTS: user-events
+          KAFKA_TOPIC_ERRAND_EVENTS: errand-events
+          KAFKA_TOPIC_ERRAND_DLQ: errand-events-dlq
         run: npm test
 
       - name: Stop the Compose environment
