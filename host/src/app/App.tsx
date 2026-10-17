@@ -44,6 +44,8 @@ function App() {
   const [activeService, setActiveService] = useState<ServiceId>('user')
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
+  const [creditOpen, setCreditOpen] = useState(false)
+  const [creditAnchor, setCreditAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
   const [creditInvalidation, setCreditInvalidation] = useState<{
@@ -246,6 +248,7 @@ function App() {
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
+    closeCredit()
     if (service !== 'errand') {
       setErrandViewContext(undefined)
       setCreateErrandOnSupplierMap(false)
@@ -255,6 +258,7 @@ function App() {
   }
 
   function openErrandView(context: ErrandViewContext) {
+    closeCredit()
     if (context.view === 'explore') {
       setSupplierMode('explore')
       navigateTo('supplier')
@@ -272,8 +276,21 @@ function App() {
   }
 
   function openProfile(anchor: ProfileAnchor) {
+    closeCredit()
     setProfileAnchor(anchor)
     setProfileOpen(true)
+  }
+
+  function openCredit(anchor: ProfileAnchor) {
+    setProfileOpen(false)
+    setProfileAnchor(undefined)
+    setCreditAnchor(anchor)
+    setCreditOpen(true)
+  }
+
+  function closeCredit() {
+    setCreditOpen(false)
+    setCreditAnchor(undefined)
   }
 
   const updateViewport = useCallback((
@@ -314,6 +331,15 @@ function App() {
     }
   }
 
+  function creditCardStyle(): CSSProperties | undefined {
+    if (!creditAnchor) return undefined
+    const cardWidth = Math.min(405, window.innerWidth - 32)
+    const cardMaxHeight = window.innerHeight * 0.6
+    const top = Math.min(creditAnchor.bottom + 12, window.innerHeight - cardMaxHeight - 16)
+    const left = Math.min(Math.max(16, creditAnchor.left), window.innerWidth - cardWidth - 16)
+    return { top: Math.max(16, top), left, width: cardWidth }
+  }
+
   return (
     <main className="relay-host-shell">
       <div className="remote-grid">
@@ -322,8 +348,8 @@ function App() {
             key={id}
             service={id}
             serviceLabel={label}
-            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)}
-            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
+            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)}
+            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : id === 'credit' && creditOpen ? creditAnchor : undefined}
             appProps={{
               fetchSession,
               authVersion,
@@ -334,6 +360,8 @@ function App() {
               refreshUserProfile,
               navigateTo,
               openProfile,
+              openCredit,
+              closeCredit: id === 'credit' ? closeCredit : undefined,
               openErrandView,
               errandApi: hostErrandApi,
               supplierApi: hostSupplierApi,
@@ -348,21 +376,21 @@ function App() {
                 : undefined,
               mapActive: activeService === id,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'user' && profileOpen
+              presentation: id === 'credit' ? undefined : id === 'user' && profileOpen
                 ? 'card'
                 : id === 'errand' && createErrandOnSupplierMap
                   ? 'card'
                   : 'full',
             }}
             overlay={
-              (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)
+              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)
             }
             overlayClassName={id === 'errand' && createErrandOnSupplierMap ? 'errand-create-overlay-page' : undefined}
             card={
-              id === 'user' && profileOpen
+              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen)
             }
             cardStyle={
-              id === 'user' && profileOpen ? profileCardStyle() : undefined
+              id === 'user' && profileOpen ? profileCardStyle() : id === 'credit' && creditOpen ? creditCardStyle() : undefined
             }
           />
         ))}

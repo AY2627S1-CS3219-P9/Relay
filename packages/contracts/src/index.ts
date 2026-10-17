@@ -76,6 +76,8 @@ export type RemoteAppProps = {
   navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void
+  openCredit?: (anchor: ProfileAnchor) => void
+  closeCredit?: () => void
   closeProfile?: () => void
   openErrandView?: (context: ErrandViewContext) => void
   errandViewContext?: ErrandViewContext
