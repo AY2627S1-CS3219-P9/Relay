@@ -78,6 +78,9 @@ export type RemoteAppProps = {
   openProfile?: (anchor: ProfileAnchor) => void
   openCredit?: (anchor: ProfileAnchor) => void
   closeCredit?: () => void
+  creditHistoryOpen?: boolean
+  showCreditHistory?: () => void
+  showCreditBalance?: () => void
   closeProfile?: () => void
   openErrandView?: (context: ErrandViewContext) => void
   errandViewContext?: ErrandViewContext

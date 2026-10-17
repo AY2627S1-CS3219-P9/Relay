@@ -30,6 +30,24 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+.remote-credit-anchor.relay-card-placement-anchored {
+  max-height: calc(100dvh - 96px);
+  overflow: hidden;
+  transition: width 190ms cubic-bezier(0.22, 1, 0.36, 1), height 190ms cubic-bezier(0.22, 1, 0.36, 1), left 190ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.remote-credit-anchor > .remote-profile-card {
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+  transition: background-color 190ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.remote-credit-anchor > .remote-profile-card::after {
+  transition: background-color 190ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.remote-credit-anchor > .remote-credit-history-card,
+.remote-credit-anchor > .remote-credit-history-card::after {
+  background-color: var(--relay-glass-surface-strong-bg);
+}
 .remote-profile-card::-webkit-scrollbar {
   display: none;
 }
@@ -69,4 +87,12 @@
   height: 100%;
   min-height: 100dvh;
   place-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-credit-anchor.relay-card-placement-anchored,
+  .remote-credit-anchor > .remote-profile-card,
+  .remote-credit-anchor > .remote-profile-card::after {
+    transition: none;
+  }
 }

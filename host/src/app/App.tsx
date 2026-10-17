@@ -45,6 +45,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [creditOpen, setCreditOpen] = useState(false)
+  const [creditHistoryOpen, setCreditHistoryOpen] = useState(false)
   const [creditAnchor, setCreditAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
@@ -285,11 +286,13 @@ function App() {
     setProfileOpen(false)
     setProfileAnchor(undefined)
     setCreditAnchor(anchor)
+    setCreditHistoryOpen(false)
     setCreditOpen(true)
   }
 
   function closeCredit() {
     setCreditOpen(false)
+    setCreditHistoryOpen(false)
     setCreditAnchor(undefined)
   }
 
@@ -333,11 +336,12 @@ function App() {
 
   function creditCardStyle(): CSSProperties | undefined {
     if (!creditAnchor) return undefined
-    const cardWidth = Math.min(405, window.innerWidth - 32)
-    const cardMaxHeight = window.innerHeight * 0.6
-    const top = Math.min(creditAnchor.bottom + 12, window.innerHeight - cardMaxHeight - 16)
+    const cardWidth = Math.min(creditHistoryOpen ? 760 : 405, window.innerWidth - 32)
+    const top = Math.max(16, creditAnchor.bottom + 12)
+    const availableHeight = Math.max(180, window.innerHeight - top - 16)
+    const height = Math.min(creditHistoryOpen ? 640 : 280, availableHeight)
     const left = Math.min(Math.max(16, creditAnchor.left), window.innerWidth - cardWidth - 16)
-    return { top: Math.max(16, top), left, width: cardWidth }
+    return { top, left, width: cardWidth, height }
   }
 
   return (
@@ -362,6 +366,9 @@ function App() {
               openProfile,
               openCredit,
               closeCredit: id === 'credit' ? closeCredit : undefined,
+              creditHistoryOpen: id === 'credit' ? creditHistoryOpen : undefined,
+              showCreditHistory: id === 'credit' ? () => setCreditHistoryOpen(true) : undefined,
+              showCreditBalance: id === 'credit' ? () => setCreditHistoryOpen(false) : undefined,
               openErrandView,
               errandApi: hostErrandApi,
               supplierApi: hostSupplierApi,
