@@ -15,6 +15,7 @@ export const demoErrands: DemoErrand[] = [
     creditAmount: 15,
     status: 'OPEN',
     expiresAt: inHours(6),
+    confirmationDeadline: null,
   },
   {
     id: 'demo-printing',
@@ -27,6 +28,7 @@ export const demoErrands: DemoErrand[] = [
     creditAmount: 8,
     status: 'OPEN',
     expiresAt: inHours(3),
+    confirmationDeadline: null,
   },
   {
     id: 'demo-active',
@@ -39,6 +41,7 @@ export const demoErrands: DemoErrand[] = [
     creditAmount: 12,
     status: 'ACCEPTED',
     expiresAt: inHours(4),
+    confirmationDeadline: null,
     courierName: 'Ryan',
   },
 ]

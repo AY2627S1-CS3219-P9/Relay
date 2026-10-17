@@ -45,7 +45,7 @@ export class ErrandService {
   }
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
-    await this.repository.expireOpenErrands()
+    await this.processDueReadLifecycleTransitions()
     const errands = options.scope === 'mine'
       ? this.repository.listOwnedBy(user.sub)
       : this.repository.listVisibleTo(user.sub)
@@ -56,13 +56,14 @@ export class ErrandService {
     user: AuthenticatedUser,
     request: SupplierErrandViewRequest,
   ): Promise<SupplierErrandSummary[]> {
-    await this.repository.expireOpenErrands()
+    await this.processDueReadLifecycleTransitions()
     return this.enrichCourierProfiles(
       await this.repository.listSupplierView({ ...request, viewerSub: user.sub }),
     )
   }
 
   async listBySupplier(supplierId: string): Promise<Errand[]> {
+    await this.processDueReadLifecycleTransitions()
     return this.enrichCourierProfiles(await this.repository.listBySupplier(supplierId))
   }
 
@@ -72,7 +73,7 @@ export class ErrandService {
   }
 
   async getErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
-    await this.repository.expireOpenErrands()
+    await this.processDueReadLifecycleTransitions()
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
@@ -163,6 +164,7 @@ export class ErrandService {
   }
 
   async confirmErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    await this.repository.confirmDeliveredErrands()
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
@@ -320,6 +322,11 @@ export class ErrandService {
 
   private async enrichCourierProfiles(errands: Errand[]): Promise<Errand[]> {
     return Promise.all(errands.map((errand) => this.enrichCourierProfile(errand)))
+  }
+
+  private async processDueReadLifecycleTransitions(): Promise<void> {
+    await this.repository.expireOpenErrands()
+    await this.repository.confirmDeliveredErrands()
   }
 
   private async enrichCourierProfile(errand: Errand): Promise<Errand> {

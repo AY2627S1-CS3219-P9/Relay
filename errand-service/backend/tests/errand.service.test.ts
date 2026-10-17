@@ -13,6 +13,7 @@ const user = {
 function createRepositoryMock() {
   return {
     expireOpenErrands: vi.fn().mockResolvedValue(0),
+    confirmDeliveredErrands: vi.fn().mockResolvedValue(0),
     listOwnedBy: vi.fn().mockResolvedValue([]),
     listVisibleTo: vi.fn().mockResolvedValue([]),
     listSupplierView: vi.fn().mockResolvedValue([]),
@@ -32,6 +33,7 @@ describe('ErrandService read scopes', () => {
     await service.getErrands(user, { scope: 'mine' })
 
     expect(repository.expireOpenErrands).toHaveBeenCalledOnce()
+    expect(repository.confirmDeliveredErrands).toHaveBeenCalledOnce()
     expect(repository.listOwnedBy).toHaveBeenCalledWith(user.sub)
     expect(repository.listVisibleTo).not.toHaveBeenCalled()
   })
@@ -40,6 +42,7 @@ describe('ErrandService read scopes', () => {
     await service.getErrands(user)
 
     expect(repository.expireOpenErrands).toHaveBeenCalledOnce()
+    expect(repository.confirmDeliveredErrands).toHaveBeenCalledOnce()
     expect(repository.listVisibleTo).toHaveBeenCalledWith(user.sub)
     expect(repository.listOwnedBy).not.toHaveBeenCalled()
   })
@@ -48,6 +51,7 @@ describe('ErrandService read scopes', () => {
     await service.getSupplierErrandView(user, { scope: 'explore', supplierId: 'supplier-1' })
 
     expect(repository.expireOpenErrands).toHaveBeenCalledOnce()
+    expect(repository.confirmDeliveredErrands).toHaveBeenCalledOnce()
     expect(repository.listSupplierView).toHaveBeenCalledWith({
       scope: 'explore',
       supplierId: 'supplier-1',
@@ -58,10 +62,12 @@ describe('ErrandService read scopes', () => {
   it('uses the authenticated subject for supplier mine views', async () => {
     await service.getSupplierErrandView(user, { scope: 'mine' })
 
+    expect(repository.expireOpenErrands).toHaveBeenCalledOnce()
     expect(repository.listSupplierView).toHaveBeenCalledWith({
       scope: 'mine',
       viewerSub: user.sub,
     })
+    expect(repository.confirmDeliveredErrands).toHaveBeenCalledOnce()
   })
 })
 
