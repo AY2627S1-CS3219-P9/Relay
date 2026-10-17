@@ -35,7 +35,9 @@ export function reserveCreditRequest(req: Request, res: Response): ReserveCredit
   }
   const ref = reference as Record<string, unknown>
   if (
-    ref.service !== 'errand' ||
+    typeof ref.service !== 'string' ||
+    !ref.service.trim() ||
+    ref.service.includes(':') ||
     typeof ref.id !== 'string' ||
     !ref.id.trim() ||
     ref.id.includes(':') ||
@@ -43,10 +45,10 @@ export function reserveCreditRequest(req: Request, res: Response): ReserveCredit
   ) {
     throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
   }
-  if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0) {
+  if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount < 0) {
     throw new CreditServiceError(
       'INVALID_CREDIT_AMOUNT',
-      'Credit amount must be a positive number.',
+      'Credit amount must be a nonnegative number.',
       422,
     )
   }
