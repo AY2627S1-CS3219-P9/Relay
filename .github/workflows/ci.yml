@@ -32,6 +32,7 @@ jobs:
 
       - name: Run tests
         env:
+          CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
           KAFKA_BROKERS: localhost:29092
           KAFKA_TOPIC_USER_EVENTS: user-events
           KAFKA_TOPIC_ERRAND_EVENTS: errand-events

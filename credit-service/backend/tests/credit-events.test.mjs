@@ -58,9 +58,13 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const api = createApp().listen(0, '127.0.0.1')
   await new Promise((resolve) => api.once('listening', resolve))
   const url = `http://127.0.0.1:${api.address().port}`
+  const kafka = new Kafka({
+    clientId: 'relay-credit-workflow-test',
+    brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
+  })
   const creditService = new CreditService(new CreditRepository())
-  const errandConsumer = new ErrandEventConsumer(creditService)
-  const userConsumer = new UserEventConsumer(creditService)
+  const errandConsumer = new ErrandEventConsumer(creditService, kafka)
+  const userConsumer = new UserEventConsumer(creditService, kafka)
   const request = async (cookie, path = '/api/credit', body) => {
     const response = await fetch(url + path, {
       method: body ? 'POST' : 'GET',
@@ -73,10 +77,6 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     return { status: response.status, body: await response.json() }
   }
-  const kafka = new Kafka({
-    clientId: 'relay-credit-workflow-test',
-    brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
-  })
   const producer = kafka.producer()
   const dlqConsumer = kafka.consumer({ groupId: `relay-credit-dlq-test-${randomUUID()}` })
   const dlqEvents = []

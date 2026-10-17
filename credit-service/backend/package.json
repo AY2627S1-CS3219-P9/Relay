@@ -8,7 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
-    "test": "export DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5435/relay?schema=public}\" KAFKA_BROKERS=\"${KAFKA_BROKERS:-localhost:29092}\" KAFKA_TOPIC_USER_EVENTS=\"${KAFKA_TOPIC_USER_EVENTS:-user-events}\" KAFKA_TOPIC_ERRAND_EVENTS=\"${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}\" KAFKA_TOPIC_ERRAND_DLQ=\"${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}\" && npm run prisma:generate && npm run prisma:migrate:deploy && npm run build && node --import tsx --test tests/*.test.mjs",
+    "test": "export DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5435/relay?schema=public}\" CREDIT_SERVICE_INTERNAL_TOKEN=\"${CREDIT_SERVICE_INTERNAL_TOKEN:-local-internal-credit-service-token}\" KAFKA_BROKERS=\"${KAFKA_BROKERS:-localhost:29092}\" KAFKA_TOPIC_USER_EVENTS=\"${KAFKA_TOPIC_USER_EVENTS:-user-events}\" KAFKA_TOPIC_ERRAND_EVENTS=\"${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}\" KAFKA_TOPIC_ERRAND_DLQ=\"${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}\" && npm run prisma:generate && npm run prisma:migrate:deploy && npm run build && node --import tsx --test tests/*.test.mjs",
     "prisma:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5435/relay?schema=public}\" prisma generate",
     "prisma:migrate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5435/relay?schema=public}\" prisma migrate dev",
     "prisma:migrate:deploy": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5435/relay?schema=public}\" prisma migrate deploy",
