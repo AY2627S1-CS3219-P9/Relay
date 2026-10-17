@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { Errand, ErrandStatus, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
+import type { Errand, ErrandStatus, ProfileAnchor, RemoteAppProps, ServiceType } from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
@@ -20,17 +20,15 @@ import {
   StatusBadge,
   type BubbleAnchor,
 } from '@relay/ui'
-import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
 import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilterPanel'
 import { ErrandMap } from './components/ErrandMap'
-import type { DemoErrand } from './types'
 import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 import { useErrandNotifications } from './hooks/useErrandNotifications'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
-const lifecycleRank: Record<DemoErrand['status'], number> = {
+const lifecycleRank: Record<ErrandStatus, number> = {
   DELIVERED: 0,
   PICKED_UP: 1,
   ACCEPTED: 2,
@@ -60,7 +58,7 @@ export default function App({
   errandApi,
   supplierApi,
 }: RemoteAppProps) {
-  const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
+  const [errands, setErrands] = useState<Errand[]>([])
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
@@ -78,7 +76,8 @@ export default function App({
   const isCourierView =
     view === 'explore' ||
     (errandViewContext?.view === 'supplier' && errandViewContext.scope === 'explore')
-  const role = isCourierView ? 'courier' : 'requester'
+  const isRequester = authenticatedSubject === selectedErrand?.requesterSub
+  const role = isCourierView ? 'courier' : isRequester ? 'requester' : 'courier'
 
   useEffect(() => {
     if (!errandApi || view === 'create' || view === 'supplier') return
@@ -90,7 +89,7 @@ export default function App({
           view === 'my-errands'
             ? loaded.filter((errand) => errand.courierSub === authenticatedSubject)
             : loaded
-        setErrands(accepted.map(toDemoErrand))
+        setErrands(accepted)
       })
       .catch(() => undefined)
   }, [errandApi, authenticatedSubject, view])
@@ -112,7 +111,7 @@ export default function App({
     const filtered = errands.filter(
       (errand) =>
         filters.statuses.includes(errand.status) &&
-        filters.serviceTypes.includes(errand.serviceType),
+        filters.serviceTypes.includes(errand.supplierDetails.serviceType as ServiceType),
     )
     return [...filtered].sort((left, right) => {
       if (filters.sort === 'deadline') return left.expiresAt.localeCompare(right.expiresAt)
@@ -173,7 +172,6 @@ export default function App({
             errand.id === id
               ? {
                   ...errand,
-                  ...toDemoErrand(response.errand),
                   courierName: undefined,
                   courierProfilePictureUrl: undefined,
                 }
@@ -186,14 +184,14 @@ export default function App({
       const response = await actions[action](id)
       setErrands((current) =>
         current.map((errand) =>
-          errand.id === id ? { ...errand, ...toDemoErrand(response.errand) } : errand,
+          errand.id === id ? { ...errand, ...response.errand } : errand,
         ),
       )
       if (action === 'cancel' || action === 'confirm') invalidateCreditBalance?.()
       if (action === 'accept') openErrandView?.({ view: 'my-errands' })
       return
     }
-    const nextStatus: Partial<Record<typeof action, DemoErrand['status']>> = {
+    const nextStatus: Partial<Record<typeof action, ErrandStatus>> = {
       accept: 'ACCEPTED',
       pickup: 'PICKED_UP',
       deliver: 'DELIVERED',
@@ -224,7 +222,7 @@ export default function App({
   const handleErrandUpdate = useCallback((errandId: string, newStatus: string) => {
     setErrands((current) =>
       current.map((errand) =>
-        errand.id === errandId ? { ...errand, status: newStatus as DemoErrand['status'] } : errand,
+        errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
       ),
     )
   }, [])
@@ -427,7 +425,7 @@ export default function App({
           <strong>{visibleErrands[0].name}</strong>
           <small>
             {formatRoute(visibleErrands[0].pickupLocation)} →{' '}
-            {formatRoute(visibleErrands[0].deliveryLocation)}
+            {formatRoute(visibleErrands[0].targetLocation)}
           </small>
           <em>
             {visibleErrands[0].creditAmount} cr reserved · Due{' '}
@@ -446,25 +444,8 @@ export default function App({
   )
 }
 
-function distance(errand: DemoErrand, location: { lat: number; lng: number }) {
+function distance(errand: Errand, location: { lat: number; lng: number }) {
   const lat = errand.pickupLocation.lat - location.lat
   const lng = errand.pickupLocation.lng - location.lng
   return lat * lat + lng * lng
-}
-
-function toDemoErrand(errand: Errand): DemoErrand {
-  return {
-    id: errand.id,
-    name: errand.deliveryDetails.description,
-    serviceType: 0,
-    pickupLocation: errand.pickupLocation,
-    deliveryLocation: errand.pickupLocation,
-    description: errand.deliveryDetails.description,
-    instructions: errand.deliveryDetails.instructions ?? '',
-    creditAmount: errand.creditAmount,
-    status: errand.status,
-    expiresAt: errand.expiresAt,
-    requesterSub: errand.requesterSub,
-    courierSub: errand.courierSub,
-  }
 }

@@ -7,24 +7,6 @@ export type ErrandLocation = {
   floorNumber: number
 }
 
-export type DemoErrand = {
-  id: string
-  name: string
-  serviceType: ServiceType
-  pickupLocation: ErrandLocation
-  deliveryLocation: ErrandLocation
-  description: string
-  instructions: string
-  creditAmount: number
-  status: ErrandStatus
-  expiresAt: string
-  courierName?: string
-  courierProfilePictureUrl?: string
-  supplier?: Supplier
-  requesterSub?: string
-  courierSub?: string | null
-}
-
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   0: 'Food',
   1: 'Drink',
