@@ -90,16 +90,21 @@ npm run dev
 ```
 
 `npm run dev` starts `user-postgres`, `supplier-db`, and `errand-postgres`,
+starts Kafka and its topic-initializer container,
 generates the Errand Prisma client, and applies the Errand schema with
 `prisma db push` before starting the APIs. The User API generates its Prisma
 client and applies its migrations through its `predev` script.
+
+The Errand backend is the `errand-api` service in the root Compose file. In
+the full Docker environment it runs inside that container and is reached by
+the other containers at `http://errand-api:3000`; in `npm run dev` it runs as
+the local `@relay/errand-backend` process on `http://localhost:3002` instead.
 
 Local authentication also requires Floci. Ensure `.env.development` exists,
 then start Floci in a separate terminal before using the application:
 
 ```bash
-docker build -t floci-sa ./floci
-./floci/local-floci.sh
+docker build -t floci-sa ./floci && ./floci/local-floci.sh
 ```
 
 The host uses stable same-origin remote paths, so no per-machine remote URL
@@ -118,17 +123,17 @@ Install dependencies first:
 npm install
 ```
 
-If you want to start only the infrastructure manually, use:
+To run only the Docker dependencies and keep the Relay services local through
+`npm run dev`, use:
 
 ```bash
-docker compose up -d user-postgres supplier-db errand-postgres
+docker compose up -d user-postgres supplier-db errand-postgres kafka kafka-init
 ```
 
-Build the local Floci image once, then start it in a separate terminal:
+Build and start local Floci in a separate terminal:
 
 ```bash
-docker build -t floci-sa ./floci
-./floci/local-floci.sh
+docker build -t floci-sa ./floci && ./floci/local-floci.sh
 ```
 
 In another terminal, start the frontend and backend development processes:

@@ -8,7 +8,9 @@ const supplier: Supplier = {
   name: 'Test Supplier',
   location: { lat: 1, lng: 103, buildingName: 'Test Building', floorNumber: 1 },
   isOperational: true,
-  operatingHours: { openingTime: '09:00', closingTime: '18:00', daysOfWeek: [0, 1, 2, 3, 4] },
+  // Selection validation should not depend on the wall clock when this test runs.
+  // The dedicated availability assertion below covers time-window behavior.
+  operatingHours: { openingTime: '00:00', closingTime: '00:00', daysOfWeek: [0, 1, 2, 3, 4, 5, 6] },
   serviceTypes: [0],
 }
 

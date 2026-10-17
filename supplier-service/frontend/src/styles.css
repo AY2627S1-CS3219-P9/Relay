@@ -229,19 +229,6 @@ input {
   min-width: 0;
 }
 .supplier-list-item-meta { flex: 0 0 auto; }
-.supplier-detail-card-transition {
-  animation: supplier-detail-resize-in 0.34s cubic-bezier(0.22, 1.16, 0.36, 1) both;
-}
-@keyframes supplier-detail-resize-in {
-  from {
-    opacity: 0.72;
-    transform: scale(0.94, 0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 .icon-button {
   width: calc(32px * var(--relay-icon-button-scale, 1)) !important;
   height: calc(32px * var(--relay-icon-button-scale, 1)) !important;
