@@ -21,8 +21,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:services",
     "test:workspaces": "npm run test --workspaces --if-present",
-    "test:services": "npm run test:services:frontend",
-    "test:services:frontend": "node --test tests/frontend/*.test.mjs",
+    "test:services": "npm run test:services:integration",
+    "test:services:integration": "node --test tests/integration/*.test.mjs",
     "format": "prettier . --write"
   },
   "dependencies": {
