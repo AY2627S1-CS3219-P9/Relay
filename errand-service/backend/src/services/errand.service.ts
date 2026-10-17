@@ -13,11 +13,13 @@ import {
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { CreditClient } from '../clients/credit.client.js'
+import { SupplierClient } from '../clients/supplier.client.js'
 
 export class ErrandService {
   constructor(
     private readonly repository: ErrandRepository,
     private readonly creditClient: CreditClient = new CreditClient(),
+    private readonly supplierClient: SupplierClient = new SupplierClient(),
   ) {}
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
@@ -28,6 +30,12 @@ export class ErrandService {
         403,
       )
     }
+
+    // Validate the supplier's current operational status before reserving credit
+    // or creating any pending/database records. serviceType remains optional.
+    await this.supplierClient.validateSelection({
+      supplierId: request.supplierDetails.supplierId,
+    })
 
     const id = await this.repository.addPendingErrand(user.sub)
     await this.creditClient.reserve(id, user.sub, request.creditAmount)
