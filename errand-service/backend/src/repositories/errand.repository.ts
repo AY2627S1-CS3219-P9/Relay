@@ -165,24 +165,16 @@ export class ErrandRepository {
   }
 
   async listOwnedBy(requesterSub: string): Promise<Errand[]> {
-    //  Order by lifecycle state (most advanced first), then by creation time
-    const rows = await this.prisma.$queryRaw<PrismaErrand[]>`
-      SELECT * FROM errands
-      WHERE "requesterSub" = ${requesterSub} AND status != 'DELETED'
-      ORDER BY
-        CASE status
-          WHEN 'DELIVERED' THEN 0
-          WHEN 'PICKED_UP' THEN 1
-          WHEN 'ACCEPTED' THEN 2
-          WHEN 'OPEN' THEN 3
-          WHEN 'EXPIRED' THEN 4
-          WHEN 'CANCELLED' THEN 5
-          WHEN 'CONFIRMED' THEN 6
-          WHEN 'DELETED' THEN 7
-          ELSE 8
-        END,
-        "createdAt" ASC
-    `
+    // Order by lifecycle state (most advanced first), then by creation time
+    const rows = await this.prisma.errand.findMany({
+      where: {
+        requesterSub,
+        status: { not: 'DELETED' },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    })
     return rows.map(toContract)
   }
 
