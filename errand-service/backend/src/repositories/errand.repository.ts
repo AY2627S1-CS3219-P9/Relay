@@ -12,6 +12,7 @@ import type {
   SupplierErrandSummary,
   SupplierErrandViewRequest,
 } from '@relay/contracts'
+import { sortRequesterErrands } from '../utils/errand-ordering.js'
 
 async function appendEvent(tx: Prisma.TransactionClient, event: { eventType: ErrandEventType; payload: ErrandEventPayload }): Promise<void> {
   await tx.errandEventOutbox.create({
@@ -124,7 +125,7 @@ export class ErrandRepository {
       where: { requesterSub },
       orderBy: { createdAt: 'asc' },
     })
-    return rows.map(toContract)
+    return sortRequesterErrands(rows.map(toContract))
   }
 
   async expireOpenErrands(now = new Date()): Promise<number> {
