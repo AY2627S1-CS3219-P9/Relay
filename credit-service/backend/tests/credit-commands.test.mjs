@@ -20,9 +20,15 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
       transactionReference: userRef(courier, 'INITIAL_ALLOCATION'),
       userId: courier,
     })
-    await prisma.creditBalance.update({
-      where: { userId: requester },
-      data: { availableCredit: 70, reserveCredit: 30 },
+    await repository.reserveCredit({
+      transactionReference: errandRef(releaseId, 'CREDIT_RESERVE'),
+      userId: requester,
+      amount: 10,
+    })
+    await repository.reserveCredit({
+      transactionReference: errandRef(errandId, 'CREDIT_RESERVE'),
+      userId: requester,
+      amount: 12.5,
     })
     const release = {
       transactionReference: errandRef(releaseId, 'CREDIT_RELEASE'),
@@ -35,7 +41,7 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
       (({ availableCredit, reserveCredit }) => ({ availableCredit, reserveCredit }))(
         await repository.findBalance(requester),
       ),
-      { availableCredit: 80, reserveCredit: 20 },
+      { availableCredit: 87.5, reserveCredit: 12.5 },
     )
     const transfer = {
       transactionReference: errandRef(errandId, 'CREDIT_TRANSFER'),
@@ -45,7 +51,7 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
     }
     await repository.transferCredit(transfer)
     await repository.transferCredit(transfer)
-    assert.equal((await repository.findBalance(requester)).reserveCredit, 7.5)
+    assert.equal((await repository.findBalance(requester)).reserveCredit, 0)
     assert.equal((await repository.findBalance(courier)).availableCredit, 112.5)
     await assert.rejects(() =>
       repository.releaseCredit({
@@ -76,6 +82,7 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
     })
     assert.equal(await repository.findBalance(requester), null)
     const history = await repository.findHistory(requester)
+    assert.equal(history.filter((record) => record.type === 'CREDIT_RESERVE').length, 2)
     assert.equal(history.filter((record) => record.type === 'CREDIT_RELEASE').length, 1)
     assert.equal(history.filter((record) => record.type === 'CREDIT_TRANSFER').length, 1)
     assert.equal(history.filter((record) => record.type === 'USER_DELETION').length, 1)

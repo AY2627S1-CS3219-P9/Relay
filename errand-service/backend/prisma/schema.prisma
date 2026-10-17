@@ -57,3 +57,23 @@ model Errand {
   @@index([status, expiresAt])
   @@map("errands")
 }
+
+model PendingErrand {
+  id           String   @id @db.Uuid
+  requesterSub String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("pending_errands")
+}
+
+model ErrandEventOutbox {
+  id          String    @id @db.Uuid
+  eventType   String
+  payload     Json
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  @@index([publishedAt, createdAt])
+  @@map("errand_event_outbox")
+}

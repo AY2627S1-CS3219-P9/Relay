@@ -25,7 +25,9 @@ The first successful `PATCH /api/user/me` profile creation stores a
 as the profile. The background publisher sends it to `KAFKA_TOPIC_USER_EVENTS`
 with `payload: { cognitoSub }`, and marks it published after Kafka acknowledges
 it. Pending events are retried after transient broker failures or restarts.
-Compose uses `kafka:9092`.
+Compose uses `kafka:9092`. Published outbox rows older than seven days are
+removed during the publisher's minute-by-minute cleanup; unpublished rows
+remain available for retry.
 
 Deleting a profile writes a `UserDeleted` envelope to the same outbox and
 topic in the profile deletion transaction. Both envelopes include an event ID,

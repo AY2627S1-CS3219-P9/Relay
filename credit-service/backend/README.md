@@ -58,23 +58,24 @@ npm run dev --workspace @relay/credit-backend
 | Method | Route                                 | Response                                                            |
 | ------ | ------------------------------------- | ------------------------------------------------------------------- |
 | GET    | `/api/credit`                         | `{ userId, availableCredit, reserveCredit, lastUpdated }`           |
-| GET    | `/api/credit/history?offset={number}` | `{ records: TransactionRecord[] }` (up to 100)                     |
-| POST   | `/api/credit/reserve`                 | `CreditBalance` with reservation status                             |
+| GET    | `/api/credit/history?offset={number}` | `{ records: TransactionRecord[] }` (up to 100)                      |
+| POST   | `/internal/credit/reserve`            | `CreditBalance & { status: 'RESERVE_SUCCESS' }`                     |
 
-All routes forward the browser's Cookie header and the configured internal
-service token to `POST /internal/user/session/validate` on User Service.
+The two read routes forward the browser's Cookie header and the configured internal
+user-service token to `POST /internal/user/session/validate` on User Service.
 The validated Cognito subject selects the user's records. An optional `userId`
 query parameter must match that subject; another user's ID returns 403.
 Responses use the credit contract directly, without User Service's
 `{ ok, data }` envelope. Dates are serialized as ISO strings.
 
 Reserve accepts the contract body
-`{ transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' }, userId, amount }`.
-The body userId must match the authenticated subject. The amount must be a
-positive number. The balance and a `CREDIT_RESERVE` history record are updated
-atomically. Repeating the same reference and details returns `ALREADY_RESERVED`
-without charging again; reusing the reference with different details returns
-`INVALID_REQUEST` (400). A missing balance returns `USER_NOT_FOUND` (404);
+`{ transactionReference: { service, id, type: 'CREDIT_RESERVE' }, userId, amount }`.
+The internal route requires the configured x-credit-service-token header. The body
+userId selects the balance to reserve. The amount must be a
+nonnegative number. The balance and a `CREDIT_RESERVE` history record are updated
+atomically. Repeating a reservation reference returns HTTP 409 with TRANSACTION_CONFLICT
+without charging again. The same conflict applies when a release or transfer
+transaction already exists with the same service and id. A missing balance returns `USER_NOT_FOUND` (404);
 invalid amounts and insufficient available credit return 422.
 
 History includes transactions where the user is sender or receiver, newest
@@ -129,12 +130,19 @@ Credit Service consumes `KAFKA_TOPIC_ERRAND_EVENTS`. It maps
 `ErrandCompleted` to a credit transfer, and `ErrandCancelled` or
 `ErrandExpired` to a release. It ignores the other errand event types.
 Credit Service uses the errand ID to read the prior reservation and takes
-the requester and amount from that record. If no reservation exists, it
-publishes an `ErrandErrorEvent` to `KAFKA_TOPIC_ERRAND_DLQ` with a credit
-error code and message. It also checks the requester when provided and
-requires a courier for completed errands. If DLQ publication fails, the
-source event is retried. Transaction references make successful replays
-idempotent and reject conflicting outcomes.
+the requester and amount from that record. A completion, cancellation, or
+expiry without a reservation is sent as an `ErrandErrorEvent` to
+`KAFKA_TOPIC_ERRAND_DLQ`. When `ErrandCreationFailed` arrives before its
+reservation, Credit Service atomically records a zero-amount reserve and
+release without changing the balance. This prevents a delayed HTTP
+reservation from charging the user. If a reservation already exists, that
+failure event releases its reserved amount instead.
+
+Release and transfer take the same per-reference database lock as reserve.
+Exactly one terminal credit outcome can be recorded for an errand; a later
+conflicting event goes to the DLQ. Duplicate events with the same outcome
+are idempotent. Credit Service checks the requester and requires a courier
+for completed errands. If DLQ publication fails, the source event is retried.
 
 A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
 leaves a history record for the remaining total. A delayed registration event

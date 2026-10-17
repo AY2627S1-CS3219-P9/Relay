@@ -7,10 +7,11 @@ export class UserEventPublisher {
   private timer?: ReturnType<typeof setInterval>
   private connected = false
   private flushing = false
+  private lastCleanup = 0
 
   constructor() {
     this.producer = new Kafka({
-      clientId: 'relay-user-service',
+      clientId: 'user-service',
       brokers: getEnv().kafkaBrokers,
       logLevel: logLevel.ERROR,
     }).producer()
@@ -48,6 +49,16 @@ export class UserEventPublisher {
     } catch (error) {
       console.error('User event outbox delivery failed; retrying:', error)
     } finally {
+      try {
+        if (Date.now() - this.lastCleanup >= 60_000) {
+          await prisma.userOutboxEvent.deleteMany({
+            where: { publishedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+          })
+          this.lastCleanup = Date.now()
+        }
+      } catch (error) {
+        console.error('User outbox cleanup failed; retrying:', error)
+      }
       this.flushing = false
     }
   }

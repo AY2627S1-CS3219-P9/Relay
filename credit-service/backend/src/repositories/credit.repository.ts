@@ -8,6 +8,8 @@ import type {
   ReserveCreditResponse,
   TransactionRecord,
   TransferCreditCommand,
+  TransactionReference,
+  TransactionType,
 } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
 import { CreditServiceError } from '../types/credit.types.js'
@@ -26,8 +28,14 @@ function referenceOf(command: {
   return `${service}:${id}:${type}`
 }
 
-function positiveAmount(amount: number): Prisma.Decimal {
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.')
+type ReferenceIdentity = Pick<TransactionReference, 'service' | 'id'>
+
+function referenceWithType(ref: ReferenceIdentity, type: TransactionType): string {
+  return referenceOf({ transactionReference: { ...ref, type } })
+}
+
+function nonnegativeAmount(amount: number): Prisma.Decimal {
+  if (!Number.isFinite(amount) || amount < 0) throw new Error('Credit amount must be nonnegative.')
   return new Prisma.Decimal(amount)
 }
 
@@ -64,9 +72,9 @@ export class CreditRepository {
     })
   }
 
-  async findReservation(errandId: string): Promise<{ userId: string; amount: number } | null> {
+  async findReservation(ref: ReferenceIdentity): Promise<{ userId: string; amount: number } | null> {
     const record = await prisma.transactionRecord.findUnique({
-      where: { reference: `errand:${errandId}:CREDIT_RESERVE` },
+      where: { reference: referenceWithType(ref, 'CREDIT_RESERVE') },
     })
     return record ? { userId: record.senderId, amount: record.amount.toNumber() } : null
   }
@@ -75,17 +83,16 @@ export class CreditRepository {
     const reference = referenceOf(command)
     if (
       command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
-      command.transactionReference.service !== 'user' ||
       command.userId !== command.transactionReference.id
     )
       throw new Error('Invalid initial credit allocation command.')
     try {
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
         if (await tx.transactionRecord.findUnique({ where: { reference } })) return
         // A delayed registration event must never recreate a deleted user's balance.
         if (
           await tx.transactionRecord.findUnique({
-            where: { reference: `user:${command.userId}:USER_DELETION` },
+            where: { reference: referenceWithType(command.transactionReference, 'USER_DELETION') },
           })
         )
           return
@@ -115,71 +122,39 @@ export class CreditRepository {
   async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
     const reference = referenceOf(request)
     if (
-      request.transactionReference.service !== 'errand' ||
       request.transactionReference.type !== 'CREDIT_RESERVE' ||
       !request.userId
     )
       throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
-    if (!Number.isFinite(request.amount) || request.amount <= 0) {
+    if (!Number.isFinite(request.amount) || request.amount < 0) {
       throw new CreditServiceError(
         'INVALID_CREDIT_AMOUNT',
-        'Credit amount must be a positive number.',
+        'Credit amount must be a nonnegative number.',
         422,
       )
     }
     const amount = new Prisma.Decimal(request.amount)
 
-    const existingResponse = async (): Promise<ReserveCreditResponse | null> => {
-      const record = await prisma.transactionRecord.findUnique({ where: { reference } })
-      if (!record) return null
-      if (
-        record.senderId !== request.userId ||
-        record.receiverId !== request.userId ||
-        !record.amount.equals(amount)
-      )
-        throw new CreditServiceError(
-          'INVALID_REQUEST',
-          'Reservation reference was already used for different details.',
-          400,
-        )
-      const balance = await this.findBalance(request.userId)
-      if (!balance)
-        throw new CreditServiceError(
-          'USER_NOT_FOUND',
-          'The user has no credit balance record.',
-          404,
-        )
-      return { ...balance, status: 'ALREADY_RESERVED' }
-    }
-
     try {
-      return await prisma.$transaction(async (tx: any) => {
-        const prior = await tx.transactionRecord.findUnique({ where: { reference } })
+      return await prisma.$transaction(async (tx) => {
+        await this.lockReference(tx, request.transactionReference)
+        const prior = await tx.transactionRecord.findFirst({
+          where: {
+            reference: {
+              in: [
+                reference,
+                referenceWithType(request.transactionReference, 'CREDIT_RELEASE'),
+                referenceWithType(request.transactionReference, 'CREDIT_TRANSFER'),
+              ],
+            },
+          },
+        })
         if (prior) {
-          if (
-            prior.senderId !== request.userId ||
-            prior.receiverId !== request.userId ||
-            !prior.amount.equals(amount)
+          throw new CreditServiceError(
+            'TRANSACTION_CONFLICT',
+            'Transaction reference has already been used.',
+            409,
           )
-            throw new CreditServiceError(
-              'INVALID_REQUEST',
-              'Reservation reference was already used for different details.',
-              400,
-            )
-          const balance = await tx.creditBalance.findUnique({ where: { userId: request.userId } })
-          if (!balance)
-            throw new CreditServiceError(
-              'USER_NOT_FOUND',
-              'The user has no credit balance record.',
-              404,
-            )
-          return {
-            userId: balance.userId,
-            availableCredit: balance.availableCredit.toNumber(),
-            reserveCredit: balance.reserveCredit.toNumber(),
-            lastUpdated: balance.lastUpdated,
-            status: 'ALREADY_RESERVED' as const,
-          }
         }
         const updated = await tx.creditBalance.updateMany({
           where: { userId: request.userId, availableCredit: { gte: amount } },
@@ -220,31 +195,82 @@ export class CreditRepository {
         }
       })
     } catch (error) {
-      if (
-        (error as { code?: string }).code === 'P2002' ||
-        (error instanceof CreditServiceError && error.code === 'INSUFFICIENT_CREDITS')
-      ) {
-        const previous = await existingResponse()
-        if (previous) return previous
+      if ((error as { code?: string }).code === 'P2002') {
+        throw new CreditServiceError(
+          'TRANSACTION_CONFLICT',
+          'Transaction reference has already been used.',
+          409,
+        )
       }
       throw error
     }
   }
+  // All operations for one external reference share this lock, including the HTTP reserve.
+  private async lockReference(tx: Prisma.TransactionClient, ref: ReferenceIdentity): Promise<void> {
+    const key = `${ref.service}:${ref.id}`
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`
+  }
+
+  async closeUnreservedCredit(ref: TransactionReference, userId: string): Promise<void> {
+    if (!userId || ref.type !== 'CREDIT_RELEASE')
+      throw new Error('Invalid transaction reference.')
+    const reserveReference = referenceWithType(ref, 'CREDIT_RESERVE')
+    const releaseReference = referenceWithType(ref, 'CREDIT_RELEASE')
+    const transferReference = referenceWithType(ref, 'CREDIT_TRANSFER')
+    await prisma.$transaction(async (tx) => {
+      await this.lockReference(tx, ref)
+      const reservation = await tx.transactionRecord.findUnique({ where: { reference: reserveReference } })
+      if (reservation && reservation.senderId !== userId)
+        throw new Error('Reservation requester mismatch.')
+      if (await tx.transactionRecord.findUnique({ where: { reference: transferReference } }))
+        throw new Error('Cannot release credit after transfer.')
+      if (await tx.transactionRecord.findUnique({ where: { reference: releaseReference } })) return
+
+      if (!reservation) {
+        // Tombstone a failure that arrived before the HTTP reservation; no balance row is touched.
+        await tx.transactionRecord.createMany({ data: [
+          { reference: reserveReference, senderId: userId, receiverId: userId,
+            type: 'CREDIT_RESERVE', amount: 0 },
+          { reference: releaseReference, senderId: userId, receiverId: userId,
+            type: 'CREDIT_RELEASE', amount: 0 },
+        ] })
+        return
+      }
+
+      const amount = reservation.amount
+      const updated = await tx.creditBalance.updateMany({
+        where: { userId, reserveCredit: { gte: amount } },
+        data: { reserveCredit: { decrement: amount }, availableCredit: { increment: amount } },
+      })
+      if (updated.count !== 1) throw new Error('Insufficient reserved credit for release.')
+      await tx.transactionRecord.create({ data: {
+        reference: releaseReference, senderId: userId, receiverId: userId,
+        type: 'CREDIT_RELEASE', amount,
+      } })
+    })
+  }
+
   async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
     const reference = referenceOf(command)
     if (
-      command.transactionReference.service !== 'errand' ||
       command.transactionReference.type !== 'CREDIT_RELEASE' ||
       !command.userId
     )
       throw new Error('Invalid release credit command.')
-    const amount = positiveAmount(command.amount)
-    await prisma.$transaction(async (tx: any) => {
-      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
-      const conflicting = await tx.transactionRecord.findUnique({
-        where: { reference: `errand:${command.transactionReference.id}:CREDIT_TRANSFER` },
+    const amount = nonnegativeAmount(command.amount)
+    await prisma.$transaction(async (tx) => {
+      await this.lockReference(tx, command.transactionReference)
+      const reservation = await tx.transactionRecord.findUnique({
+        where: { reference: referenceWithType(command.transactionReference, 'CREDIT_RESERVE') },
       })
-      if (conflicting) throw new Error('Cannot release credit for a confirmed errand.')
+      if (!reservation) throw new Error('No prior credit reservation exists.')
+      if (reservation.senderId !== command.userId || !reservation.amount.equals(amount))
+        throw new Error('Credit release does not match the reservation.')
+      const conflicting = await tx.transactionRecord.findUnique({
+        where: { reference: referenceWithType(command.transactionReference, 'CREDIT_TRANSFER') },
+      })
+      if (conflicting) throw new Error('Cannot release credit after transfer.')
+      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const updated = await tx.creditBalance.updateMany({
         where: { userId: command.userId, reserveCredit: { gte: amount } },
         data: { reserveCredit: { decrement: amount }, availableCredit: { increment: amount } },
@@ -265,20 +291,31 @@ export class CreditRepository {
   async transferCredit(command: TransferCreditCommand): Promise<void> {
     const reference = referenceOf(command)
     if (
-      command.transactionReference.service !== 'errand' ||
       command.transactionReference.type !== 'CREDIT_TRANSFER' ||
       !command.senderId ||
       !command.receiverId ||
       command.senderId === command.receiverId
     )
       throw new Error('Invalid transfer credit command.')
-    const amount = positiveAmount(command.amount)
-    await prisma.$transaction(async (tx: any) => {
-      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
-      const conflicting = await tx.transactionRecord.findUnique({
-        where: { reference: `errand:${command.transactionReference.id}:CREDIT_RELEASE` },
+    const amount = nonnegativeAmount(command.amount)
+    await prisma.$transaction(async (tx) => {
+      await this.lockReference(tx, command.transactionReference)
+      const reservation = await tx.transactionRecord.findUnique({
+        where: { reference: referenceWithType(command.transactionReference, 'CREDIT_RESERVE') },
       })
-      if (conflicting) throw new Error('Cannot transfer credit for a cancelled errand.')
+      if (!reservation) throw new Error('No prior credit reservation exists.')
+      if (reservation.senderId !== command.senderId || !reservation.amount.equals(amount))
+        throw new Error('Credit transfer does not match the reservation.')
+      const conflicting = await tx.transactionRecord.findUnique({
+        where: { reference: referenceWithType(command.transactionReference, 'CREDIT_RELEASE') },
+      })
+      if (conflicting) throw new Error('Cannot transfer credit after release.')
+      const existing = await tx.transactionRecord.findUnique({ where: { reference } })
+      if (existing) {
+        if (existing.receiverId !== command.receiverId)
+          throw new Error('Cannot transfer credit to a different recipient.')
+        return
+      }
       const debited = await tx.creditBalance.updateMany({
         where: { userId: command.senderId, reserveCredit: { gte: amount } },
         data: { reserveCredit: { decrement: amount } },
@@ -303,12 +340,11 @@ export class CreditRepository {
   async deleteUserCredit(command: DeleteUserCreditCommand): Promise<void> {
     const reference = referenceOf(command)
     if (
-      command.transactionReference.service !== 'user' ||
       command.transactionReference.type !== 'USER_DELETION' ||
       command.transactionReference.id !== command.userId
     )
       throw new Error('Invalid user deletion command.')
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
       if (await tx.transactionRecord.findUnique({ where: { reference } })) return
       const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
       await tx.transactionRecord.create({

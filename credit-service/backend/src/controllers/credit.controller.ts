@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { CreditService } from '../services/credit.service.js'
+import { CreditServiceError } from '../types/credit.types.js'
 import { authenticatedUserId, historyOffset, reserveCreditRequest } from '../validators/credit.validator.js'
 
 export class CreditController {
@@ -25,9 +26,12 @@ export class CreditController {
 
   reserveCredit = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const userId = req.body?.userId
+      if (typeof userId !== 'string' || !userId.trim()) {
+        throw new CreditServiceError('INVALID_REQUEST', 'Internal reservation requires a userId.', 400)
+      }
+      res.locals.creditUserId = userId
       res.json(await this.service.reserveCredit(reserveCreditRequest(req, res)))
-    } catch (error) {
-      next(error)
-    }
+    } catch (error) { next(error) }
   }
 }

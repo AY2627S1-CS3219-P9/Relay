@@ -41,7 +41,7 @@ export class UserRepository {
   }
 
   async createProfile(cognitoSub: string, update: ProfileUpdate): Promise<UserProfileRecord> {
-    const profile = await prisma.$transaction(async (tx: any) => {
+    const profile = await prisma.$transaction(async (tx) => {
       const created = await tx.userProfile.create({
         data: {
           cognitoSub,
@@ -81,7 +81,7 @@ export class UserRepository {
   }
 
   async deleteProfile(cognitoSub: string): Promise<UserProfileRecord> {
-    const profile = await prisma.$transaction(async (tx: any) => {
+    const profile = await prisma.$transaction(async (tx) => {
       const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
       await tx.userOutboxEvent.create({
         data: {

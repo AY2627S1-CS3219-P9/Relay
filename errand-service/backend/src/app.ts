@@ -1,16 +1,18 @@
 import express, { type ErrorRequestHandler } from 'express'
+import { Kafka } from 'kafkajs'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
 import { sessionMiddleware } from './middleware/session.middleware.js'
 import { ErrandRepository } from './repositories/errand.repository.js'
 import { ErrandService } from './services/errand.service.js'
-import { EventService } from './services/event.service.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
-import { connectProducer, disconnectProducer } from './kafka/producer.js'
+import { ErrandConsumer } from './consumers/consumer.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
+import { PendingErrandWorker } from './workers/pending-errand.worker.js'
+import { ErrandEventPublisher } from './workers/errand-event-publisher.js'
 
 export function createApp() {
   const app = express()
@@ -26,8 +28,7 @@ export function createApp() {
   })
 
   const repository = new ErrandRepository()
-  const eventService = new EventService()
-  const service = new ErrandService(repository, eventService)
+  const service = new ErrandService(repository)
   const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
   const internalErrandRouter = createInternalErrandRouter(controller)
@@ -58,8 +59,16 @@ export const app = createApp()
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
 
-  // Connect Kafka producer on startup
-  connectProducer().catch((err) => {
+  const kafka = new Kafka({
+    clientId: 'errand-service',
+    brokers: env.kafkaBrokers.split(','),
+    retry: { retries: 3, initialRetryTime: 100, maxRetryTime: 1000 },
+  })
+  const consumer = new ErrandConsumer(kafka)
+  const worker = new PendingErrandWorker(new ErrandRepository())
+  const publisher = new ErrandEventPublisher(kafka, new ErrandRepository(), env.kafkaTopicErrandEvents)
+  worker.start()
+  publisher.start().catch((err) => {
     console.error('Failed to connect Kafka producer:', err)
     process.exit(1)
   })
@@ -70,8 +79,10 @@ if (process.env.NODE_ENV !== 'test') {
 
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
+    worker.stop()
     server.close(async () => {
-      await disconnectProducer()
+      await publisher.stop()
+      await consumer.stop()
       process.exit(0)
     })
   }

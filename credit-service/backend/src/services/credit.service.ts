@@ -9,6 +9,7 @@ import type {
   ReserveCreditRequest,
   ReserveCreditResponse,
   TransferCreditCommand,
+  TransactionReference,
 } from '@relay/contracts'
 import { CreditRepository } from '../repositories/credit.repository.js'
 import { CreditServiceError } from '../types/credit.types.js'
@@ -16,12 +17,16 @@ import { CreditServiceError } from '../types/credit.types.js'
 export class CreditService {
   constructor(private readonly repository: CreditRepository) {}
 
-  async findReservation(errandId: string): Promise<{ userId: string; amount: number } | null> {
-    return this.repository.findReservation(errandId)
+  async findReservation(ref: Pick<TransactionReference, 'service' | 'id'>): Promise<{ userId: string; amount: number } | null> {
+    return this.repository.findReservation(ref)
   }
 
   async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
     await this.repository.allocateInitialCredit(command)
+  }
+
+  async closeUnreservedCredit(ref: TransactionReference, userId: string): Promise<void> {
+    await this.repository.closeUnreservedCredit(ref, userId)
   }
 
   async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
