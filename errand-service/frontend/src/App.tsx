@@ -160,7 +160,10 @@ function toDemoErrand(errand: Errand): DemoErrand {
     creditAmount: errand.creditAmount,
     status: errand.status,
     expiresAt: errand.expiresAt,
+    confirmationDeadline: errand.confirmationDeadline,
     requesterSub: errand.requesterSub,
     courierSub: errand.courierSub,
+    courierName: errand.courierProfile?.username ?? undefined,
+    courierProfilePictureUrl: errand.courierProfile?.profilePictureUrl ?? undefined,
   }
 }

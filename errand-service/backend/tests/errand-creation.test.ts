@@ -3,6 +3,7 @@ import type { CreateErrandRequest } from '@relay/contracts'
 import { ErrandService } from '../src/services/errand.service.js'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import type { CreditClient } from '../src/clients/credit.client.js'
+import type { SupplierClient } from '../src/clients/supplier.client.js'
 import { validateCreateErrand } from '../src/validators/errand.validator.js'
 
 const user = {
@@ -24,17 +25,20 @@ function setup() {
     createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
+  const supplier = { validateSelection: vi.fn().mockResolvedValue(undefined) }
   const service = new ErrandService(
     repository as unknown as ErrandRepository,
     credit as unknown as CreditClient,
+    supplier as unknown as SupplierClient,
   )
-  return { service, repository, credit }
+  return { service, repository, credit, supplier }
 }
 
 describe('errand creation and credit reservation', () => {
   it('reserves credit between pending insert and atomic completion', async () => {
-    const { service, repository, credit } = setup()
+    const { service, repository, credit, supplier } = setup()
     await service.createErrand(user, request)
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
     expect(repository.addPendingErrand).toHaveBeenCalledWith(user.sub)
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 10)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, request)
@@ -45,18 +49,33 @@ describe('errand creation and credit reservation', () => {
   })
 
   it('accepts a zero-credit errand and reserves zero before creating it', async () => {
-    const { service, repository, credit } = setup()
+    const { service, repository, credit, supplier } = setup()
     const freeRequest = validateCreateErrand({ ...request, creditAmount: 0 })
     await service.createErrand(user, freeRequest)
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 0)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
 
   it('leaves the pending row for recovery if reservation fails', async () => {
-    const { service, repository, credit } = setup()
+    const { service, repository, credit, supplier } = setup()
     credit.reserve.mockRejectedValue(new Error('Credit unavailable'))
     await expect(service.createErrand(user, request)).rejects.toThrow('Credit unavailable')
     expect(repository.createErrand).not.toHaveBeenCalled()
+    expect(supplier.validateSelection).toHaveBeenCalledOnce()
+  })
+
+  it('rejects inactive or unavailable suppliers before reserving credit', async () => {
+    const { service, repository, credit, supplier } = setup()
+    supplier.validateSelection.mockRejectedValue(
+      new Error('Supplier is not currently active.'),
+    )
+
+    await expect(service.createErrand(user, request)).rejects.toThrow(
+      'Supplier is not currently active.',
+    )
+    expect(repository.addPendingErrand).not.toHaveBeenCalled()
+    expect(credit.reserve).not.toHaveBeenCalled()
   })
 
   it('rejects unverified users before inserting a pending row', async () => {

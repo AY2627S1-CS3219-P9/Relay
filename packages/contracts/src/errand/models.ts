@@ -35,6 +35,12 @@ export type SupplierDetails = {
   serviceType: number
 }
 
+/** Privacy-safe profile details for an assigned courier. */
+export type CourierProfile = {
+  username: string | null
+  profilePictureUrl: string | null
+}
+
 /** The public Errand Service representation of an errand. */
 export type Errand = {
   id: string
@@ -43,6 +49,8 @@ export type Errand = {
   requesterSub: string
   /** Cognito sub of the assigned courier, when accepted. */
   courierSub: string | null
+  /** Profile summary for the assigned courier, when available. */
+  courierProfile: CourierProfile | null
   supplierDetails: SupplierDetails
   pickupLocation: ErrandLocation
   targetLocation: ErrandLocation
@@ -50,6 +58,8 @@ export type Errand = {
   creditAmount: number
   status: ErrandStatus
   expiresAt: string
+  /** Server-generated confirmation deadline; set when the errand is delivered. */
+  confirmationDeadline: string | null
   createdAt: string
   updatedAt: string
 }

@@ -18,6 +18,7 @@ export type DemoErrand = {
   creditAmount: number
   status: ErrandStatus
   expiresAt: string
+  confirmationDeadline: string | null
   courierName?: string
   courierProfilePictureUrl?: string
   supplier?: Supplier
