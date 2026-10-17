@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
   SERVICE_METADATA,
   type FetchSessionHandler,
+  type CreditBalance,
   type ErrandViewContext,
   type ProfileAnchor,
   type ServiceId,
@@ -44,6 +45,12 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [creditInvalidation, setCreditInvalidation] = useState<{
+    version: number
+    subject?: string
+    baseline: CreditBalance | null
+  }>({ version: 0, baseline: null })
   const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
@@ -150,6 +157,70 @@ function App() {
     }
   }, [])
 
+  // Call this when a credit-changing action begins. Keep the displayed balance
+  // until the service reports a newer snapshot.
+  const invalidateCreditBalance = useCallback(() => {
+    setCreditInvalidation((current) => ({
+      version: current.version + 1,
+      subject: authenticatedSubject,
+      baseline: creditBalance?.userId === authenticatedSubject ? creditBalance : null,
+    }))
+  }, [authenticatedSubject, creditBalance])
+
+  useEffect(() => {
+    if (!authenticatedSubject) {
+      setCreditBalance(null)
+      return
+    }
+
+    const subject = authenticatedSubject
+    const baseline = creditInvalidation.subject === subject ? creditInvalidation.baseline : null
+    let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    let attempts = 0
+    let lastError: unknown
+    const controller = new AbortController()
+
+    setCreditBalance((current) => current?.userId === subject ? current : null)
+
+    async function pollBalance() {
+      attempts += 1
+      try {
+        const response = await fetch('/api/credit', {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`Credit balance request failed (${response.status}).`)
+        const balance = (await response.json()) as CreditBalance
+        if (cancelled) return
+        const unchanged = baseline &&
+          balance.availableCredit === baseline.availableCredit &&
+          balance.reserveCredit === baseline.reserveCredit &&
+          String(balance.lastUpdated) === String(baseline.lastUpdated)
+        if (!unchanged) {
+          setCreditBalance(balance)
+          return
+        }
+        lastError = new Error('Credit balance has not changed yet.')
+      } catch (error) {
+        if (cancelled) return
+        lastError = error
+      }
+      if (attempts >= 20) {
+        console.error('Credit balance did not update after 20 attempts.', lastError)
+        return
+      }
+      retryTimer = setTimeout(() => { void pollBalance() }, 1000)
+    }
+
+    void pollBalance()
+    return () => {
+      cancelled = true
+      controller.abort()
+      if (retryTimer) clearTimeout(retryTimer)
+    }
+  }, [authenticatedSubject, creditInvalidation, authVersion])
   async function refreshUserProfile() {
     try {
       const session = await fetchSession({ forceRefresh: true })
@@ -258,6 +329,8 @@ function App() {
               authVersion,
               authenticatedSubject,
               userProfile,
+              creditBalance,
+              invalidateCreditBalance,
               refreshUserProfile,
               navigateTo,
               openProfile,

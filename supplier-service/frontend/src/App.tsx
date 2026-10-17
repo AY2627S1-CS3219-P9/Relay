@@ -39,6 +39,7 @@ export default function App({
   openProfile,
   openErrandView,
   userProfile,
+  creditBalance,
   authVersion,
   supplierMode,
   errandApi,
@@ -179,7 +180,7 @@ export default function App({
           aria-label="Credits"
         >
           <BoltIcon className="supplier-control-icon" />
-          <span>0 cr</span>
+          <span>{creditBalance?.availableCredit ?? '...'} cr</span>
         </RelayButton>
         <SlidingSegmentedControl
             size="map"

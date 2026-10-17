@@ -70,6 +70,8 @@ export type RemoteAppProps = {
   /** Cognito subject from the authenticated session, distinct from the profile database id. */
   authenticatedSubject?: string
   userProfile?: import('./user/models').User | null
+  creditBalance?: import('./credit/models').CreditBalance | null
+  invalidateCreditBalance?: () => void
   refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
