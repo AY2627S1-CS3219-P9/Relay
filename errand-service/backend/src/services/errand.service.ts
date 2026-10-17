@@ -114,18 +114,18 @@ export class ErrandService {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
 
-    if (errand.courierSub !== user.sub && errand.requesterSub !== user.sub) {
+    if (errand.requesterSub !== user.sub) {
       throw new ErrandServiceError(
         ErrandErrors.FORBIDDEN,
-        'You do not have permission to cancel this errand.',
+        'Only the requester who created this errand can cancel it.',
         403,
       )
     }
 
-    if (errand.status !== 'ACCEPTED') {
+    if (errand.status !== 'OPEN') {
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Only accepted errands can be cancelled.',
+        'Only open errands can be cancelled.',
         409,
       )
     }

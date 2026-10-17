@@ -64,3 +64,67 @@ describe('ErrandService read scopes', () => {
     })
   })
 })
+
+describe('ErrandService cancellation', () => {
+  it('allows the requester to cancel an open errand', async () => {
+    const errand = {
+      id: 'errand-1',
+      requesterSub: user.sub,
+      courierSub: null,
+      courierProfile: null,
+      status: 'OPEN' as const,
+    }
+    const repository = {
+      findVisibleById: vi.fn().mockResolvedValue(errand),
+      cancel: vi.fn().mockResolvedValue({ ...errand, status: 'CANCELLED' as const }),
+    } as unknown as ErrandRepository
+    const service = new ErrandService(repository)
+
+    const result = await service.cancelErrand(user, errand.id)
+
+    expect(repository.cancel).toHaveBeenCalledWith(errand.id, user.sub)
+    expect(result.status).toBe('CANCELLED')
+  })
+
+  it('rejects cancellation by a courier or another user', async () => {
+    const errand = {
+      id: 'errand-1',
+      requesterSub: 'requester-2',
+      courierSub: user.sub,
+      courierProfile: null,
+      status: 'ACCEPTED' as const,
+    }
+    const repository = {
+      findVisibleById: vi.fn().mockResolvedValue(errand),
+      cancel: vi.fn(),
+    } as unknown as ErrandRepository
+    const service = new ErrandService(repository)
+
+    await expect(service.cancelErrand(user, errand.id)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      statusCode: 403,
+    })
+    expect(repository.cancel).not.toHaveBeenCalled()
+  })
+
+  it('rejects requester cancellation unless the errand is open', async () => {
+    const errand = {
+      id: 'errand-1',
+      requesterSub: user.sub,
+      courierSub: 'courier-1',
+      courierProfile: null,
+      status: 'ACCEPTED' as const,
+    }
+    const repository = {
+      findVisibleById: vi.fn().mockResolvedValue(errand),
+      cancel: vi.fn(),
+    } as unknown as ErrandRepository
+    const service = new ErrandService(repository)
+
+    await expect(service.cancelErrand(user, errand.id)).rejects.toMatchObject({
+      code: 'INVALID_TRANSITION',
+      statusCode: 409,
+    })
+    expect(repository.cancel).not.toHaveBeenCalled()
+  })
+})
