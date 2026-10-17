@@ -37,3 +37,9 @@ export type User = {
   profileCreated: true
   role: UserRole
 }
+
+/** Privacy-safe profile fields shared with trusted backend services. */
+export type UserProfileSummary = {
+  username: string | null
+  profilePictureUrl: string | null
+}

@@ -347,6 +347,7 @@ function toContract(row: any): Errand {
     name: row.name,
     requesterSub: row.requesterSub,
     courierSub: row.courierSub,
+    courierProfile: null,
     supplierDetails: {
       supplierId: row.supplierId,
       supplierName: row.supplierName,

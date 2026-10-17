@@ -1,5 +1,5 @@
 import type { UserApiError } from './errors'
-import type { Session, User } from './models'
+import type { Session, User, UserProfileSummary } from './models'
 
 /** Successful User API result. */
 export type ApiSuccess<T> = {
@@ -33,3 +33,6 @@ export type UpdateUserResponse = User
 
 /** Result returned by the private service-to-service session validator. */
 export type ValidateSessionResponse = Session
+
+/** Response from the private profile lookup used by backend services. */
+export type GetUserProfileBySubjectResponse = UserProfileSummary

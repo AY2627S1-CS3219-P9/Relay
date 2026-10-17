@@ -1,4 +1,4 @@
-import type { User, UserId } from '@relay/contracts'
+import type { User, UserId, UserProfileSummary } from '@relay/contracts'
 import {
   AdminDeleteUserCommand,
   CognitoIdentityProviderClient,
@@ -112,6 +112,20 @@ export class UserService {
       throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
     }
     return this.toPublicProfile(user, profile)
+  }
+
+  async getProfileByCognitoSub(cognitoSub: string): Promise<UserProfileSummary> {
+    const profile = await this.repository.findByCognitoSub(cognitoSub)
+    if (!profile) {
+      throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
+    }
+
+    return {
+      username: profile.username,
+      profilePictureUrl: profile.profilePictureKey
+        ? this.imageStorage.url(profile.profilePictureKey)
+        : null,
+    }
   }
 
   async updateUser(user: AuthenticatedUser, input: ProfileUpdateRequest): Promise<User> {

@@ -162,5 +162,7 @@ function toDemoErrand(errand: Errand): DemoErrand {
     expiresAt: errand.expiresAt,
     requesterSub: errand.requesterSub,
     courierSub: errand.courierSub,
+    courierName: errand.courierProfile?.username ?? undefined,
+    courierProfilePictureUrl: errand.courierProfile?.profilePictureUrl ?? undefined,
   }
 }

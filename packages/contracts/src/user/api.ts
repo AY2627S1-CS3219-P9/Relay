@@ -10,6 +10,7 @@ import type {
 import type {
   ApiResult,
   GetSessionResponse,
+  GetUserProfileBySubjectResponse,
   GetUserResponse,
   LoginResponse,
   RegisterResponse,
@@ -94,4 +95,9 @@ export interface UserApi {
  */
 export interface UserSessionValidatorApi {
   validateSession(): Promise<ApiResult<ValidateSessionResponse>>
+}
+
+/** Private backend-to-backend profile lookup boundary. */
+export interface UserProfileLookupApi {
+  getProfileBySubject(subject: string): Promise<ApiResult<GetUserProfileBySubjectResponse>>
 }
