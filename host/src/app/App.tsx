@@ -48,7 +48,7 @@ function App() {
   const [creditHistoryOpen, setCreditHistoryOpen] = useState(false)
   const [creditAnchor, setCreditAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
-  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [storedCreditBalance, setStoredCreditBalance] = useState<CreditBalance | null>(null)
   const [creditInvalidation, setCreditInvalidation] = useState<{
     version: number
     subject?: string
@@ -56,6 +56,7 @@ function App() {
   }>({ version: 0, baseline: null })
   const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
+  const creditBalance = storedCreditBalance?.userId === authenticatedSubject ? storedCreditBalance : null
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
@@ -139,6 +140,7 @@ function App() {
       } catch {
         if (!cancelled) {
           setAuthenticatedSubject(undefined)
+          setStoredCreditBalance(null)
           setUserProfile(null)
         }
       }
@@ -150,6 +152,7 @@ function App() {
         payload.event === 'signedOut' ||
         payload.event === 'tokenRefresh'
       ) {
+        if (payload.event === 'signedOut') setStoredCreditBalance(null)
         setAuthVersion((version) => version + 1)
         void loadProfile()
       }
@@ -171,10 +174,7 @@ function App() {
   }, [authenticatedSubject, creditBalance])
 
   useEffect(() => {
-    if (!authenticatedSubject) {
-      setCreditBalance(null)
-      return
-    }
+    if (!authenticatedSubject) return
 
     const subject = authenticatedSubject
     const baseline = creditInvalidation.subject === subject ? creditInvalidation.baseline : null
@@ -183,8 +183,6 @@ function App() {
     let attempts = 0
     let lastError: unknown
     const controller = new AbortController()
-
-    setCreditBalance((current) => current?.userId === subject ? current : null)
 
     async function pollBalance() {
       attempts += 1
@@ -202,7 +200,7 @@ function App() {
           balance.reserveCredit === baseline.reserveCredit &&
           String(balance.lastUpdated) === String(baseline.lastUpdated)
         if (!unchanged) {
-          setCreditBalance(balance)
+          setStoredCreditBalance(balance)
           return
         }
         lastError = new Error('Credit balance has not changed yet.')
@@ -241,6 +239,7 @@ function App() {
       setAuthVersion((version) => version + 1)
     } catch {
       setAuthenticatedSubject(undefined)
+      setStoredCreditBalance(null)
       setUserProfile(null)
       setAuthVersion((version) => version + 1)
     }
