@@ -26,5 +26,7 @@ export function createErrandRouter(controller: ErrandController): Router {
   router.post('/:id/confirm', controller.confirm)
   // Drop an errand (courier only)
   router.post('/:id/drop', controller.drop)
+  // SSE endpoint for real-time notifications
+  router.get('/stream/notifications', controller.streamNotifications)
   return router
 }

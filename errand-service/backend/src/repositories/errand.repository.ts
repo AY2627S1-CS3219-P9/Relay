@@ -12,6 +12,7 @@ import type {
   SupplierErrandSummary,
   SupplierErrandViewRequest,
 } from '@relay/contracts'
+import { ErrandEventStream } from '../services/errandEventStream.js'
 
 export const MAX_ERRANDS_PER_COURIER = 5
 
@@ -29,7 +30,10 @@ async function appendEvent(
 }
 
 export class ErrandRepository {
-  constructor(private readonly prisma: PrismaClient = new PrismaClient()) {}
+  constructor(
+    private readonly prisma: PrismaClient = new PrismaClient(),
+    private readonly eventStream?: ErrandEventStream,
+  ) {}
 
   async addPendingErrand(requesterSub: string): Promise<string> {
     const id = crypto.randomUUID()
@@ -185,7 +189,7 @@ export class ErrandRepository {
   async expireOpenErrands(now = new Date()): Promise<number> {
     const rows = await this.prisma.errand.findMany({
       where: { status: 'OPEN', expiresAt: { lte: now } },
-      select: { id: true },
+      select: { id: true, requesterSub: true },
     })
     let count = 0
     for (const row of rows) {
@@ -199,6 +203,17 @@ export class ErrandRepository {
           eventType: ErrandEventTypes.ERRAND_EXPIRED,
           payload: { errandId: row.id },
         })
+
+        this.eventStream?.publish(
+          row.id,
+          {
+            newStatus: 'EXPIRED',
+            previousStatus: 'OPEN',
+            timestamp: new Date().toISOString(),
+          },
+          ['requester'],
+        )
+
         count++
       })
     }
@@ -302,6 +317,17 @@ export class ErrandRepository {
           requesterSub: row.requesterSub,
         },
       })
+
+      this.eventStream?.publish(
+        errandId,
+        {
+          newStatus: 'ACCEPTED',
+          previousStatus: 'OPEN',
+          timestamp: new Date().toISOString(),
+        },
+        ['requester'],
+      )
+
       return toContract(row)
     })
   }
@@ -316,6 +342,9 @@ export class ErrandRepository {
         eventType: ErrandEventTypes.ERRAND_CANCELLED,
         payload: { errandId, actorSub, requesterSub: row.requesterSub },
       })
+
+      // No notification for cancel - requestor initiated
+
       return toContract(row)
     })
   }
@@ -383,6 +412,17 @@ export class ErrandRepository {
           requesterSub: row.requesterSub,
         },
       })
+
+      this.eventStream?.publish(
+        errandId,
+        {
+          newStatus: 'PICKED_UP',
+          previousStatus: 'ACCEPTED',
+          timestamp: new Date().toISOString(),
+        },
+        ['requester'],
+      )
+
       return toContract(row)
     })
   }
@@ -404,6 +444,17 @@ export class ErrandRepository {
           requesterSub: row.requesterSub,
         },
       })
+
+      this.eventStream?.publish(
+        errandId,
+        {
+          newStatus: 'DELIVERED',
+          previousStatus: 'PICKED_UP',
+          timestamp: new Date().toISOString(),
+        },
+        ['requester'],
+      )
+
       return toContract(row)
     })
   }
@@ -419,6 +470,17 @@ export class ErrandRepository {
         eventType: ErrandEventTypes.ERRAND_COMPLETED,
         payload: { errandId, requesterSub: row.requesterSub, courierSub: row.courierSub },
       })
+
+      this.eventStream?.publish(
+        errandId,
+        {
+          newStatus: 'CONFIRMED',
+          previousStatus: 'DELIVERED',
+          timestamp: new Date().toISOString(),
+        },
+        ['requester', 'courier'],
+      )
+
       return toContract(row)
     })
   }
@@ -440,8 +502,22 @@ export class ErrandRepository {
           requesterSub: row.requesterSub,
         },
       })
-      if (newStatus === 'EXPIRED')
+
+      if (newStatus === 'EXPIRED') {
+        // Publish ERRAND_EXPIRED Kafka event for credit release
         await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_EXPIRED, payload: { errandId } })
+      }
+
+      this.eventStream?.publish(
+        errandId,
+        {
+          newStatus: newStatus,
+          previousStatus: 'ACCEPTED',
+          timestamp: new Date().toISOString(),
+        },
+        ['requester'],
+      )
+
       return toContract(row)
     })
   }

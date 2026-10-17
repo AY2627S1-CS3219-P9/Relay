@@ -14,6 +14,7 @@ import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { CreditClient } from '../clients/credit.client.js'
 import { SupplierClient } from '../clients/supplier.client.js'
+import { ErrandEventStream } from './errandEventStream.js'
 
 export const LIFECYCLE_ORDER: Record<ErrandStatus, number> = {
   DELIVERED: 0,
@@ -32,6 +33,10 @@ export class ErrandService {
     private readonly creditClient: CreditClient = new CreditClient(),
     private readonly supplierClient: SupplierClient,
   ) {}
+
+  getEventStream(): ErrandEventStream | undefined {
+    return this.repository['eventStream'] as ErrandEventStream | undefined
+  }
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
     if (!user.emailVerified) {
