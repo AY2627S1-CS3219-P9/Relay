@@ -131,7 +131,7 @@ export class SupplierService {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const response = await fetch(
-          `${ERRAND_API_URL}/api/errands/internal/errand/supplier-events`,
+          `${ERRAND_API_URL}/internal/errands/supplier-events`,
           {
           method: 'POST',
           headers: {

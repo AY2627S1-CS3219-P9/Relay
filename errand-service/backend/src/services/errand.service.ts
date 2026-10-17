@@ -52,6 +52,12 @@ export class ErrandService {
         if (error.code === ErrandErrors.SUPPLIER_UNAVAILABLE) {
           throw error
         }
+        if (error.code === ErrandErrors.SUPPLIER_INACTIVE) {
+          throw error
+        }
+        if (error.code === ErrandErrors.SERVICE_TYPE_NOT_OFFERED) {
+          throw error
+        }
 
         throw new ErrandServiceError(
           ErrandErrors.INVALID_ERRAND,
@@ -64,8 +70,15 @@ export class ErrandService {
     }
 
     const id = await this.repository.addPendingErrand(user.sub)
-    await this.creditClient.reserve(id, user.sub, request.creditAmount)
-    return this.repository.createErrand(id, user.sub, request)
+    try {
+      await this.creditClient.reserve(id, user.sub, request.creditAmount)
+      return this.repository.createErrand(id, user.sub, request)
+    } catch (error) {
+      // On failure, publish ERRAND_CREATION_FAILED to trigger credit release via Kafka
+      await this.repository.publishCreationFailedEvent(id, user.sub)
+      await this.repository.deletePendingErrand(id)
+      throw error
+    }
   }
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {

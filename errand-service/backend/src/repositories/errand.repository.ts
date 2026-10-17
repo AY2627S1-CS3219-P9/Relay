@@ -37,6 +37,26 @@ export class ErrandRepository {
     return id
   }
 
+  async deletePendingErrand(id: string): Promise<void> {
+    // Use deleteMany to safely handle concurrent recovery
+    const removed = await this.prisma.pendingErrand.deleteMany({
+      where: { id },
+    })
+    if (removed.count === 0) {
+      // Pending errand was already recovered or doesn't exist
+      // This is acceptable - just means cleanup already happened
+    }
+  }
+
+  async publishCreationFailedEvent(id: string, requesterSub: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_CREATION_FAILED,
+        payload: { errandId: id, requesterSub },
+      })
+    })
+  }
+
   async createErrand(
     id: string,
     requesterSub: string,
