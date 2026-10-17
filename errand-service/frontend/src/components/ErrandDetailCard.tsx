@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ErrorMessage, GlassCard, IconButton, RelayButton, StatusBadge } from '@relay/ui'
-import type { DemoErrand } from '../types'
+import type { Errand } from '@relay/contracts'
 import {
   formatDeadline,
   formatRoute,
@@ -20,7 +20,7 @@ export function ErrandDetailCard({
   onClose,
   onAction,
 }: {
-  errand: DemoErrand
+  errand: Errand
   role: 'requester' | 'courier'
   onClose: () => void
   onAction: (
@@ -67,12 +67,12 @@ export function ErrandDetailCard({
         </IconButton>
       </div>
 
-      {errand.courierName && (
+      {errand.courierSub && (
         <div className="errand-person-card">
-          <Avatar name={errand.courierName} image={errand.courierProfilePictureUrl} />
+          <Avatar name={errand.courierSub.substring(0, 8)} />
           <div>
-            <strong>{errand.courierName}</strong>
-            <span>{role === 'requester' ? 'Your courier' : 'Courier · NUS verified'}</span>
+            <strong>Courier</strong>
+            <span>{role === 'requester' ? 'Assigned to your errand' : 'Courier · NUS verified'}</span>
           </div>
           <span className="errand-online-dot" aria-label="Online" />
         </div>
@@ -85,16 +85,16 @@ export function ErrandDetailCard({
         </div>
         <div>
           <span className="route-label">DELIVERY</span>
-          <strong>{formatRoute(errand.deliveryLocation)}</strong>
+          <strong>{formatRoute(errand.targetLocation)}</strong>
         </div>
       </div>
 
       <div className="errand-info-card">
         <span className="route-label">
-          {SERVICE_TYPE_LABELS[errand.serviceType].toUpperCase()} · INSTRUCTIONS
+          {SERVICE_TYPE_LABELS[errand.supplierDetails.serviceType as keyof typeof SERVICE_TYPE_LABELS]?.toUpperCase()} · INSTRUCTIONS
         </span>
-        <p>{errand.description}</p>
-        <small>{errand.instructions}</small>
+        <p>{errand.deliveryDetails.description}</p>
+        <small>{errand.deliveryDetails.instructions}</small>
       </div>
 
       <div className="errand-reward-card">

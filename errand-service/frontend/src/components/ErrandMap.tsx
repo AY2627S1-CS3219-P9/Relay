@@ -3,11 +3,11 @@ import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } f
 import L from 'leaflet'
 import type { MapViewport, UserLocation } from '@relay/contracts'
 import type { BubbleAnchor } from '@relay/ui'
-import type { DemoErrand } from '../types'
+import type { Errand } from '@relay/contracts/errand'
 
 export type MapPoint = { lat: number; lng: number }
 
-const markerColors: Record<DemoErrand['status'], string> = {
+const markerColors: Record<Errand['status'], string> = {
   OPEN: '#007aff',
   ACCEPTED: '#ff9500',
   PICKED_UP: '#ff9500',
@@ -18,7 +18,7 @@ const markerColors: Record<DemoErrand['status'], string> = {
   DELETED: '#8e8e93',
 }
 
-function markerIcon(errand: DemoErrand, selected: boolean) {
+function markerIcon(errand: Errand, selected: boolean) {
   const color = markerColors[errand.status]
   return L.divIcon({
     className: 'relay-leaflet-icon errand-leaflet-icon',
@@ -104,11 +104,11 @@ export function ErrandMap({
   onViewportChange,
   active,
 }: {
-  errands: DemoErrand[]
+  errands: Errand[]
   center: MapPoint
   userLocation?: UserLocation
   selectedId?: string
-  onSelect: (errand: DemoErrand, anchor: BubbleAnchor) => void
+  onSelect: (errand: Errand, anchor: BubbleAnchor) => void
   onMapClick?: () => void
   onMapReady?: (map: L.Map) => void
   zoom: number
