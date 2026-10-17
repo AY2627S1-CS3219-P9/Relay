@@ -17,7 +17,7 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, openCredit, userProfile, creditBalance, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, openCredit, invalidateCreditBalance, userProfile, creditBalance, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
@@ -93,10 +93,12 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       if (action === 'drop') {
         const response = await actions.drop(id)
         setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand), courierName: undefined, courierProfilePictureUrl: undefined } : errand))
+        if (response.errand.status === 'EXPIRED') invalidateCreditBalance?.()
         return
       }
       const response = await actions[action](id)
       setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand) } : errand))
+      if (action === 'cancel' || action === 'confirm') invalidateCreditBalance?.()
       if (action === 'accept') openErrandView?.({ view: 'my-errands' })
       return
     }
@@ -117,7 +119,10 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       <CreateErrandCard
         initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined}
         onClose={closeRemote}
-        onCreated={() => openErrandView?.({ view: 'requests' })}
+        onCreated={() => {
+          invalidateCreditBalance?.()
+          openErrandView?.({ view: 'requests' })
+        }}
         errandApi={errandApi}
         supplierApi={supplierApi}
       />
