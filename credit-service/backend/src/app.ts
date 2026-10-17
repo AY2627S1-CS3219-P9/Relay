@@ -25,7 +25,7 @@ export function createApp(
   })
   const controller = new CreditController(new CreditService(repository))
   app.post('/internal/credit/reserve', (req, res, next) => {
-    const expected = Buffer.from(getEnv().internalCreditServiceToken)
+    const expected = Buffer.from(getEnv().creditServiceInternalToken)
     const supplied = Buffer.from(req.header('x-credit-service-token') ?? '')
     if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
       res.status(401).json({ code: 'UNAUTHENTICATED', message: 'Invalid service token.' })

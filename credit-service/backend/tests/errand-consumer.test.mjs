@@ -67,7 +67,7 @@ test('missing reservation and credit write errors reach the DLQ', async () => {
   assert.equal(missingRequester.sent[0].error.code, 'ERRAND_EVENT_INVALID')
   assert.equal(missingRequester.calls.length, 0)
 
-  const closed = harness({ findReservation: async () => ({ userId: 'requester', amount: 0 }) })
+  const closed = harness({ transferCredit: async () => { throw new Error('Cannot transfer credit after release.') } })
   await closed.handle(event('ErrandCompleted', { requesterSub: 'requester', courierSub: 'courier' }))
   assert.equal(closed.sent[0].error.code, 'ERRAND_CREDIT_OUTCOME_CONFLICT')
   assert.equal(closed.calls.length, 0)
@@ -86,6 +86,11 @@ test('successful processing skips the DLQ; DLQ failures keep the source message 
   await success.handle(event('ErrandExpired', {}))
   assert.deepEqual(success.calls, ['release'])
   assert.equal(success.sent.length, 0)
+
+  const zero = harness({ findReservation: async () => ({ userId: 'requester', amount: 0 }) })
+  await zero.handle(event('ErrandCompleted', { requesterSub: 'requester', courierSub: 'courier' }))
+  assert.deepEqual(zero.calls, ['transfer'])
+  assert.equal(zero.sent.length, 0)
 
   const failedDlq = harness({ findReservation: async () => null })
   failedDlq.consumer.producer.send = async () => { throw new Error('DLQ unavailable') }

@@ -289,7 +289,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       CREDIT_API_URL: http://credit-api:3000
-      INTERNAL_CREDIT_SERVICE_TOKEN: local-internal-credit-service-token
+      CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
       credit-api:
         condition: service_healthy
@@ -322,7 +322,7 @@ services:
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
-      INTERNAL_CREDIT_SERVICE_TOKEN: local-internal-credit-service-token
+      CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
       credit-postgres:
         condition: service_healthy

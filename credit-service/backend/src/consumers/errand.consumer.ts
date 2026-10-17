@@ -113,8 +113,6 @@ export class ErrandEventConsumer {
     const reservation = await this.creditService.findReservation({ service: 'errand', id: errandId })
     if (!reservation)
       throw new EventError(errandCreditErrorCodes.RESERVATION_NOT_FOUND, 'No prior credit reservation exists.')
-    if (reservation.amount === 0)
-      throw new EventError(errandCreditErrorCodes.OUTCOME_CONFLICT, 'A conflicting credit outcome was already recorded.')
     if (requesterSub && requesterSub !== reservation.userId) {
       throw new EventError(errandCreditErrorCodes.REQUESTER_MISMATCH, 'The requester does not match the credit reservation.')
     }

@@ -142,3 +142,41 @@ test('same id from different services has independent credit outcomes', async ()
     await prisma.creditBalance.deleteMany({ where: { userId } })
   }
 })
+
+
+test('zero reservations can be released or transferred without changing balances', async () => {
+  const repository = new CreditRepository()
+  const senderId = randomUUID()
+  const receiverId = randomUUID()
+  const releasedId = randomUUID()
+  const transferredId = randomUUID()
+  try {
+    await prisma.creditBalance.createMany({ data: [
+      { userId: senderId, availableCredit: 100, reserveCredit: 0 },
+      { userId: receiverId, availableCredit: 100, reserveCredit: 0 },
+    ] })
+    for (const id of [releasedId, transferredId]) {
+      await repository.reserveCredit({ transactionReference: ref(id, 'CREDIT_RESERVE'),
+        userId: senderId, amount: 0 })
+    }
+    await repository.releaseCredit({ transactionReference: ref(releasedId, 'CREDIT_RELEASE'),
+      userId: senderId, amount: 0 })
+    await repository.transferCredit({ transactionReference: ref(transferredId, 'CREDIT_TRANSFER'),
+      senderId, receiverId, amount: 0 })
+    assert.equal((await repository.findBalance(senderId)).availableCredit, 100)
+    assert.equal((await repository.findBalance(senderId)).reserveCredit, 0)
+    assert.equal((await repository.findBalance(receiverId)).availableCredit, 100)
+    await assert.rejects(() => repository.transferCredit({
+      transactionReference: ref(releasedId, 'CREDIT_TRANSFER'), senderId, receiverId, amount: 0,
+    }), /after release/)
+    await assert.rejects(() => repository.releaseCredit({
+      transactionReference: ref(transferredId, 'CREDIT_RELEASE'), userId: senderId, amount: 0,
+    }), /after transfer/)
+  } finally {
+    await prisma.transactionRecord.deleteMany({ where: { reference: {
+      in: [releasedId, transferredId].flatMap((id) =>
+        ['CREDIT_RESERVE', 'CREDIT_RELEASE', 'CREDIT_TRANSFER'].map((type) => `delivery:${id}:${type}`)),
+    } } })
+    await prisma.creditBalance.deleteMany({ where: { userId: { in: [senderId, receiverId] } } })
+  }
+})

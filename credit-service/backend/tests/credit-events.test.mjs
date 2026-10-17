@@ -24,6 +24,8 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const requester = randomUUID()
   const courier = randomUUID()
   const confirmId = randomUUID()
+  const zeroConfirmId = randomUUID()
+  const zeroCancelId = randomUUID()
   const cancelId = randomUUID()
   const expireId = randomUUID()
   const requesterMismatchId = randomUUID()
@@ -58,7 +60,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       headers: {
         Cookie: `relay_session=${cookie}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.INTERNAL_CREDIT_SERVICE_TOKEN } : {}),
+        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -107,6 +109,21 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     await until(async () => (await request('requester')).status === 200)
     await until(async () => (await request('courier')).status === 200)
     assert.equal((await request('requester')).body.availableCredit, 100)
+    assert.equal((await request('courier')).body.availableCredit, 100)
+
+    assert.equal((await reserve(zeroConfirmId, 0)).status, 200)
+    assert.equal((await reserve(zeroCancelId, 0)).status, 200)
+    await send(topics.errandEvents, zeroConfirmId, 'ErrandCompleted', {
+      errandId: zeroConfirmId, requesterSub: requester, courierSub: courier,
+    })
+    await send(topics.errandEvents, zeroCancelId, 'ErrandCancelled', {
+      errandId: zeroCancelId, requesterSub: requester,
+    })
+    await until(async () => (await prisma.transactionRecord.count({ where: { reference: { in: [
+      `errand:${zeroConfirmId}:CREDIT_TRANSFER`, `errand:${zeroCancelId}:CREDIT_RELEASE`,
+    ] } } })) === 2)
+    assert.equal((await request('requester')).body.availableCredit, 100)
+    assert.equal((await request('requester')).body.reserveCredit, 0)
     assert.equal((await request('courier')).body.availableCredit, 100)
 
     for (const [id, amount] of [

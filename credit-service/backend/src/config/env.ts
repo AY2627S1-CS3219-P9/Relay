@@ -7,7 +7,7 @@ const schema = z.object({
   USER_API_URL: z.string().url().default('http://user-api:3000'),
   USER_API_TIMEOUT: z.coerce.number().int().positive().default(5000),
   USER_SERVICE_INTERNAL_TOKEN: z.string().min(1).default('local-internal-user-service-token'),
-  INTERNAL_CREDIT_SERVICE_TOKEN: z.string().min(1),
+  CREDIT_SERVICE_INTERNAL_TOKEN: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1).default('kafka:9092'),
   KAFKA_TOPIC_USER_EVENTS: z.string().min(1),
   KAFKA_TOPIC_ERRAND_EVENTS: z.string().min(1),
@@ -22,7 +22,7 @@ export function getEnv() {
     userApiUrl: env.USER_API_URL.replace(/\/$/, ''),
     userApiTimeout: env.USER_API_TIMEOUT,
     userServiceInternalToken: env.USER_SERVICE_INTERNAL_TOKEN,
-    internalCreditServiceToken: env.INTERNAL_CREDIT_SERVICE_TOKEN,
+    creditServiceInternalToken: env.CREDIT_SERVICE_INTERNAL_TOKEN,
     kafkaBrokers: env.KAFKA_BROKERS.split(','),
     kafkaTopics: {
       userEvents: env.KAFKA_TOPIC_USER_EVENTS,

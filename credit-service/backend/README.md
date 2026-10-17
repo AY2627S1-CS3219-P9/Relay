@@ -72,7 +72,7 @@ Reserve accepts the contract body
 `{ transactionReference: { service, id, type: 'CREDIT_RESERVE' }, userId, amount }`.
 The internal route requires the configured x-credit-service-token header. The body
 userId selects the balance to reserve. The amount must be a
-positive number. The balance and a `CREDIT_RESERVE` history record are updated
+nonnegative number. The balance and a `CREDIT_RESERVE` history record are updated
 atomically. Repeating a reservation reference returns HTTP 409 with TRANSACTION_CONFLICT
 without charging again. The same conflict applies when a release or transfer
 transaction already exists with the same service and id. A missing balance returns `USER_NOT_FOUND` (404);

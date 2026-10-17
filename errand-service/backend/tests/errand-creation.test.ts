@@ -3,6 +3,7 @@ import type { CreateErrandRequest } from '@relay/contracts'
 import { ErrandService } from '../src/services/errand.service.js'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import type { CreditClient } from '../src/clients/credit.client.js'
+import { validateCreateErrand } from '../src/validators/errand.validator.js'
 
 const user = {
   sub: 'requester', email: 'requester@example.com', emailVerified: true,
@@ -41,6 +42,14 @@ describe('errand creation and credit reservation', () => {
       .toBeLessThan(credit.reserve.mock.invocationCallOrder[0])
     expect(credit.reserve.mock.invocationCallOrder[0])
       .toBeLessThan(repository.createErrand.mock.invocationCallOrder[0])
+  })
+
+  it('accepts a zero-credit errand and reserves zero before creating it', async () => {
+    const { service, repository, credit } = setup()
+    const freeRequest = validateCreateErrand({ ...request, creditAmount: 0 })
+    await service.createErrand(user, freeRequest)
+    expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 0)
+    expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
 
   it('leaves the pending row for recovery if reservation fails', async () => {

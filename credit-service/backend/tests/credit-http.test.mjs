@@ -63,7 +63,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       headers: {
         ...(cookie ? { Cookie: cookie } : {}),
         ...(path === '/internal/credit/reserve' && serviceToken
-          ? { 'x-credit-service-token': process.env.INTERNAL_CREDIT_SERVICE_TOKEN } : {}),
+          ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -205,7 +205,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         (
           await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
             ...body,
-            amount: 0,
+            amount: -1,
           })
         ).body.code,
         'INVALID_CREDIT_AMOUNT',
@@ -237,6 +237,14 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         ).status,
         404,
       )
+      const zero = await request('/internal/credit/reserve', 'relay_session=owner', 'POST', {
+        ...body,
+        transactionReference: { ...reference, id: `${prefix}-zero` },
+        amount: 0,
+      })
+      assert.equal(zero.status, 200)
+      assert.equal(zero.body.availableCredit, 75.25)
+      assert.equal(zero.body.reserveCredit, 12.5)
       const first = await request('/internal/credit/reserve', 'relay_session=owner', 'POST', body)
       assert.equal(first.status, 200)
       assert.equal(first.body.status, 'RESERVE_SUCCESS')

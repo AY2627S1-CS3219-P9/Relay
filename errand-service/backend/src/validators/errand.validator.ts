@@ -28,7 +28,7 @@ const createErrandSchema = z.object({
   pickupLocation: errandLocationSchema,
   targetLocation: errandLocationSchema,
   deliveryDetails: deliveryDetailsSchema,
-  creditAmount: z.number().int().positive(),
+  creditAmount: z.number().int().nonnegative(),
   expiresAt: z.string().datetime({ offset: true }).refine(
     (value) => new Date(value).getTime() > Date.now(),
     'Expiry must be in the future',

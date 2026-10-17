@@ -34,8 +34,8 @@ function referenceWithType(ref: ReferenceIdentity, type: TransactionType): strin
   return referenceOf({ transactionReference: { ...ref, type } })
 }
 
-function positiveAmount(amount: number): Prisma.Decimal {
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.')
+function nonnegativeAmount(amount: number): Prisma.Decimal {
+  if (!Number.isFinite(amount) || amount < 0) throw new Error('Credit amount must be nonnegative.')
   return new Prisma.Decimal(amount)
 }
 
@@ -124,10 +124,10 @@ export class CreditRepository {
       !request.userId
     )
       throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
-    if (!Number.isFinite(request.amount) || request.amount <= 0) {
+    if (!Number.isFinite(request.amount) || request.amount < 0) {
       throw new CreditServiceError(
         'INVALID_CREDIT_AMOUNT',
-        'Credit amount must be a positive number.',
+        'Credit amount must be a nonnegative number.',
         422,
       )
     }
@@ -255,7 +255,7 @@ export class CreditRepository {
       !command.userId
     )
       throw new Error('Invalid release credit command.')
-    const amount = positiveAmount(command.amount)
+    const amount = nonnegativeAmount(command.amount)
     await prisma.$transaction(async (tx) => {
       await this.lockReference(tx, command.transactionReference)
       const reservation = await tx.transactionRecord.findUnique({
@@ -295,7 +295,7 @@ export class CreditRepository {
       command.senderId === command.receiverId
     )
       throw new Error('Invalid transfer credit command.')
-    const amount = positiveAmount(command.amount)
+    const amount = nonnegativeAmount(command.amount)
     await prisma.$transaction(async (tx) => {
       await this.lockReference(tx, command.transactionReference)
       const reservation = await tx.transactionRecord.findUnique({
