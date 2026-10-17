@@ -6,7 +6,8 @@ export type ViewCreditRequest = {
 
 export type ViewCreditHistoryRequest = {
   userId: string
-  // TODO: Add filters and limits
+  /** Number of newest records to skip. Responses contain at most 100 records. */
+  offset: number
 }
 
 export type ReserveCreditRequest = {

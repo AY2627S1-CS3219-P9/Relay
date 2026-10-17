@@ -1,9 +1,21 @@
 import '@relay/ui/styles.css'
 import './styles.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RemoteAppProps, TransactionRecord, ViewCreditHistoryResponse } from '@relay/contracts'
 import { ErrorMessage, IconButton, RelayButton } from '@relay/ui'
-import { HISTORY_PAGE_SIZE, transactionDisplay, transactionTime } from './history'
+import { HISTORY_BATCH_SIZE, HISTORY_PAGE_SIZE, transactionDisplay, transactionTime } from './history'
+
+async function fetchCreditHistory(offset: number, signal: AbortSignal): Promise<TransactionRecord[]> {
+  const response = await fetch(`/api/credit/history?offset=${offset}`, {
+    credentials: 'include',
+    cache: 'no-store',
+    signal,
+  })
+  if (!response.ok) throw new Error(`Credit history request failed (${response.status}).`)
+  const result = (await response.json()) as ViewCreditHistoryResponse
+  if (!Array.isArray(result.records)) throw new Error('Credit history response is invalid.')
+  return result.records
+}
 
 export default function App({
   creditBalance,
@@ -19,25 +31,26 @@ export default function App({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [retryVersion, setRetryVersion] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState('')
+  const loadMoreController = useRef<AbortController | null>(null)
 
   useEffect(() => {
     if (!creditHistoryOpen) return
     const controller = new AbortController()
     setLoading(true)
     setError('')
+    setLoadMoreError('')
+    setLoadingMore(false)
+    setHasMore(false)
     setRecords([])
-    void fetch('/api/credit/history', {
-      credentials: 'include',
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Credit history request failed (${response.status}).`)
-        return (await response.json()) as ViewCreditHistoryResponse
-      })
-      .then(({ records: fetchedRecords }) => {
-        if (!Array.isArray(fetchedRecords)) throw new Error('Credit history response is invalid.')
-        if (!controller.signal.aborted) setRecords(fetchedRecords)
+    setPage(1)
+    void fetchCreditHistory(0, controller.signal)
+      .then((fetchedRecords) => {
+        if (controller.signal.aborted) return
+        setRecords(fetchedRecords)
+        setHasMore(fetchedRecords.length === HISTORY_BATCH_SIZE)
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) {
@@ -47,8 +60,38 @@ export default function App({
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      loadMoreController.current?.abort()
+    }
   }, [creditHistoryOpen, authenticatedSubject, authVersion, retryVersion])
+
+  async function advancePage() {
+    const loadedPageCount = Math.ceil(records.length / HISTORY_PAGE_SIZE)
+    if (page < loadedPageCount) {
+      setPage(page + 1)
+      return
+    }
+    if (!hasMore || loadingMore) return
+    const controller = new AbortController()
+    loadMoreController.current = controller
+    setLoadingMore(true)
+    setLoadMoreError('')
+    try {
+      const nextRecords = await fetchCreditHistory(records.length, controller.signal)
+      if (controller.signal.aborted) return
+      setRecords((current) => [...current, ...nextRecords])
+      setHasMore(nextRecords.length === HISTORY_BATCH_SIZE)
+      if (nextRecords.length > 0) setPage(page + 1)
+    } catch (cause) {
+      if (!controller.signal.aborted) {
+        setLoadMoreError(cause instanceof Error ? cause.message : 'Unable to load more credit history.')
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoadingMore(false)
+      if (loadMoreController.current === controller) loadMoreController.current = null
+    }
+  }
 
   const pageCount = Math.max(1, Math.ceil(records.length / HISTORY_PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
@@ -127,10 +170,11 @@ export default function App({
                     ))}
                   </div>
                 </div>
+                {loadMoreError && <ErrorMessage message={loadMoreError} />}
                 <nav className="credit-history-pagination" aria-label="Credit history pages">
                   <RelayButton disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</RelayButton>
-                  <span>Page {currentPage} of {pageCount}</span>
-                  <RelayButton disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next</RelayButton>
+                  <span>Page {currentPage} of {pageCount}{hasMore ? '+' : ''}</span>
+                  <RelayButton disabled={loadingMore || (currentPage === pageCount && !hasMore)} onClick={() => void advancePage()}>{loadingMore ? 'Loading...' : 'Next'}</RelayButton>
                 </nav>
               </>
             )}

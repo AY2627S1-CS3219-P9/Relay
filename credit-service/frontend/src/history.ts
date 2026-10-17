@@ -1,6 +1,7 @@
 import type { TransactionRecord } from '@relay/contracts'
 
 export const HISTORY_PAGE_SIZE = 10
+export const HISTORY_BATCH_SIZE = 100
 
 export function transactionDisplay(record: TransactionRecord, userId: string) {
   switch (record.type) {
