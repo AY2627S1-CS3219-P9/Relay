@@ -16,6 +16,19 @@ export function authenticatedUserId(req: Request, res: Response): string {
   return subject
 }
 
+export function historyOffset(req: Request): number {
+  const raw = req.query.offset
+  if (raw === undefined) return 0
+  if (typeof raw !== 'string' || !/^(0|[1-9]\d*)$/.test(raw)) {
+    throw new CreditServiceError('INVALID_REQUEST', 'offset must be a non-negative integer.', 400)
+  }
+  const offset = Number(raw)
+  if (!Number.isSafeInteger(offset) || offset > 2147483647) {
+    throw new CreditServiceError('INVALID_REQUEST', 'offset must be at most 2147483647.', 400)
+  }
+  return offset
+}
+
 export function reserveCreditRequest(req: Request, res: Response): ReserveCreditRequest {
   const userId = authenticatedUserId(req, res)
   const body: unknown = req.body

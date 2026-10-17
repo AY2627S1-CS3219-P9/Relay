@@ -17,7 +17,7 @@ import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
-export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
+export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, openCredit, invalidateCreditBalance, userProfile, creditBalance, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
   const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
@@ -81,6 +81,11 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     openProfile(anchor)
   }
 
+  function openCreditCard(button: HTMLButtonElement) {
+    if (!openCredit) return
+    const { top, left, right, bottom, width, height } = button.getBoundingClientRect()
+    openCredit({ top, left, right, bottom, width, height })
+  }
   async function updateErrand(action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'drop' | 'delete', id: string) {
     if (errandApi) {
       const actions = { accept: errandApi.acceptErrand, pickup: errandApi.pickupErrand, deliver: errandApi.deliverErrand, confirm: errandApi.confirmErrand, cancel: errandApi.cancelErrand, drop: errandApi.dropErrand, delete: errandApi.deleteErrand }
@@ -88,10 +93,12 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       if (action === 'drop') {
         const response = await actions.drop(id)
         setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand), courierName: undefined, courierProfilePictureUrl: undefined } : errand))
+        if (response.errand.status === 'EXPIRED') invalidateCreditBalance?.()
         return
       }
       const response = await actions[action](id)
       setErrands((current) => current.map((errand) => errand.id === id ? { ...errand, ...toDemoErrand(response.errand) } : errand))
+      if (action === 'cancel' || action === 'confirm') invalidateCreditBalance?.()
       if (action === 'accept') openErrandView?.({ view: 'my-errands' })
       return
     }
@@ -112,7 +119,10 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
       <CreateErrandCard
         initialSupplierId={errandViewContext?.view === 'create' ? errandViewContext.supplierId : undefined}
         onClose={closeRemote}
-        onCreated={() => openErrandView?.({ view: 'requests' })}
+        onCreated={() => {
+          invalidateCreditBalance?.()
+          openErrandView?.({ view: 'requests' })
+        }}
         errandApi={errandApi}
         supplierApi={supplierApi}
       />
@@ -127,7 +137,7 @@ export default function App({ errandViewContext, navigateTo, openErrandView, ope
     <main className="errand-map-shell relay-design-system">
       <ErrandMap errands={visibleErrands} center={mapViewport?.center ?? location ?? NUS_CENTER} userLocation={location} selectedId={selectedErrandId} onSelect={(errand, anchor) => { setSelectedErrandId(errand.id); setSelectedErrandAnchor(anchor) }} onMapClick={() => { setSelectedErrandId(undefined); setSelectedErrandAnchor(undefined) }} onMapReady={setMap} zoom={mapViewport?.zoom ?? 16} onViewportChange={handleViewportChange} active={mapActive ?? true} />
       <div className="errand-top-controls map-top-menu">
-        <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits"><BoltIcon className="errand-control-icon" /><span>0 cr</span></RelayButton>
+        <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control" aria-label="Credits" onClick={(event) => openCreditCard(event.currentTarget)}><BoltIcon className="errand-control-icon" /><span>{creditBalance?.availableCredit ?? '...'} cr</span></RelayButton>
         <SlidingSegmentedControl size="map" ariaLabel="Errand view" options={[{ value: 'explore', label: 'Explore' }, { value: 'requests', label: 'My Requests' }, { value: 'my-errands', label: 'My Errands' }]} value={view === 'my-errands' ? 'my-errands' : isCourierView ? 'explore' : 'requests'} onChange={(next) => { persistCurrentViewport(); openErrandView?.(next === 'explore' ? { view: 'explore' } : next === 'my-errands' ? { view: 'my-errands' } : { view: 'requests' }) }} />
         <RelayButton variant="secondary" size="map-pill" className="glass-pill glass-control profile-chip" aria-label="Profile" onClick={(event) => openProfileCard(event.currentTarget)}>{userProfile?.profilePictureUrl && <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />}{userProfile?.username ?? 'Complete profile'}</RelayButton>
       </div>

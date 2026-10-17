@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
   SERVICE_METADATA,
   type FetchSessionHandler,
+  type CreditBalance,
   type ErrandViewContext,
   type ProfileAnchor,
   type ServiceId,
@@ -43,9 +44,19 @@ function App() {
   const [activeService, setActiveService] = useState<ServiceId>('user')
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileAnchor, setProfileAnchor] = useState<ProfileAnchor>()
+  const [creditOpen, setCreditOpen] = useState(false)
+  const [creditHistoryOpen, setCreditHistoryOpen] = useState(false)
+  const [creditAnchor, setCreditAnchor] = useState<ProfileAnchor>()
   const [userProfile, setUserProfile] = useState<User | null>(null)
+  const [storedCreditBalance, setStoredCreditBalance] = useState<CreditBalance | null>(null)
+  const [creditInvalidation, setCreditInvalidation] = useState<{
+    version: number
+    subject?: string
+    baseline: CreditBalance | null
+  }>({ version: 0, baseline: null })
   const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
+  const creditBalance = storedCreditBalance?.userId === authenticatedSubject ? storedCreditBalance : null
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
@@ -129,6 +140,7 @@ function App() {
       } catch {
         if (!cancelled) {
           setAuthenticatedSubject(undefined)
+          setStoredCreditBalance(null)
           setUserProfile(null)
         }
       }
@@ -140,6 +152,7 @@ function App() {
         payload.event === 'signedOut' ||
         payload.event === 'tokenRefresh'
       ) {
+        if (payload.event === 'signedOut') setStoredCreditBalance(null)
         setAuthVersion((version) => version + 1)
         void loadProfile()
       }
@@ -150,6 +163,65 @@ function App() {
     }
   }, [])
 
+  // Call this when a credit-changing action begins. Keep the displayed balance
+  // until the service reports a newer snapshot.
+  const invalidateCreditBalance = useCallback(() => {
+    setCreditInvalidation((current) => ({
+      version: current.version + 1,
+      subject: authenticatedSubject,
+      baseline: creditBalance?.userId === authenticatedSubject ? creditBalance : null,
+    }))
+  }, [authenticatedSubject, creditBalance])
+
+  useEffect(() => {
+    if (!authenticatedSubject) return
+
+    const subject = authenticatedSubject
+    const baseline = creditInvalidation.subject === subject ? creditInvalidation.baseline : null
+    let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    let attempts = 0
+    let lastError: unknown
+    const controller = new AbortController()
+
+    async function pollBalance() {
+      attempts += 1
+      try {
+        const response = await fetch('/api/credit', {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`Credit balance request failed (${response.status}).`)
+        const balance = (await response.json()) as CreditBalance
+        if (cancelled) return
+        const unchanged = baseline &&
+          balance.availableCredit === baseline.availableCredit &&
+          balance.reserveCredit === baseline.reserveCredit &&
+          String(balance.lastUpdated) === String(baseline.lastUpdated)
+        if (!unchanged) {
+          setStoredCreditBalance(balance)
+          return
+        }
+        lastError = new Error('Credit balance has not changed yet.')
+      } catch (error) {
+        if (cancelled) return
+        lastError = error
+      }
+      if (attempts >= 20) {
+        console.error('Credit balance did not update after 20 attempts.', lastError)
+        return
+      }
+      retryTimer = setTimeout(() => { void pollBalance() }, 1000)
+    }
+
+    void pollBalance()
+    return () => {
+      cancelled = true
+      controller.abort()
+      if (retryTimer) clearTimeout(retryTimer)
+    }
+  }, [authenticatedSubject, creditInvalidation, authVersion])
   async function refreshUserProfile() {
     try {
       const session = await fetchSession({ forceRefresh: true })
@@ -167,6 +239,7 @@ function App() {
       setAuthVersion((version) => version + 1)
     } catch {
       setAuthenticatedSubject(undefined)
+      setStoredCreditBalance(null)
       setUserProfile(null)
       setAuthVersion((version) => version + 1)
     }
@@ -175,6 +248,7 @@ function App() {
   function navigateTo(service: ServiceId) {
     setProfileOpen(false)
     setProfileAnchor(undefined)
+    closeCredit()
     if (service !== 'errand') {
       setErrandViewContext(undefined)
       setCreateErrandOnSupplierMap(false)
@@ -184,6 +258,7 @@ function App() {
   }
 
   function openErrandView(context: ErrandViewContext) {
+    closeCredit()
     if (context.view === 'explore') {
       setSupplierMode('explore')
       navigateTo('supplier')
@@ -201,8 +276,23 @@ function App() {
   }
 
   function openProfile(anchor: ProfileAnchor) {
+    closeCredit()
     setProfileAnchor(anchor)
     setProfileOpen(true)
+  }
+
+  function openCredit(anchor: ProfileAnchor) {
+    setProfileOpen(false)
+    setProfileAnchor(undefined)
+    setCreditAnchor(anchor)
+    setCreditHistoryOpen(false)
+    setCreditOpen(true)
+  }
+
+  function closeCredit() {
+    setCreditOpen(false)
+    setCreditHistoryOpen(false)
+    setCreditAnchor(undefined)
   }
 
   const updateViewport = useCallback((
@@ -243,6 +333,16 @@ function App() {
     }
   }
 
+  function creditCardStyle(): CSSProperties | undefined {
+    if (!creditAnchor) return undefined
+    const cardWidth = Math.min(creditHistoryOpen ? 760 : 405, window.innerWidth - 32)
+    const top = Math.max(16, creditAnchor.bottom + 12)
+    const availableHeight = Math.max(180, window.innerHeight - top - 16)
+    const height = Math.min(creditHistoryOpen ? 640 : 280, availableHeight)
+    const left = Math.min(Math.max(16, creditAnchor.left), window.innerWidth - cardWidth - 16)
+    return { top, left, width: cardWidth, height }
+  }
+
   return (
     <main className="relay-host-shell">
       <div className="remote-grid">
@@ -251,16 +351,23 @@ function App() {
             key={id}
             service={id}
             serviceLabel={label}
-            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)}
-            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : undefined}
+            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)}
+            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : id === 'credit' && creditOpen ? creditAnchor : undefined}
             appProps={{
               fetchSession,
               authVersion,
               authenticatedSubject,
               userProfile,
+              creditBalance,
+              invalidateCreditBalance,
               refreshUserProfile,
               navigateTo,
               openProfile,
+              openCredit,
+              closeCredit: id === 'credit' ? closeCredit : undefined,
+              creditHistoryOpen: id === 'credit' ? creditHistoryOpen : undefined,
+              showCreditHistory: id === 'credit' ? () => setCreditHistoryOpen(true) : undefined,
+              showCreditBalance: id === 'credit' ? () => setCreditHistoryOpen(false) : undefined,
               openErrandView,
               errandApi: hostErrandApi,
               supplierApi: hostSupplierApi,
@@ -275,21 +382,21 @@ function App() {
                 : undefined,
               mapActive: activeService === id,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'user' && profileOpen
+              presentation: id === 'credit' ? undefined : id === 'user' && profileOpen
                 ? 'card'
                 : id === 'errand' && createErrandOnSupplierMap
                   ? 'card'
                   : 'full',
             }}
             overlay={
-              (id === 'user' && profileOpen) || (id === 'errand' && createErrandOnSupplierMap)
+              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)
             }
             overlayClassName={id === 'errand' && createErrandOnSupplierMap ? 'errand-create-overlay-page' : undefined}
             card={
-              id === 'user' && profileOpen
+              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen)
             }
             cardStyle={
-              id === 'user' && profileOpen ? profileCardStyle() : undefined
+              id === 'user' && profileOpen ? profileCardStyle() : id === 'credit' && creditOpen ? creditCardStyle() : undefined
             }
           />
         ))}

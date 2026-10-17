@@ -55,11 +55,11 @@ npm run dev --workspace @relay/credit-backend
 
 ## HTTP API
 
-| Method | Route                 | Response                                                  |
-| ------ | --------------------- | --------------------------------------------------------- |
-| GET    | `/api/credit`         | `{ userId, availableCredit, reserveCredit, lastUpdated }` |
-| GET    | `/api/credit/history` | `{ records: TransactionRecord[] }`                        |
-| POST   | `/internal/credit/reserve` | `CreditBalance & { status: 'RESERVE_SUCCESS' }` |
+| Method | Route                                 | Response                                                            |
+| ------ | ------------------------------------- | ------------------------------------------------------------------- |
+| GET    | `/api/credit`                         | `{ userId, availableCredit, reserveCredit, lastUpdated }`           |
+| GET    | `/api/credit/history?offset={number}` | `{ records: TransactionRecord[] }` (up to 100)                      |
+| POST   | `/internal/credit/reserve`            | `CreditBalance & { status: 'RESERVE_SUCCESS' }`                     |
 
 The two read routes forward the browser's Cookie header and the configured internal
 user-service token to `POST /internal/user/session/validate` on User Service.
@@ -79,7 +79,11 @@ transaction already exists with the same service and id. A missing balance retur
 invalid amounts and insufficient available credit return 422.
 
 History includes transactions where the user is sender or receiver, newest
-first, with reference as a deterministic tie-breaker. No transactions returns
+first, with reference as a deterministic tie-breaker. Each response contains
+at most 100 records. The optional `offset` query parameter is a non-negative
+integer that skips that many records in the database; it defaults to 0.
+Request `offset=100`, `offset=200`, and so on to load later batches. Invalid
+offsets return `INVALID_REQUEST` (400). No transactions returns
 `{ records: [] }`. Missing or invalid authentication returns
 `UNAUTHENTICATED` (401), invalid userId input returns `INVALID_REQUEST` (400),
 and User Service failures/timeouts return 503.

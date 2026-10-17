@@ -18,7 +18,7 @@ export interface CreditApi {
   /** Views credit balance for the authenticated user. */
   viewCredit(request: ViewCreditRequest): Promise<ViewCreditResponse>
 
-  /** Views credit balance history for the authenticated user. */
+  /** Views up to 100 history records for the authenticated user, skipping request.offset records. */
   viewCreditHistory(request: ViewCreditHistoryRequest): Promise<ViewCreditHistoryResponse>
 
   /** Reserves credit amount from available credits. */

@@ -52,10 +52,12 @@ export class CreditRepository {
       : null
   }
 
-  async findHistory(userId: string): Promise<TransactionRecord[]> {
+  async findHistory(userId: string, offset = 0): Promise<TransactionRecord[]> {
     const records = await prisma.transactionRecord.findMany({
       where: { OR: [{ senderId: userId }, { receiverId: userId }] },
-      orderBy: [{ time: 'desc' }],
+      orderBy: [{ time: 'desc' }, { reference: 'desc' }],
+      skip: offset,
+      take: 100,
     })
     return records.map((record: any) => {
       const [service, id] = record.reference.split(':')

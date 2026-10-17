@@ -54,6 +54,6 @@ export class CreditService {
   }
 
   async viewCreditHistory(request: ViewCreditHistoryRequest): Promise<ViewCreditHistoryResponse> {
-    return { records: await this.repository.findHistory(request.userId) }
+    return { records: await this.repository.findHistory(request.userId, request.offset) }
   }
 }
