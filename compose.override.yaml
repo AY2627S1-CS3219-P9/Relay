@@ -15,6 +15,19 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  kafbat-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    ports:
+      - '127.0.0.1:8081:8080'
+    environment:
+      KAFKA_CLUSTERS_0_NAME: relay-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   host:
     env_file:
       - .env.development
@@ -23,6 +36,7 @@ services:
       - .env.development
     ports:
       - '5555:5555' # For prisma studio
+      - '127.0.0.1:3001:3000' # User API for local Postman requests
     environment:
       PORT: 3000
       AUTH_MODE: cognito
@@ -34,3 +48,7 @@ services:
     depends_on:
       floci:
         condition: service_healthy
+  credit-api:
+    ports:
+      - '127.0.0.1:3002:3000' # Credit API for local Postman requests
+      - '127.0.0.1:5556:5555' # Credit Prisma Studio

@@ -1,6 +1,6 @@
 import { Kafka, type Producer, type RecordMetadata } from 'kafkajs'
+import { type ErrandEvent, type ErrandEventPayload, type ErrandEventType } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
-import type { ErrandEventPayload } from '@relay/contracts'
 
 const env = getEnv()
 
@@ -15,6 +15,7 @@ export const kafka = new Kafka({
 })
 
 export const producer: Producer = kafka.producer({
+  allowAutoTopicCreation: false,
   idempotent: true,
   retry: {
     retries: 5,
@@ -30,37 +31,26 @@ export async function connectProducer(): Promise<void> {
 
 export async function disconnectProducer(): Promise<void> {
   await producer.disconnect()
-  console.log('Kafka producer disconnected')
 }
 
 export async function publishEvent(
-  topic: string,
-  eventType: string,
+  eventType: ErrandEventType,
   payload: ErrandEventPayload,
 ): Promise<RecordMetadata[]> {
-  const eventId = crypto.randomUUID()
-  const timestamp = new Date().toISOString()
+  if (!payload.errandId) {
+    throw new Error('errandId is required for Kafka message key')
+  }
 
-  const message = {
-    eventId,
+  const event: ErrandEvent = {
+    eventId: crypto.randomUUID(),
     eventType,
-    timestamp,
+    timestamp: new Date().toISOString(),
     version: 1,
     payload,
   }
 
-  // Ensure errandId exists for partitioning key
-  if (!payload.errandId) {
-    throw new Error('errandId is required in payload for Kafka partitioning')
-  }
-
   return producer.send({
-    topic,
-    messages: [
-      {
-        value: JSON.stringify(message),
-        partition: 0, // KafkaJS requires explicit partition or use partitioner
-      },
-    ],
+    topic: env.kafkaTopicErrandEvents,
+    messages: [{ key: payload.errandId, value: JSON.stringify(event) }],
   })
 }

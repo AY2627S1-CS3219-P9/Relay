@@ -23,6 +23,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "zod": "^4.1.5"
   },
   "devDependencies": {

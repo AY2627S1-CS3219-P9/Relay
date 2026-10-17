@@ -31,4 +31,4 @@ COPY --from=build /app/user-service/backend/prisma ./user-service/backend/prisma
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=user-service/backend/prisma/schema.prisma && node user-service/backend/dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=user-service/backend/prisma/schema.prisma && npx tsx user-service/backend/dist/server.js"]

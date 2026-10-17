@@ -22,6 +22,7 @@ export async function connectConsumer(groupConfig: {
 }): Promise<void> {
   consumer = kafka.consumer({
     groupId: groupConfig.groupId,
+    allowAutoTopicCreation: false,
     sessionTimeout: 30000,
     rebalanceTimeout: 60000,
   })

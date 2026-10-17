@@ -129,3 +129,4 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
 export * from './user'
 export * from './supplier'
 export * from './errand'
+export * from './credit'

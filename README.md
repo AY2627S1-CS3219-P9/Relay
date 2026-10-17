@@ -153,6 +153,7 @@ The local development topology is:
 | User PostgreSQL | `localhost:5432` |
 | Supplier PostgreSQL | `localhost:5433` |
 | Errand PostgreSQL | `localhost:5434` |
+| Credit PostgreSQL | `localhost:5435` |
 
 The local Vite host proxies `/api/user` to the User API, `/api/supplier` to the
 Supplier API, and `/api/errands` to the Errand API. Open the application at
@@ -185,3 +186,18 @@ The following items are intentionally left for the Kubernetes deployment step:
 - TODO: Externalize databases, secrets, sessions, and other state from pods.
 
 ---
+
+## Local credit-allocation flow
+
+Docker Compose includes a single-node Kafka broker (host port `9092`) and
+Kafbat UI at http://localhost:8081. In the development override, User API is
+available to Postman at http://localhost:3001. Creating a verified user's
+profile publishes `KAFKA_TOPIC_USER_EVENTS`; Credit Service consumes that event and
+allocates 100 credits once. Floci's verification mailbox is at
+http://localhost:4566/_aws/ses.
+
+Run the signup, SES code lookup, verification, and profile creation sequence
+using the Postman collection in `tests/integration/new-user-allocation.postman_collection.json`
+with Newman: `npx newman run tests/integration/new-user-allocation.postman_collection.json`.
+The new balance appears in credit Prisma Studio at http://localhost:5556
+when Studio is running in the credit API container.
