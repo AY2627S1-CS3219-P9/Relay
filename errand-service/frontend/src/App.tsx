@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { Errand, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
+import type { Errand, ErrandStatus, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
@@ -27,6 +27,7 @@ import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilter
 import { ErrandMap } from './components/ErrandMap'
 import type { DemoErrand } from './types'
 import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
+import { useErrandNotifications } from './hooks/useErrandNotifications'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = {
@@ -218,6 +219,17 @@ export default function App({
       setSelectedErrandId(undefined)
     }
   }
+
+  // SSE notifications for other users' changes
+  const handleErrandUpdate = useCallback((errandId: string, newStatus: string) => {
+    setErrands((current) =>
+      current.map((errand) =>
+        errand.id === errandId ? { ...errand, status: newStatus as DemoErrand['status'] } : errand,
+      ),
+    )
+  }, [])
+
+  useErrandNotifications(errands, handleErrandUpdate)
 
   async function locateMe() {
     const next = await requestUserLocation?.()
