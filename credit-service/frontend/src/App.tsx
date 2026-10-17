@@ -101,22 +101,31 @@ export default function App({
             )}
             {!loading && !error && records.length > 0 && (
               <>
-                <div className="credit-history-table-scroll">
-                  <table className="credit-history-table">
-                    <thead><tr><th scope="col">Time</th><th scope="col">Transaction</th><th scope="col">Amount</th></tr></thead>
-                    <tbody>
-                      {visibleRecords.map((record) => {
-                        const display = transactionDisplay(record, userId)
-                        return (
-                          <tr key={`${record.reference.service}:${record.reference.id}:${record.type}`}>
-                            <td><time dateTime={String(record.time)}>{transactionTime(record.time)}</time></td>
-                            <td>{display.type}</td>
-                            <td className={`credit-amount credit-amount-${display.tone}`}>{display.amount}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                <div className="credit-history-table-scroll" role="region" aria-label="Credit transactions" tabIndex={0}>
+                  <div className="credit-history-list" role="table" aria-label="Credit history">
+                    <div className="credit-history-row credit-history-heading" role="row">
+                      <span className="credit-history-cell-time" role="columnheader">Time</span>
+                      <span className="credit-history-cell-type" role="columnheader">Transaction</span>
+                      <span className="credit-history-cell-amount" role="columnheader">Amount</span>
+                    </div>
+                    {visibleRecords.map((record) => {
+                      const display = transactionDisplay(record, userId)
+                      return (
+                        <div className="credit-history-row" role="row" key={`${record.reference.service}:${record.reference.id}:${record.type}`}>
+                          <span className="credit-history-cell-time" role="cell"><time dateTime={String(record.time)}>{transactionTime(record.time)}</time></span>
+                          <span className="credit-history-cell-type" role="cell">{display.type}</span>
+                          <span className={`credit-history-cell-amount credit-amount credit-amount-${display.tone}`} role="cell">{display.amount}</span>
+                        </div>
+                      )
+                    })}
+                    {Array.from({ length: HISTORY_PAGE_SIZE - visibleRecords.length }, (_, index) => (
+                      <div className="credit-history-row" aria-hidden="true" key={`empty-${index}`}>
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <nav className="credit-history-pagination" aria-label="Credit history pages">
                   <RelayButton disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</RelayButton>
