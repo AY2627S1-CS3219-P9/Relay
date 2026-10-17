@@ -37,6 +37,12 @@ for (const { id, federationName } of frontendServices) {
     const body = await fetchText(url)
 
     assert.match(body, new RegExp(federationName))
-    assert.match(body, /App/)
+    const exposesMapUrl = body.match(/import __mfExposesMap from ["']([^"']+)["']/)?.[1]
+    if (exposesMapUrl) {
+      const exposesMap = await fetchText(new URL(exposesMapUrl, shellUrl).toString())
+      assert.match(exposesMap, /\.\/App/)
+    } else {
+      assert.match(body, /App/)
+    }
   })
 }
