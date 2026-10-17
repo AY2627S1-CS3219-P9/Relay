@@ -3,11 +3,13 @@ import type { ErrandStatus } from './models'
 /** Kafka event types for errand lifecycle events. */
 export const ErrandEventTypes = {
   ERRAND_CREATED: 'ErrandCreated',
+  ERRAND_CREATION_FAILED: 'ErrandCreationFailed',
   ERRAND_STATUS_CHANGED: 'ErrandStatusChanged',
   ERRAND_COMPLETED: 'ErrandCompleted',
   ERRAND_CANCELLED: 'ErrandCancelled',
   ERRAND_EXPIRED: 'ErrandExpired',
   ERRAND_DELETED: 'ErrandDeleted',
+  ERRAND_EVENT_INVALID: 'ErrandEventInvalid', // Synthetic DLQ event for malformed input
 } as const
 
 export type ErrandEventType = (typeof ErrandEventTypes)[keyof typeof ErrandEventTypes]

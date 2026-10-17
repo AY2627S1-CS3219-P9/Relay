@@ -7,5 +7,5 @@ export type ViewCreditHistoryResponse = {
 }
 
 export type ReserveCreditResponse = CreditBalance & {
-  status: 'RESERVE_SUCCESS' | 'ALREADY_RESERVED'
+  status: 'RESERVE_SUCCESS'
 }

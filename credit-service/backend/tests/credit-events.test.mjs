@@ -28,11 +28,15 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const requester = randomUUID()
   const courier = randomUUID()
   const confirmId = randomUUID()
+  const zeroConfirmId = randomUUID()
+  const zeroCancelId = randomUUID()
   const cancelId = randomUUID()
   const expireId = randomUUID()
   const requesterMismatchId = randomUUID()
   const courierMissingId = randomUUID()
   const unreservedId = randomUUID()
+  const failedReservedId = randomUUID()
+  const failedUnreservedId = randomUUID()
   const ids = [requester, courier]
   const userService = createServer((req, res) => {
     const subject =
@@ -63,6 +67,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       headers: {
         Cookie: `relay_session=${cookie}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -92,7 +97,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       ],
     })
   const reserve = (id, amount) =>
-    request('requester', '/api/credit/reserve', {
+    request('requester', '/internal/credit/reserve', {
       transactionReference: { service: 'errand', id, type: 'CREDIT_RESERVE' },
       userId: requester,
       amount,
@@ -112,6 +117,21 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     await until(async () => (await request('requester')).status === 200)
     await until(async () => (await request('courier')).status === 200)
     assert.equal((await request('requester')).body.availableCredit, 100)
+    assert.equal((await request('courier')).body.availableCredit, 100)
+
+    assert.equal((await reserve(zeroConfirmId, 0)).status, 200)
+    assert.equal((await reserve(zeroCancelId, 0)).status, 200)
+    await send(topics.errandEvents, zeroConfirmId, 'ErrandCompleted', {
+      errandId: zeroConfirmId, requesterSub: requester, courierSub: courier,
+    })
+    await send(topics.errandEvents, zeroCancelId, 'ErrandCancelled', {
+      errandId: zeroCancelId, requesterSub: requester,
+    })
+    await until(async () => (await prisma.transactionRecord.count({ where: { reference: { in: [
+      `errand:${zeroConfirmId}:CREDIT_TRANSFER`, `errand:${zeroCancelId}:CREDIT_RELEASE`,
+    ] } } })) === 2)
+    assert.equal((await request('requester')).body.availableCredit, 100)
+    assert.equal((await request('requester')).body.reserveCredit, 0)
     assert.equal((await request('courier')).body.availableCredit, 100)
 
     for (const [id, amount] of [
@@ -150,6 +170,41 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(finalRequester.body.availableCredit, 90)
     assert.equal(finalRequester.body.reserveCredit, 0)
 
+    assert.equal((await reserve(failedReservedId, 7)).status, 200)
+    await send(topics.errandEvents, failedReservedId, 'ErrandCreationFailed', {
+      errandId: failedReservedId,
+      requesterSub: requester,
+    })
+    await send(topics.errandEvents, failedUnreservedId, 'ErrandCreationFailed', {
+      errandId: failedUnreservedId,
+      requesterSub: requester,
+    })
+    await until(async () => {
+      const credit = await request('requester')
+      const released = await prisma.transactionRecord.count({
+        where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+      })
+      return released === 1 && credit.body.availableCredit === 90 && credit.body.reserveCredit === 0
+    })
+    const lateReservation = await reserve(failedReservedId, 7)
+    assert.equal(lateReservation.status, 409)
+    assert.equal(lateReservation.body.code, 'TRANSACTION_CONFLICT')
+    assert.equal((await reserve(confirmId, 10)).status, 409)
+    assert.equal(await prisma.transactionRecord.count({
+      where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+    }), 1)
+    await until(async () => (await prisma.transactionRecord.count({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+    })) === 1)
+    const zeroReserve = await prisma.transactionRecord.findUniqueOrThrow({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RESERVE` },
+    })
+    const zeroRelease = await prisma.transactionRecord.findUniqueOrThrow({
+      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+    })
+    assert.equal(zeroReserve.amount.toNumber(), 0)
+    assert.equal(zeroRelease.amount.toNumber(), 0)
+
     assert.equal((await reserve(requesterMismatchId, 1)).status, 200)
     assert.equal((await reserve(courierMissingId, 1)).status, 200)
     await send(topics.errandEvents, unreservedId, 'ErrandExpired', {
@@ -179,9 +234,23 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       assert.ok(event.payload.errandId)
       assert.ok(event.error.message)
     }
+    await send(topics.errandEvents, confirmId, 'ErrandCancelled', {
+      errandId: confirmId, requesterSub: requester,
+    })
+    await send(topics.errandEvents, cancelId, 'ErrandCompleted', {
+      errandId: cancelId, requesterSub: requester, courierSub: courier,
+    })
+    await until(async () => dlqEvents.length === 5)
+    assert.deepEqual(
+      new Set(dlqEvents.filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
+        .map((item) => item.payload.errandId)),
+      new Set([confirmId, cancelId]),
+    )
+
     const afterRejectedEvents = await request('requester')
     assert.equal(afterRejectedEvents.body.availableCredit, 88)
     assert.equal(afterRejectedEvents.body.reserveCredit, 2)
+    assert.equal((await reserve(failedUnreservedId, 7)).status, 409)
 
     await send(topics.userEvents, requester, 'UserDeleted', { cognitoSub: requester })
     await until(async () => (await request('requester')).status === 404)

@@ -12,12 +12,12 @@ import {
 } from '@relay/contracts'
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
-import { EventService } from './event.service.js'
+import { CreditClient } from '../clients/credit.client.js'
 
 export class ErrandService {
   constructor(
     private readonly repository: ErrandRepository,
-    private readonly eventService: EventService,
+    private readonly creditClient: CreditClient = new CreditClient(),
   ) {}
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
@@ -29,11 +29,9 @@ export class ErrandService {
       )
     }
 
-    const errand = await this.repository.create(user.sub, request)
-
-    await this.eventService.onErrandCreated(errand)
-
-    return errand
+    const id = await this.repository.addPendingErrand(user.sub)
+    await this.creditClient.reserve(id, user.sub, request.creditAmount)
+    return this.repository.createErrand(id, user.sub, request)
   }
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
@@ -94,15 +92,6 @@ export class ErrandService {
 
     const updated = await this.repository.assignCourier(id, courier.sub)
 
-    await this.eventService.onErrandStatusChanged(
-      updated.id,
-      ErrandStatus.Accepted,
-      ErrandStatus.Open,
-      courier.sub,
-      'courier',
-      updated.requesterSub,
-    )
-
     return updated
   }
 
@@ -128,14 +117,7 @@ export class ErrandService {
       )
     }
 
-    const cancelled = await this.repository.cancel(id)
-
-    await this.eventService.onErrandCancelled(
-      cancelled.id,
-      user.sub,
-      undefined,
-      cancelled.requesterSub,
-    )
+    const cancelled = await this.repository.cancel(id, user.sub)
 
     return cancelled
   }
@@ -162,16 +144,7 @@ export class ErrandService {
       )
     }
 
-    const updated = await this.repository.deliver(id)
-
-    await this.eventService.onErrandStatusChanged(
-      updated.id,
-      ErrandStatus.Delivered,
-      ErrandStatus.PickedUp,
-      user.sub,
-      'courier',
-      updated.requesterSub,
-    )
+    const updated = await this.repository.deliver(id, user.sub)
 
     return updated
   }
@@ -200,8 +173,6 @@ export class ErrandService {
 
     const confirmed = await this.repository.confirm(id)
 
-    await this.eventService.onErrandCompleted(confirmed)
-
     return confirmed
   }
 
@@ -227,16 +198,7 @@ export class ErrandService {
       )
     }
 
-    const updated = await this.repository.pickUp(id)
-
-    await this.eventService.onErrandStatusChanged(
-      updated.id,
-      ErrandStatus.PickedUp,
-      ErrandStatus.Accepted,
-      user.sub,
-      'courier',
-      updated.requesterSub,
-    )
+    const updated = await this.repository.pickUp(id, user.sub)
 
     return updated
   }
@@ -267,32 +229,17 @@ export class ErrandService {
     const isExpired = errand.expiresAt && new Date(errand.expiresAt) <= now
 
     let status: ErrandStatus
-    let publishStatus: ErrandStatus
 
     if (isExpired) {
       // If deadline exceeded, set to expired
       status = ErrandStatus.Expired
-      publishStatus = ErrandStatus.Expired
     } else {
       // Change state from accepted to open
       status = ErrandStatus.Open
-      publishStatus = ErrandStatus.Open
     }
 
-    const updated = await this.repository.dropCourier(id, status)
+    const updated = await this.repository.dropCourier(id, status, courier.sub)
 
-    await this.eventService.onErrandStatusChanged(
-      updated.id,
-      publishStatus,
-      ErrandStatus.Accepted,
-      courier.sub,
-      'courier',
-      updated.requesterSub,
-    )
-
-    if (isExpired) {
-      await this.eventService.onErrandExpired(updated.id)
-    }
 
     return updated
   }
@@ -320,9 +267,7 @@ export class ErrandService {
       )
     }
 
-    await this.repository.deleteErrand(id)
-
-    await this.eventService.onErrandDeleted(id, user.sub)
+    await this.repository.deleteErrand(id, user.sub)
   }
 
   async receiveSupplierEvent(event: {

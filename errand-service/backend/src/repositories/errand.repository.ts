@@ -1,41 +1,114 @@
 import { Prisma, PrismaClient, type Errand as PrismaErrand } from '@relay/errand-prisma'
+import { ErrandEventTypes } from '@relay/contracts'
 import type {
   CreateErrandRequest,
   Errand,
   ErrandLocation,
   ErrandStatus,
+  ErrandEventPayload,
+  ErrandEventType,
   OperatingHours,
   ServiceType,
   SupplierErrandSummary,
   SupplierErrandViewRequest,
 } from '@relay/contracts'
 
+async function appendEvent(tx: Prisma.TransactionClient, event: { eventType: ErrandEventType; payload: ErrandEventPayload }): Promise<void> {
+  await tx.errandEventOutbox.create({
+    data: {
+      id: crypto.randomUUID(),
+      eventType: event.eventType,
+      payload: event.payload as unknown as Prisma.InputJsonValue,
+    },
+  })
+}
+
 export class ErrandRepository {
   constructor(private readonly prisma: PrismaClient = new PrismaClient()) {}
 
-  async create(requesterSub: string, request: CreateErrandRequest): Promise<Errand> {
-    const row = await this.prisma.errand.create({
-      data: {
-        requesterSub,
-        supplierId: request.supplierDetails.supplierId,
-        name: request.name,
-        pickupLat: request.pickupLocation.lat,
-        pickupLng: request.pickupLocation.lng,
-        pickupBuildingName: request.pickupLocation.buildingName,
-        pickupFloorNumber: request.pickupLocation.floorNumber,
-        targetLat: request.targetLocation.lat,
-        targetLng: request.targetLocation.lng,
-        targetBuildingName: request.targetLocation.buildingName,
-        targetFloorNumber: request.targetLocation.floorNumber,
-        supplierName: request.supplierDetails.supplierName,
-        serviceType: request.supplierDetails.serviceType,
-        deliveryDescription: request.deliveryDetails.description,
-        deliveryInstructions: request.deliveryDetails.instructions,
-        creditAmount: request.creditAmount,
-        expiresAt: request.expiresAt ? new Date(request.expiresAt) : defaultExpiry(),
-      },
+  async addPendingErrand(requesterSub: string): Promise<string> {
+    const id = crypto.randomUUID()
+    await this.prisma.pendingErrand.create({ data: { id, requesterSub } })
+    return id
+  }
+
+  async createErrand(id: string, requesterSub: string, request: CreateErrandRequest): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const pending = await tx.pendingErrand.findUnique({ where: { id } })
+      if (!pending || pending.requesterSub !== requesterSub) {
+        throw new Error('Pending errand was already recovered.')
+      }
+      const row = await tx.errand.create({
+        data: {
+          id,
+          requesterSub,
+          supplierId: request.supplierDetails.supplierId,
+          name: request.name,
+          pickupLat: request.pickupLocation.lat,
+          pickupLng: request.pickupLocation.lng,
+          pickupBuildingName: request.pickupLocation.buildingName,
+          pickupFloorNumber: request.pickupLocation.floorNumber,
+          targetLat: request.targetLocation.lat,
+          targetLng: request.targetLocation.lng,
+          targetBuildingName: request.targetLocation.buildingName,
+          targetFloorNumber: request.targetLocation.floorNumber,
+          supplierName: request.supplierDetails.supplierName,
+          serviceType: request.supplierDetails.serviceType,
+          deliveryDescription: request.deliveryDetails.description,
+          deliveryInstructions: request.deliveryDetails.instructions,
+          creditAmount: request.creditAmount,
+          expiresAt: request.expiresAt ? new Date(request.expiresAt) : defaultExpiry(),
+        },
+      })
+      await tx.pendingErrand.delete({ where: { id } })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_CREATED, payload: {
+        errandId: id, requesterSub, supplierId: row.supplierId,
+        creditAmount: row.creditAmount, expiresAt: row.expiresAt.toISOString(),
+      } })
+      return toContract(row)
     })
-    return toContract(row)
+  }
+
+  async recoverExpiredPending(cutoff = new Date(Date.now() - 30_000)): Promise<number> {
+    const rows = await this.prisma.pendingErrand.findMany({
+      where: { createdAt: { lt: cutoff } },
+      take: 100,
+      orderBy: { createdAt: 'asc' },
+    })
+    let count = 0
+    for (const row of rows) {
+      await this.prisma.$transaction(async (tx) => {
+        const removed = await tx.pendingErrand.deleteMany({
+          where: { id: row.id, createdAt: { lt: cutoff } },
+        })
+        if (!removed.count) return
+        await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_CREATION_FAILED, payload: { errandId: row.id, requesterSub: row.requesterSub } })
+        count++
+      })
+    }
+    return count
+  }
+
+  async unpublishedEvents() {
+    return this.prisma.errandEventOutbox.findMany({
+      where: { publishedAt: null },
+      take: 100,
+      orderBy: { createdAt: 'asc' },
+    })
+  }
+
+  async markEventPublished(id: string): Promise<void> {
+    await this.prisma.errandEventOutbox.updateMany({
+      where: { id, publishedAt: null },
+      data: { publishedAt: new Date() },
+    })
+  }
+
+  async deleteOldPublishedEvents(cutoff: Date): Promise<number> {
+    const result = await this.prisma.errandEventOutbox.deleteMany({
+      where: { publishedAt: { lt: cutoff } },
+    })
+    return result.count
   }
 
   async listVisibleTo(userSub: string): Promise<Errand[]> {
@@ -55,11 +128,23 @@ export class ErrandRepository {
   }
 
   async expireOpenErrands(now = new Date()): Promise<number> {
-    const result = await this.prisma.errand.updateMany({
+    const rows = await this.prisma.errand.findMany({
       where: { status: 'OPEN', expiresAt: { lte: now } },
-      data: { status: 'EXPIRED' },
+      select: { id: true },
     })
-    return result.count
+    let count = 0
+    for (const row of rows) {
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.errand.updateMany({
+          where: { id: row.id, status: 'OPEN', expiresAt: { lte: now } },
+          data: { status: 'EXPIRED' },
+        })
+        if (!changed.count) return
+        await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_EXPIRED, payload: { errandId: row.id } })
+        count++
+      })
+    }
+    return count
   }
 
   async listSupplierView(
@@ -90,13 +175,6 @@ export class ErrandRepository {
       where: { id: errandId, OR: [{ requesterSub: userSub }, { courierSub: userSub }] },
     })
     return row ? toContract(row) : null
-  }
-
-  async deleteOpenOwnedBy(errandId: string, requesterSub: string): Promise<boolean> {
-    const result = await this.prisma.errand.deleteMany({
-      where: { id: errandId, requesterSub, status: 'OPEN' },
-    })
-    return result.count === 1
   }
 
   async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
@@ -130,19 +208,25 @@ export class ErrandRepository {
   }
 
   async assignCourier(errandId: string, courierSub: string): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: { courierSub, status: 'ACCEPTED' },
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { courierSub, status: 'ACCEPTED' },
+      })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED, payload: { errandId, errandStatus: 'ACCEPTED', previousStatus: 'OPEN', actorSub: courierSub, actorType: 'courier', requesterSub: row.requesterSub } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
-  async cancel(errandId: string): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: { status: 'CANCELLED' },
+  async cancel(errandId: string, actorSub: string): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { status: 'CANCELLED' },
+      })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_CANCELLED, payload: { errandId, actorSub, requesterSub: row.requesterSub } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
   async findErrandsBySupplier(supplierId: string): Promise<Errand[]> {
@@ -191,44 +275,57 @@ export class ErrandRepository {
     return updatedRows.map(toContract)
   }
 
-  async pickUp(errandId: string): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: { status: 'PICKED_UP' },
+  async pickUp(errandId: string, actorSub: string): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { status: 'PICKED_UP' },
+      })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED, payload: { errandId, errandStatus: 'PICKED_UP', previousStatus: 'ACCEPTED', actorSub, actorType: 'courier', requesterSub: row.requesterSub } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
-  async deliver(errandId: string): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: { status: 'DELIVERED' },
+  async deliver(errandId: string, actorSub: string): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { status: 'DELIVERED' },
+      })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED, payload: { errandId, errandStatus: 'DELIVERED', previousStatus: 'PICKED_UP', actorSub, actorType: 'courier', requesterSub: row.requesterSub } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
   async confirm(errandId: string): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: { status: 'CONFIRMED' },
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { status: 'CONFIRMED' },
+      })
+      if (!row.courierSub) throw new Error('A courier is required to confirm an errand.')
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_COMPLETED, payload: { errandId, requesterSub: row.requesterSub, courierSub: row.courierSub } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
-  async dropCourier(errandId: string, newStatus: ErrandStatus): Promise<Errand> {
-    const row = await this.prisma.errand.update({
-      where: { id: errandId },
-      data: {
-        courierSub: null,
-        status: newStatus,
-      },
+  async dropCourier(errandId: string, newStatus: ErrandStatus,
+    actorSub: string): Promise<Errand> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.errand.update({
+        where: { id: errandId },
+        data: { courierSub: null, status: newStatus },
+      })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED, payload: { errandId, errandStatus: newStatus, previousStatus: 'ACCEPTED', actorSub, actorType: 'courier', requesterSub: row.requesterSub } })
+      if (newStatus === 'EXPIRED') await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_EXPIRED, payload: { errandId } })
+      return toContract(row)
     })
-    return toContract(row)
   }
 
-  async deleteErrand(errandId: string): Promise<void> {
-    await this.prisma.errand.delete({
-      where: { id: errandId },
+  async deleteErrand(errandId: string, requesterSub: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.errand.delete({ where: { id: errandId } })
+      await appendEvent(tx, { eventType: ErrandEventTypes.ERRAND_DELETED, payload: { errandId, requesterSub } })
     })
   }
 

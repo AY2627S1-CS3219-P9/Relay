@@ -21,7 +21,11 @@ test('profile registration and deletion write user events to the outbox', async 
     await repository.deleteProfile(cognitoSub)
     assert.equal(await repository.findByCognitoSub(cognitoSub), null)
     const deletion = await prisma.userOutboxEvent.findFirst({
-      where: { key: cognitoSub, topic: process.env.KAFKA_TOPIC_USER_EVENTS },
+      where: {
+        key: cognitoSub,
+        topic: process.env.KAFKA_TOPIC_USER_EVENTS,
+        payload: { path: ['eventType'], equals: 'UserDeleted' },
+      },
     })
     assert.equal(deletion.payload.eventType, 'UserDeleted')
     assert.deepEqual(deletion.payload.payload, { cognitoSub })
