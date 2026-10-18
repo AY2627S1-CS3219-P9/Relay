@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:3002',
           changeOrigin: true,
         },
+        '/api/credit': {
+          target: 'http://localhost:3003',
+          changeOrigin: true,
+        },
         '/remotes/supplier': {
           target: 'http://localhost:5001',
           changeOrigin: true,

@@ -20,6 +20,7 @@
   --relay-gray-text: #6f6f76;
   /* Four shared glass types: surface, control, soft/nested, and overlay. */
   --relay-glass-surface-bg: rgba(255, 255, 255, 0.78);
+  --relay-glass-surface-strong-bg: rgba(255, 255, 255, 0.95);
   --relay-glass-surface-border: rgba(255, 255, 255, 0.68);
   --relay-glass-surface-filter: blur(24px) saturate(1.6);
   --relay-glass-surface-shadow: 0 5px 18px rgba(0, 0, 0, 0.1);

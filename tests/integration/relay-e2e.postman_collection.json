@@ -1,0 +1,946 @@
+{
+  "info": {
+    "name": "Relay errand and credit end-to-end",
+    "description": "Run in order against the full Compose stack. Verification codes come from Floci SES. Credit events are asynchronous. In Postman Collection Runner set a 1000 ms request delay so allocation and completion events can settle.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "requester register",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/register",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{requesterEmail}}\",\"password\":\"{{password}}\",\"passwordConfirmation\":\"{{password}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);",
+              "pm.environment.set('requesterEmail','relay-requester-'+s+'@example.com');",
+              "pm.environment.set('requesterName','relayrequester'+s);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester verification code",
+      "request": {
+        "method": "GET",
+        "url": "{{flociUrl}}/_aws/ses",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const m=pm.response.json().messages.find(x=>x.Destination.ToAddresses.includes(pm.environment.get('requesterEmail')));",
+              "pm.expect(m).to.exist;",
+              "pm.environment.set('requesterCode',m.Body.text_part.match(/\\b\\d{6}\\b/)[0]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester verify and login",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{requesterEmail}}\",\"password\":\"{{password}}\",\"code\":\"{{requesterCode}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "pm.environment.set('requesterSub',pm.response.json().data.user.subject);",
+              "pm.environment.set('requesterCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester create profile",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/user/me",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{requesterName}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester session",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/user/session",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester balance",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const attempts=Number(pm.environment.get(pm.info.requestName+'Attempts')||0);",
+              "if (pm.response.code===404 && attempts<20) { pm.environment.set(pm.info.requestName+'Attempts',attempts+1); pm.execution.setNextRequest(pm.info.requestName); } else { pm.test('balance allocated',()=>pm.response.to.have.status(200)); pm.environment.unset(pm.info.requestName+'Attempts'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier register",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/register",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{courierEmail}}\",\"password\":\"{{password}}\",\"passwordConfirmation\":\"{{password}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);",
+              "pm.environment.set('courierEmail','relay-courier-'+s+'@example.com');",
+              "pm.environment.set('courierName','relaycourier'+s);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier verification code",
+      "request": {
+        "method": "GET",
+        "url": "{{flociUrl}}/_aws/ses",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const m=pm.response.json().messages.find(x=>x.Destination.ToAddresses.includes(pm.environment.get('courierEmail')));",
+              "pm.expect(m).to.exist;",
+              "pm.environment.set('courierCode',m.Body.text_part.match(/\\b\\d{6}\\b/)[0]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier verify and login",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{courierEmail}}\",\"password\":\"{{password}}\",\"code\":\"{{courierCode}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "pm.environment.set('courierSub',pm.response.json().data.user.subject);",
+              "pm.environment.set('courierCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier create profile",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/user/me",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{courierName}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier session",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/user/session",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier balance",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const attempts=Number(pm.environment.get(pm.info.requestName+'Attempts')||0);",
+              "if (pm.response.code===404 && attempts<20) { pm.environment.set(pm.info.requestName+'Attempts',attempts+1); pm.execution.setNextRequest(pm.info.requestName); } else { pm.test('balance allocated',()=>pm.response.to.have.status(200)); pm.environment.unset(pm.info.requestName+'Attempts'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "create complete errand",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"supplierDetails\":{\"supplierId\":\"postman-supplier\",\"supplierName\":\"Postman Supplier\",\"serviceType\":1},\"name\":\"Postman delivery\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Integration test delivery\"},\"creditAmount\":10}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "pm.environment.set('completeId',pm.response.json().errand.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "list mine",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/errands/?scope=mine",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "list visible",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/errands/?scope=visible",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "list supplier",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/errands/suppliers/postman-supplier/errands?scope=open",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "list supplier all",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/errands/suppliers/postman-supplier/errands?scope=all",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "get errand",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "accept",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}/accept",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "pickup",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}/pickup",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "deliver",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}/deliver",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "confirm",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}/confirm",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/history?offset=0",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/history?offset=0",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "history next page",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit/history?offset=100",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "delete confirmed",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/errands/{{completeId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(204);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "create cancel errand",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"supplierDetails\":{\"supplierId\":\"postman-supplier\",\"supplierName\":\"Postman Supplier\",\"serviceType\":1},\"name\":\"Postman delivery\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Integration test delivery\"},\"creditAmount\":10}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "pm.environment.set('cancelId',pm.response.json().errand.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "accept for cancel",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{cancelId}}/accept",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancel",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{cancelId}}/cancel",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "delete cancelled",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/errands/{{cancelId}}",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(204);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "create drop errand",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"supplierDetails\":{\"supplierId\":\"postman-supplier\",\"supplierName\":\"Postman Supplier\",\"serviceType\":1},\"name\":\"Postman delivery\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Integration test delivery\"},\"creditAmount\":10}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "pm.environment.set('dropId',pm.response.json().errand.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "accept for drop",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{dropId}}/accept",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "drop",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/errands/{{dropId}}/drop",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "requester final balance",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "courier final balance",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/credit",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{courierCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "login",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/login",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"{{requesterEmail}}\",\"password\":\"{{password}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "pm.environment.set('requesterCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "logout",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/user/auth/logout",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "{{requesterCookie}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(204);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
