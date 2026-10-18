@@ -257,6 +257,16 @@ export class ErrandRepository {
             courierSub: confirmed.courierSub ?? undefined,
           },
         })
+
+        this.eventStream?.publish(
+          confirmed.id,
+          {
+            newStatus: 'CONFIRMED',
+            previousStatus: 'DELIVERED',
+            timestamp: new Date().toISOString(),
+          },
+          ['requester', 'courier'],
+        )
         count++
       })
     }
