@@ -4,7 +4,13 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { Errand, ErrandStatus, ProfileAnchor, RemoteAppProps, ServiceType } from '@relay/contracts'
+import type {
+  Errand,
+  ErrandStatus,
+  ProfileAnchor,
+  RemoteAppProps,
+  ServiceType,
+} from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
@@ -183,9 +189,7 @@ export default function App({
       }
       const response = await actions[action](id)
       setErrands((current) =>
-        current.map((errand) =>
-          errand.id === id ? { ...errand, ...response.errand } : errand,
-        ),
+        current.map((errand) => (errand.id === id ? { ...errand, ...response.errand } : errand)),
       )
       if (action === 'cancel' || action === 'confirm') invalidateCreditBalance?.()
       if (action === 'accept') openErrandView?.({ view: 'my-errands' })
