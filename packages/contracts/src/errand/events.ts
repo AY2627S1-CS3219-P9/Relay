@@ -4,7 +4,6 @@ import type { ErrandStatus } from './models'
 export const ErrandEventTypes = {
   ERRAND_CREATED: 'ErrandCreated',
   ERRAND_CREATION_FAILED: 'ErrandCreationFailed',
-  ERRAND_STATUS_CHANGED: 'ErrandStatusChanged',
   ERRAND_COMPLETED: 'ErrandCompleted',
   ERRAND_CANCELLED: 'ErrandCancelled',
   ERRAND_EXPIRED: 'ErrandExpired',
