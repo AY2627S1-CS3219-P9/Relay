@@ -103,10 +103,6 @@ export class ErrandService {
     request: SupplierErrandViewRequest,
   ): Promise<SupplierErrandSummary[]> {
     await this.processDueReadLifecycleTransitions()
-    // SupplierErrandSummary intentionally omits requester/courier subject IDs,
-    // so it cannot be enriched through the User Service here. Full Errand
-    // views (mine/visible/get-by-id) retain the courier subject and are
-    // enriched with the courier profile.
     return this.repository.listSupplierView({ ...request, viewerSub: user.sub })
   }
 
