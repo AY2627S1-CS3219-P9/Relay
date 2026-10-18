@@ -113,12 +113,22 @@ export default function App({
   }
 
   const visibleErrands = useMemo(() => {
-    if (view === 'my-errands') return errands
-    const filtered = errands.filter(
-      (errand) =>
-        filters.statuses.includes(errand.status) &&
-        filters.serviceTypes.includes(errand.supplierDetails.serviceType as ServiceType),
-    )
+    let filtered = errands
+    
+    // For 'my-errands' view, only show errands assigned to this user as courier
+    if (view === 'my-errands') {
+      filtered = filtered.filter((errand) => errand.courierSub === authenticatedSubject)
+    }
+    
+    // Filter by status and service type (for explore/requests views)
+    if (view !== 'my-errands') {
+      filtered = filtered.filter(
+        (errand) =>
+          filters.statuses.includes(errand.status) &&
+          filters.serviceTypes.includes(errand.supplierDetails.serviceType as ServiceType),
+      )
+    }
+    
     return [...filtered].sort((left, right) => {
       if (filters.sort === 'deadline') return left.expiresAt.localeCompare(right.expiresAt)
       if (filters.sort === 'start') return left.id.localeCompare(right.id)
@@ -126,7 +136,7 @@ export default function App({
         return distance(left, location) - distance(right, location)
       return lifecycleRank[left.status] - lifecycleRank[right.status]
     })
-  }, [errands, filters, location])
+  }, [errands, filters, location, view, authenticatedSubject])
 
   function closeRemote() {
     if (presentation === 'card') {
@@ -176,15 +186,24 @@ export default function App({
         setErrands((current) =>
           current.map((errand) =>
             errand.id === id
-              ? {
-                  ...errand,
-                  courierName: undefined,
-                  courierProfilePictureUrl: undefined,
-                }
+              ? response.errand // Use the updated errand from the response
               : errand,
           ),
         )
-        if (response.errand.status === 'EXPIRED') invalidateCreditBalance?.()
+        // Drop errand may result in OPEN (new errand in pool) or EXPIRED (credit release)
+        if (response.errand.status === 'EXPIRED' || response.errand.status === 'OPEN') {
+          invalidateCreditBalance?.()
+        }
+        // Close the errand detail window when courier drops the errand
+        if (selectedErrandId === id) {
+          setSelectedErrandId(undefined)
+          setSelectedErrandAnchor(undefined)
+        }
+        // If we're viewing "my-errands" tab, switch back to "requests" since dropped errand
+        // is no longer assigned to this courier
+        if (view === 'my-errands') {
+          openErrandView?.({ view: 'requests' })
+        }
         return
       }
       const response = await actions[action](id)
@@ -229,7 +248,11 @@ export default function App({
         errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
       ),
     )
-  }, [])
+    // Invalidate credit balance when errand status changes affect credits
+    if (newStatus === 'CANCELLED' || newStatus === 'CONFIRMED' || newStatus === 'EXPIRED') {
+      invalidateCreditBalance?.()
+    }
+  }, [invalidateCreditBalance])
 
   useErrandNotifications(errands, handleErrandUpdate)
 

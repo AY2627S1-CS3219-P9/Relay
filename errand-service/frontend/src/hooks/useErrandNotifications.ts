@@ -11,13 +11,16 @@ export function useErrandNotifications<T extends { id: string; status: string }>
   onErrandUpdate: (errandId: string, newStatus: string) => void,
 ) {
   const sourceRef = useRef<EventSource | null>(null)
+  const connectedRef = useRef(false)
 
   useEffect(() => {
-    // Close existing connection if errands changed significantly
-    if (sourceRef.current) {
-      sourceRef.current.close()
-      sourceRef.current = null
+    // Only establish connection once, when errands become available
+    if (connectedRef.current || errands.length === 0) {
+      return
     }
+
+    // Mark as connected before creating connection to prevent race conditions
+    connectedRef.current = true
 
     // Create new connection
     const source = new EventSource('/api/errands/stream/notifications')
@@ -44,8 +47,9 @@ export function useErrandNotifications<T extends { id: string; status: string }>
 
     return () => {
       source.close()
+      connectedRef.current = false
     }
-  }, []) // Keep connection open for the lifetime of the component
+  }, [errands.length]) // Only connect when errand count changes (0 -> >0)
 
   return sourceRef.current
 }
