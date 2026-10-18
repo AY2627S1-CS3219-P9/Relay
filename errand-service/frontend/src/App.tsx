@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import type { Errand, ProfileAnchor, RemoteAppProps } from '@relay/contracts'
 import { BellIcon, BoltIcon, BubblePopover, ClipboardPlusIcon, FilterIcon, LocationIcon, PlusIcon, RelayButton, RelayCardAnchor, SlidingSegmentedControl, Spacer, StatusBadge, type BubbleAnchor } from '@relay/ui'
-import { demoErrands } from './demoErrands'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
 import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilterPanel'
@@ -18,7 +17,7 @@ const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<DemoErrand['status'], number> = { OPEN: 0, ACCEPTED: 1, PICKED_UP: 2, DELIVERED: 3, CONFIRMED: 4, CANCELLED: 5, EXPIRED: 6 }
 
 export default function App({ errandViewContext, navigateTo, openErrandView, openProfile, userProfile, authenticatedSubject, userLocation, requestUserLocation, mapViewport, onMapViewportChange, mapActive, presentation, errandApi, supplierApi }: RemoteAppProps) {
-  const [errands, setErrands] = useState<DemoErrand[]>(demoErrands)
+  const [errands, setErrands] = useState<DemoErrand[]>([])
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
