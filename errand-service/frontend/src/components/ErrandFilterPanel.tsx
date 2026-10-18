@@ -42,13 +42,18 @@ export function ErrandFilterPanel({
   }
 
   return (
-    <aside className="errand-filter-panel glass-card relay-mobile-sheet-surface" aria-label="Errand filters">
+    <aside
+      className="errand-filter-panel glass-card relay-mobile-sheet-surface"
+      aria-label="Errand filters"
+    >
       <div className="errand-panel-header">
         <div>
           <p className="errand-eyebrow">FILTERS</p>
           <h2>Find an errand</h2>
         </div>
-        <IconButton label="Close filters" onClick={onClose}>×</IconButton>
+        <IconButton label="Close filters" onClick={onClose}>
+          ×
+        </IconButton>
       </div>
       <fieldset>
         <legend>Lifecycle</legend>
@@ -84,7 +89,9 @@ export function ErrandFilterPanel({
         <span>Sort by</span>
         <select
           value={filters.sort}
-          onChange={(event) => onChange({ ...filters, sort: event.target.value as ErrandFilters['sort'] })}
+          onChange={(event) =>
+            onChange({ ...filters, sort: event.target.value as ErrandFilters['sort'] })
+          }
         >
           <option value="lifecycle">Lifecycle</option>
           <option value="start">Start time</option>

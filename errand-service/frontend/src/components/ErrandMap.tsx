@@ -3,11 +3,11 @@ import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } f
 import L from 'leaflet'
 import type { MapViewport, UserLocation } from '@relay/contracts'
 import type { BubbleAnchor } from '@relay/ui'
-import type { DemoErrand } from '../types'
+import type { Errand } from '@relay/contracts/errand'
 
 export type MapPoint = { lat: number; lng: number }
 
-const markerColors: Record<DemoErrand['status'], string> = {
+const markerColors: Record<Errand['status'], string> = {
   OPEN: '#007aff',
   ACCEPTED: '#ff9500',
   PICKED_UP: '#ff9500',
@@ -15,9 +15,10 @@ const markerColors: Record<DemoErrand['status'], string> = {
   CANCELLED: '#ff3b30',
   EXPIRED: '#8e8e93',
   CONFIRMED: '#34c759',
+  DELETED: '#8e8e93',
 }
 
-function markerIcon(errand: DemoErrand, selected: boolean) {
+function markerIcon(errand: Errand, selected: boolean) {
   const color = markerColors[errand.status]
   return L.divIcon({
     className: 'relay-leaflet-icon errand-leaflet-icon',
@@ -27,7 +28,15 @@ function markerIcon(errand: DemoErrand, selected: boolean) {
   })
 }
 
-function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom: number; active: boolean }) {
+function MapCenterController({
+  center,
+  zoom,
+  active,
+}: {
+  center: MapPoint
+  zoom: number
+  active: boolean
+}) {
   const map = useMap()
   useLayoutEffect(() => {
     if (!active) return
@@ -40,7 +49,9 @@ function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom:
   useEffect(() => {
     if (!active) return
     const currentCenter = map.getCenter()
-    const centerChanged = Math.abs(currentCenter.lat - center.lat) > 0.000001 || Math.abs(currentCenter.lng - center.lng) > 0.000001
+    const centerChanged =
+      Math.abs(currentCenter.lat - center.lat) > 0.000001 ||
+      Math.abs(currentCenter.lng - center.lng) > 0.000001
     const zoomChanged = map.getZoom() !== zoom
     if (centerChanged || zoomChanged) map.setView(center, zoom, { animate: false })
   }, [active, center, map, zoom])
@@ -62,7 +73,9 @@ function MapSizeController() {
 
 function MapReadyController({ onReady }: { onReady?: (map: L.Map) => void }) {
   const map = useMap()
-  useEffect(() => { onReady?.(map) }, [map, onReady])
+  useEffect(() => {
+    onReady?.(map)
+  }, [map, onReady])
   return null
 }
 
@@ -72,7 +85,9 @@ function ViewportController({ onChange }: { onChange?: (viewport: MapViewport) =
     const center = map.getCenter()
     onChange?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
   }
-  useEffect(() => { reportViewport() }, [map, onChange])
+  useEffect(() => {
+    reportViewport()
+  }, [map, onChange])
   useMapEvents({ zoomend: reportViewport, moveend: reportViewport })
   return null
 }
@@ -89,11 +104,11 @@ export function ErrandMap({
   onViewportChange,
   active,
 }: {
-  errands: DemoErrand[]
+  errands: Errand[]
   center: MapPoint
   userLocation?: UserLocation
   selectedId?: string
-  onSelect: (errand: DemoErrand, anchor: BubbleAnchor) => void
+  onSelect: (errand: Errand, anchor: BubbleAnchor) => void
   onMapClick?: () => void
   onMapReady?: (map: L.Map) => void
   zoom: number
@@ -123,13 +138,15 @@ export function ErrandMap({
           key={errand.id}
           position={[errand.pickupLocation.lat, errand.pickupLocation.lng]}
           icon={markerIcon(errand, errand.id === selectedId)}
-          eventHandlers={{ click: (event) => {
-            event.originalEvent.stopPropagation()
-            const element = (event.target as L.Marker).getElement()
-            if (!element) return
-            const { top, left, right, bottom } = element.getBoundingClientRect()
-            onSelect(errand, { top, left, right, bottom })
-          } }}
+          eventHandlers={{
+            click: (event) => {
+              event.originalEvent.stopPropagation()
+              const element = (event.target as L.Marker).getElement()
+              if (!element) return
+              const { top, left, right, bottom } = element.getBoundingClientRect()
+              onSelect(errand, { top, left, right, bottom })
+            },
+          }}
         />
       ))}
     </MapContainer>
