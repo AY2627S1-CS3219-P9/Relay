@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { CreditService } from '../services/credit.service.js'
 import { CreditServiceError } from '../types/credit.types.js'
-import { authenticatedUserId, reserveCreditRequest } from '../validators/credit.validator.js'
+import { authenticatedUserId, historyOffset, reserveCreditRequest } from '../validators/credit.validator.js'
 
 export class CreditController {
   constructor(private readonly service: CreditService) {}
@@ -18,7 +18,7 @@ export class CreditController {
   viewCreditHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = authenticatedUserId(req, res)
-      res.json(await this.service.viewCreditHistory({ userId }))
+      res.json(await this.service.viewCreditHistory({ userId, offset: historyOffset(req) }))
     } catch (error) {
       next(error)
     }

@@ -3,9 +3,13 @@ import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
 import { validateCreateErrand, validateSupplierErrandView } from '../validators/errand.validator.js'
 import { ErrandErrors, SupplierEventErrors } from '@relay/contracts'
+import { ErrandEventStream } from '../services/errandEventStream.js'
 
 export class ErrandController {
-  constructor(private readonly service: ErrandService) {}
+  constructor(
+    private readonly service: ErrandService,
+    private readonly eventStream?: ErrandEventStream,
+  ) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -75,9 +79,10 @@ export class ErrandController {
         })
         return
       }
-      const errands = scope === 'open'
-        ? await this.service.listOpenBySupplier(supplierId)
-        : await this.service.listBySupplier(supplierId)
+      const errands =
+        scope === 'open'
+          ? await this.service.listOpenBySupplier(supplierId)
+          : await this.service.listBySupplier(supplierId)
       res.json({ errands })
     } catch (error) {
       next(error)
@@ -188,6 +193,47 @@ export class ErrandController {
       })
 
       res.json(result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  streamNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = requireUser(req)
+      const userSub = user.sub
+
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.setHeader('X-Accel-Buffering', 'no')
+
+      // Send initial connection confirmed
+      res.write(': connected\n\n')
+
+      // Load user's errands to subscribe
+      const errands = await this.service.getErrands(user)
+
+      // Subscribe to each errand
+      if (this.eventStream) {
+        for (const errand of errands) {
+          const isRequester = errand.requesterSub === userSub
+          const role: import('../services/errandEventStream.js').ErrandEventSubscriber = isRequester
+            ? 'requester'
+            : 'courier'
+          this.eventStream.subscribe(errand.id, userSub, res, role)
+        }
+      }
+
+      // Handle client disconnect
+      req.on('close', () => {
+        if (this.eventStream) {
+          for (const errand of errands) {
+            this.eventStream.unsubscribe(errand.id, userSub)
+          }
+        }
+        res.end()
+      })
     } catch (error) {
       next(error)
     }

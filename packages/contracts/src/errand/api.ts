@@ -65,5 +65,5 @@ export interface ErrandApi {
  */
 export interface ErrandInternalApi {
   /** Receive supplier change notifications from Supplier Service. */
-  receiveSupplierEvents(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
+  receiveSupplierEvent(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
 }

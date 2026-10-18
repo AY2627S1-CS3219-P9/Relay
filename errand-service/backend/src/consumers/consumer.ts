@@ -5,11 +5,17 @@ export class ErrandConsumer {
 
   constructor(private readonly kafka: Kafka) {}
 
-  async start(groupId: string, topics: string[],
-    handlers: Record<string, (payload: EachMessagePayload) => Promise<void>>): Promise<void> {
+  async start(
+    groupId: string,
+    topics: string[],
+    handlers: Record<string, (payload: EachMessagePayload) => Promise<void>>,
+  ): Promise<void> {
     if (this.consumer) throw new Error('Errand consumer is already started')
     const consumer = this.kafka.consumer({
-      groupId, allowAutoTopicCreation: false, sessionTimeout: 30_000, rebalanceTimeout: 60_000,
+      groupId,
+      allowAutoTopicCreation: false,
+      sessionTimeout: 30_000,
+      rebalanceTimeout: 60_000,
     })
     try {
       await consumer.connect()
@@ -33,4 +39,3 @@ export class ErrandConsumer {
     if (consumer) await consumer.disconnect()
   }
 }
-

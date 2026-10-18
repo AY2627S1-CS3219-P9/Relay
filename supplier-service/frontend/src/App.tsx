@@ -37,8 +37,10 @@ const NUS_CENTER: MapPoint = { lat: 1.2966, lng: 103.7764 }
 export default function App({
   navigateTo,
   openProfile,
+  openCredit,
   openErrandView,
   userProfile,
+  creditBalance,
   authVersion,
   supplierMode,
   errandApi,
@@ -100,6 +102,11 @@ export default function App({
     returnToAccount()
   }
 
+  function openCreditCard(button: HTMLButtonElement) {
+    if (!openCredit) return
+    const { top, left, right, bottom, width, height } = button.getBoundingClientRect()
+    openCredit({ top, left, right, bottom, width, height })
+  }
   function openAdminPanel(mode: 'add' | 'edit', button: HTMLButtonElement) {
     const { top, left, right, bottom } = button.getBoundingClientRect()
     setAdminAnchor({ top, left, right, bottom })
@@ -177,9 +184,10 @@ export default function App({
           size="map-pill"
           className="glass-pill glass-control"
           aria-label="Credits"
+          onClick={(event) => openCreditCard(event.currentTarget)}
         >
           <BoltIcon className="supplier-control-icon" />
-          <span>0 cr</span>
+          <span>{creditBalance?.availableCredit ?? '...'} cr</span>
         </RelayButton>
         <SlidingSegmentedControl
             size="map"

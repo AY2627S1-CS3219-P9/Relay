@@ -7,25 +7,6 @@ export type ErrandLocation = {
   floorNumber: number
 }
 
-export type DemoErrand = {
-  id: string
-  name: string
-  serviceType: ServiceType
-  pickupLocation: ErrandLocation
-  deliveryLocation: ErrandLocation
-  description: string
-  instructions: string
-  creditAmount: number
-  status: ErrandStatus
-  expiresAt: string
-  confirmationDeadline: string | null
-  courierName?: string
-  courierProfilePictureUrl?: string
-  supplier?: Supplier
-  requesterSub?: string
-  courierSub?: string | null
-}
-
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   0: 'Food',
   1: 'Drink',
@@ -42,11 +23,12 @@ export const STATUS_LABELS: Record<ErrandStatus, string> = {
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
   CONFIRMED: 'Confirmed',
+  DELETED: 'Deleted',
 }
 
 export function statusTone(status: ErrandStatus): 'neutral' | 'success' | 'danger' | 'warning' {
   if (status === 'OPEN' || status === 'DELIVERED' || status === 'CONFIRMED') return 'success'
-  if (status === 'CANCELLED' || status === 'EXPIRED') return 'danger'
+  if (status === 'CANCELLED' || status === 'EXPIRED' || status === 'DELETED') return 'danger'
   if (status === 'ACCEPTED' || status === 'PICKED_UP') return 'warning'
   return 'neutral'
 }

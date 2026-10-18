@@ -70,10 +70,17 @@ export type RemoteAppProps = {
   /** Cognito subject from the authenticated session, distinct from the profile database id. */
   authenticatedSubject?: string
   userProfile?: import('./user/models').User | null
+  creditBalance?: import('./credit/models').CreditBalance | null
+  invalidateCreditBalance?: () => void
   refreshUserProfile?: () => Promise<void>
   navigateHome?: () => void
   navigateTo?: (service: ServiceId) => void
   openProfile?: (anchor: ProfileAnchor) => void
+  openCredit?: (anchor: ProfileAnchor) => void
+  closeCredit?: () => void
+  creditHistoryOpen?: boolean
+  showCreditHistory?: () => void
+  showCreditBalance?: () => void
   closeProfile?: () => void
   openErrandView?: (context: ErrandViewContext) => void
   errandViewContext?: ErrandViewContext
