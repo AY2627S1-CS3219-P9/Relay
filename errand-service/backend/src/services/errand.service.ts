@@ -13,6 +13,7 @@ import {
 import { ErrandRepository } from '../repositories/errand.repository.js'
 import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
 import { CreditClient } from '../clients/credit.client.js'
+import { UserClient } from '../clients/user.client.js'
 import { SupplierClient } from '../clients/supplier.client.js'
 import { ErrandEventStream } from './errandEventStream.js'
 
@@ -32,6 +33,7 @@ export class ErrandService {
     private readonly repository: ErrandRepository,
     private readonly creditClient: CreditClient = new CreditClient(),
     private readonly supplierClient: SupplierClient,
+    private readonly userClient: UserClient = new UserClient(),
   ) {}
 
   getEventStream(): ErrandEventStream | undefined {
@@ -47,6 +49,8 @@ export class ErrandService {
       )
     }
 
+    // Validate the supplier's current operational status before reserving credit
+    // or creating any pending/database records. serviceType remains optional.
     try {
       await this.supplierClient.validateSelection({
         supplierId: request.supplierDetails.supplierId,
@@ -87,36 +91,38 @@ export class ErrandService {
   }
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
-    await this.repository.expireOpenErrands()
-    return options.scope === 'mine'
+    await this.processDueReadLifecycleTransitions()
+    const errands = options.scope === 'mine'
       ? this.repository.listOwnedBy(user.sub)
       : this.repository.listVisibleTo(user.sub)
+    return this.enrichCourierProfiles(await errands)
   }
 
   async getSupplierErrandView(
     user: AuthenticatedUser,
     request: SupplierErrandViewRequest,
   ): Promise<SupplierErrandSummary[]> {
-    await this.repository.expireOpenErrands()
+    await this.processDueReadLifecycleTransitions()
     return this.repository.listSupplierView({ ...request, viewerSub: user.sub })
   }
 
   async listBySupplier(supplierId: string): Promise<Errand[]> {
-    return this.repository.listBySupplier(supplierId)
+    await this.processDueReadLifecycleTransitions()
+    return this.enrichCourierProfiles(await this.repository.listBySupplier(supplierId))
   }
 
   async listOpenBySupplier(supplierId: string): Promise<Errand[]> {
     await this.repository.expireOpenErrands()
-    return this.repository.listOpenBySupplier(supplierId)
+    return this.enrichCourierProfiles(await this.repository.listOpenBySupplier(supplierId))
   }
 
   async getErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
-    await this.repository.expireOpenErrands()
+    await this.processDueReadLifecycleTransitions()
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
-    return errand
+    return this.enrichCourierProfile(errand)
   }
 
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
@@ -156,7 +162,7 @@ export class ErrandService {
 
     const updated = await this.repository.assignCourier(id, courier.sub)
 
-    return updated
+    return this.enrichCourierProfile(updated)
   }
 
   async cancelErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -165,7 +171,7 @@ export class ErrandService {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
 
-    if (errand.requesterSub !== user.sub) {
+if (errand.requesterSub !== user.sub) {
       throw new ErrandServiceError(
         ErrandErrors.FORBIDDEN,
         'You do not have permission to cancel this errand.',
@@ -183,7 +189,7 @@ export class ErrandService {
 
     const cancelled = await this.repository.cancel(id, user.sub)
 
-    return cancelled
+    return this.enrichCourierProfile(cancelled)
   }
 
   async deliverErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -210,10 +216,11 @@ export class ErrandService {
 
     const updated = await this.repository.deliver(id, user.sub)
 
-    return updated
+    return this.enrichCourierProfile(updated)
   }
 
   async confirmErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    await this.repository.confirmDeliveredErrands()
     const errand = await this.repository.findVisibleById(id, user.sub)
     if (!errand) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
@@ -237,7 +244,7 @@ export class ErrandService {
 
     const confirmed = await this.repository.confirm(id)
 
-    return confirmed
+    return this.enrichCourierProfile(confirmed)
   }
 
   async pickUpErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -264,7 +271,7 @@ export class ErrandService {
 
     const updated = await this.repository.pickUp(id, user.sub)
 
-    return updated
+    return this.enrichCourierProfile(updated)
   }
 
   async dropErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
@@ -304,7 +311,7 @@ export class ErrandService {
 
     const updated = await this.repository.dropCourier(id, status, courier.sub)
 
-    return updated
+    return this.enrichCourierProfile(updated)
   }
 
   async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
@@ -378,5 +385,22 @@ export class ErrandService {
     })
 
     return { processed: true, affectedErrandIds: affectedIds }
+  }
+
+  private async enrichCourierProfiles(errands: Errand[]): Promise<Errand[]> {
+    return Promise.all(errands.map((errand) => this.enrichCourierProfile(errand)))
+  }
+
+  private async processDueReadLifecycleTransitions(): Promise<void> {
+    await this.repository.expireOpenErrands()
+    await this.repository.confirmDeliveredErrands()
+  }
+
+  private async enrichCourierProfile(errand: Errand): Promise<Errand> {
+    if (!errand.courierSub) return errand
+    return {
+      ...errand,
+      courierProfile: await this.userClient.getProfile(errand.courierSub),
+    }
   }
 }

@@ -4,6 +4,8 @@ import { ErrandController } from '../controllers/errand.controller.js'
 export function createErrandRouter(controller: ErrandController): Router {
   const router = Router()
 
+  // Keep this route before /:id so "stream" is not treated as an errand ID.
+  router.get('/stream/notifications', controller.streamNotifications)
   router.post('/', controller.create)
   // List errands visible to the authenticated user
   router.get('/', controller.list)
@@ -26,7 +28,5 @@ export function createErrandRouter(controller: ErrandController): Router {
   router.post('/:id/confirm', controller.confirm)
   // Drop an errand (courier only)
   router.post('/:id/drop', controller.drop)
-  // SSE endpoint for real-time notifications
-  router.get('/stream/notifications', controller.streamNotifications)
   return router
 }

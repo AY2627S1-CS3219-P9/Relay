@@ -15,6 +15,7 @@ import type {
 import { ErrandEventStream } from '../services/errandEventStream.js'
 
 export const MAX_ERRANDS_PER_COURIER = 5
+import { endOfSingaporeDay } from '../utils/deadline.js'
 
 async function appendEvent(
   tx: Prisma.TransactionClient,
@@ -209,6 +210,67 @@ export class ErrandRepository {
         count++
       })
     }
+    return count
+  }
+
+  async confirmDeliveredErrands(now = new Date()): Promise<number> {
+    const rows = await this.prisma.errand.findMany({
+      where: {
+        status: 'DELIVERED',
+        confirmationDeadline: { lte: now },
+        courierSub: { not: null },
+      },
+      select: { id: true },
+    })
+    let count = 0
+
+    for (const row of rows) {
+      await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.errand.updateMany({
+          where: {
+            id: row.id,
+            status: 'DELIVERED',
+            confirmationDeadline: { lte: now },
+            courierSub: { not: null },
+          },
+          data: { status: 'CONFIRMED' },
+        })
+        if (!changed.count) return
+
+        const confirmed = await tx.errand.findUniqueOrThrow({ where: { id: row.id } })
+        await appendEvent(tx, {
+          eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+          payload: {
+            errandId: confirmed.id,
+            errandStatus: 'CONFIRMED',
+            previousStatus: 'DELIVERED',
+            actorType: 'system',
+            requesterSub: confirmed.requesterSub,
+            courierSub: confirmed.courierSub ?? undefined,
+          },
+        })
+        await appendEvent(tx, {
+          eventType: ErrandEventTypes.ERRAND_COMPLETED,
+          payload: {
+            errandId: confirmed.id,
+            requesterSub: confirmed.requesterSub,
+            courierSub: confirmed.courierSub ?? undefined,
+          },
+        })
+
+        this.eventStream?.publish(
+          confirmed.id,
+          {
+            newStatus: 'CONFIRMED',
+            previousStatus: 'DELIVERED',
+            timestamp: new Date().toISOString(),
+          },
+          ['requester', 'courier'],
+        )
+        count++
+      })
+    }
+
     return count
   }
 
@@ -421,9 +483,13 @@ export class ErrandRepository {
 
   async deliver(errandId: string, actorSub: string): Promise<Errand> {
     return this.prisma.$transaction(async (tx) => {
+      const deliveredAt = new Date()
       const row = await tx.errand.update({
         where: { id: errandId },
-        data: { status: 'DELIVERED' },
+        data: {
+          status: 'DELIVERED',
+          confirmationDeadline: endOfSingaporeDay(deliveredAt),
+        },
       })
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
@@ -542,6 +608,7 @@ function toContract(row: any): Errand {
     name: row.name,
     requesterSub: row.requesterSub,
     courierSub: row.courierSub,
+    courierProfile: null,
     supplierDetails: {
       supplierId: row.supplierId,
       supplierName: row.supplierName,
@@ -566,6 +633,7 @@ function toContract(row: any): Errand {
     creditAmount: row.creditAmount,
     status: row.status as ErrandStatus,
     expiresAt: row.expiresAt.toISOString(),
+    confirmationDeadline: row.confirmationDeadline?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

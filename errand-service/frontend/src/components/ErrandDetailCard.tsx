@@ -69,10 +69,16 @@ export function ErrandDetailCard({
 
       {errand.courierSub && (
         <div className="errand-person-card">
-          <Avatar name={errand.courierSub.substring(0, 8)} />
+          <Avatar
+            name={errand.courierProfile?.username ?? errand.courierSub.substring(0, 8)}
+            image={errand.courierProfile?.profilePictureUrl ?? undefined}
+          />
           <div>
             <strong>Courier</strong>
-            <span>{role === 'requester' ? 'Assigned to your errand' : 'Courier · NUS verified'}</span>
+            <span>
+              {errand.courierProfile?.username ??
+                (role === 'requester' ? 'Assigned to your errand' : 'Courier · NUS verified')}
+            </span>
           </div>
           <span className="errand-online-dot" aria-label="Online" />
         </div>
