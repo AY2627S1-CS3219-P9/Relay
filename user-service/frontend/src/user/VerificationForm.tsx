@@ -6,11 +6,13 @@ export function VerificationForm({
   password,
   onVerified,
   onBack,
+  backLabel,
 }: {
   email: string
   password: string
   onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack: () => void
+  backLabel?: string
 }) {
   return (
     <div className="user-form">
@@ -34,6 +36,7 @@ export function VerificationForm({
         password={password}
         onVerified={onVerified}
         onBack={onBack}
+        backLabel={backLabel}
       />
     </div>
   )

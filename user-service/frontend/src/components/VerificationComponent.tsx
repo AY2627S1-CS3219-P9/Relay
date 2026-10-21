@@ -12,11 +12,13 @@ export function VerificationComponent({
   password,
   onVerified,
   onBack,
+  backLabel = 'Back to registration',
 }: {
   email: string
   password: string
   onVerified: (profileCreated: boolean) => void | Promise<void>
   onBack?: () => void
+  backLabel?: string
 }) {
   const [code, setCode] = useState('')
   const [seconds, setSeconds] = useState(300)
@@ -100,7 +102,7 @@ export function VerificationComponent({
       </TextButton>
       {onBack && (
         <button type="button" className="user-secondary" onClick={onBack}>
-          Back to registration
+          {backLabel}
         </button>
       )}
     </form>
