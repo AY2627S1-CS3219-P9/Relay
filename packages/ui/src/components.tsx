@@ -9,6 +9,36 @@ export type BubbleAnchor = {
   bottom: number
 }
 
+type CardViewportBounds = {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+function getDesktopCardViewportBounds(surface: HTMLElement, margin: number, gap: number): CardViewportBounds {
+  const bounds: CardViewportBounds = {
+    top: margin,
+    right: window.innerWidth - margin,
+    bottom: window.innerHeight - margin,
+    left: margin,
+  }
+
+  for (const element of surface.querySelectorAll<HTMLElement>('[data-relay-card-exclusion]')) {
+    const rect = element.getBoundingClientRect()
+    if (!rect.width || !rect.height) continue
+
+    for (const edge of element.dataset.relayCardExclusion?.split(' ') ?? []) {
+      if (edge === 'top') bounds.top = Math.max(bounds.top, rect.bottom + gap)
+      if (edge === 'right') bounds.right = Math.min(bounds.right, rect.left - gap)
+      if (edge === 'bottom') bounds.bottom = Math.min(bounds.bottom, rect.top - gap)
+      if (edge === 'left') bounds.left = Math.max(bounds.left, rect.right + gap)
+    }
+  }
+
+  return bounds
+}
+
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
 export type RelayButtonSize = 'default' | 'map-pill' | 'map-icon' | 'map-action'
 
@@ -77,6 +107,7 @@ export function BubblePopover({
     setReady(false)
     const popoverFrame = frameRef.current
     if (!open || !anchor || !popoverFrame) return
+    const cardSurface = popoverFrame.closest<HTMLElement>('.supplier-app, .errand-map-shell') ?? document.body
 
     let animationFrame: number | undefined
     const schedulePosition = () => {
@@ -97,10 +128,11 @@ export function BubblePopover({
           return
         }
 
-        const margin = 24
         const gap = 16
-        const width = Math.min(maxWidth, window.innerWidth - margin * 2)
-        const maxHeight = Math.max(0, window.innerHeight - margin * 2)
+        const bounds = getDesktopCardViewportBounds(cardSurface, 24, gap)
+        const availableWidth = Math.max(0, bounds.right - bounds.left)
+        const maxHeight = Math.max(0, bounds.bottom - bounds.top)
+        const width = Math.min(maxWidth, availableWidth)
         popoverFrame.style.width = `${width}px`
         popoverFrame.style.maxWidth = `${width}px`
         popoverFrame.style.maxHeight = `${maxHeight}px`
@@ -112,20 +144,20 @@ export function BubblePopover({
         // card appear small enough to fit on a side where it will later overflow.
         const measuredWidth = popoverFrame.offsetWidth
         const measuredHeight = popoverFrame.offsetHeight
-        const canPlaceRight = anchor.right + gap + measuredWidth <= window.innerWidth - margin
-        const canPlaceLeft = anchor.left - gap - measuredWidth >= margin
+        const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
+        const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
         const preferredLeft = canPlaceRight
           ? anchor.right + gap
           : canPlaceLeft
             ? anchor.left - gap - measuredWidth
             : anchor.left - measuredWidth / 2
         const left = Math.min(
-          Math.max(margin, preferredLeft),
-          Math.max(margin, window.innerWidth - measuredWidth - margin),
+          Math.max(bounds.left, preferredLeft),
+          Math.max(bounds.left, bounds.right - measuredWidth),
         )
         const top = Math.min(
-          Math.max(margin, (anchor.top + anchor.bottom - measuredHeight) / 2),
-          Math.max(margin, window.innerHeight - measuredHeight - margin),
+          Math.max(bounds.top, (anchor.top + anchor.bottom - measuredHeight) / 2),
+          Math.max(bounds.top, bounds.bottom - measuredHeight),
         )
         popoverFrame.style.left = `${left}px`
         popoverFrame.style.top = `${top}px`
@@ -140,6 +172,7 @@ export function BubblePopover({
     const observer = new ResizeObserver(schedulePosition)
     observer.observe(popoverFrame)
     for (const child of popoverFrame.children) observer.observe(child)
+    for (const exclusion of cardSurface.querySelectorAll<HTMLElement>('[data-relay-card-exclusion]')) observer.observe(exclusion)
     const mutations = new MutationObserver(schedulePosition)
     mutations.observe(popoverFrame, { childList: true, subtree: true, characterData: true })
     window.addEventListener('resize', schedulePosition)
@@ -588,6 +621,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   scale = 1,
   size = 'default',
   className = '',
+  cardExclusion,
 }: {
   options: ReadonlyArray<{ value: T; label: ReactNode }>
   value: T
@@ -596,6 +630,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   scale?: number
   size?: 'default' | 'map'
   className?: string
+  cardExclusion?: string
 }) {
   const activeIndex = Math.max(
     0,
@@ -605,6 +640,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   return (
     <div
       className={`relay-segmented-control${size !== 'default' ? ` relay-segmented-control-size-${size}` : ''}${className ? ` ${className}` : ''}`}
+      data-relay-card-exclusion={cardExclusion}
       role="tablist"
       aria-label={ariaLabel}
       style={

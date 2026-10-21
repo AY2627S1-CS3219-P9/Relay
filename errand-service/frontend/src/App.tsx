@@ -309,7 +309,7 @@ export default function App({
         onViewportChange={handleViewportChange}
         active={mapActive ?? true}
       />
-      <div className="errand-top-controls map-top-menu">
+      <div className="errand-top-controls map-top-menu" data-relay-card-exclusion="top">
         <RelayButton
           variant="secondary"
           size="map-pill"
@@ -322,6 +322,7 @@ export default function App({
         </RelayButton>
         <SlidingSegmentedControl
           size="map"
+          cardExclusion="top"
           ariaLabel="Errand view"
           options={[
             { value: 'explore', label: 'Explore' },
@@ -353,7 +354,7 @@ export default function App({
           {userProfile?.username ?? 'Complete profile'}
         </RelayButton>
       </div>
-      <div className="errand-map-controls">
+      <div className="errand-map-controls" data-relay-card-exclusion="right">
         {view !== 'my-errands' && (
           <RelayButton
             variant="secondary"
@@ -389,7 +390,7 @@ export default function App({
           −
         </RelayButton>
       </div>
-      <div className="errand-bottom-controls map-bottom-menu">
+      <div className="errand-bottom-controls map-bottom-menu" data-relay-card-exclusion="bottom">
         <RelayButton
           variant="secondary"
           size="map-action"

@@ -178,7 +178,7 @@ export default function App({
         }}
         onMapReady={handleMapReady}
       />
-      <div className="supplier-top-controls map-top-menu">
+      <div className="supplier-top-controls map-top-menu" data-relay-card-exclusion="top">
         <RelayButton
           variant="secondary"
           size="map-pill"
@@ -190,24 +190,25 @@ export default function App({
           <span>{creditBalance?.availableCredit ?? '...'} cr</span>
         </RelayButton>
         <SlidingSegmentedControl
-            size="map"
-            ariaLabel="Supplier view"
-            options={[
-              { value: 'explore', label: 'Explore' },
-              { value: 'requests', label: 'My Requests' },
-              { value: 'my-errands', label: 'My Errands' },
-            ]}
-            value={activeMode}
-            onChange={(nextMode) => {
-              setActiveMode(nextMode)
-              if (nextMode === 'requests' && openErrandView) {
-                openErrandView({ view: 'requests' }); return
-              }
-              if (nextMode === 'my-errands' && openErrandView) {
-                openErrandView({ view: 'my-errands' })
-                return
-              }
-            }}
+          size="map"
+          cardExclusion="top"
+          ariaLabel="Supplier view"
+          options={[
+            { value: 'explore', label: 'Explore' },
+            { value: 'requests', label: 'My Requests' },
+            { value: 'my-errands', label: 'My Errands' },
+          ]}
+          value={activeMode}
+          onChange={(nextMode) => {
+            setActiveMode(nextMode)
+            if (nextMode === 'requests' && openErrandView) {
+              openErrandView({ view: 'requests' }); return
+            }
+            if (nextMode === 'my-errands' && openErrandView) {
+              openErrandView({ view: 'my-errands' })
+              return
+            }
+          }}
         />
         <RelayButton
           variant="secondary"
@@ -222,7 +223,7 @@ export default function App({
           {userProfile?.username ?? 'Complete profile'}
         </RelayButton>
       </div>
-      <div className="map-stub-controls">
+      <div className="map-stub-controls" data-relay-card-exclusion="right">
         <RelayButton
           variant="secondary"
           size="map-icon"
@@ -257,7 +258,7 @@ export default function App({
           −
         </RelayButton>
       </div>
-      <div className="supplier-bottom-controls map-bottom-menu">
+      <div className="supplier-bottom-controls map-bottom-menu" data-relay-card-exclusion="bottom">
         <SupplierRowButton size="map-action" className="updates-action">
           <BellIcon className="supplier-control-icon" />
           <span className="supplier-control-label">Updates</span>
