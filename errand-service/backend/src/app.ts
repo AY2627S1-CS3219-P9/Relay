@@ -40,7 +40,7 @@ export function createApp() {
   const internalErrandRouter = createInternalErrandRouter(controller)
 
   app.use('/api/errands', sessionMiddleware, errandRouter)
-  app.use('/internal/errands', internalServiceAuth, sessionMiddleware, internalErrandRouter)
+  app.use('/internal/errands', internalServiceAuth, internalErrandRouter)
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof ErrandServiceError) {
