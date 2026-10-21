@@ -39,6 +39,8 @@ function nonnegativeAmount(amount: number): Prisma.Decimal {
   return new Prisma.Decimal(amount)
 }
 
+export type UserCreditEventOutcome = 'processed' | 'duplicate' | 'out-of-order'
+
 export class CreditRepository {
   async findBalance(userId: string): Promise<CreditBalance | null> {
     const balance = await prisma.creditBalance.findUnique({ where: { userId } })
@@ -79,7 +81,7 @@ export class CreditRepository {
     return record ? { userId: record.senderId, amount: record.amount.toNumber() } : null
   }
 
-  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
+  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<UserCreditEventOutcome> {
     const reference = referenceOf(command)
     if (
       command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
@@ -87,15 +89,15 @@ export class CreditRepository {
     )
       throw new Error('Invalid initial credit allocation command.')
     try {
-      await prisma.$transaction(async (tx) => {
-        if (await tx.transactionRecord.findUnique({ where: { reference } })) return
+      return await prisma.$transaction(async (tx) => {
+        if (await tx.transactionRecord.findUnique({ where: { reference } })) return 'duplicate' as const
         // A delayed registration event must never recreate a deleted user's balance.
         if (
           await tx.transactionRecord.findUnique({
             where: { reference: referenceWithType(command.transactionReference, 'USER_DELETION') },
           })
         )
-          return
+          return 'out-of-order' as const
         await tx.creditBalance.create({
           data: { userId: command.userId, availableCredit: 100, reserveCredit: 0 },
         })
@@ -108,13 +110,14 @@ export class CreditRepository {
             amount: 100,
           },
         })
+        return 'processed' as const
       })
     } catch (error) {
       if (
         (error as { code?: string }).code === 'P2002' &&
         (await prisma.transactionRecord.findUnique({ where: { reference } }))
       )
-        return
+        return 'duplicate'
       throw error
     }
   }
@@ -337,29 +340,38 @@ export class CreditRepository {
     })
   }
 
-  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<void> {
+  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<UserCreditEventOutcome> {
     const reference = referenceOf(command)
     if (
       command.transactionReference.type !== 'USER_DELETION' ||
       command.transactionReference.id !== command.userId
     )
       throw new Error('Invalid user deletion command.')
-    await prisma.$transaction(async (tx) => {
-      if (await tx.transactionRecord.findUnique({ where: { reference } })) return
-      const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
-      await tx.transactionRecord.create({
-        data: {
-          reference,
-          senderId: command.userId,
-          receiverId: 'SYSTEM',
-          type: 'USER_DELETION',
-          amount: balance
-            ? balance.availableCredit.plus(balance.reserveCredit)
-            : new Prisma.Decimal(0),
-        },
+    try {
+      return await prisma.$transaction(async (tx) => {
+        if (await tx.transactionRecord.findUnique({ where: { reference } })) return 'duplicate' as const
+        const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
+        await tx.transactionRecord.create({
+          data: {
+            reference,
+            senderId: command.userId,
+            receiverId: 'SYSTEM',
+            type: 'USER_DELETION',
+            amount: balance
+              ? balance.availableCredit.plus(balance.reserveCredit)
+              : new Prisma.Decimal(0),
+          },
+        })
+        if (balance) await tx.creditBalance.delete({ where: { userId: command.userId } })
+        return 'processed' as const
       })
-      if (balance) await tx.creditBalance.delete({ where: { userId: command.userId } })
-    })
+    } catch (error) {
+      if (
+        (error as { code?: string }).code === 'P2002' &&
+        (await prisma.transactionRecord.findUnique({ where: { reference } }))
+      ) return 'duplicate'
+      throw error
+    }
   }
 
   async checkTables(): Promise<void> {

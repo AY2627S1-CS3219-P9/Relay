@@ -17,6 +17,7 @@ async function until(check) {
 test('new users view, reserve, and transfer credit through HTTP and Kafka', async () => {
   const topics = {
     userEvents: process.env.KAFKA_TOPIC_USER_EVENTS,
+    userDlq: process.env.KAFKA_TOPIC_USER_DLQ,
     errandEvents: process.env.KAFKA_TOPIC_ERRAND_EVENTS,
     errandDlq: process.env.KAFKA_TOPIC_ERRAND_DLQ,
   }

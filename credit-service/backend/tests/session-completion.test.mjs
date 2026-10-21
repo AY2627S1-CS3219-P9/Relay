@@ -5,6 +5,7 @@ import { UserSessionService } from '../dist/services/user-session.service.js'
 process.env.DATABASE_URL ??= 'postgresql://unused:unused@localhost:5432/unused'
 process.env.CREDIT_SERVICE_INTERNAL_TOKEN ??= 'test-token'
 process.env.KAFKA_TOPIC_USER_EVENTS ??= 'user-events'
+process.env.KAFKA_TOPIC_USER_DLQ ??= 'user-events-dlq'
 process.env.KAFKA_TOPIC_ERRAND_EVENTS ??= 'errand-events'
 process.env.KAFKA_TOPIC_ERRAND_DLQ ??= 'errand-events-dlq'
 

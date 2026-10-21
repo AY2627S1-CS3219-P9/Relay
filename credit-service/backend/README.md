@@ -147,6 +147,10 @@ for completed errands. If DLQ publication fails, the source event is retried.
 A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
 leaves a history record for the remaining total. A delayed registration event
 cannot recreate a deleted balance. `kafka-init` creates `user-events`,
-`errand-events` and `errand-events-dlq` before APIs start.
-Credit Service publishes rejected errand outcomes to the errand DLQ. The
-User Service has no DLQ topic.
+`user-events-dlq`, `errand-events`, and `errand-events-dlq` before APIs start.
+Malformed, duplicate, out-of-order, and failed credit operations from user
+messages are copied to `KAFKA_TOPIC_USER_DLQ` with an `error` code. Credit
+Service acknowledges the source message after the DLQ write succeeds, so a
+poison event does not block later messages. If the DLQ write itself fails,
+Kafka retries the source message rather than losing it; the offset cannot
+advance until Kafka can accept the DLQ record.

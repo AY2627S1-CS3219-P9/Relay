@@ -11,7 +11,7 @@ import type {
   TransferCreditCommand,
   TransactionReference,
 } from '@relay/contracts'
-import { CreditRepository } from '../repositories/credit.repository.js'
+import { CreditRepository, type UserCreditEventOutcome } from '../repositories/credit.repository.js'
 import { CreditServiceError } from '../types/credit.types.js'
 
 export class CreditService {
@@ -21,8 +21,8 @@ export class CreditService {
     return this.repository.findReservation(ref)
   }
 
-  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<void> {
-    await this.repository.allocateInitialCredit(command)
+  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<UserCreditEventOutcome> {
+    return this.repository.allocateInitialCredit(command)
   }
 
   async closeUnreservedCredit(ref: TransactionReference, userId: string): Promise<void> {
@@ -41,8 +41,8 @@ export class CreditService {
     await this.repository.transferCredit(command)
   }
 
-  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<void> {
-    await this.repository.deleteUserCredit(command)
+  async deleteUserCredit(command: DeleteUserCreditCommand): Promise<UserCreditEventOutcome> {
+    return this.repository.deleteUserCredit(command)
   }
 
   async viewCredit(request: ViewCreditRequest): Promise<ViewCreditResponse> {
