@@ -1,0 +1,22 @@
+$kind: http-request
+method: GET
+url: "{{baseUrl}}/api/supplier"
+order: 3000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('List suppliers returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Response contains suppliers array', () => {
+        pm.expect(json.suppliers).to.be.an('array');
+      });
+
+      pm.test('Suppliers array is not empty', () => {
+        pm.expect(json.suppliers).to.have.lengthOf.at.least(1);
+      });
+    language: text/javascript

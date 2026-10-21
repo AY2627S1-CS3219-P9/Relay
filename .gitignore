@@ -13,7 +13,6 @@ packages/*/generated/
 # Diagnostics
 .mf/
 .postman/
-postman/
 
 # Environment / secrets
 .env

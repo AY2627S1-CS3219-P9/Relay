@@ -1,0 +1,33 @@
+$kind: http-request
+method: GET
+url: "{{baseUrl}}/healthz"
+order: 1000
+description: Initialize/clear variables before test run
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Health check returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+      pm.test('Response is "ok"', () => {
+        pm.expect(pm.response.text().trim()).to.eql('ok');
+      });
+
+      // Clear session cookies
+      pm.collectionVariables.set('sessionCookie', '');
+      pm.collectionVariables.set('sessionCookieCourier', '');
+
+      // Clear verification codes
+      pm.collectionVariables.set('requesterVerificationCode', '');
+      pm.collectionVariables.set('courierVerificationCode', '');
+
+      // Clear errand IDs
+      pm.collectionVariables.set('errandId', '');
+      pm.collectionVariables.set('errandId2', '');
+      pm.collectionVariables.set('errandId3', '');
+
+      // Clear requester/courier subs
+      pm.collectionVariables.set('requesterSub', '');
+      pm.collectionVariables.set('requesterSub2', '');
+      pm.collectionVariables.set('courierSub', '');
+    language: text/javascript

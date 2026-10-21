@@ -1,0 +1,39 @@
+$kind: http-request
+method: POST
+url: "{{baseUrl}}/api/user/auth/login"
+order: 1000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{adminEmail}}",
+      "password": "{{adminPassword}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const cookieHeader = pm.response.headers.all().find(header =>
+        header.key.toLowerCase() === 'set-cookie' &&
+        header.value.startsWith('relay_session=')
+      );
+
+      const sessionCookie = cookieHeader?.value
+        .split(';')[0]
+        .slice('relay_session='.length);
+
+      pm.test('Login sets session cookie', () => {
+        pm.expect(sessionCookie).to.be.a('string').and.not.empty;
+      });
+
+      if (sessionCookie) {
+        pm.collectionVariables.set('sessionCookie', sessionCookie);
+      } else {
+        pm.collectionVariables.unset('sessionCookie');
+      }
+    language: text/javascript

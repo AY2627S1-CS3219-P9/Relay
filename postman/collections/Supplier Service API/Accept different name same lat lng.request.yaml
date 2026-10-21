@@ -1,0 +1,37 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/supplier'
+order: 14000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "Different Name Same LatLng",
+      "location": {
+        "lat": 1.2966,
+        "lng": 103.7764,
+        "buildingName": "Different Building Name",
+        "floorNumber": 1
+      },
+      "isOperational": true,
+      "operatingHours": {
+        "openingTime": "09:00",
+        "closingTime": "18:00",
+        "daysOfWeek": [1, 2, 3, 4, 5]
+      },
+      "serviceTypes": [0]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      pm.test('Different name with same lat/lng should be accepted (not duplicate)', () => {
+        pm.response.to.have.status(201);
+      });
+      if (json.supplier && json.supplier.id) {
+        pm.collectionVariables.set('supplierId5', json.supplier.id);
+      }
+    language: text/javascript

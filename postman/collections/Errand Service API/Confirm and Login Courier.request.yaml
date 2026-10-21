@@ -1,0 +1,44 @@
+$kind: http-request
+method: POST
+url: "{{baseUrl}}/api/user/auth/verification/confirm-and-login"
+order: 8000
+description: Confirm signup with verification code and login for courier
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{courierEmail}}",
+      "password": "{{courierPassword}}",
+      "code": "{{courierVerificationCode}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Verification accepted', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Profile created', () => {
+        pm.expect(json.data.user.profileCreated).to.eql(false);
+      });
+
+      // Extract session cookie from Set-Cookie header (handle both string and array)
+      let setCookie = pm.response.headers.get('Set-Cookie');
+      if (Array.isArray(setCookie)) {
+        setCookie = setCookie.join('; ');
+      }
+      pm.test('Session cookie returned', () => {
+        pm.expect(setCookie).to.include('relay_session=');
+      });
+
+      if (setCookie) {
+        const cookieMatch = setCookie.match(/relay_session=([^;]+)/);
+        if (cookieMatch) {
+          pm.collectionVariables.set('sessionCookieCourier', cookieMatch[1]);
+        }
+      }
+      pm.collectionVariables.set('courierSub', json.data.user.subject);
+    language: text/javascript

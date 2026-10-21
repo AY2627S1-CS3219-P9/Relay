@@ -1,0 +1,22 @@
+$kind: http-request
+method: PATCH
+url: '{{baseUrl}}/api/user/me'
+order: 5000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{requesterUsername}}",
+      "profilePicture": null
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Requester profile created', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().ok).to.be.true;
+      });
+    language: text/javascript

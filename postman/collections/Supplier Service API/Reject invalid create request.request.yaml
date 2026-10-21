@@ -1,0 +1,26 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/supplier'
+order: 23000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {}
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+
+      pm.test('Invalid create returns 400', () => {
+        pm.response.to.have.status(400);
+      });
+
+      if (json.message) {
+        pm.test('Error message is "Name is required"', () => {
+          pm.expect(json.message).to.eql('Name is required');
+        });
+      }
+    language: text/javascript

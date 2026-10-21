@@ -1,0 +1,28 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/supplier/{{supplierId}}'
+order: 19000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "Postman Test Supplier Updated"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+
+      pm.test('Update supplier returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+
+      if (json.supplier) {
+        pm.test('Supplier name is updated', () => {
+          pm.expect(json.supplier.name).to.eql('Postman Test Supplier Updated');
+        });
+      }
+    language: text/javascript

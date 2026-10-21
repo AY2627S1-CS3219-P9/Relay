@@ -1,0 +1,13 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/supplier/{{supplierId}}'
+order: 21000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Get deleted supplier returns 404', () => {
+        pm.response.to.have.status(404);
+      });
+    language: text/javascript

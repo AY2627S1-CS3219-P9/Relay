@@ -1,0 +1,37 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/supplier'
+order: 11907
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "Second Postman Test Supplier",
+      "location": {
+        "lat": 1.2970,
+        "lng": 103.7760,
+        "buildingName": "Second Test Building",
+        "floorNumber": 2
+      },
+      "isOperational": true,
+      "operatingHours": {
+        "openingTime": "10:00",
+        "closingTime": "19:00",
+        "daysOfWeek": [1, 2, 3, 4]
+      },
+      "serviceTypes": [1]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      pm.test('Create second supplier returns 201', () => {
+        pm.response.to.have.status(201);
+      });
+      if (json.supplier && json.supplier.id) {
+        pm.collectionVariables.set('supplierId2', json.supplier.id);
+      }
+    language: text/javascript

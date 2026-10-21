@@ -1,0 +1,25 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/errands/{{errandId}}/deliver'
+order: 19000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: ''
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Requester cannot deliver', () => {
+        pm.response.to.have.status(403);
+      });
+
+      const json = pm.response.json();
+      pm.test('Error code is FORBIDDEN', () => {
+        pm.expect(json.code).to.eql('FORBIDDEN');
+      });
+      pm.test('Error message is correct', () => {
+        pm.expect(json.message).to.include('courier');
+      });
+    language: text/javascript

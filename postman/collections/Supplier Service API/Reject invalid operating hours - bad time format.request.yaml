@@ -1,0 +1,37 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/supplier'
+order: 29000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "Test Supplier",
+      "location": {
+        "lat": 1.2966,
+        "lng": 103.7764,
+        "buildingName": "Test Building",
+        "floorNumber": 1
+      },
+      "isOperational": true,
+      "operatingHours": {
+        "openingTime": "9:00",
+        "closingTime": "18:00",
+        "daysOfWeek": [1, 2, 3, 4, 5]
+      },
+      "serviceTypes": [0]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const json = pm.response.json();
+      pm.test('Returns 400', () => {
+        pm.response.to.have.status(400);
+      });
+      pm.test('Error code is INVALID_REQUEST', () => {
+        pm.expect(json.code).to.eql('INVALID_REQUEST');
+      });
+    language: text/javascript

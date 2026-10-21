@@ -1,0 +1,23 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/errands/{{errandId}}/confirm'
+order: 22000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookie}}
+body:
+  type: json
+  content: ''
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Errand confirmed', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Errand status is CONFIRMED', () => {
+        pm.expect(json.errand.status).to.eql('CONFIRMED');
+      });
+      console.log('SUCCESS: Errand workflow completed!');
+    language: text/javascript

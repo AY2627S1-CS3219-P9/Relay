@@ -1,0 +1,22 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/errands/{{errandId3}}/accept'
+order: 31000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookieCourier}}
+body:
+  type: json
+  content: ''
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Errand 3 accepted', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Errand 3 status is ACCEPTED', () => {
+        pm.expect(json.errand.status).to.eql('ACCEPTED');
+      });
+    language: text/javascript

@@ -1,0 +1,28 @@
+$kind: http-request
+method: GET
+url: "{{baseUrl}}/api/supplier"
+order: 11000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('List suppliers returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Response contains suppliers array', () => {
+        pm.expect(json.suppliers).to.be.an('array');
+      });
+
+      // Find Cheers Unmanned Convenience Store
+      const cheersSupplier = json.suppliers.find(s => s.name === 'Cheers Unmanned Convenience Store');
+      pm.test('Cheers supplier found', () => {
+        pm.expect(cheersSupplier).to.exist;
+      });
+
+      if (cheersSupplier) {
+        pm.collectionVariables.set('supplierId_cheers', cheersSupplier.id);
+      }
+    language: text/javascript

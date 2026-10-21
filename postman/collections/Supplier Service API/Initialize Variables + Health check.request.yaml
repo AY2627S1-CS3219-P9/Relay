@@ -1,0 +1,24 @@
+$kind: http-request
+method: GET
+url: "{{baseUrl}}/healthz"
+order: 970
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Health check returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+      pm.test('Response is "ok"', () => {
+        pm.expect(pm.response.text().trim()).to.eql('ok');
+      });
+
+      // Clear session cookie
+      pm.collectionVariables.set('sessionCookie', '');
+
+      // Clear all supplier IDs
+      pm.collectionVariables.set('supplierId', '');
+      pm.collectionVariables.set('supplierId2', '');
+      pm.collectionVariables.set('supplierId3', '');
+      pm.collectionVariables.set('supplierId4', '');
+      pm.collectionVariables.set('supplierId5', '');
+    language: text/javascript

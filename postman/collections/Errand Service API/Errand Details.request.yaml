@@ -1,0 +1,27 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/errands/{{errandId}}'
+order: 29000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Errand details retrieved', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Errand ID matches', () => {
+        pm.expect(json.errand.id).to.eql(pm.collectionVariables.get('errandId'));
+      });
+      pm.test('Errand status is CONFIRMED', () => {
+        pm.expect(json.errand.status).to.eql('CONFIRMED');
+      });
+      pm.test('Requester matches', () => {
+        pm.expect(json.errand.requesterSub).to.eql(pm.collectionVariables.get('requesterSub'));
+      });
+      pm.test('Courier matches', () => {
+        pm.expect(json.errand.courierSub).to.eql(pm.collectionVariables.get('courierSub'));
+      });
+    language: text/javascript
