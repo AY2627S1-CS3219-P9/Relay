@@ -201,16 +201,52 @@
   inset: 0;
   pointer-events: none;
 }
-.relay-bubble-popover-measuring > * {
+.relay-bubble-popover-measuring > .relay-bubble-popover-frame {
   visibility: hidden;
 }
-.relay-bubble-popover > * {
+.relay-bubble-popover-frame {
+  position: fixed;
+  z-index: var(--relay-layer-card);
   box-sizing: border-box;
-  max-width: calc(100vw - 48px);
-  max-height: calc(100dvh - 48px);
   overflow: auto;
+  pointer-events: auto;
+  scrollbar-width: none;
 }
-.relay-bubble-popover-ready > * {
+.relay-bubble-popover-frame::-webkit-scrollbar { display: none; }
+.relay-bubble-popover-frame > * {
+  box-sizing: border-box;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0;
+  transform: none !important;
+}
+@media (max-width: 700px) {
+  .relay-bubble-popover-frame {
+    border: 1px solid var(--relay-glass-surface-border);
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    background: var(--relay-glass-surface-bg);
+    box-shadow: var(--relay-glass-surface-shadow);
+    -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+    backdrop-filter: var(--relay-glass-surface-filter);
+  }
+  .relay-bubble-popover-frame > .relay-mobile-sheet-surface {
+    max-height: none;
+    overflow: visible !important;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .relay-bubble-popover-frame > .relay-mobile-sheet-surface::after {
+    display: none;
+  }
+}
+.relay-bubble-popover-ready > .relay-bubble-popover-frame {
   animation: relay-bubble-in 0.42s cubic-bezier(0.22, 1.18, 0.36, 1) both;
   transform-origin: var(--relay-bubble-origin-x, 50%) var(--relay-bubble-origin-y, 50%);
 }
@@ -225,7 +261,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .relay-bubble-popover-ready > * {
+  .relay-bubble-popover-ready > .relay-bubble-popover-frame {
     animation-duration: 0.12s;
     animation-name: relay-bubble-fade-in;
   }

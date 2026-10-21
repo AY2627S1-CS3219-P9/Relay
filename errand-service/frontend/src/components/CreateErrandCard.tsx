@@ -290,7 +290,7 @@ export function CreateErrandCard({
             rows={2}
           />
         </label>
-        <div className="errand-form-grid">
+        <div className="errand-form-grid errand-reward-grid">
           <label className="errand-field">
             <span>Reward credits</span>
             <input

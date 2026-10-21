@@ -48,7 +48,7 @@ export function ErrandDetailCard({
 
   return (
     <GlassCard
-      className="errand-detail-card relay-mobile-sheet-surface"
+      className="errand-detail-card relay-mobile-sheet-surface relay-card-scroll-surface"
       aria-label={`${errand.name} details`}
     >
       <div className="errand-detail-header">

@@ -40,7 +40,7 @@ export function ErrandDetailCard({
   }
 
   return (
-    <GlassCard className="supplier-detail-card supplier-errand-detail relay-mobile-sheet-surface" style={style} aria-label="Errand details">
+    <GlassCard className="supplier-detail-card supplier-errand-detail relay-mobile-sheet-surface relay-card-scroll-surface" style={style} aria-label="Errand details">
       <div className="errand-detail-header">
         <IconButton label="Back to supplier details" onClick={onBack}>‹</IconButton>
         <div>

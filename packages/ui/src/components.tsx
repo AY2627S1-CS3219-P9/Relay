@@ -70,42 +70,29 @@ export function BubblePopover({
   open?: boolean
   maxWidth?: number
 }) {
-  const contentRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
 
   useLayoutEffect(() => {
     setReady(false)
-    if (!open || !contentRef.current) return
-    const content = contentRef.current.firstElementChild as HTMLElement | null
-    if (!content) return
-    if (!anchor) {
-      content.style.removeProperty('top')
-      content.style.removeProperty('right')
-      content.style.removeProperty('bottom')
-      content.style.removeProperty('left')
-      content.style.removeProperty('width')
-      content.style.removeProperty('max-height')
-      content.style.removeProperty('overflow')
-      content.style.removeProperty('transform')
-      setReady(true)
-      return
-    }
+    const popoverFrame = frameRef.current
+    if (!open || !anchor || !popoverFrame) return
 
-    let frame: number | undefined
+    let animationFrame: number | undefined
     const schedulePosition = () => {
-      if (frame !== undefined) window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(() => {
-        frame = undefined
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = undefined
         const isMobile = window.innerWidth <= 700
         if (isMobile) {
-          content.style.removeProperty('top')
-          content.style.removeProperty('right')
-          content.style.removeProperty('bottom')
-          content.style.removeProperty('left')
-          content.style.removeProperty('width')
-          content.style.removeProperty('max-height')
-          content.style.removeProperty('overflow')
-          content.style.removeProperty('transform')
+          popoverFrame.style.top = 'auto'
+          popoverFrame.style.right = '0'
+          popoverFrame.style.bottom = '0'
+          popoverFrame.style.left = '0'
+          popoverFrame.style.width = '100%'
+          popoverFrame.style.maxWidth = '100vw'
+          popoverFrame.style.maxHeight = 'calc(100dvh - 24px)'
+          popoverFrame.style.paddingBottom = 'calc(72px + env(safe-area-inset-bottom))'
           setReady(true)
           return
         }
@@ -114,55 +101,66 @@ export function BubblePopover({
         const gap = 16
         const width = Math.min(maxWidth, window.innerWidth - margin * 2)
         const maxHeight = Math.max(0, window.innerHeight - margin * 2)
-        content.style.width = `${width}px`
-        content.style.maxHeight = `${maxHeight}px`
-        content.style.overflow = 'auto'
-        content.style.right = 'auto'
-        content.style.bottom = 'auto'
-        content.style.transform = 'none'
+        popoverFrame.style.width = `${width}px`
+        popoverFrame.style.maxWidth = `${width}px`
+        popoverFrame.style.maxHeight = `${maxHeight}px`
+        popoverFrame.style.right = 'auto'
+        popoverFrame.style.bottom = 'auto'
+        popoverFrame.style.paddingBottom = '0'
 
-        const measured = content.getBoundingClientRect()
-        const canPlaceRight = anchor.right + gap + measured.width <= window.innerWidth - margin
-        const canPlaceLeft = anchor.left - gap - measured.width >= margin
-        const left = canPlaceRight
+        // Use layout dimensions so the opening scale animation cannot make the
+        // card appear small enough to fit on a side where it will later overflow.
+        const measuredWidth = popoverFrame.offsetWidth
+        const measuredHeight = popoverFrame.offsetHeight
+        const canPlaceRight = anchor.right + gap + measuredWidth <= window.innerWidth - margin
+        const canPlaceLeft = anchor.left - gap - measuredWidth >= margin
+        const preferredLeft = canPlaceRight
           ? anchor.right + gap
           : canPlaceLeft
-            ? anchor.left - gap - measured.width
-            : Math.max(margin, (window.innerWidth - measured.width) / 2)
-        const top = Math.min(
-          Math.max(margin, (anchor.top + anchor.bottom - measured.height) / 2),
-          window.innerHeight - measured.height - margin,
+            ? anchor.left - gap - measuredWidth
+            : anchor.left - measuredWidth / 2
+        const left = Math.min(
+          Math.max(margin, preferredLeft),
+          Math.max(margin, window.innerWidth - measuredWidth - margin),
         )
-        content.style.left = `${left}px`
-        content.style.top = `${top}px`
-        const positioned = content.getBoundingClientRect()
+        const top = Math.min(
+          Math.max(margin, (anchor.top + anchor.bottom - measuredHeight) / 2),
+          Math.max(margin, window.innerHeight - measuredHeight - margin),
+        )
+        popoverFrame.style.left = `${left}px`
+        popoverFrame.style.top = `${top}px`
         const anchorX = (anchor.left + anchor.right) / 2
         const anchorY = (anchor.top + anchor.bottom) / 2
-        contentRef.current?.style.setProperty('--relay-bubble-origin-x', `${anchorX - positioned.left}px`)
-        contentRef.current?.style.setProperty('--relay-bubble-origin-y', `${anchorY - positioned.top}px`)
+        popoverFrame.style.setProperty('--relay-bubble-origin-x', `${anchorX - left}px`)
+        popoverFrame.style.setProperty('--relay-bubble-origin-y', `${anchorY - top}px`)
         setReady(true)
       })
     }
 
     const observer = new ResizeObserver(schedulePosition)
-    observer.observe(content)
+    observer.observe(popoverFrame)
+    for (const child of popoverFrame.children) observer.observe(child)
+    const mutations = new MutationObserver(schedulePosition)
+    mutations.observe(popoverFrame, { childList: true, subtree: true, characterData: true })
     window.addEventListener('resize', schedulePosition)
     schedulePosition()
     return () => {
       observer.disconnect()
+      mutations.disconnect()
       window.removeEventListener('resize', schedulePosition)
-      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
     }
   }, [anchor, maxWidth, open])
 
-  if (!open) return <>{children}</>
+  if (!open || !anchor) return <>{children}</>
 
   return (
     <div
-      ref={contentRef}
       className={`relay-bubble-popover${ready ? ' relay-bubble-popover-ready' : ' relay-bubble-popover-measuring'}${className ? ` ${className}` : ''}`}
     >
-      {children}
+      <div ref={frameRef} className="relay-bubble-popover-frame">
+        {children}
+      </div>
     </div>
   )
 }
@@ -429,35 +427,63 @@ export function RelayCardAnchor({
 }) {
   const anchorRef = useRef<HTMLDivElement>(null)
   const [measuredHeight, setMeasuredHeight] = useState<number>()
+  const [viewport, setViewport] = useState<{ width: number; height: number }>()
   const anchoredStyle: CSSProperties = {}
   const cardWidth = relayCardWidths[size]
-  if (placement === 'anchored' && anchor && typeof window !== 'undefined') {
-    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+  const viewportWidth = viewport?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0)
+  const viewportHeight = viewport?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)
+  if (placement === 'anchored' && anchor && viewportWidth > 0 && viewportHeight > 0) {
+    const availableWidth = Math.max(0, viewportWidth - viewportPadding * 2)
     const anchoredCardWidth = Math.min(cardWidth, availableWidth)
     const left = preferredSide.endsWith('end')
-      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), window.innerWidth - anchoredCardWidth - viewportPadding)
-      : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - anchoredCardWidth - viewportPadding)
-    const estimatedHeight = Math.min(window.innerHeight * 0.6, window.innerHeight - viewportPadding * 2)
+      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), viewportWidth - anchoredCardWidth - viewportPadding)
+      : Math.min(Math.max(viewportPadding, anchor.left), viewportWidth - anchoredCardWidth - viewportPadding)
+    const estimatedHeight = Math.min(viewportHeight * 0.6, viewportHeight - viewportPadding * 2)
     const cardHeight = measuredHeight ?? estimatedHeight
     const belowTop = anchor.bottom + offset
     const top = preferredSide.startsWith('top')
       ? Math.max(viewportPadding, anchor.top - cardHeight - offset)
-      : belowTop + cardHeight <= window.innerHeight - viewportPadding
+      : belowTop + cardHeight <= viewportHeight - viewportPadding
         ? belowTop
         : Math.max(viewportPadding, anchor.top - cardHeight - offset)
-    Object.assign(anchoredStyle, { top, left, width: anchoredCardWidth })
+    Object.assign(anchoredStyle, {
+      top,
+      left,
+      width: anchoredCardWidth,
+      maxHeight: Math.max(0, viewportHeight - viewportPadding * 2),
+    })
   }
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    updateViewport()
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
   useLayoutEffect(() => {
     if (placement !== 'anchored' || !anchor || typeof window === 'undefined') {
       setMeasuredHeight(undefined)
       return
     }
-    const frame = window.requestAnimationFrame(() => {
-      const height = anchorRef.current?.getBoundingClientRect().height
-      if (height && height !== measuredHeight) setMeasuredHeight(height)
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [anchor, measuredHeight, placement, preferredSide, viewportPadding])
+    let frame: number | undefined
+    const measure = () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined
+        const height = anchorRef.current?.getBoundingClientRect().height
+        if (height && height !== measuredHeight) setMeasuredHeight(height)
+      })
+    }
+    const observer = new ResizeObserver(measure)
+    if (anchorRef.current) observer.observe(anchorRef.current)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+    }
+  }, [anchor, measuredHeight, placement, preferredSide, viewportPadding, viewport])
   return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement} relay-card-size-${size}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
 }
 

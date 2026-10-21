@@ -52,7 +52,10 @@
 .errand-field input, .errand-field select, .errand-field textarea { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; font-weight: 500; outline: none; }
 .errand-field textarea { resize: vertical; line-height: 1.4; }
 .errand-field input:focus, .errand-field select:focus, .errand-field textarea:focus { border-color: #007aff; box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
-.errand-form-grid { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
+.errand-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; min-width: 0; }
+.errand-form-grid > .errand-field { min-width: 0; }
+.errand-reward-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); }
+.errand-reward-grid input { min-width: 0; }
 .errand-form-note { margin: -2px 0 0; color: var(--relay-text-muted); font-size: .78rem; }
 .errand-filter-panel { position: absolute; z-index: var(--relay-layer-card); top: 78px; left: 18px; width: min(350px, calc(100vw - 36px)); padding: 24px; }
 .errand-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }
