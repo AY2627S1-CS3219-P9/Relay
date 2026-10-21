@@ -82,7 +82,7 @@ export class SessionService {
 
   async submitOtpAndLogin(
     request: SubmitOtpAndLoginRequest,
-  ): Promise<{ session: UserSession; cookie: string; maxAgeSeconds: number }> {
+  ): Promise<{ session: UserSession; cookie: string }> {
     request = validateVerification(request)
     try {
       await this.client.send(
@@ -99,7 +99,7 @@ export class SessionService {
     }
   }
 
-  async login(request: LoginRequest): Promise<{ session: UserSession; cookie: string; maxAgeSeconds: number }> {
+  async login(request: LoginRequest): Promise<{ session: UserSession; cookie: string }> {
     request = validateLogin(request)
     try {
       const result = await this.client.send(
@@ -151,13 +151,9 @@ export class SessionService {
   async createSession(
     identity: Identity,
     accessToken: string,
-  ): Promise<{ session: UserSession; cookie: string; maxAgeSeconds: number }> {
+  ): Promise<{ session: UserSession; cookie: string }> {
     const cookie = randomBytes(32).toString('base64url')
-    const tokenExpiry = decodeJwtPayload(accessToken).exp
-    if (typeof tokenExpiry !== 'number' || !Number.isFinite(tokenExpiry) || tokenExpiry * 1000 <= Date.now()) {
-      throw new UserServiceError('UNAUTHENTICATED', 'The identity provider token is expired or invalid.', 401)
-    }
-    const expiresAt = new Date(Math.min(Date.now() + this.env.sessionTtlSeconds * 1000, tokenExpiry * 1000))
+    const expiresAt = new Date(Date.now() + this.env.sessionTtlSeconds * 1000)
     const stored = await this.sessions.create({
       tokenHash: hash(cookie),
       cognitoSub: identity.subject,
@@ -171,7 +167,6 @@ export class SessionService {
       return {
         session: { user: await this.sessionUser(stored) },
         cookie,
-        maxAgeSeconds: Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
       }
     } catch (error) {
       await this.sessions.revokeByTokenHash(hash(cookie))

@@ -28,14 +28,14 @@ export class SessionController {
   confirmAndLogin = async (req: Request, res: Response, next: NextFunction) =>
     this.run(res, next, async () => {
       const result = await this.service.submitOtpAndLogin(req.body as SubmitOtpAndLoginRequest)
-      this.setCookie(res, result.cookie, result.maxAgeSeconds)
+      this.setCookie(res, result.cookie)
       res.status(200).json({ ok: true, data: result.session })
     })
 
   login = async (req: Request, res: Response, next: NextFunction) =>
     this.run(res, next, async () => {
       const result = await this.service.login(req.body as LoginRequest)
-      this.setCookie(res, result.cookie, result.maxAgeSeconds)
+      this.setCookie(res, result.cookie)
       res.status(200).json({ ok: true, data: result.session })
     })
 
@@ -68,11 +68,11 @@ export class SessionController {
       res.status(204).send()
     })
 
-  private setCookie(res: Response, value: string, maxAgeSeconds: number): void {
+  private setCookie(res: Response, value: string): void {
     const env = getEnv()
     res.setHeader(
       'Set-Cookie',
-      `${env.sessionCookieName}=${value}; Path=/; HttpOnly; SameSite=Lax${env.sessionCookieSecure ? '; Secure' : ''}; Max-Age=${maxAgeSeconds}`,
+      `${env.sessionCookieName}=${value}; Path=/; HttpOnly; SameSite=Lax${env.sessionCookieSecure ? '; Secure' : ''}; Max-Age=${env.sessionTtlSeconds}`,
     )
   }
 

@@ -25,20 +25,13 @@ function setup(profileLookup: () => Promise<unknown> = async () => null) {
 const identity = { subject: 'user-sub', email: 'user@example.com', emailVerified: true, role: 'user' as const }
 
 describe('session lifetime and login errors', () => {
-  it('does not outlive the Cognito access token', async () => {
+  it('uses the configured session duration even when the Cognito token expires sooner', async () => {
     const expiry = Math.floor(Date.now() / 1000) + 60
     const { service, getStored } = setup()
-    const result = await service.createSession(identity, accessToken(expiry))
-    expect(getStored()?.expiresAt.getTime()).toBeLessThanOrEqual(expiry * 1000)
-    expect(result.maxAgeSeconds).toBeGreaterThan(0)
-    expect(result.maxAgeSeconds).toBeLessThanOrEqual(60)
-  })
-
-  it('rejects expired tokens before storing a session', async () => {
-    const { service, getStored } = setup()
-    await expect(service.createSession(identity, accessToken(1)))
-      .rejects.toMatchObject({ code: 'UNAUTHENTICATED', statusCode: 401 })
-    expect(getStored()).toBeUndefined()
+    await service.createSession(identity, accessToken(expiry))
+    const remainingSeconds = (getStored()!.expiresAt.getTime() - Date.now()) / 1000
+    expect(remainingSeconds).toBeGreaterThan(getEnv().sessionTtlSeconds - 5)
+    expect(remainingSeconds).toBeLessThanOrEqual(getEnv().sessionTtlSeconds)
   })
 
   it('revokes a newly stored session if profile lookup fails', async () => {
