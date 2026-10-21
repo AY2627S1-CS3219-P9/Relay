@@ -29,7 +29,8 @@ export function SupplierFilterPanel({
     onChange({ ...filters, serviceTypes })
   }
   return (
-    <aside className="supplier-filter-panel glass-card relay-mobile-sheet-surface" aria-label="Supplier filters">
+    <aside className="supplier-filter-panel glass-card relay-mobile-sheet-surface relay-mobile-toolbar-sheet" aria-label="Supplier filters">
+      <div className="relay-mobile-toolbar-sheet-content">
       <div className="supplier-filter-header">
         <div>
           <p className="supplier-filter-eyebrow">FILTERS</p>
@@ -70,6 +71,7 @@ export function SupplierFilterPanel({
       <RelayButton variant="primary" onClick={onClose}>
         <FilterIcon className="supplier-filter-button-icon" /> Done
       </RelayButton>
+      </div>
     </aside>
   )
 }

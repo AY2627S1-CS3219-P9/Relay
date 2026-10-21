@@ -52,10 +52,39 @@
   display: none;
 }
 @media (max-width: 700px) {
-  .remote-profile-anchor {
+  .remote-profile-anchor.relay-mobile-bottom-sheet-anchor {
+    bottom: calc(72px + env(safe-area-inset-bottom)) !important;
     right: 0 !important;
     left: 0 !important;
     width: 100% !important;
+    max-height: calc(100dvh - 96px) !important;
+    overflow: visible;
+  }
+  .remote-profile-anchor.relay-mobile-bottom-sheet-anchor::after {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0;
+    bottom: calc(-72px - env(safe-area-inset-bottom));
+    left: 0;
+    content: '';
+    border: 1px solid var(--relay-glass-surface-border);
+    border-radius: 24px 24px 0 0;
+    background: var(--relay-glass-surface-bg);
+    box-shadow: var(--relay-glass-surface-shadow);
+    -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+    backdrop-filter: var(--relay-glass-surface-filter);
+    pointer-events: none;
+  }
+  .remote-profile-anchor.relay-mobile-bottom-sheet-anchor > .remote-profile-card {
+    position: relative;
+    z-index: 1;
+    border: 0;
+    border-radius: 24px 24px 0 0;
+    box-shadow: none;
+  }
+  .remote-profile-anchor.relay-mobile-bottom-sheet-anchor > .remote-profile-card::after {
+    display: none;
   }
   .remote-credit-anchor.relay-mobile-bottom-sheet-anchor {
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
