@@ -22,6 +22,8 @@ const request: CreateErrandRequest = {
 function setup() {
   const repository = {
     addPendingErrand: vi.fn().mockResolvedValue('pending-id'),
+    publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
+    deletePendingErrand: vi.fn().mockResolvedValue(undefined),
     createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
     publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
     deletePendingErrand: vi.fn().mockResolvedValue(undefined),
@@ -59,11 +61,13 @@ describe('errand creation and credit reservation', () => {
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
 
-  it('leaves the pending row for recovery if reservation fails', async () => {
+  it('publishes a failure event and cleans up if reservation fails', async () => {
     const { service, repository, credit, supplier } = setup()
     credit.reserve.mockRejectedValue(new Error('Credit unavailable'))
     await expect(service.createErrand(user, request)).rejects.toThrow('Credit unavailable')
     expect(repository.createErrand).not.toHaveBeenCalled()
+    expect(repository.publishCreationFailedEvent).toHaveBeenCalledWith('pending-id', user.sub)
+    expect(repository.deletePendingErrand).toHaveBeenCalledWith('pending-id')
     expect(supplier.validateSelection).toHaveBeenCalledOnce()
   })
 

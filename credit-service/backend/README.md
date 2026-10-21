@@ -100,10 +100,12 @@ with the browser cookie to this API.
 With the credit database running, generate the client and build before testing:
 
 ```sh
-npm run prisma:generate --workspace @relay/credit-backend
-npm run build --workspace @relay/credit-backend
-npm run test --workspace @relay/credit-backend
+cp credit-service/backend/.env.example credit-service/backend/.env && docker compose up -d --wait credit-postgres kafka kafka-init && npm run test --workspace @relay/credit-backend
 ```
+
+The test script generates the Prisma client, applies pending migrations, builds
+`dist/`, and then runs the HTTP, command, and Kafka integration tests. Local
+host processes use Kafka's published listener at `localhost:29092`.
 
 Integration tests use the configured real credit database and an HTTP test
 server implementing the User Service session-validation boundary. Fixtures use
