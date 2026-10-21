@@ -260,6 +260,14 @@
     left: 0 !important;
     width: 100% !important;
   }
+  .relay-card-anchor.relay-mobile-bottom-sheet-anchor {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
   .relay-card-scroll-surface { max-height: calc(100dvh - 96px); overflow: auto !important; }
   .relay-segmented-control-size-map {
     width: calc(100vw - 32px);
