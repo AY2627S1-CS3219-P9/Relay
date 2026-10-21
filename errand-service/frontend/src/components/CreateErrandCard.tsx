@@ -21,7 +21,22 @@ type CreateForm = {
   description: string
   instructions: string
   creditAmount: string
+  startAt: string
   expiresAt: string
+}
+
+function formatDateTimeLocal(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function defaultStartValue() {
+  return formatDateTimeLocal(new Date())
+}
+
+function defaultDeadlineValue() {
+  const deadline = new Date(Date.now() + 2 * 60 * 60 * 1000)
+  return formatDateTimeLocal(deadline)
 }
 
 export function CreateErrandCard({
@@ -53,7 +68,8 @@ export function CreateErrandCard({
     description: '',
     instructions: '',
     creditAmount: '',
-    expiresAt: '',
+    startAt: defaultStartValue(),
+    expiresAt: defaultDeadlineValue(),
   })
 
   useEffect(() => {
@@ -122,6 +138,7 @@ export function CreateErrandCard({
     setFieldErrors({})
     const validationErrors: Record<string, string> = {}
     const creditAmount = Number(form.creditAmount)
+    const start = form.startAt ? new Date(form.startAt) : undefined
     const deadline = form.expiresAt ? new Date(form.expiresAt) : undefined
     if (!form.name.trim()) validationErrors.name = 'Enter an errand name.'
     else if (form.name.trim().length > 200) validationErrors.name = 'Use 200 characters or fewer.'
@@ -129,16 +146,22 @@ export function CreateErrandCard({
     if (form.serviceType === '') validationErrors.serviceType = 'Select a service type.'
     else if (selectedSupplier && !selectedSupplier.serviceTypes.includes(form.serviceType))
       validationErrors.serviceType = 'This service type is not offered by the selected supplier.'
-    if (!form.deliveryBuildingName.trim() || !form.deliveryFloorNumber.trim())
-      validationErrors.deliveryLocation = 'Enter a delivery building and floor.'
+    if (!form.deliveryBuildingName.trim()) validationErrors.deliveryBuildingName = 'Enter a delivery building.'
+    if (!form.deliveryFloorNumber.trim()) validationErrors.deliveryFloorNumber = 'Enter a delivery floor.'
+    else if (!Number.isInteger(Number(form.deliveryFloorNumber)))
+      validationErrors.deliveryFloorNumber = 'Floor must be a number.'
     if (!form.description.trim()) validationErrors.description = 'Enter a description.'
     else if (form.description.trim().length > 5000)
       validationErrors.description = 'Use 5,000 characters or fewer.'
     if (!form.creditAmount.trim() || !Number.isInteger(creditAmount) || creditAmount < 0)
       validationErrors.creditAmount = 'Enter a whole number of credits that is 0 or greater.'
+    if (!start) validationErrors.startAt = 'Choose a start time.'
+    else if (Number.isNaN(start.getTime())) validationErrors.startAt = 'Choose a valid start time.'
     if (!deadline) validationErrors.expiresAt = 'Choose a deadline.'
     else if (Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now())
       validationErrors.expiresAt = 'Choose a future deadline.'
+    if (start && deadline && !Number.isNaN(start.getTime()) && start.getTime() > deadline.getTime())
+      validationErrors.startAt = 'Start time must be on or before the deadline.'
     if (!selectedSupplier) validationErrors.supplierId = 'Select a supplier.'
     if (!errandApi) setErrorMessage('Errand service is unavailable.')
     if (Object.keys(validationErrors).length > 0) {
@@ -146,7 +169,7 @@ export function CreateErrandCard({
       setErrorMessage('Check the highlighted fields.')
       return
     }
-    if (!errandApi || !selectedSupplier || !deadline) return
+    if (!errandApi || !selectedSupplier || !start || !deadline) return
     setSubmitting(true)
     void errandApi
       .createErrand({
@@ -169,6 +192,7 @@ export function CreateErrandCard({
           ...(form.instructions.trim() ? { instructions: form.instructions.trim() } : {}),
         },
         creditAmount,
+        startAt: start.toISOString(),
         expiresAt: deadline.toISOString(),
       })
       .then(() => onCreated())
@@ -189,6 +213,7 @@ export function CreateErrandCard({
       <form className="errand-form" onSubmit={submit}>
         <RelayFormField label="What do you need?" required error={errorFor('name')}>
           <input
+            required
             value={form.name}
             onChange={(e) => update('name', e.target.value)}
             placeholder="e.g. Graphing calculator"
@@ -196,7 +221,7 @@ export function CreateErrandCard({
           />
         </RelayFormField>
         <RelayFormField label="Supplier" required error={errorFor('supplierId')}>
-          <select value={form.supplierId} onChange={(e) => handleSupplierChange(e.target.value)}>
+          <select required value={form.supplierId} onChange={(e) => handleSupplierChange(e.target.value)}>
             <option value="">Select a supplier</option>
             {suppliers.map((supplier) => (
               <option key={supplier.id} value={supplier.id}>
@@ -207,6 +232,7 @@ export function CreateErrandCard({
         </RelayFormField>
         <RelayFormField label="Service type" required error={errorFor('serviceType')}>
           <select
+            required
             value={form.serviceType}
             onChange={(e) =>
               update(
@@ -224,46 +250,40 @@ export function CreateErrandCard({
           </select>
         </RelayFormField>
         <div className="errand-form-grid">
-          <label className="errand-field">
-            <span>Pickup building</span>
-            <input
-              value={form.pickupBuildingName}
-              onChange={(e) => update('pickupBuildingName', e.target.value)}
-            />
-          </label>
-          <label className="errand-field">
-            <span>Floor</span>
-            <input
-              inputMode="numeric"
-              value={form.pickupFloorNumber}
-              onChange={(e) => update('pickupFloorNumber', e.target.value)}
-            />
-          </label>
+          <div className="errand-field">
+            <span>Pickup building <b aria-hidden="true">*</b></span>
+            <div className="errand-readonly-value">{form.pickupBuildingName}</div>
+          </div>
+          <div className="errand-field">
+            <span>Floor <b aria-hidden="true">*</b></span>
+            <div className="errand-readonly-value">Level {form.pickupFloorNumber}</div>
+          </div>
         </div>
         <div className="errand-form-grid">
           <label className="errand-field">
-            <span>Delivery building</span>
+            <span>Delivery building <b aria-hidden="true">*</b></span>
             <input
+              required
               value={form.deliveryBuildingName}
               onChange={(e) => update('deliveryBuildingName', e.target.value)}
               placeholder="e.g. Kent Ridge MRT"
             />
-            {errorFor('deliveryLocation', 'deliveryLocation.buildingName') && (
-              <small role="alert">
-                {errorFor('deliveryLocation', 'deliveryLocation.buildingName')}
-              </small>
-            )}
           </label>
           <label className="errand-field">
-            <span>Floor</span>
+            <span>Floor <b aria-hidden="true">*</b></span>
             <input
-              inputMode="numeric"
+              type="number"
+              required
+              step="1"
               value={form.deliveryFloorNumber}
               onChange={(e) => update('deliveryFloorNumber', e.target.value)}
+              onInvalid={(e) => {
+                e.currentTarget.setCustomValidity(
+                  e.currentTarget.value.trim() ? 'Floor must be a number.' : '',
+                )
+              }}
+              onInput={(e) => e.currentTarget.setCustomValidity('')}
             />
-            {errorFor('deliveryLocation.floorNumber') && (
-              <small role="alert">{errorFor('deliveryLocation.floorNumber')}</small>
-            )}
           </label>
         </div>
         <RelayFormField
@@ -272,6 +292,7 @@ export function CreateErrandCard({
           error={errorFor('description', 'deliveryDetails.description')}
         >
           <textarea
+            required
             value={form.description}
             onChange={(e) => update('description', e.target.value)}
             placeholder="Describe what needs to be picked up or delivered."
@@ -290,32 +311,37 @@ export function CreateErrandCard({
             rows={2}
           />
         </label>
-        <div className="errand-form-grid">
+        <div className="errand-form-grid errand-reward-grid">
           <label className="errand-field">
             <span>Reward credits</span>
             <input
-              inputMode="numeric"
+              type="number"
+              required
               min="0"
               step="1"
               value={form.creditAmount}
               onChange={(e) => update('creditAmount', e.target.value)}
               placeholder="15"
             />
-            {errorFor('creditAmount') && <small role="alert">{errorFor('creditAmount')}</small>}
           </label>
+          <RelayFormField label="Start time" required error={errorFor('startAt')}>
+            <input
+              type="datetime-local"
+              required
+              value={form.startAt}
+              onChange={(e) => update('startAt', e.target.value)}
+            />
+          </RelayFormField>
           <label className="errand-field">
             <span>Deadline</span>
             <input
               type="datetime-local"
+              required
               value={form.expiresAt}
               onChange={(e) => update('expiresAt', e.target.value)}
             />
-            {errorFor('expiresAt') && <small role="alert">{errorFor('expiresAt')}</small>}
           </label>
         </div>
-        <p className="errand-form-note">
-          Start time is recorded automatically when your request is created.
-        </p>
         <RelayButton variant="primary" type="submit" disabled={submitting}>
           {submitting ? 'Creating request…' : 'Create request'}
         </RelayButton>

@@ -65,13 +65,32 @@
   white-space: nowrap;
   gap: 8px;
 }
-.relay-button-size-map-pill .profile-chip-avatar {
+.relay-button-with-image-avatar {
+  display: grid;
   width: 28px;
   height: 28px;
-  margin-right: 8px;
+  flex: 0 0 28px;
+  place-items: center;
   border-radius: 50%;
+  background: var(--relay-blue);
+  color: #fff;
+  font-size: 1.15em;
+  font-weight: 800;
+  overflow: hidden;
+}
+.relay-button-with-image.relay-button-size-map-pill {
+  padding: 1px 20px 1px 1px;
+}
+.relay-button-with-image.relay-button-size-map-pill .relay-button-with-image-avatar {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+  border-radius: inherit;
+}
+.relay-button-with-image-avatar img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  vertical-align: middle;
 }
 .relay-button-size-map-icon {
   display: inline-flex;
@@ -139,8 +158,8 @@
 }
 @media (max-width: 700px) {
   .relay-button-size-map-pill {
-    min-height: 56px;
-    height: 56px;
+    min-height: 50px;
+    height: 50px;
     padding: 10px 16px;
     font-size: var(--relay-control-font-size, 1.05rem);
   }
@@ -201,16 +220,83 @@
   inset: 0;
   pointer-events: none;
 }
-.relay-bubble-popover-measuring > * {
-  visibility: hidden;
-}
-.relay-bubble-popover > * {
-  box-sizing: border-box;
-  max-width: calc(100vw - 48px);
-  max-height: calc(100dvh - 48px);
+.relay-updates-card {
+  width: 100%;
+  padding: 22px;
   overflow: auto;
 }
-.relay-bubble-popover-ready > * {
+.relay-updates-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.relay-updates-header h2 { margin: 0; letter-spacing: -.04em; }
+.relay-updates-eyebrow { margin: 0 0 7px; color: var(--relay-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
+.relay-updates-list { display: grid; gap: 10px; margin-top: 20px; }
+.relay-updates-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--relay-glass-soft-border);
+  border-radius: 16px;
+  background: var(--relay-glass-soft-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.relay-updates-item { cursor: pointer; }
+button.relay-updates-item:hover { border-color: var(--relay-blue); }
+.relay-updates-item-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.relay-updates-item small, .relay-updates-message { color: var(--relay-text-muted); font-size: .82rem; line-height: 1.4; }
+.relay-updates-message { margin: 20px 0 0; }
+.relay-bubble-popover-measuring > .relay-bubble-popover-frame {
+  visibility: hidden;
+}
+.relay-bubble-popover-frame {
+  position: fixed;
+  z-index: var(--relay-layer-card);
+  box-sizing: border-box;
+  overflow: auto;
+  pointer-events: auto;
+  scrollbar-width: none;
+}
+.relay-bubble-popover-frame::-webkit-scrollbar { display: none; }
+.relay-bubble-popover-frame > * {
+  box-sizing: border-box;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0;
+  transform: none !important;
+}
+@media (max-width: 700px) {
+  .relay-bubble-popover-frame {
+    border: 1px solid var(--relay-glass-surface-border);
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    background: var(--relay-glass-surface-bg);
+    box-shadow: var(--relay-glass-surface-shadow);
+    -webkit-backdrop-filter: var(--relay-glass-surface-filter);
+    backdrop-filter: var(--relay-glass-surface-filter);
+  }
+  .relay-bubble-popover-frame > .relay-mobile-sheet-surface {
+    max-height: none;
+    overflow: visible !important;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .relay-bubble-popover-frame > .relay-mobile-sheet-surface::after {
+    display: none;
+  }
+}
+.relay-bubble-popover-ready > .relay-bubble-popover-frame {
   animation: relay-bubble-in 0.42s cubic-bezier(0.22, 1.18, 0.36, 1) both;
   transform-origin: var(--relay-bubble-origin-x, 50%) var(--relay-bubble-origin-y, 50%);
 }
@@ -225,7 +311,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .relay-bubble-popover-ready > * {
+  .relay-bubble-popover-ready > .relay-bubble-popover-frame {
     animation-duration: 0.12s;
     animation-name: relay-bubble-fade-in;
   }

@@ -35,7 +35,6 @@ services:
     env_file:
       - .env.development
     ports:
-      - '5555:5555' # For prisma studio
       - '127.0.0.1:3001:3000' # User API for local Postman requests
     environment:
       PORT: 3000
@@ -51,4 +50,63 @@ services:
   credit-api:
     ports:
       - '127.0.0.1:3002:3000' # Credit API for local Postman requests
-      - '127.0.0.1:5556:5555' # Credit Prisma Studio
+
+  user-prisma-studio:
+    build:
+      context: .
+      dockerfile: user-service/backend/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://relay:relay@user-postgres:5432/relay?schema=public
+    command:
+      - npx
+      - prisma
+      - studio
+      - --schema=user-service/backend/prisma/schema.prisma
+      - --hostname=0.0.0.0
+      - --port=5555
+    ports:
+      - '127.0.0.1:5555:5555'
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+
+  errand-prisma-studio:
+    build:
+      context: .
+      dockerfile: errand-service/backend/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
+    command:
+      - npx
+      - prisma
+      - studio
+      - --schema=errand-service/backend/prisma/schema.prisma
+      - --hostname=0.0.0.0
+      - --port=5555
+    ports:
+      - '127.0.0.1:5556:5555'
+    depends_on:
+      errand-postgres:
+        condition: service_healthy
+
+  credit-prisma-studio:
+    build:
+      context: .
+      dockerfile: credit-service/backend/Dockerfile
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
+    command:
+      - npx
+      - prisma
+      - studio
+      - --schema=credit-service/backend/prisma/schema.prisma
+      - --hostname=0.0.0.0
+      - --port=5555
+    ports:
+      - '127.0.0.1:5557:5555'
+    depends_on:
+      credit-postgres:
+        condition: service_healthy

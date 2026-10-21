@@ -91,6 +91,7 @@ export class ErrandRepository {
           deliveryDescription: request.deliveryDetails.description,
           deliveryInstructions: request.deliveryDetails.instructions,
           creditAmount: request.creditAmount,
+          ...(request.startAt ? { startAt: new Date(request.startAt) } : {}),
           expiresAt: request.expiresAt ? new Date(request.expiresAt) : defaultExpiry(),
         },
       })
@@ -632,6 +633,7 @@ function toContract(row: any): Errand {
     },
     creditAmount: row.creditAmount,
     status: row.status as ErrandStatus,
+    startAt: row.startAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
     confirmationDeadline: row.confirmationDeadline?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),

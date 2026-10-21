@@ -14,6 +14,7 @@ export type CreateErrandRequest = {
   targetLocation: ErrandLocation
   deliveryDetails: DeliveryDetails
   creditAmount: number
+  startAt?: string
   expiresAt?: string
 }
 

@@ -79,7 +79,7 @@ export function RemotePage({
     >
       <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
         {card && bubbleAnchor ? (
-          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} className={service === 'credit' ? 'remote-credit-anchor' : 'remote-profile-anchor'} style={cardStyle}>
+          <RelayCardAnchor placement="anchored" anchor={bubbleAnchor} className={`${service === 'credit' ? 'remote-credit-anchor' : 'remote-profile-anchor'} relay-mobile-bottom-sheet-anchor`} style={cardStyle}>
           <GlassCard
             variant="glass"
             className={`remote-profile-card relay-mobile-sheet-surface${service === 'credit' && appProps?.creditHistoryOpen ? ' remote-credit-history-card' : ''}`}

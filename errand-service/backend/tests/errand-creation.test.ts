@@ -37,6 +37,14 @@ function setup() {
 }
 
 describe('errand creation and credit reservation', () => {
+  it('validates that a supplied start time is before the deadline', () => {
+    expect(() => validateCreateErrand({
+      ...request,
+      startAt: '2026-10-21T12:00:00.000Z',
+      expiresAt: '2026-10-21T11:00:00.000Z',
+    })).toThrow('The errand request is invalid.')
+  })
+
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit, supplier } = setup()
     await service.createErrand(user, request)

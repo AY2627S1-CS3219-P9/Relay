@@ -40,12 +40,12 @@ export function ErrandDetailCard({
   }
 
   return (
-    <GlassCard className="supplier-detail-card supplier-errand-detail relay-mobile-sheet-surface" style={style} aria-label="Errand details">
+    <GlassCard className="supplier-detail-card supplier-errand-detail relay-mobile-sheet-surface relay-card-scroll-surface" style={style} aria-label="Errand details">
       <div className="errand-detail-header">
         <IconButton label="Back to supplier details" onClick={onBack}>‹</IconButton>
         <div>
           <p className="errand-eyebrow">AVAILABLE ERRAND</p>
-          <h2>{errand.deliveryDetails.description}</h2>
+          <h2>{errand.name}</h2>
           <div className="errand-detail-meta"><StatusBadge tone="success">Open</StatusBadge><span>Due {deadline(errand.expiresAt)}</span></div>
         </div>
       </div>
@@ -82,6 +82,6 @@ export function SupplierErrandPanel({ supplierId, api, onSelect }: { supplierId:
     {loading && <LoadingState label="Loading errands" />}
     {!loading && error && <ErrorMessage message={error} />}
     {!loading && !error && errands.length === 0 && <p className="supplier-no-errands">No errands</p>}
-    {!loading && !error && errands.length > 0 && <div className="supplier-errand-list">{errands.map((errand) => <button className="supplier-errand-row" type="button" key={errand.id} onClick={() => onSelect(errand)}><span><strong>{errand.deliveryDetails.description}</strong><small>{route(errand.pickupLocation)} · Due {deadline(errand.expiresAt)}</small></span><b>{errand.creditAmount} cr</b></button>)}</div>}
+    {!loading && !error && errands.length > 0 && <div className="supplier-errand-list">{errands.map((errand) => <button className="supplier-errand-row" type="button" key={errand.id} onClick={() => onSelect(errand)}><span><strong>{errand.name}</strong><small>{route(errand.pickupLocation)} · Due {deadline(errand.expiresAt)}</small></span><b>{errand.creditAmount} cr</b></button>)}</div>}
   </div>
 }

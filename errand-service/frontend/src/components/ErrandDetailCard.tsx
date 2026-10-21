@@ -48,23 +48,26 @@ export function ErrandDetailCard({
 
   return (
     <GlassCard
-      className="errand-detail-card relay-mobile-sheet-surface"
+      className="errand-detail-card relay-mobile-sheet-surface relay-card-scroll-surface"
       aria-label={`${errand.name} details`}
     >
       <div className="errand-detail-header">
-        <div>
+        <div className="errand-detail-back-row">
+          <IconButton label="Close errand details" onClick={onClose}>
+            ×
+          </IconButton>
+        </div>
+        <div className="errand-detail-heading">
           <p>{role === 'courier' ? 'AVAILABLE ERRAND' : 'ACTIVE ERRAND'}</p>
           <h2>{errand.name}</h2>
           <div className="errand-detail-meta">
             <StatusBadge tone={statusTone(errand.status)}>
               {STATUS_LABELS[errand.status]}
             </StatusBadge>
+            <span>Starts {formatDeadline(errand.startAt)}</span>
             <span>Due {formatDeadline(errand.expiresAt)}</span>
           </div>
         </div>
-        <IconButton label="Close errand details" onClick={onClose}>
-          ×
-        </IconButton>
       </div>
 
       {errand.courierSub && (

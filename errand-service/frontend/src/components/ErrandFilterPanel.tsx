@@ -43,9 +43,10 @@ export function ErrandFilterPanel({
 
   return (
     <aside
-      className="errand-filter-panel glass-card relay-mobile-sheet-surface"
+      className="errand-filter-panel glass-card relay-mobile-sheet-surface relay-mobile-toolbar-sheet"
       aria-label="Errand filters"
     >
+      <div className="relay-mobile-toolbar-sheet-content">
       <div className="errand-panel-header">
         <div>
           <p className="errand-eyebrow">FILTERS</p>
@@ -102,6 +103,7 @@ export function ErrandFilterPanel({
       <RelayButton variant="primary" onClick={onClose}>
         <FilterIcon className="errand-button-icon" /> Done
       </RelayButton>
+      </div>
     </aside>
   )
 }

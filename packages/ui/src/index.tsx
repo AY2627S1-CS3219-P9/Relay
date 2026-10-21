@@ -5,6 +5,7 @@ export type { MessageVariant } from './ErrorMessage'
 export {
   BellIcon,
   BoltIcon,
+  ButtonWithImage,
   CardView,
   BubblePopover,
   ClipboardPlusIcon,
@@ -30,6 +31,7 @@ export {
   Spinner,
   StatusBadge,
   TextButton,
+  UpdatesCard,
 } from './components'
 export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant, RelayCardPlacement, RelayCardSize } from './components'
 
