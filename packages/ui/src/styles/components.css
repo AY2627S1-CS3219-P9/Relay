@@ -82,9 +82,9 @@
   padding: 1px 20px 1px 1px;
 }
 .relay-button-with-image.relay-button-size-map-pill .relay-button-with-image-avatar {
-  width: 48px;
-  height: 48px;
-  flex-basis: 48px;
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
   border-radius: inherit;
 }
 .relay-button-with-image-avatar img {
@@ -158,8 +158,8 @@
 }
 @media (max-width: 700px) {
   .relay-button-size-map-pill {
-    min-height: 56px;
-    height: 56px;
+    min-height: 50px;
+    height: 50px;
     padding: 10px 16px;
     font-size: var(--relay-control-font-size, 1.05rem);
   }
