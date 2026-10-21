@@ -37,3 +37,6 @@ export type ChangePasswordRequest = {
 export type DeleteUserRequest = {
   confirmation: string
 }
+
+export type PromoteUserToAdminRequest = { email: string }
+export type DemoteAdminToUserRequest = { email: string }

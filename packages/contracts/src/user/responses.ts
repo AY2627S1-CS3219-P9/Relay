@@ -36,3 +36,5 @@ export type ValidateSessionResponse = Session
 
 /** Response from the private profile lookup used by backend services. */
 export type GetUserProfileBySubjectResponse = UserProfileSummary
+
+export type GetAdminsResponse = User[]

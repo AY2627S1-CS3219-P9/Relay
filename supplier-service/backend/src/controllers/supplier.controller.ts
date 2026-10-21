@@ -25,7 +25,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<global
   }
 }
 
-async function checkAuth(cookieHeader: string): Promise<{ role: 'admin' | 'user' } | null> {
+async function checkAuth(cookieHeader: string): Promise<{ role: 'super-admin' | 'admin' | 'user' } | null> {
   if (!cookieHeader || cookieHeader.trim() === '') {
     return null
   }
@@ -177,7 +177,7 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin') {
+      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
         res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
         return
       }
@@ -247,7 +247,7 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin') {
+      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
         res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
         return
       }
@@ -279,7 +279,7 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin') {
+      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
         res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
         return
       }

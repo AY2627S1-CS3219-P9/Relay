@@ -75,7 +75,7 @@ export default function App({
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
   const [adminAnchor, setAdminAnchor] = useState<BubbleAnchor>()
-  const isAdmin = userProfile?.role === 'admin'
+  const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super-admin'
   const mapCenter = mapViewport?.center ?? fallbackCenter
 
   useEffect(() => {

@@ -3,7 +3,7 @@ export type ImageDataUrl = string & { readonly __brand: 'ImageDataUrl' }
 
 export type UserId = string & { readonly __brand: 'UserId' }
 
-export type UserRole = 'admin' | 'user'
+export type UserRole = 'super-admin' | 'admin' | 'user'
 
 /**
  * Identity available from an authenticated User Service session.

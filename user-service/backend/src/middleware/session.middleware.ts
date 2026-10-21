@@ -56,8 +56,7 @@ export const sessionMiddleware: RequestHandler = async (
     }
     next()
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'The session is invalid.'
-    res.status(401).json({ ok: false, error: { code: 'UNAUTHENTICATED', message } })
+    next(error)
   }
 }
 

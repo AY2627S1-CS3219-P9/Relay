@@ -4,13 +4,13 @@ import {
   CognitoIdentityProviderClient,
   DeleteUserCommand,
   GetUserCommand,
-  ListUsersInGroupCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload } from '../storage/image-storage.js'
 import type { AuthenticatedUser, UserProfileRecord } from '../types/user.types.js'
 import { UserServiceError } from '../types/user.types.js'
 import { UserRepository } from '../repositories/user.repository.js'
+import { SessionRepository } from '../repositories/session.repository.js'
 import {
   validateDeletionConfirmation,
   validateProfileImage,
@@ -18,16 +18,11 @@ import {
 } from '../validators/user.validator.js'
 
 export interface IdentityGateway {
-  assertCanDeleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
   deleteAccount(user: AuthenticatedUser, accessToken: string): Promise<void>
 }
 
 /** Temporary gateway. Can replace this with Cognito deletion later. */
 export class MockIdentityGateway implements IdentityGateway {
-  async assertCanDeleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
-    return
-  }
-
   async deleteAccount(_user: AuthenticatedUser, _accessToken: string): Promise<void> {
     return
   }
@@ -42,30 +37,6 @@ export class CognitoIdentityGateway implements IdentityGateway {
       region: env.awsRegion,
       endpoint: env.awsEndpointUrl,
     })
-  }
-
-  async assertCanDeleteAccount(user: AuthenticatedUser, _accessToken: string): Promise<void> {
-    if (user.role !== 'admin') return
-
-    const env = getEnv()
-    let nextToken: string | undefined
-    let adminCount = 0
-
-    do {
-      const result = await this.client.send(
-        new ListUsersInGroupCommand({
-          UserPoolId: env.cognitoUserPoolId,
-          GroupName: env.cognitoAdminGroupName,
-          NextToken: nextToken,
-        }),
-      )
-      adminCount += result.Users?.length ?? 0
-      nextToken = result.NextToken
-    } while (nextToken)
-
-    if (adminCount <= 1) {
-      throw new UserServiceError('FORBIDDEN', 'The only admin account cannot be deleted.', 403)
-    }
   }
 
   async deleteAccount(_user: AuthenticatedUser, accessToken: string): Promise<void> {
@@ -104,6 +75,7 @@ export class UserService {
     private readonly repository: UserRepository,
     private readonly imageStorage: ImageStorage,
     private readonly identityGateway: IdentityGateway,
+    private readonly sessions: SessionRepository,
   ) {}
 
   async getUser(user: AuthenticatedUser): Promise<User> {
@@ -169,31 +141,28 @@ export class UserService {
       newImageKey = null
     }
 
+    let profile: UserProfileRecord
     try {
       const update = {
         ...(request.username !== undefined ? { username: request.username } : {}),
         ...(newImageKey !== undefined ? { profilePictureKey: newImageKey } : {}),
       }
-
-      const profile = existing
+      profile = existing
         ? await this.repository.updateProfile(user.sub, update)
         : await this.repository.createProfile(user.sub, update)
-
-      if (newImageKey !== undefined && existing?.profilePictureKey) {
-        await this.imageStorage.delete(existing.profilePictureKey)
-      }
-
-      return this.toPublicProfile(user, profile)
     } catch (error) {
-      if (newImageKey) {
-        await this.deleteUploadedImageSafely(newImageKey)
-      }
+      if (newImageKey) await this.deleteUploadedImageSafely(newImageKey)
       if (error instanceof UserServiceError) throw error
       if (isUniqueConstraintError(error)) {
         throw new UserServiceError('USERNAME_TAKEN', 'That username is already taken.', 409)
       }
       throw error
     }
+
+    if (newImageKey !== undefined && existing?.profilePictureKey) {
+      await this.deleteUploadedImageSafely(existing.profilePictureKey)
+    }
+    return this.toPublicProfile(user, profile)
   }
 
   async deleteUser(
@@ -201,21 +170,22 @@ export class UserService {
     confirmation: unknown,
     accessToken: string,
   ): Promise<void> {
+    if (user.role === 'super-admin') {
+      throw new UserServiceError('FORBIDDEN', 'The super admin account cannot be deleted.', 403)
+    }
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
       throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
     }
     validateDeletionConfirmation(confirmation, existing.username)
 
-    // Delete the identity first. If Cognito rejects the request, keep the
-    // local profile and image intact so the user can retry safely.
-    await this.identityGateway.assertCanDeleteAccount(user, accessToken)
+    // Revoke first so a partial deletion cannot leave a valid Relay session.
+    await this.sessions.revokeByCognitoSub(user.sub)
     await this.identityGateway.deleteAccount(user, accessToken)
-
-    if (existing.profilePictureKey) {
-      await this.imageStorage.delete(existing.profilePictureKey)
-    }
     await this.repository.deleteProfile(user.sub)
+    if (existing.profilePictureKey) {
+      await this.deleteUploadedImageSafely(existing.profilePictureKey)
+    }
   }
 
   private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {
