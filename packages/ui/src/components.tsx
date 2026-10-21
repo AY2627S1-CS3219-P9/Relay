@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
+import type { Errand } from '@relay/contracts'
 import relayHandoffLogo from './assets/relay-handoff.png'
 
 export type BubbleAnchor = {
@@ -7,6 +8,36 @@ export type BubbleAnchor = {
   left: number
   right: number
   bottom: number
+}
+
+type CardViewportBounds = {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+function getDesktopCardViewportBounds(surface: HTMLElement, margin: number, gap: number): CardViewportBounds {
+  const bounds: CardViewportBounds = {
+    top: margin,
+    right: window.innerWidth - margin,
+    bottom: window.innerHeight - margin,
+    left: margin,
+  }
+
+  for (const element of surface.querySelectorAll<HTMLElement>('[data-relay-card-exclusion]')) {
+    const rect = element.getBoundingClientRect()
+    if (!rect.width || !rect.height) continue
+
+    for (const edge of element.dataset.relayCardExclusion?.split(' ') ?? []) {
+      if (edge === 'top') bounds.top = Math.max(bounds.top, rect.bottom + gap)
+      if (edge === 'right') bounds.right = Math.min(bounds.right, rect.left - gap)
+      if (edge === 'bottom') bounds.bottom = Math.min(bounds.bottom, rect.top - gap)
+      if (edge === 'left') bounds.left = Math.max(bounds.left, rect.right + gap)
+    }
+  }
+
+  return bounds
 }
 
 export type RelayButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain'
@@ -33,6 +64,47 @@ export function RelayButton({
     >
       {children}
     </button>
+  )
+}
+
+export function ButtonWithImage({
+  imageUrl,
+  imageAlt = '',
+  fallback,
+  variant = 'secondary',
+  size = 'default',
+  scale = 1,
+  className = '',
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  imageUrl?: string | null
+  imageAlt?: string
+  fallback: ReactNode
+  children: ReactNode
+  variant?: RelayButtonVariant
+  size?: RelayButtonSize
+  scale?: number
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  return (
+    <RelayButton
+      {...props}
+      variant={variant}
+      size={size}
+      scale={scale}
+      className={`relay-button-with-image${className ? ` ${className}` : ''}`}
+    >
+      <span className="relay-button-with-image-avatar" aria-hidden={imageAlt ? undefined : 'true'}>
+        {imageUrl && !imageFailed ? (
+          <img src={imageUrl} alt={imageAlt} onError={() => setImageFailed(true)} />
+        ) : (
+          fallback
+        )}
+      </span>
+      {children}
+    </RelayButton>
   )
 }
 
@@ -63,106 +135,114 @@ export function BubblePopover({
   className = '',
   open = true,
   maxWidth = 360,
+  placement = 'auto',
 }: {
   anchor?: BubbleAnchor
   children: ReactNode
   className?: string
   open?: boolean
   maxWidth?: number
+  placement?: 'auto' | 'above'
 }) {
-  const contentRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
 
   useLayoutEffect(() => {
     setReady(false)
-    if (!open || !contentRef.current) return
-    const content = contentRef.current.firstElementChild as HTMLElement | null
-    if (!content) return
-    if (!anchor) {
-      content.style.removeProperty('top')
-      content.style.removeProperty('right')
-      content.style.removeProperty('bottom')
-      content.style.removeProperty('left')
-      content.style.removeProperty('width')
-      content.style.removeProperty('max-height')
-      content.style.removeProperty('overflow')
-      content.style.removeProperty('transform')
-      setReady(true)
-      return
-    }
+    const popoverFrame = frameRef.current
+    if (!open || !anchor || !popoverFrame) return
+    const cardSurface = popoverFrame.closest<HTMLElement>('.supplier-app, .errand-map-shell') ?? document.body
 
-    let frame: number | undefined
+    let animationFrame: number | undefined
     const schedulePosition = () => {
-      if (frame !== undefined) window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(() => {
-        frame = undefined
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = undefined
         const isMobile = window.innerWidth <= 700
         if (isMobile) {
-          content.style.removeProperty('top')
-          content.style.removeProperty('right')
-          content.style.removeProperty('bottom')
-          content.style.removeProperty('left')
-          content.style.removeProperty('width')
-          content.style.removeProperty('max-height')
-          content.style.removeProperty('overflow')
-          content.style.removeProperty('transform')
+          popoverFrame.style.top = 'auto'
+          popoverFrame.style.right = '0'
+          popoverFrame.style.bottom = '0'
+          popoverFrame.style.left = '0'
+          popoverFrame.style.width = '100%'
+          popoverFrame.style.maxWidth = '100vw'
+          popoverFrame.style.maxHeight = 'calc(100dvh - 24px)'
+          popoverFrame.style.paddingBottom = 'calc(72px + env(safe-area-inset-bottom))'
           setReady(true)
           return
         }
 
-        const margin = 24
         const gap = 16
-        const width = Math.min(maxWidth, window.innerWidth - margin * 2)
-        const maxHeight = Math.max(0, window.innerHeight - margin * 2)
-        content.style.width = `${width}px`
-        content.style.maxHeight = `${maxHeight}px`
-        content.style.overflow = 'auto'
-        content.style.right = 'auto'
-        content.style.bottom = 'auto'
-        content.style.transform = 'none'
+        const bounds = getDesktopCardViewportBounds(cardSurface, 24, gap)
+        const availableWidth = Math.max(0, bounds.right - bounds.left)
+        const maxHeight = Math.max(0, bounds.bottom - bounds.top)
+        const width = Math.min(maxWidth, availableWidth)
+        popoverFrame.style.width = `${width}px`
+        popoverFrame.style.maxWidth = `${width}px`
+        popoverFrame.style.maxHeight = `${maxHeight}px`
+        popoverFrame.style.right = 'auto'
+        popoverFrame.style.bottom = 'auto'
+        popoverFrame.style.paddingBottom = '0'
 
-        const measured = content.getBoundingClientRect()
-        const canPlaceRight = anchor.right + gap + measured.width <= window.innerWidth - margin
-        const canPlaceLeft = anchor.left - gap - measured.width >= margin
-        const left = canPlaceRight
-          ? anchor.right + gap
-          : canPlaceLeft
-            ? anchor.left - gap - measured.width
-            : Math.max(margin, (window.innerWidth - measured.width) / 2)
-        const top = Math.min(
-          Math.max(margin, (anchor.top + anchor.bottom - measured.height) / 2),
-          window.innerHeight - measured.height - margin,
-        )
-        content.style.left = `${left}px`
-        content.style.top = `${top}px`
-        const positioned = content.getBoundingClientRect()
+        // Use layout dimensions so the opening scale animation cannot make the
+        // card appear small enough to fit on a side where it will later overflow.
+        const measuredWidth = popoverFrame.offsetWidth
+        const measuredHeight = popoverFrame.offsetHeight
+        const centeredLeft = (anchor.left + anchor.right - measuredWidth) / 2
+        const left = placement === 'above'
+          ? Math.min(Math.max(bounds.left, centeredLeft), Math.max(bounds.left, bounds.right - measuredWidth))
+          : (() => {
+              const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
+              const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
+              const preferredLeft = canPlaceRight
+                ? anchor.right + gap
+                : canPlaceLeft
+                  ? anchor.left - gap - measuredWidth
+                  : centeredLeft
+              return Math.min(
+                Math.max(bounds.left, preferredLeft),
+                Math.max(bounds.left, bounds.right - measuredWidth),
+              )
+            })()
+        const preferredTop = placement === 'above'
+          ? anchor.top - gap - measuredHeight
+          : (anchor.top + anchor.bottom - measuredHeight) / 2
+        const top = Math.min(Math.max(bounds.top, preferredTop), Math.max(bounds.top, bounds.bottom - measuredHeight))
+        popoverFrame.style.left = `${left}px`
+        popoverFrame.style.top = `${top}px`
         const anchorX = (anchor.left + anchor.right) / 2
         const anchorY = (anchor.top + anchor.bottom) / 2
-        contentRef.current?.style.setProperty('--relay-bubble-origin-x', `${anchorX - positioned.left}px`)
-        contentRef.current?.style.setProperty('--relay-bubble-origin-y', `${anchorY - positioned.top}px`)
+        popoverFrame.style.setProperty('--relay-bubble-origin-x', `${anchorX - left}px`)
+        popoverFrame.style.setProperty('--relay-bubble-origin-y', `${anchorY - top}px`)
         setReady(true)
       })
     }
 
     const observer = new ResizeObserver(schedulePosition)
-    observer.observe(content)
+    observer.observe(popoverFrame)
+    for (const child of popoverFrame.children) observer.observe(child)
+    for (const exclusion of cardSurface.querySelectorAll<HTMLElement>('[data-relay-card-exclusion]')) observer.observe(exclusion)
+    const mutations = new MutationObserver(schedulePosition)
+    mutations.observe(popoverFrame, { childList: true, subtree: true, characterData: true })
     window.addEventListener('resize', schedulePosition)
     schedulePosition()
     return () => {
       observer.disconnect()
+      mutations.disconnect()
       window.removeEventListener('resize', schedulePosition)
-      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
     }
-  }, [anchor, maxWidth, open])
+  }, [anchor, maxWidth, open, placement])
 
-  if (!open) return <>{children}</>
+  if (!open || !anchor) return <>{children}</>
 
   return (
     <div
-      ref={contentRef}
       className={`relay-bubble-popover${ready ? ' relay-bubble-popover-ready' : ' relay-bubble-popover-measuring'}${className ? ` ${className}` : ''}`}
     >
-      {children}
+      <div ref={frameRef} className="relay-bubble-popover-frame">
+        {children}
+      </div>
     </div>
   )
 }
@@ -288,6 +368,92 @@ export function StatusBadge({
   tone?: 'neutral' | 'success' | 'danger' | 'warning'
 }) {
   return <span className={`relay-status-badge relay-status-${tone}`}>{children}</span>
+}
+
+const updateStatusLabels: Record<Errand['status'], string> = {
+  OPEN: 'Open',
+  ACCEPTED: 'Accepted',
+  PICKED_UP: 'Collected',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+  CONFIRMED: 'Confirmed',
+  DELETED: 'Deleted',
+}
+
+function updateStatusTone(status: Errand['status']): 'neutral' | 'success' | 'danger' | 'warning' {
+  if (status === 'OPEN' || status === 'DELIVERED' || status === 'CONFIRMED') return 'success'
+  if (status === 'CANCELLED' || status === 'EXPIRED' || status === 'DELETED') return 'danger'
+  if (status === 'ACCEPTED' || status === 'PICKED_UP') return 'warning'
+  return 'neutral'
+}
+
+function updateDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  )
+}
+
+export function UpdatesCard({
+  errands,
+  loading = false,
+  error,
+  onClose,
+  onSelect,
+}: {
+  errands: Errand[]
+  loading?: boolean
+  error?: string
+  onClose: () => void
+  onSelect?: (errand: Errand) => void
+}) {
+  return (
+    <GlassCard className="relay-updates-card relay-mobile-sheet-surface" aria-label="Updates">
+      <div className="relay-updates-header">
+        <div>
+          <p className="relay-updates-eyebrow">REQUESTS</p>
+          <h2>Updates</h2>
+        </div>
+        <IconButton label="Close updates" onClick={onClose}>×</IconButton>
+      </div>
+      {loading && <LoadingState label="Loading updates" />}
+      {!loading && error && <p className="relay-updates-message">{error}</p>}
+      {!loading && !error && errands.length === 0 && (
+        <p className="relay-updates-message">You have no requests yet.</p>
+      )}
+      {!loading && !error && errands.length > 0 && (
+        <div className="relay-updates-list">
+          {errands.map((errand) => {
+            const content = (
+              <>
+                <span className="relay-updates-item-heading">
+                  <strong>{errand.name}</strong>
+                  <StatusBadge tone={updateStatusTone(errand.status)}>
+                    {updateStatusLabels[errand.status]}
+                  </StatusBadge>
+                </span>
+                <small>
+                  Starts {updateDate(errand.startAt)} · Due {updateDate(errand.expiresAt)}
+                </small>
+              </>
+            )
+            return onSelect ? (
+              <button
+                className="relay-updates-item"
+                type="button"
+                key={errand.id}
+                onClick={() => onSelect(errand)}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="relay-updates-item" key={errand.id}>{content}</div>
+            )
+          })}
+        </div>
+      )}
+    </GlassCard>
+  )
 }
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {
@@ -429,35 +595,63 @@ export function RelayCardAnchor({
 }) {
   const anchorRef = useRef<HTMLDivElement>(null)
   const [measuredHeight, setMeasuredHeight] = useState<number>()
+  const [viewport, setViewport] = useState<{ width: number; height: number }>()
   const anchoredStyle: CSSProperties = {}
   const cardWidth = relayCardWidths[size]
-  if (placement === 'anchored' && anchor && typeof window !== 'undefined') {
-    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+  const viewportWidth = viewport?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0)
+  const viewportHeight = viewport?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)
+  if (placement === 'anchored' && anchor && viewportWidth > 0 && viewportHeight > 0) {
+    const availableWidth = Math.max(0, viewportWidth - viewportPadding * 2)
     const anchoredCardWidth = Math.min(cardWidth, availableWidth)
     const left = preferredSide.endsWith('end')
-      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), window.innerWidth - anchoredCardWidth - viewportPadding)
-      : Math.min(Math.max(viewportPadding, anchor.left), window.innerWidth - anchoredCardWidth - viewportPadding)
-    const estimatedHeight = Math.min(window.innerHeight * 0.6, window.innerHeight - viewportPadding * 2)
+      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), viewportWidth - anchoredCardWidth - viewportPadding)
+      : Math.min(Math.max(viewportPadding, anchor.left), viewportWidth - anchoredCardWidth - viewportPadding)
+    const estimatedHeight = Math.min(viewportHeight * 0.6, viewportHeight - viewportPadding * 2)
     const cardHeight = measuredHeight ?? estimatedHeight
     const belowTop = anchor.bottom + offset
     const top = preferredSide.startsWith('top')
       ? Math.max(viewportPadding, anchor.top - cardHeight - offset)
-      : belowTop + cardHeight <= window.innerHeight - viewportPadding
+      : belowTop + cardHeight <= viewportHeight - viewportPadding
         ? belowTop
         : Math.max(viewportPadding, anchor.top - cardHeight - offset)
-    Object.assign(anchoredStyle, { top, left, width: anchoredCardWidth })
+    Object.assign(anchoredStyle, {
+      top,
+      left,
+      width: anchoredCardWidth,
+      maxHeight: Math.max(0, viewportHeight - viewportPadding * 2),
+    })
   }
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    updateViewport()
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
   useLayoutEffect(() => {
     if (placement !== 'anchored' || !anchor || typeof window === 'undefined') {
       setMeasuredHeight(undefined)
       return
     }
-    const frame = window.requestAnimationFrame(() => {
-      const height = anchorRef.current?.getBoundingClientRect().height
-      if (height && height !== measuredHeight) setMeasuredHeight(height)
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [anchor, measuredHeight, placement, preferredSide, viewportPadding])
+    let frame: number | undefined
+    const measure = () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined
+        const height = anchorRef.current?.getBoundingClientRect().height
+        if (height && height !== measuredHeight) setMeasuredHeight(height)
+      })
+    }
+    const observer = new ResizeObserver(measure)
+    if (anchorRef.current) observer.observe(anchorRef.current)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+    }
+  }, [anchor, measuredHeight, placement, preferredSide, viewportPadding, viewport])
   return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement} relay-card-size-${size}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
 }
 
@@ -562,6 +756,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   scale = 1,
   size = 'default',
   className = '',
+  cardExclusion,
 }: {
   options: ReadonlyArray<{ value: T; label: ReactNode }>
   value: T
@@ -570,6 +765,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   scale?: number
   size?: 'default' | 'map'
   className?: string
+  cardExclusion?: string
 }) {
   const activeIndex = Math.max(
     0,
@@ -579,6 +775,7 @@ export function SlidingSegmentedControl<T extends string | number>({
   return (
     <div
       className={`relay-segmented-control${size !== 'default' ? ` relay-segmented-control-size-${size}` : ''}${className ? ` ${className}` : ''}`}
+      data-relay-card-exclusion={cardExclusion}
       role="tablist"
       aria-label={ariaLabel}
       style={

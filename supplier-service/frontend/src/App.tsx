@@ -10,6 +10,7 @@ import type { Supplier, SupplierApi } from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
+  ButtonWithImage,
   BubblePopover,
   ClipboardPlusIcon,
   FilterIcon,
@@ -21,6 +22,7 @@ import {
   SlidingSegmentedControl,
   Spacer,
   StorePlusIcon,
+  UpdatesCard,
   type BubbleAnchor,
 } from '@relay/ui'
 import { ErrandDetailCard } from './components/SupplierErrandPanel'
@@ -63,6 +65,11 @@ export default function App({
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
   const [selectedErrand, setSelectedErrand] = useState<SupplierErrandSummary>()
+  const [showUpdates, setShowUpdates] = useState(false)
+  const [updatesAnchor, setUpdatesAnchor] = useState<BubbleAnchor>()
+  const [updates, setUpdates] = useState<import('@relay/contracts').Errand[]>([])
+  const [updatesLoading, setUpdatesLoading] = useState(false)
+  const [updatesError, setUpdatesError] = useState('')
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
   const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
@@ -106,6 +113,31 @@ export default function App({
     if (!openCredit) return
     const { top, left, right, bottom, width, height } = button.getBoundingClientRect()
     openCredit({ top, left, right, bottom, width, height })
+  }
+
+  function closeUpdates() {
+    setShowUpdates(false)
+    setUpdatesAnchor(undefined)
+  }
+
+  function openUpdates(button: HTMLButtonElement) {
+    const { top, left, right, bottom } = button.getBoundingClientRect()
+    setUpdatesAnchor({ top, left, right, bottom })
+    setShowUpdates(true)
+    setUpdatesLoading(true)
+    setUpdatesError('')
+    if (!errandApi) {
+      setUpdates([])
+      setUpdatesLoading(false)
+      return
+    }
+    void errandApi
+      .getErrands({ scope: 'mine' })
+      .then(({ errands: loaded }) => setUpdates(loaded))
+      .catch((error: unknown) => {
+        setUpdatesError(error instanceof Error ? error.message : 'Unable to load updates.')
+      })
+      .finally(() => setUpdatesLoading(false))
   }
   function openAdminPanel(mode: 'add' | 'edit', button: HTMLButtonElement) {
     const { top, left, right, bottom } = button.getBoundingClientRect()
@@ -178,7 +210,7 @@ export default function App({
         }}
         onMapReady={handleMapReady}
       />
-      <div className="supplier-top-controls map-top-menu">
+      <div className="supplier-top-controls map-top-menu" data-relay-card-exclusion="top">
         <RelayButton
           variant="secondary"
           size="map-pill"
@@ -190,39 +222,39 @@ export default function App({
           <span>{creditBalance?.availableCredit ?? '...'} cr</span>
         </RelayButton>
         <SlidingSegmentedControl
-            size="map"
-            ariaLabel="Supplier view"
-            options={[
-              { value: 'explore', label: 'Explore' },
-              { value: 'requests', label: 'My Requests' },
-              { value: 'my-errands', label: 'My Errands' },
-            ]}
-            value={activeMode}
-            onChange={(nextMode) => {
-              setActiveMode(nextMode)
-              if (nextMode === 'requests' && openErrandView) {
-                openErrandView({ view: 'requests' }); return
-              }
-              if (nextMode === 'my-errands' && openErrandView) {
-                openErrandView({ view: 'my-errands' })
-                return
-              }
-            }}
+          size="map"
+          cardExclusion="top"
+          ariaLabel="Supplier view"
+          options={[
+            { value: 'explore', label: 'Explore' },
+            { value: 'requests', label: 'My Requests' },
+            { value: 'my-errands', label: 'My Errands' },
+          ]}
+          value={activeMode}
+          onChange={(nextMode) => {
+            setActiveMode(nextMode)
+            if (nextMode === 'requests' && openErrandView) {
+              openErrandView({ view: 'requests' }); return
+            }
+            if (nextMode === 'my-errands' && openErrandView) {
+              openErrandView({ view: 'my-errands' })
+              return
+            }
+          }}
         />
-        <RelayButton
+        <ButtonWithImage
           variant="secondary"
           size="map-pill"
-          className="glass-pill glass-control profile-chip"
+          className="glass-pill glass-control"
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
+          imageUrl={userProfile?.profilePictureUrl}
+          fallback={userProfile?.username?.trim().charAt(0).toUpperCase() || '?'}
         >
-          {userProfile?.profilePictureUrl && (
-            <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />
-          )}
           {userProfile?.username ?? 'Complete profile'}
-        </RelayButton>
+        </ButtonWithImage>
       </div>
-      <div className="map-stub-controls">
+      <div className="map-stub-controls" data-relay-card-exclusion="right">
         <RelayButton
           variant="secondary"
           size="map-icon"
@@ -257,8 +289,12 @@ export default function App({
           −
         </RelayButton>
       </div>
-      <div className="supplier-bottom-controls map-bottom-menu">
-        <SupplierRowButton size="map-action" className="updates-action">
+      <div className="supplier-bottom-controls map-bottom-menu" data-relay-card-exclusion="bottom">
+        <SupplierRowButton
+          size="map-action"
+          className="updates-action"
+          onClick={(event) => openUpdates(event.currentTarget)}
+        >
           <BellIcon className="supplier-control-icon" />
           <span className="supplier-control-label">Updates</span>
         </SupplierRowButton>
@@ -313,6 +349,16 @@ export default function App({
           onChange={setFilters}
           onClose={() => setShowFilters(false)}
         />
+      )}
+      {showUpdates && (
+        <BubblePopover anchor={updatesAnchor} maxWidth={405} placement="above" className="supplier-updates-popover">
+          <UpdatesCard
+            errands={updates}
+            loading={updatesLoading}
+            error={updatesError}
+            onClose={closeUpdates}
+          />
+        </BubblePopover>
       )}
       {(selectedSupplier || nearbySuppliers) && (
         <BubblePopover anchor={selectedSupplierAnchor}>

@@ -29,17 +29,6 @@ input {
 .supplier-top-controls > * {
   pointer-events: auto;
 }
-.profile-chip {
-  white-space: nowrap;
-}
-.profile-chip-avatar {
-  width: 28px;
-  height: 28px;
-  margin-right: 8px;
-  border-radius: 50%;
-  object-fit: cover;
-  vertical-align: middle;
-}
 .map-stub-controls {
   position: absolute;
   z-index: var(--relay-layer-map-controls);
@@ -180,6 +169,7 @@ input {
   padding: 22px;
   border-radius: 24px;
 }
+.supplier-filter-panel { --relay-toolbar-sheet-padding: 22px; }
 .supplier-list {
   z-index: var(--relay-layer-card);
   max-height: min(520px, calc(100dvh - 48px));

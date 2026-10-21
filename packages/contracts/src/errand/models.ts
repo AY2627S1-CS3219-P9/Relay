@@ -58,6 +58,7 @@ export type Errand = {
   deliveryDetails: DeliveryDetails
   creditAmount: number
   status: ErrandStatus
+  startAt: string
   expiresAt: string
   /** Server-generated confirmation deadline; set when the errand is delivered. */
   confirmationDeadline: string | null

@@ -335,6 +335,13 @@ function App() {
 
   function creditCardStyle(): CSSProperties | undefined {
     if (!creditAnchor) return undefined
+    if (window.innerWidth <= 700) {
+      const toolbarHeight = 72
+      const contentHeight = creditHistoryOpen ? 640 : 260
+      return {
+        height: Math.min(contentHeight + toolbarHeight, window.innerHeight - 24),
+      }
+    }
     const cardWidth = Math.min(creditHistoryOpen ? 760 : 405, window.innerWidth - 32)
     const top = Math.max(16, creditAnchor.bottom + 12)
     const availableHeight = Math.max(180, window.innerHeight - top - 16)
