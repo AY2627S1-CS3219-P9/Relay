@@ -16,6 +16,7 @@ enum ErrandStatus {
   CANCELLED
   EXPIRED
   CONFIRMED
+  DELETED
 }
 
 model Errand {
@@ -48,6 +49,7 @@ model Errand {
   creditAmount Int
   status       ErrandStatus @default(OPEN)
   expiresAt    DateTime
+  confirmationDeadline DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

@@ -48,6 +48,7 @@ app.post(
   sessionMiddleware,
   sessionController.validateInternalSession,
 )
+app.get('/internal/user/profile/:sub', internalServiceAuth, userController.getProfileBySubject)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof UserServiceError) {

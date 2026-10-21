@@ -165,6 +165,40 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
         assert.ok(response.body.records.every((record) => typeof record.amount === 'number'))
       },
     )
+    await t.test('history applies a 100-record limit and skips the requested offset', async () => {
+      const data = Array.from({ length: 105 }, (_, n) => ({
+        reference: `errand:${prefix}-page-${String(n).padStart(3, '0')}:CREDIT_RESERVE`,
+        senderId: owner,
+        receiverId: owner,
+        type: 'CREDIT_RESERVE',
+        amount: 1,
+        time: new Date(Date.UTC(2026, 1, 1, 0, n)),
+      }))
+      await prisma.transactionRecord.createMany({ data })
+      try {
+        const first = await request('/api/credit/history', 'relay_session=owner')
+        const second = await request('/api/credit/history?offset=100', 'relay_session=owner')
+        const beyond = await request('/api/credit/history?offset=108', 'relay_session=owner')
+        assert.equal(first.status, 200)
+        assert.equal(first.body.records.length, 100)
+        assert.equal(first.body.records[0].reference.id, `${prefix}-page-104`)
+        assert.equal(second.status, 200)
+        assert.equal(second.body.records.length, 8)
+        assert.equal(second.body.records[0].reference.id, `${prefix}-page-004`)
+        assert.deepEqual(beyond.body.records, [])
+      } finally {
+        await prisma.transactionRecord.deleteMany({
+          where: { reference: { startsWith: `errand:${prefix}-page-` } },
+        })
+      }
+    })
+    await t.test('history rejects malformed offsets', async () => {
+      for (const offset of ['-1', '1.5', 'foo', '1e2', '1&offset=2', '2147483648', '9007199254740992']) {
+        const response = await request(`/api/credit/history?offset=${offset}`, 'relay_session=owner')
+        assert.equal(response.status, 400, offset)
+        assert.equal(response.body.code, 'INVALID_REQUEST')
+      }
+    })
     await t.test('caller cannot select another user and malformed userId is rejected', async () => {
       for (const path of ['/api/credit', '/api/credit/history']) {
         const forbidden = await request(`${path}?userId=${other}`, 'relay_session=owner')

@@ -8,9 +8,10 @@ export class PendingErrandWorker {
 
   start(): void {
     if (this.timer) return
-    const tick = () => void this.runOnce().catch((error) => {
-      console.error('Pending errand recovery failed:', error)
-    })
+    const tick = () =>
+      void this.runOnce().catch((error) => {
+        console.error('Pending errand recovery failed:', error)
+      })
     tick()
     this.timer = setInterval(tick, 5_000)
   }

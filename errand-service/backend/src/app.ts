@@ -6,7 +6,10 @@ import { ErrandServiceError } from './types/errand.types.js'
 import { sessionMiddleware } from './middleware/session.middleware.js'
 import { ErrandRepository } from './repositories/errand.repository.js'
 import { ErrandService } from './services/errand.service.js'
+import { CreditClient } from './clients/credit.client.js'
+import { SupplierClient } from './clients/supplier.client.js'
 import { ErrandController } from './controllers/errand.controller.js'
+import { ErrandEventStream } from './services/errandEventStream.js'
 import { createErrandRouter } from './routes/errand.routes.js'
 import { ErrandConsumer } from './consumers/consumer.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
@@ -27,9 +30,12 @@ export function createApp() {
     res.status(200).send('ok\n')
   })
 
-  const repository = new ErrandRepository()
-  const service = new ErrandService(repository)
-  const controller = new ErrandController(service)
+  const eventStream = new ErrandEventStream()
+  const repository = new ErrandRepository(undefined, eventStream)
+  const creditClient = new CreditClient()
+  const supplierClient = new SupplierClient()
+  const service = new ErrandService(repository, creditClient, supplierClient)
+  const controller = new ErrandController(service, eventStream)
   const errandRouter = createErrandRouter(controller)
   const internalErrandRouter = createInternalErrandRouter(controller)
 
@@ -66,7 +72,11 @@ if (process.env.NODE_ENV !== 'test') {
   })
   const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())
-  const publisher = new ErrandEventPublisher(kafka, new ErrandRepository(), env.kafkaTopicErrandEvents)
+  const publisher = new ErrandEventPublisher(
+    kafka,
+    new ErrandRepository(),
+    env.kafkaTopicErrandEvents,
+  )
   worker.start()
   publisher.start().catch((err) => {
     console.error('Failed to connect Kafka producer:', err)

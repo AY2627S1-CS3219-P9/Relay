@@ -8,7 +8,11 @@ export class ErrandEventPublisher {
   private flushing = false
   private lastCleanup = 0
 
-  constructor(kafka: Kafka, private readonly repository: ErrandRepository, private readonly topic: string) {
+  constructor(
+    kafka: Kafka,
+    private readonly repository: ErrandRepository,
+    private readonly topic: string,
+  ) {
     this.producer = kafka.producer({
       allowAutoTopicCreation: false,
       idempotent: true,
@@ -19,9 +23,10 @@ export class ErrandEventPublisher {
   async start(): Promise<void> {
     if (this.timer) return
     await this.producer.connect()
-    const tick = () => void this.flush().catch((error) => {
-      console.error('Errand event outbox delivery failed; retrying:', error)
-    })
+    const tick = () =>
+      void this.flush().catch((error) => {
+        console.error('Errand event outbox delivery failed; retrying:', error)
+      })
     tick()
     this.timer = setInterval(tick, 1_000)
   }
@@ -49,7 +54,9 @@ export class ErrandEventPublisher {
     } finally {
       try {
         if (Date.now() - this.lastCleanup >= 60_000) {
-          await this.repository.deleteOldPublishedEvents(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+          await this.repository.deleteOldPublishedEvents(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          )
           this.lastCleanup = Date.now()
         }
       } catch (error) {
@@ -66,5 +73,3 @@ export class ErrandEventPublisher {
     await this.producer.disconnect()
   }
 }
-
-

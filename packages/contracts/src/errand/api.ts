@@ -49,7 +49,7 @@ export interface ErrandApi {
   /** Confirm the delivered errand has been received (requester only). */
   confirmErrand(id: string): Promise<ConfirmErrandResponse>
 
-  /** Cancel an accepted errand (courier or requester). */
+  /** Cancel an open errand created by the requester (requester only). */
   cancelErrand(id: string): Promise<CancelErrandResponse>
 
   /** Drop an accepted errand (courier only). */
@@ -65,5 +65,5 @@ export interface ErrandApi {
  */
 export interface ErrandInternalApi {
   /** Receive supplier change notifications from Supplier Service. */
-  receiveSupplierEvents(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
+  receiveSupplierEvent(event: SupplierInfoEvent): Promise<SupplierEventsResponse>
 }

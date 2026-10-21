@@ -144,21 +144,21 @@ npm run dev
 
 The local development topology is:
 
-| Component | Address |
-| --- | --- |
-| Host frontend | `http://localhost:8080` |
-| Supplier frontend | `http://localhost:5001` |
-| User frontend | `http://localhost:5002` |
-| Errand frontend | `http://localhost:5003` |
-| Credit frontend | `http://localhost:5004` |
-| Supplier API | `http://localhost:3000` |
-| User API | `http://localhost:3001` |
-| Errand API | `http://localhost:3002` |
-| Floci | `http://localhost:4566` |
-| User PostgreSQL | `localhost:5432` |
-| Supplier PostgreSQL | `localhost:5433` |
-| Errand PostgreSQL | `localhost:5434` |
-| Credit PostgreSQL | `localhost:5435` |
+| Component           | Address                 |
+| ------------------- | ----------------------- |
+| Host frontend       | `http://localhost:8080` |
+| Supplier frontend   | `http://localhost:5001` |
+| User frontend       | `http://localhost:5002` |
+| Errand frontend     | `http://localhost:5003` |
+| Credit frontend     | `http://localhost:5004` |
+| Supplier API        | `http://localhost:3000` |
+| User API            | `http://localhost:3001` |
+| Errand API          | `http://localhost:3002` |
+| Floci               | `http://localhost:4566` |
+| User PostgreSQL     | `localhost:5432`        |
+| Supplier PostgreSQL | `localhost:5433`        |
+| Errand PostgreSQL   | `localhost:5434`        |
+| Credit PostgreSQL   | `localhost:5435`        |
 
 The local Vite host proxies `/api/user` to the User API, `/api/supplier` to the
 Supplier API, and `/api/errands` to the Errand API. Open the application at
