@@ -207,9 +207,13 @@ if (errand.requesterSub !== user.sub) {
     }
 
     if (errand.status !== 'PICKED_UP') {
+      const message =
+        errand.status === 'DELIVERED'
+          ? 'Errand has already been delivered.'
+          : 'Errand must be picked up before it can be delivered.';
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Errand must be picked up before it can be delivered.',
+        message,
         409,
       )
     }
@@ -235,9 +239,13 @@ if (errand.requesterSub !== user.sub) {
     }
 
     if (errand.status !== 'DELIVERED') {
+      const message =
+        errand.status === 'CONFIRMED'
+          ? 'Errand has already been confirmed.'
+          : 'Errand must be delivered before it can be confirmed.';
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Errand must be delivered before it can be confirmed.',
+        message,
         409,
       )
     }
@@ -262,9 +270,13 @@ if (errand.requesterSub !== user.sub) {
     }
 
     if (errand.status !== 'ACCEPTED') {
+      const message =
+        errand.status === 'PICKED_UP'
+          ? 'Errand has already been picked up.'
+          : 'Errand must be accepted before it can be picked up.';
       throw new ErrandServiceError(
         ErrandErrors.INVALID_TRANSITION,
-        'Errand must be accepted before it can be picked up.',
+        message,
         409,
       )
     }
