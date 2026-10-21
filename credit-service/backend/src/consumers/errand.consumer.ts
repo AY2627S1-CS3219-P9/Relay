@@ -28,6 +28,7 @@ const eventSchema = z.object({
   eventType: z.enum([
     ErrandEventTypes.ERRAND_CREATED,
     ErrandEventTypes.ERRAND_CREATION_FAILED,
+    ErrandEventTypes.ERRAND_STATUS_CHANGED,
     ErrandEventTypes.ERRAND_COMPLETED,
     ErrandEventTypes.ERRAND_CANCELLED,
     ErrandEventTypes.ERRAND_EXPIRED,

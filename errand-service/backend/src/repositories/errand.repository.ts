@@ -349,6 +349,17 @@ export class ErrandRepository {
         where: { id: errandId },
         data: { courierSub, status: 'ACCEPTED' },
       })
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+        payload: {
+          errandId,
+          errandStatus: 'ACCEPTED',
+          previousStatus: 'OPEN',
+          actorSub: courierSub,
+          actorType: 'courier',
+          requesterSub: row.requesterSub,
+        },
+      })
 
       this.eventStream?.publish(
         errandId,
@@ -433,6 +444,17 @@ export class ErrandRepository {
         where: { id: errandId },
         data: { status: 'PICKED_UP' },
       })
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+        payload: {
+          errandId,
+          errandStatus: 'PICKED_UP',
+          previousStatus: 'ACCEPTED',
+          actorSub,
+          actorType: 'courier',
+          requesterSub: row.requesterSub,
+        },
+      })
 
       this.eventStream?.publish(
         errandId,
@@ -456,6 +478,17 @@ export class ErrandRepository {
         data: {
           status: 'DELIVERED',
           confirmationDeadline: endOfSingaporeDay(deliveredAt),
+        },
+      })
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+        payload: {
+          errandId,
+          errandStatus: 'DELIVERED',
+          previousStatus: 'PICKED_UP',
+          actorSub,
+          actorType: 'courier',
+          requesterSub: row.requesterSub,
         },
       })
 
@@ -504,6 +537,17 @@ export class ErrandRepository {
       const row = await tx.errand.update({
         where: { id: errandId },
         data: { courierSub: null, status: newStatus },
+      })
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+        payload: {
+          errandId,
+          errandStatus: newStatus,
+          previousStatus: 'ACCEPTED',
+          actorSub,
+          actorType: 'courier',
+          requesterSub: row.requesterSub,
+        },
       })
 
       if (newStatus === 'EXPIRED') {
