@@ -132,7 +132,7 @@ export default function App({
     
     return [...filtered].sort((left, right) => {
       if (filters.sort === 'deadline') return left.expiresAt.localeCompare(right.expiresAt)
-      if (filters.sort === 'start') return left.id.localeCompare(right.id)
+      if (filters.sort === 'start') return left.startAt.localeCompare(right.startAt)
       if (filters.sort === 'distance' && location)
         return distance(left, location) - distance(right, location)
       return lifecycleRank[left.status] - lifecycleRank[right.status]

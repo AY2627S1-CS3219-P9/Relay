@@ -48,6 +48,7 @@ model Errand {
 
   creditAmount Int
   status       ErrandStatus @default(OPEN)
+  startAt      DateTime     @default(now())
   expiresAt    DateTime
   confirmationDeadline DateTime?
   createdAt    DateTime     @default(now())

@@ -21,13 +21,22 @@ type CreateForm = {
   description: string
   instructions: string
   creditAmount: string
+  startAt: string
   expiresAt: string
+}
+
+function formatDateTimeLocal(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function defaultStartValue() {
+  return formatDateTimeLocal(new Date())
 }
 
 function defaultDeadlineValue() {
   const deadline = new Date(Date.now() + 2 * 60 * 60 * 1000)
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${deadline.getFullYear()}-${pad(deadline.getMonth() + 1)}-${pad(deadline.getDate())}T${pad(deadline.getHours())}:${pad(deadline.getMinutes())}`
+  return formatDateTimeLocal(deadline)
 }
 
 export function CreateErrandCard({
@@ -59,6 +68,7 @@ export function CreateErrandCard({
     description: '',
     instructions: '',
     creditAmount: '',
+    startAt: defaultStartValue(),
     expiresAt: defaultDeadlineValue(),
   })
 
@@ -128,6 +138,7 @@ export function CreateErrandCard({
     setFieldErrors({})
     const validationErrors: Record<string, string> = {}
     const creditAmount = Number(form.creditAmount)
+    const start = form.startAt ? new Date(form.startAt) : undefined
     const deadline = form.expiresAt ? new Date(form.expiresAt) : undefined
     if (!form.name.trim()) validationErrors.name = 'Enter an errand name.'
     else if (form.name.trim().length > 200) validationErrors.name = 'Use 200 characters or fewer.'
@@ -147,9 +158,13 @@ export function CreateErrandCard({
       validationErrors.description = 'Use 5,000 characters or fewer.'
     if (!form.creditAmount.trim() || !Number.isInteger(creditAmount) || creditAmount < 0)
       validationErrors.creditAmount = 'Enter a whole number of credits that is 0 or greater.'
+    if (!start) validationErrors.startAt = 'Choose a start time.'
+    else if (Number.isNaN(start.getTime())) validationErrors.startAt = 'Choose a valid start time.'
     if (!deadline) validationErrors.expiresAt = 'Choose a deadline.'
     else if (Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now())
       validationErrors.expiresAt = 'Choose a future deadline.'
+    if (start && deadline && !Number.isNaN(start.getTime()) && start.getTime() > deadline.getTime())
+      validationErrors.startAt = 'Start time must be on or before the deadline.'
     if (!selectedSupplier) validationErrors.supplierId = 'Select a supplier.'
     if (!errandApi) setErrorMessage('Errand service is unavailable.')
     if (Object.keys(validationErrors).length > 0) {
@@ -157,7 +172,7 @@ export function CreateErrandCard({
       setErrorMessage('Check the highlighted fields.')
       return
     }
-    if (!errandApi || !selectedSupplier || !deadline) return
+    if (!errandApi || !selectedSupplier || !start || !deadline) return
     setSubmitting(true)
     void errandApi
       .createErrand({
@@ -180,6 +195,7 @@ export function CreateErrandCard({
           ...(form.instructions.trim() ? { instructions: form.instructions.trim() } : {}),
         },
         creditAmount,
+        startAt: start.toISOString(),
         expiresAt: deadline.toISOString(),
       })
       .then(() => onCreated())
@@ -327,6 +343,14 @@ export function CreateErrandCard({
               placeholder="15"
             />
           </label>
+          <RelayFormField label="Start time" required error={errorFor('startAt')}>
+            <input
+              type="datetime-local"
+              required
+              value={form.startAt}
+              onChange={(e) => update('startAt', e.target.value)}
+            />
+          </RelayFormField>
           <label className="errand-field">
             <span>Deadline</span>
             <input
@@ -337,9 +361,6 @@ export function CreateErrandCard({
             />
           </label>
         </div>
-        <p className="errand-form-note">
-          Start time is recorded automatically when your request is created.
-        </p>
         <RelayButton variant="primary" type="submit" disabled={submitting}>
           {submitting ? 'Creating request…' : 'Create request'}
         </RelayButton>

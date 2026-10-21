@@ -59,6 +59,7 @@ export function ErrandDetailCard({
             <StatusBadge tone={statusTone(errand.status)}>
               {STATUS_LABELS[errand.status]}
             </StatusBadge>
+            <span>Starts {formatDeadline(errand.startAt)}</span>
             <span>Due {formatDeadline(errand.expiresAt)}</span>
           </div>
         </div>
