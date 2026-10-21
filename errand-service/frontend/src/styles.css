@@ -48,6 +48,7 @@
 .errand-action-stack .relay-button { width: 100%; }
 .errand-form { display: grid; gap: 14px; margin-top: 22px; }
 .errand-field { display: grid; gap: 7px; color: #3a334d; font-size: .84rem; font-weight: 700; }
+.errand-field > span > b { color: var(--relay-red); }
 .errand-field em { color: var(--relay-text-muted); font-size: .75rem; font-weight: 500; font-style: normal; }
 .errand-field input, .errand-field select, .errand-field textarea { box-sizing: border-box; width: 100%; padding: 11px 12px; border: 1px solid rgba(0,0,0,.1); border-radius: 12px; background: var(--relay-glass-soft-bg); color: inherit; font: inherit; font-weight: 500; outline: none; }
 .errand-field textarea { resize: vertical; line-height: 1.4; }

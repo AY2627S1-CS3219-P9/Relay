@@ -5,6 +5,7 @@ export type { MessageVariant } from './ErrorMessage'
 export {
   BellIcon,
   BoltIcon,
+  ButtonWithImage,
   CardView,
   BubblePopover,
   ClipboardPlusIcon,

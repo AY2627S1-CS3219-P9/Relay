@@ -225,14 +225,14 @@ export function CreateErrandCard({
         </RelayFormField>
         <div className="errand-form-grid">
           <label className="errand-field">
-            <span>Pickup building</span>
+            <span>Pickup building <b aria-hidden="true">*</b></span>
             <input
               value={form.pickupBuildingName}
               onChange={(e) => update('pickupBuildingName', e.target.value)}
             />
           </label>
           <label className="errand-field">
-            <span>Floor</span>
+            <span>Floor <b aria-hidden="true">*</b></span>
             <input
               inputMode="numeric"
               value={form.pickupFloorNumber}
@@ -242,7 +242,7 @@ export function CreateErrandCard({
         </div>
         <div className="errand-form-grid">
           <label className="errand-field">
-            <span>Delivery building</span>
+            <span>Delivery building <b aria-hidden="true">*</b></span>
             <input
               value={form.deliveryBuildingName}
               onChange={(e) => update('deliveryBuildingName', e.target.value)}
@@ -255,7 +255,7 @@ export function CreateErrandCard({
             )}
           </label>
           <label className="errand-field">
-            <span>Floor</span>
+            <span>Floor <b aria-hidden="true">*</b></span>
             <input
               inputMode="numeric"
               value={form.deliveryFloorNumber}

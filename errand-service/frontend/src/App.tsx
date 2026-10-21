@@ -14,6 +14,7 @@ import type {
 import {
   BellIcon,
   BoltIcon,
+  ButtonWithImage,
   BubblePopover,
   ClipboardPlusIcon,
   FilterIcon,
@@ -341,18 +342,17 @@ export default function App({
             )
           }}
         />
-        <RelayButton
+        <ButtonWithImage
           variant="secondary"
           size="map-pill"
-          className="glass-pill glass-control profile-chip"
+          className="glass-pill glass-control"
           aria-label="Profile"
           onClick={(event) => openProfileCard(event.currentTarget)}
+          imageUrl={userProfile?.profilePictureUrl}
+          fallback={userProfile?.username?.trim().charAt(0).toUpperCase() || '?'}
         >
-          {userProfile?.profilePictureUrl && (
-            <img className="profile-chip-avatar" src={userProfile.profilePictureUrl} alt="" />
-          )}
           {userProfile?.username ?? 'Complete profile'}
-        </RelayButton>
+        </ButtonWithImage>
       </div>
       <div className="errand-map-controls" data-relay-card-exclusion="right">
         {view !== 'my-errands' && (

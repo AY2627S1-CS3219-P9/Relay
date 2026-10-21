@@ -66,6 +66,47 @@ export function RelayButton({
   )
 }
 
+export function ButtonWithImage({
+  imageUrl,
+  imageAlt = '',
+  fallback,
+  variant = 'secondary',
+  size = 'default',
+  scale = 1,
+  className = '',
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  imageUrl?: string | null
+  imageAlt?: string
+  fallback: ReactNode
+  children: ReactNode
+  variant?: RelayButtonVariant
+  size?: RelayButtonSize
+  scale?: number
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  return (
+    <RelayButton
+      {...props}
+      variant={variant}
+      size={size}
+      scale={scale}
+      className={`relay-button-with-image${className ? ` ${className}` : ''}`}
+    >
+      <span className="relay-button-with-image-avatar" aria-hidden={imageAlt ? undefined : 'true'}>
+        {imageUrl && !imageFailed ? (
+          <img src={imageUrl} alt={imageAlt} onError={() => setImageFailed(true)} />
+        ) : (
+          fallback
+        )}
+      </span>
+      {children}
+    </RelayButton>
+  )
+}
+
 export function TextButton({
   className = '',
   children,
