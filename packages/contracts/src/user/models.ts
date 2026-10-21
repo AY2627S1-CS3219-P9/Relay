@@ -10,6 +10,7 @@ export type UserRole = 'super-admin' | 'admin' | 'user'
  *
  * A session can exist before a user creates a Relay profile. In that case,
  * `profileCreated` is false and `getUser()` returns `PROFILE_NOT_FOUND`.
+ * Supplier, Errand, and Credit require both email verification and a profile.
  */
 export type SessionUser = {
   subject: string

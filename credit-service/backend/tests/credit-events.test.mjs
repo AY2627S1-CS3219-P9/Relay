@@ -47,7 +47,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     }
     res
       .writeHead(200, { 'Content-Type': 'application/json' })
-      .end(JSON.stringify({ ok: true, data: { user: { subject } } }))
+      .end(JSON.stringify({ ok: true, data: { user: { subject, emailVerified: true, profileCreated: true } } }))
   })
   await new Promise((resolve) => userService.listen(0, '127.0.0.1', resolve))
   process.env.USER_API_URL = `http://127.0.0.1:${userService.address().port}`

@@ -23,6 +23,8 @@ function setup() {
   const repository = {
     addPendingErrand: vi.fn().mockResolvedValue('pending-id'),
     createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
+    publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
+    deletePendingErrand: vi.fn().mockResolvedValue(undefined),
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
   const supplier = { validateSelection: vi.fn().mockResolvedValue(undefined) }
@@ -38,7 +40,7 @@ describe('errand creation and credit reservation', () => {
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit, supplier } = setup()
     await service.createErrand(user, request)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
     expect(repository.addPendingErrand).toHaveBeenCalledWith(user.sub)
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 10)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, request)
@@ -52,7 +54,7 @@ describe('errand creation and credit reservation', () => {
     const { service, repository, credit, supplier } = setup()
     const freeRequest = validateCreateErrand({ ...request, creditAmount: 0 })
     await service.createErrand(user, freeRequest)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 0)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
@@ -74,6 +76,16 @@ describe('errand creation and credit reservation', () => {
     await expect(service.createErrand(user, request)).rejects.toThrow(
       'Supplier is not currently active.',
     )
+    expect(repository.addPendingErrand).not.toHaveBeenCalled()
+    expect(credit.reserve).not.toHaveBeenCalled()
+  })
+
+  it('rejects users without a profile before inserting a pending row', async () => {
+    const { service, repository, credit, supplier } = setup()
+    await expect(service.createErrand({ ...user, profileCreated: false }, request)).rejects.toMatchObject({
+      code: 'FORBIDDEN', statusCode: 403,
+    })
+    expect(supplier.validateSelection).not.toHaveBeenCalled()
     expect(repository.addPendingErrand).not.toHaveBeenCalled()
     expect(credit.reserve).not.toHaveBeenCalled()
   })

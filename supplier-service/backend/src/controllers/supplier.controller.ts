@@ -46,7 +46,7 @@ async function checkAuth(cookieHeader: string): Promise<{ role: 'super-admin' | 
     }
 
     const data = (await response.json()) as ApiResult<ValidateSessionResponse>
-    if (!data.ok) {
+    if (!data.ok || data.data.user.emailVerified !== true || data.data.user.profileCreated !== true) {
       return null
     }
     return { role: data.data.user.role }

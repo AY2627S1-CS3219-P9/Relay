@@ -7,7 +7,7 @@ for (const role of ['admin', 'super-admin'] as const) {
     const originalFetch = globalThis.fetch
     const calls: string[] = []
     globalThis.fetch = async () => new Response(JSON.stringify({
-      ok: true, data: { user: { role } },
+      ok: true, data: { user: { role, emailVerified: true, profileCreated: true } },
     }), { status: 200 })
     try {
       const controller = new SupplierController({
@@ -46,7 +46,7 @@ for (const role of ['admin', 'super-admin'] as const) {
 test('ordinary users cannot mutate suppliers', async () => {
   const originalFetch = globalThis.fetch
   globalThis.fetch = async () => new Response(JSON.stringify({
-    ok: true, data: { user: { role: 'user' } },
+    ok: true, data: { user: { role: 'user', emailVerified: true, profileCreated: true } },
   }), { status: 200 })
   try {
     const controller = new SupplierController({
@@ -63,3 +63,29 @@ test('ordinary users cannot mutate suppliers', async () => {
     globalThis.fetch = originalFetch
   }
 })
+
+for (const missing of ['emailVerified', 'profileCreated'] as const) {
+  test(`supplier access requires ${missing}`, async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      ok: true,
+      data: { user: { role: 'admin', emailVerified: true, profileCreated: true, [missing]: false } },
+    }), { status: 200 })
+    try {
+      let called = false
+      const controller = new SupplierController({
+        getAllSuppliers: async () => { called = true; return [] },
+      } as never)
+      const response: Record<string, unknown> = { statusCode: 200 }
+      response.status = (code: number) => { response.statusCode = code; return response }
+      response.json = (_body: unknown) => response
+      await controller.getAllSuppliers({
+        header: () => 'relay_session=test', query: {},
+      } as never, response as never, (error: unknown) => { throw error })
+      assert.equal(response.statusCode, 401)
+      assert.equal(called, false)
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+}

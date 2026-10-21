@@ -4,7 +4,11 @@ import { CreditServiceError } from '../types/credit.types.js'
 
 const sessionResponse = z.object({
   ok: z.literal(true),
-  data: z.object({ user: z.object({ subject: z.string().min(1) }) }),
+  data: z.object({ user: z.object({
+    subject: z.string().min(1),
+    emailVerified: z.boolean(),
+    profileCreated: z.boolean(),
+  }) }),
 })
 
 export class UserSessionService {
@@ -30,6 +34,12 @@ export class UserSessionService {
       }
       if (!response.ok) throw new Error('User Service session validation failed.')
       const session = sessionResponse.parse(await response.json())
+      if (!session.data.user.emailVerified) {
+        throw new CreditServiceError('FORBIDDEN', 'A verified email is required.', 403)
+      }
+      if (!session.data.user.profileCreated) {
+        throw new CreditServiceError('FORBIDDEN', 'A user profile is required.', 403)
+      }
       return session.data.user.subject
     } finally {
       clearTimeout(timeout)
