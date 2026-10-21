@@ -31,6 +31,7 @@ export {
   Spinner,
   StatusBadge,
   TextButton,
+  UpdatesCard,
 } from './components'
 export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant, RelayCardPlacement, RelayCardSize } from './components'
 

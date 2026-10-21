@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
+import type { Errand } from '@relay/contracts'
 import relayHandoffLogo from './assets/relay-handoff.png'
 
 export type BubbleAnchor = {
@@ -134,12 +135,14 @@ export function BubblePopover({
   className = '',
   open = true,
   maxWidth = 360,
+  placement = 'auto',
 }: {
   anchor?: BubbleAnchor
   children: ReactNode
   className?: string
   open?: boolean
   maxWidth?: number
+  placement?: 'auto' | 'above'
 }) {
   const frameRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
@@ -185,21 +188,26 @@ export function BubblePopover({
         // card appear small enough to fit on a side where it will later overflow.
         const measuredWidth = popoverFrame.offsetWidth
         const measuredHeight = popoverFrame.offsetHeight
-        const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
-        const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
-        const preferredLeft = canPlaceRight
-          ? anchor.right + gap
-          : canPlaceLeft
-            ? anchor.left - gap - measuredWidth
-            : anchor.left - measuredWidth / 2
-        const left = Math.min(
-          Math.max(bounds.left, preferredLeft),
-          Math.max(bounds.left, bounds.right - measuredWidth),
-        )
-        const top = Math.min(
-          Math.max(bounds.top, (anchor.top + anchor.bottom - measuredHeight) / 2),
-          Math.max(bounds.top, bounds.bottom - measuredHeight),
-        )
+        const centeredLeft = (anchor.left + anchor.right - measuredWidth) / 2
+        const left = placement === 'above'
+          ? Math.min(Math.max(bounds.left, centeredLeft), Math.max(bounds.left, bounds.right - measuredWidth))
+          : (() => {
+              const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
+              const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
+              const preferredLeft = canPlaceRight
+                ? anchor.right + gap
+                : canPlaceLeft
+                  ? anchor.left - gap - measuredWidth
+                  : centeredLeft
+              return Math.min(
+                Math.max(bounds.left, preferredLeft),
+                Math.max(bounds.left, bounds.right - measuredWidth),
+              )
+            })()
+        const preferredTop = placement === 'above'
+          ? anchor.top - gap - measuredHeight
+          : (anchor.top + anchor.bottom - measuredHeight) / 2
+        const top = Math.min(Math.max(bounds.top, preferredTop), Math.max(bounds.top, bounds.bottom - measuredHeight))
         popoverFrame.style.left = `${left}px`
         popoverFrame.style.top = `${top}px`
         const anchorX = (anchor.left + anchor.right) / 2
@@ -224,7 +232,7 @@ export function BubblePopover({
       window.removeEventListener('resize', schedulePosition)
       if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame)
     }
-  }, [anchor, maxWidth, open])
+  }, [anchor, maxWidth, open, placement])
 
   if (!open || !anchor) return <>{children}</>
 
@@ -360,6 +368,92 @@ export function StatusBadge({
   tone?: 'neutral' | 'success' | 'danger' | 'warning'
 }) {
   return <span className={`relay-status-badge relay-status-${tone}`}>{children}</span>
+}
+
+const updateStatusLabels: Record<Errand['status'], string> = {
+  OPEN: 'Open',
+  ACCEPTED: 'Accepted',
+  PICKED_UP: 'Collected',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+  CONFIRMED: 'Confirmed',
+  DELETED: 'Deleted',
+}
+
+function updateStatusTone(status: Errand['status']): 'neutral' | 'success' | 'danger' | 'warning' {
+  if (status === 'OPEN' || status === 'DELIVERED' || status === 'CONFIRMED') return 'success'
+  if (status === 'CANCELLED' || status === 'EXPIRED' || status === 'DELETED') return 'danger'
+  if (status === 'ACCEPTED' || status === 'PICKED_UP') return 'warning'
+  return 'neutral'
+}
+
+function updateDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  )
+}
+
+export function UpdatesCard({
+  errands,
+  loading = false,
+  error,
+  onClose,
+  onSelect,
+}: {
+  errands: Errand[]
+  loading?: boolean
+  error?: string
+  onClose: () => void
+  onSelect?: (errand: Errand) => void
+}) {
+  return (
+    <GlassCard className="relay-updates-card relay-mobile-sheet-surface" aria-label="Updates">
+      <div className="relay-updates-header">
+        <div>
+          <p className="relay-updates-eyebrow">REQUESTS</p>
+          <h2>Updates</h2>
+        </div>
+        <IconButton label="Close updates" onClick={onClose}>×</IconButton>
+      </div>
+      {loading && <LoadingState label="Loading updates" />}
+      {!loading && error && <p className="relay-updates-message">{error}</p>}
+      {!loading && !error && errands.length === 0 && (
+        <p className="relay-updates-message">You have no requests yet.</p>
+      )}
+      {!loading && !error && errands.length > 0 && (
+        <div className="relay-updates-list">
+          {errands.map((errand) => {
+            const content = (
+              <>
+                <span className="relay-updates-item-heading">
+                  <strong>{errand.name}</strong>
+                  <StatusBadge tone={updateStatusTone(errand.status)}>
+                    {updateStatusLabels[errand.status]}
+                  </StatusBadge>
+                </span>
+                <small>
+                  Starts {updateDate(errand.startAt)} · Due {updateDate(errand.expiresAt)}
+                </small>
+              </>
+            )
+            return onSelect ? (
+              <button
+                className="relay-updates-item"
+                type="button"
+                key={errand.id}
+                onClick={() => onSelect(errand)}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="relay-updates-item" key={errand.id}>{content}</div>
+            )
+          })}
+        </div>
+      )}
+    </GlassCard>
+  )
 }
 
 export function Spinner({ label = 'Loading' }: { label?: string }) {

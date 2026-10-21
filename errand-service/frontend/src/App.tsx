@@ -24,14 +24,13 @@ import {
   RelayCardAnchor,
   SlidingSegmentedControl,
   Spacer,
-  StatusBadge,
+  UpdatesCard,
   type BubbleAnchor,
 } from '@relay/ui'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
 import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilterPanel'
 import { ErrandMap } from './components/ErrandMap'
-import { STATUS_LABELS, formatDeadline, formatRoute, statusTone } from './types'
 import { useErrandNotifications } from './hooks/useErrandNotifications'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
@@ -69,6 +68,11 @@ export default function App({
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
+  const [showUpdates, setShowUpdates] = useState(false)
+  const [updatesAnchor, setUpdatesAnchor] = useState<BubbleAnchor>()
+  const [updates, setUpdates] = useState<Errand[]>([])
+  const [updatesLoading, setUpdatesLoading] = useState(false)
+  const [updatesError, setUpdatesError] = useState('')
   const [location, setLocation] = useState(userLocation)
   const [map, setMap] = useState<LeafletMap>()
   const [createAnchor, setCreateAnchor] = useState<BubbleAnchor>()
@@ -162,6 +166,31 @@ export default function App({
     const { top, left, right, bottom, width, height } = button.getBoundingClientRect()
     openCredit({ top, left, right, bottom, width, height })
   }
+
+  function closeUpdates() {
+    setShowUpdates(false)
+    setUpdatesAnchor(undefined)
+  }
+
+  function openUpdates(button: HTMLButtonElement) {
+    const { top, left, right, bottom } = button.getBoundingClientRect()
+    setUpdatesAnchor({ top, left, right, bottom })
+    setShowUpdates(true)
+    setUpdatesLoading(true)
+    setUpdatesError('')
+    if (!errandApi) {
+      setUpdates(errands.filter((errand) => errand.requesterSub === authenticatedSubject))
+      setUpdatesLoading(false)
+      return
+    }
+    void errandApi
+      .getErrands({ scope: 'mine' })
+      .then(({ errands: loaded }) => setUpdates(loaded))
+      .catch((error: unknown) => {
+        setUpdatesError(error instanceof Error ? error.message : 'Unable to load updates.')
+      })
+      .finally(() => setUpdatesLoading(false))
+  }
   async function updateErrand(
     action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'drop' | 'delete',
     id: string,
@@ -244,11 +273,12 @@ export default function App({
 
   // SSE notifications for other users' changes
   const handleErrandUpdate = useCallback((errandId: string, newStatus: string) => {
-    setErrands((current) =>
+    const updateStatus = (current: Errand[]) =>
       current.map((errand) =>
         errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
-      ),
-    )
+      )
+    setErrands(updateStatus)
+    setUpdates(updateStatus)
     // Invalidate credit balance when errand status changes affect credits
     if (newStatus === 'CANCELLED' || newStatus === 'CONFIRMED' || newStatus === 'EXPIRED') {
       invalidateCreditBalance?.()
@@ -396,6 +426,7 @@ export default function App({
           size="map-action"
           className="updates-action"
           aria-label="Updates"
+          onClick={(event) => openUpdates(event.currentTarget)}
         >
           <span className="relay-button-icon-badge">
             <BellIcon className="errand-control-icon" />
@@ -437,30 +468,23 @@ export default function App({
           />
         </BubblePopover>
       )}
-      {createCard}
-      {!selectedErrand && view === 'requests' && visibleErrands[0] && (
-        <button
-          className="my-request-card"
-          type="button"
-          onClick={() => setSelectedErrandId(visibleErrands[0].id)}
-        >
-          <span className="request-card-label">
-            My request{' '}
-            <StatusBadge tone={statusTone(visibleErrands[0].status)}>
-              {STATUS_LABELS[visibleErrands[0].status]}
-            </StatusBadge>
-          </span>
-          <strong>{visibleErrands[0].name}</strong>
-          <small>
-            {formatRoute(visibleErrands[0].pickupLocation)} →{' '}
-            {formatRoute(visibleErrands[0].targetLocation)}
-          </small>
-          <em>
-            {visibleErrands[0].creditAmount} cr reserved · Due{' '}
-            {formatDeadline(visibleErrands[0].expiresAt)}
-          </em>
-        </button>
+      {showUpdates && (
+        <BubblePopover anchor={updatesAnchor} maxWidth={405} placement="above" className="errand-updates-popover">
+          <UpdatesCard
+            errands={updates}
+            loading={updatesLoading}
+            error={updatesError}
+            onClose={closeUpdates}
+            onSelect={(errand) => {
+              const anchor = updatesAnchor
+              closeUpdates()
+              setSelectedErrandId(errand.id)
+              setSelectedErrandAnchor(anchor)
+            }}
+          />
+        </BubblePopover>
       )}
+      {createCard}
       {showFilters && (
         <ErrandFilterPanel
           filters={filters}

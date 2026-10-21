@@ -220,6 +220,37 @@
   inset: 0;
   pointer-events: none;
 }
+.relay-updates-card {
+  width: 100%;
+  padding: 22px;
+  overflow: auto;
+}
+.relay-updates-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.relay-updates-header h2 { margin: 0; letter-spacing: -.04em; }
+.relay-updates-eyebrow { margin: 0 0 7px; color: var(--relay-text-muted); font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
+.relay-updates-list { display: grid; gap: 10px; margin-top: 20px; }
+.relay-updates-item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--relay-glass-soft-border);
+  border-radius: 16px;
+  background: var(--relay-glass-soft-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.relay-updates-item { cursor: pointer; }
+button.relay-updates-item:hover { border-color: var(--relay-blue); }
+.relay-updates-item-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.relay-updates-item small, .relay-updates-message { color: var(--relay-text-muted); font-size: .82rem; line-height: 1.4; }
+.relay-updates-message { margin: 20px 0 0; }
 .relay-bubble-popover-measuring > .relay-bubble-popover-frame {
   visibility: hidden;
 }
