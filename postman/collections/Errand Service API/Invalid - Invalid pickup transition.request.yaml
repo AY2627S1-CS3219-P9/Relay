@@ -1,0 +1,25 @@
+$kind: http-request
+method: POST
+url: "{{baseUrl}}/api/errands/{{errandId}}/pickup"
+order: 15000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookieCourier}}
+body:
+  type: json
+  content: ''
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Cannot pick up non-PICKED_UP errand', () => {
+        pm.response.to.have.status(409);
+      });
+
+      const json = pm.response.json();
+      pm.test('Error code is INVALID_TRANSITION', () => {
+        pm.expect(json.code).to.eql('INVALID_TRANSITION');
+      });
+      pm.test('Error message is correct', () => {
+        pm.expect(json.message).to.include('picked up');
+      });
+    language: text/javascript

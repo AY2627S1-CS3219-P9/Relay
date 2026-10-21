@@ -1,0 +1,13 @@
+$kind: http-request
+method: DELETE
+url: '{{baseUrl}}/api/supplier/{{supplierId4}}'
+order: 17000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Delete supplier returns 204', () => {
+        pm.response.to.have.status(204);
+      });
+    language: text/javascript

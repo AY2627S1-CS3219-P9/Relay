@@ -1,0 +1,28 @@
+$kind: http-request
+method: GET
+url: "{{baseUrl}}/api/supplier"
+order: 10000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('List suppliers returns 200', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Response contains suppliers array', () => {
+        pm.expect(json.suppliers).to.be.an('array');
+      });
+
+      // Find InstaChef
+      const instachefSupplier = json.suppliers.find(s => s.name === 'InstaChef');
+      pm.test('InstaChef supplier found', () => {
+        pm.expect(instachefSupplier).to.exist;
+      });
+
+      if (instachefSupplier) {
+        pm.collectionVariables.set('supplierId_instachef', instachefSupplier.id);
+      }
+    language: text/javascript

@@ -1,0 +1,18 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/supplier?serviceTypes=[]'
+order: 7000
+headers:
+  Cookie: relay_session={{sessionCookie}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('List suppliers with empty serviceTypes returns empty array', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Response contains empty suppliers array', () => {
+        pm.expect(json.suppliers).to.be.an('array').and.empty;
+      });
+    language: text/javascript

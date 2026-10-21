@@ -1,0 +1,22 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/errands/{{errandId}}/deliver'
+order: 20000
+headers:
+  Content-Type: application/json
+  Cookie: relay_session={{sessionCookieCourier}}
+body:
+  type: json
+  content: ''
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Errand delivered', () => {
+        pm.response.to.have.status(200);
+      });
+
+      const json = pm.response.json();
+      pm.test('Errand status is DELIVERED', () => {
+        pm.expect(json.errand.status).to.eql('DELIVERED');
+      });
+    language: text/javascript
