@@ -22,6 +22,8 @@ const request: CreateErrandRequest = {
 function setup() {
   const repository = {
     addPendingErrand: vi.fn().mockResolvedValue('pending-id'),
+    publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
+    deletePendingErrand: vi.fn().mockResolvedValue(undefined),
     createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
@@ -38,7 +40,7 @@ describe('errand creation and credit reservation', () => {
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit, supplier } = setup()
     await service.createErrand(user, request)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
     expect(repository.addPendingErrand).toHaveBeenCalledWith(user.sub)
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 10)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, request)
@@ -52,16 +54,18 @@ describe('errand creation and credit reservation', () => {
     const { service, repository, credit, supplier } = setup()
     const freeRequest = validateCreateErrand({ ...request, creditAmount: 0 })
     await service.createErrand(user, freeRequest)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier' })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 0)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
 
-  it('leaves the pending row for recovery if reservation fails', async () => {
+  it('publishes a failure event and cleans up if reservation fails', async () => {
     const { service, repository, credit, supplier } = setup()
     credit.reserve.mockRejectedValue(new Error('Credit unavailable'))
     await expect(service.createErrand(user, request)).rejects.toThrow('Credit unavailable')
     expect(repository.createErrand).not.toHaveBeenCalled()
+    expect(repository.publishCreationFailedEvent).toHaveBeenCalledWith('pending-id', user.sub)
+    expect(repository.deletePendingErrand).toHaveBeenCalledWith('pending-id')
     expect(supplier.validateSelection).toHaveBeenCalledOnce()
   })
 

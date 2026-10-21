@@ -39,7 +39,7 @@ export function SupplierDetailCard({
   return (
     <GlassCard
       as="aside"
-      className="supplier-detail-card supplier-detail-card-transition relay-mobile-sheet-surface"
+      className="supplier-detail-card relay-mobile-sheet-surface"
       style={style}
       aria-label={`${supplier.name} details`}
     >

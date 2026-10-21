@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build and start the Compose environment
+        run: docker compose up --build --detach --wait
+
+      - name: Run tests
+        env:
+          CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+          KAFKA_BROKERS: localhost:29092
+          KAFKA_TOPIC_USER_EVENTS: user-events
+          KAFKA_TOPIC_ERRAND_EVENTS: errand-events
+          KAFKA_TOPIC_ERRAND_DLQ: errand-events-dlq
+        run: npm test
+
+      - name: Stop the Compose environment
+        if: always()
+        run: docker compose down --volumes --remove-orphans
