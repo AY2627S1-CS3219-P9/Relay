@@ -1,8 +1,20 @@
 # Full errand and credit lifecycle demo
 
-Import `full-errand-credit-lifecycle.postman_collection.json` into Postman and run the whole collection in order against the local Compose stack. Use a 1,000 ms Collection Runner request delay. The collection creates fresh requester and courier accounts, reads verification codes from local Floci SES, creates their profiles, and creates an operational supplier with the bootstrapped super admin. Its seven folders then exercise expiry, requester cancellation, successful completion, credit reads, and errand reads. Each relevant credit GET retries for asynchronous settlement, with a finite limit. Manual Send works for individual requests, but automatic retries require the Collection Runner.
+Import `full-errand-credit-lifecycle.postman_collection.json` into Postman and run the whole collection in order against the local Compose stack. Use a 1,000 ms Collection Runner request delay. The collection creates fresh requester and courier accounts, reads verification codes from local Floci SES, creates their profiles, and signs in the bootstrapped super admin, creates or updates that admin's profile, and creates an operational supplier. Its seven folders then exercise expiry, requester cancellation, successful completion, credit reads, and errand reads. Each relevant credit GET retries for asynchronous settlement, with a finite limit. Manual Send works for individual requests, but automatic retries require the Collection Runner.
 
 Defaults are `baseUrl=http://localhost:8080`, `flociUrl=http://localhost:4566`, `superAdminEmail=admin@example.com`, and the passwords used by the local demo. Set password variables to your actual local credentials when they differ. This collection is for the local Floci setup because it reads the local SES mailbox. Keep real credentials in Postman secret or environment variables; do not export them with saved values.
+
+## Cookie selection and Runner settings
+
+Other collections' collection variables do not affect this collection. An active environment or data file can override a collection variable with the same name. The Collection Runner can also accumulate cookies returned during the run even when it starts without stored cookies. Two cookies visible in Postman's cookie manager do not prove that two cookies were sent; inspect the actual request's `Cookie` header in the run details or Postman Console.
+
+This collection disables the cookie jar on every request. Each authenticated request now reads the intended `requesterCookie`, `courierCookie`, or `superAdminCookie` with `pm.collectionVariables.get()` and replaces its explicit `Cookie` header immediately before sending. That avoids an environment variable with the same name winning during normal `{{variable}}` resolution. The selected value must be one `relay_session=...` pair.
+
+To run the entire collection, select all seven folders in order; use **Iterations: 1**, **no data file**, **no mock**, **Run collection without using stored cookies: on**, **Save cookies after collection run: off**, **Keep variable values: on**, **Add a delay of: 1000 ms**, **Stop run if an error occurs: on**, and **Turn off logs during run: off**. Select **No environment** unless you need to override the local URL or account defaults. Keep response persistence on if you want to inspect the balance snapshots. Use the desktop app or Desktop Agent for localhost.
+
+Reimport the updated collection in Postman. On the `08 Create operational supplier` request, inspect the sent request header: it should contain exactly one `Cookie: relay_session=...` whose value matches this collection's `superAdminCookie`. If it still contains two session cookies, confirm the request's Settings tab has **Disable cookie jar** on and that you are running this updated import. If the header is correct but supplier creation still fails, inspect its HTTP status and response body; authorization, supplier validation, and server errors require different fixes.
+
+Supplier Service validates the super admin session and requires both verified email and a created profile before checking the `super-admin` role. If the admin profile is missing, supplier creation returns `401 Unauthorized` even though login succeeds. The setup folder now includes `07 Create or update super admin profile` before `08 Create operational supplier`.
 
 ## What the requests demonstrate
 
@@ -25,8 +37,8 @@ Cancellation and expiry write an Errand Service outbox event with the state tran
 | --- | --- | --- |
 | `GET /api/credit`, `GET /api/credit/history?offset=0` | Authenticated user through the host | Own balance and history only |
 | `POST /internal/credit/reserve` | Errand Service with `x-credit-service-token` | Reserve before errand creation |
-| `user-events` Kafka topic | User Service publisher ? Credit Service consumer | Allocate initial credit after profile creation; process deletion |
-| `errand-events` Kafka topic | Errand Service publisher ? Credit Service consumer | Release after creation failure, cancellation, or expiry; transfer after completion |
+| `user-events` Kafka topic | User Service publisher to Credit Service consumer | Allocate initial credit after profile creation; process deletion |
+| `errand-events` Kafka topic | Errand Service publisher to Credit Service consumer | Release after creation failure, cancellation, or expiry; transfer after completion |
 
 If reserve succeeds but errand creation fails, Errand Service writes `ERRAND_CREATION_FAILED` to its outbox and removes the pending errand; Credit Service releases the reservation when it consumes that event. A pending-errand worker checks every five seconds for pending rows older than 30 seconds and emits the same failure event when recovery is needed. Credit Service handles a failure event that arrives before the reservation by writing a zero-amount tombstone, preventing a late reserve from creating stranded credit.
 
