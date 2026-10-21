@@ -52,7 +52,12 @@ export function ErrandDetailCard({
       aria-label={`${errand.name} details`}
     >
       <div className="errand-detail-header">
-        <div>
+        <div className="errand-detail-back-row">
+          <IconButton label="Close errand details" onClick={onClose}>
+            ×
+          </IconButton>
+        </div>
+        <div className="errand-detail-heading">
           <p>{role === 'courier' ? 'AVAILABLE ERRAND' : 'ACTIVE ERRAND'}</p>
           <h2>{errand.name}</h2>
           <div className="errand-detail-meta">
@@ -63,9 +68,6 @@ export function ErrandDetailCard({
             <span>Due {formatDeadline(errand.expiresAt)}</span>
           </div>
         </div>
-        <IconButton label="Close errand details" onClick={onClose}>
-          ×
-        </IconButton>
       </div>
 
       {errand.courierSub && (

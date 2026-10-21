@@ -14,6 +14,9 @@
 .create-errand-card { width: min(540px, 100%); margin: 0 auto; max-height: calc(100dvh - 44px); overflow: auto; scrollbar-width: none; }
 .create-errand-card::-webkit-scrollbar { display: none; }
 .errand-detail-header, .errand-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.errand-detail-header { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.errand-detail-back-row { display: flex; justify-content: flex-end; }
+.errand-detail-heading { min-width: 0; }
 .errand-detail-header h1, .errand-detail-header h2, .errand-panel-header h2 { margin: 0; letter-spacing: -.04em; }
 .errand-detail-header h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
 .errand-detail-header h2 { font-size: clamp(1.45rem, 3vw, 2rem); }
