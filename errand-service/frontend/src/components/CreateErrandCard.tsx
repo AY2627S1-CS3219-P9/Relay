@@ -146,9 +146,6 @@ export function CreateErrandCard({
     if (form.serviceType === '') validationErrors.serviceType = 'Select a service type.'
     else if (selectedSupplier && !selectedSupplier.serviceTypes.includes(form.serviceType))
       validationErrors.serviceType = 'This service type is not offered by the selected supplier.'
-    if (!form.pickupFloorNumber.trim()) validationErrors.pickupFloorNumber = 'Enter a pickup floor.'
-    else if (!Number.isInteger(Number(form.pickupFloorNumber)))
-      validationErrors.pickupFloorNumber = 'Floor must be a number.'
     if (!form.deliveryBuildingName.trim()) validationErrors.deliveryBuildingName = 'Enter a delivery building.'
     if (!form.deliveryFloorNumber.trim()) validationErrors.deliveryFloorNumber = 'Enter a delivery floor.'
     else if (!Number.isInteger(Number(form.deliveryFloorNumber)))
@@ -253,30 +250,14 @@ export function CreateErrandCard({
           </select>
         </RelayFormField>
         <div className="errand-form-grid">
-          <label className="errand-field">
+          <div className="errand-field">
             <span>Pickup building <b aria-hidden="true">*</b></span>
-            <input
-              required
-              value={form.pickupBuildingName}
-              onChange={(e) => update('pickupBuildingName', e.target.value)}
-            />
-          </label>
-          <label className="errand-field">
+            <div className="errand-readonly-value">{form.pickupBuildingName}</div>
+          </div>
+          <div className="errand-field">
             <span>Floor <b aria-hidden="true">*</b></span>
-            <input
-              type="number"
-              required
-              step="1"
-              value={form.pickupFloorNumber}
-              onChange={(e) => update('pickupFloorNumber', e.target.value)}
-              onInvalid={(e) => {
-                e.currentTarget.setCustomValidity(
-                  e.currentTarget.value.trim() ? 'Floor must be a number.' : '',
-                )
-              }}
-              onInput={(e) => e.currentTarget.setCustomValidity('')}
-            />
-          </label>
+            <div className="errand-readonly-value">Level {form.pickupFloorNumber}</div>
+          </div>
         </div>
         <div className="errand-form-grid">
           <label className="errand-field">
