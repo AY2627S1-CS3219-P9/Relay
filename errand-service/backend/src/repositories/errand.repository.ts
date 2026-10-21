@@ -239,6 +239,17 @@ export class ErrandRepository {
 
         const confirmed = await tx.errand.findUniqueOrThrow({ where: { id: row.id } })
         await appendEvent(tx, {
+          eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+          payload: {
+            errandId: confirmed.id,
+            errandStatus: 'CONFIRMED',
+            previousStatus: 'DELIVERED',
+            actorType: 'system',
+            requesterSub: confirmed.requesterSub,
+            courierSub: confirmed.courierSub ?? undefined,
+          },
+        })
+        await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_COMPLETED,
           payload: {
             errandId: confirmed.id,
