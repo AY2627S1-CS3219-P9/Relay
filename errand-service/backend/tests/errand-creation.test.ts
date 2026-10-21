@@ -25,8 +25,6 @@ function setup() {
     publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
     deletePendingErrand: vi.fn().mockResolvedValue(undefined),
     createErrand: vi.fn().mockResolvedValue({ id: 'pending-id', requesterSub: user.sub }),
-    publishCreationFailedEvent: vi.fn().mockResolvedValue(undefined),
-    deletePendingErrand: vi.fn().mockResolvedValue(undefined),
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
   const supplier = { validateSelection: vi.fn().mockResolvedValue(undefined) }
