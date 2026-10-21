@@ -1,51 +1,13 @@
-import { randomUUID } from 'node:crypto'
 import type { Kafka, Consumer, KafkaMessage, Producer } from 'kafkajs'
 import {
   UserEventTypes,
   type UserEvent,
-  type UserEventDlqErrorCode,
-  type UserEventDlqMessage,
   type AllocateInitialCreditCommand,
   type DeleteUserCreditCommand,
 } from '@relay/contracts'
-import { z } from 'zod'
 import { getEnv } from '../config/env.js'
 import { CreditService } from '../services/credit.service.js'
-
-const userEventSchema = z.object({
-  eventId: z.string().uuid(),
-  timestamp: z.iso.datetime(),
-  version: z.literal(1),
-  eventType: z.enum([UserEventTypes.USER_REGISTERED, UserEventTypes.USER_DELETED]),
-  payload: z.object({
-    cognitoSub: z.string().trim().min(1).refine((value) => !value.includes(':')),
-  }),
-})
-
-class UserEventRejection extends Error {
-  constructor(readonly code: UserEventDlqErrorCode, message: string) { super(message) }
-}
-
-function classify(error: unknown): UserEventRejection {
-  if (error instanceof UserEventRejection) return error
-  if (error instanceof SyntaxError || error instanceof z.ZodError) {
-    return new UserEventRejection('USER_EVENT_INVALID', 'The message is not a valid user event.')
-  }
-  return new UserEventRejection('USER_CREDIT_OPERATION_FAILED', 'The credit operation could not be completed.')
-}
-
-function rejectedEvent(event: UserEvent | undefined, raw: string, key: string | undefined,
-  rejection: UserEventRejection): UserEventDlqMessage {
-  if (event) return { ...event, error: { code: rejection.code, message: rejection.message } }
-  return {
-    eventId: randomUUID(),
-    eventType: 'UserEventInvalid',
-    timestamp: new Date().toISOString(),
-    version: 1,
-    payload: { cognitoSub: key || 'unknown', metadata: { rawEvent: raw } },
-    error: { code: rejection.code, message: rejection.message },
-  }
-}
+import { parseUserEvent, classifyUserEventError, rejectedUserEvent, validateUserCreditOutcome } from '../validators/user-event.validator.js'
 
 export class UserEventConsumer {
   private readonly consumer: Consumer
@@ -73,24 +35,14 @@ export class UserEventConsumer {
         userId,
       }
       const outcome = await this.creditService.allocateInitialCredit(command)
-      if (outcome === 'duplicate') {
-        throw new UserEventRejection('USER_EVENT_DUPLICATE', 'Initial credit was already allocated for this user.')
-      }
-      if (outcome === 'out-of-order') {
-        throw new UserEventRejection('USER_EVENT_OUT_OF_ORDER', 'Registration arrived after user deletion.')
-      }
+      validateUserCreditOutcome(outcome, event.eventType)
     } else if (event.eventType === UserEventTypes.USER_DELETED) {
       const command: DeleteUserCreditCommand = {
         transactionReference: { service: 'user', id: userId, type: 'USER_DELETION' },
         userId,
       }
       const outcome = await this.creditService.deleteUserCredit(command)
-      if (outcome === 'duplicate') {
-        throw new UserEventRejection('USER_EVENT_DUPLICATE', 'User credit was already deleted.')
-      }
-      if (outcome === 'out-of-order') {
-        throw new UserEventRejection('USER_EVENT_OUT_OF_ORDER', 'User deletion could not be applied in order.')
-      }
+      validateUserCreditOutcome(outcome, event.eventType)
     }
   }
 
@@ -101,15 +53,12 @@ export class UserEventConsumer {
     const raw = message.value?.toString() ?? 'null'
     let event: UserEvent | undefined
     try {
-      event = userEventSchema.parse(JSON.parse(raw)) as UserEvent
-      if (key !== event.payload.cognitoSub) {
-        throw new UserEventRejection('USER_EVENT_INVALID', 'The Kafka key does not match the user subject.')
-      }
+      event = parseUserEvent(raw, key)
       await this.process(event)
       console.log(`Processed ${this.topic} for ${event.payload.cognitoSub}`)
     } catch (error) {
-      const rejection = classify(error)
-      const failed = rejectedEvent(event, raw, key, rejection)
+      const rejection = classifyUserEventError(error)
+      const failed = rejectedUserEvent(event, raw, key, rejection)
       await this.producer.send({
         topic: this.dlqTopic,
         messages: [{ key: failed.payload.cognitoSub, value: JSON.stringify(failed) }],
@@ -128,6 +77,7 @@ export class UserEventConsumer {
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
+    throw new Error('User event consumer stopped before the source message was acknowledged.')
   }
 
   async start(): Promise<void> {

@@ -29,8 +29,8 @@ function harness(overrides = {}) {
       connect: async () => {}, disconnect: async () => {} }),
   }
   const consumer = new ErrandEventConsumer(service, kafka)
-  const handle = async (value) => consumer.handleMessage({
-    key: Buffer.from('source-key'),
+  const handle = async (value, key = typeof value === 'object' ? value.payload.errandId : 'source-key') => consumer.handleMessage({
+    key: Buffer.from(key),
     value: Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)),
   })
   return { sent, calls, consumer, handle }
@@ -50,6 +50,13 @@ test('bad events and invariant failures reach the DLQ once without retrying', as
     assert.equal(sent[0].error.code, expectedCode)
     assert.equal(calls.length, 0)
   }
+})
+
+test('mismatched errand keys reach the DLQ before credit writes', async () => {
+  const invalid = harness()
+  await invalid.handle(event('ErrandExpired', {}), 'wrong-key')
+  assert.equal(invalid.sent[0].error.code, 'ERRAND_EVENT_INVALID')
+  assert.equal(invalid.calls.length, 0)
 })
 
 test('missing reservation and credit write errors reach the DLQ', async () => {
@@ -95,4 +102,17 @@ test('successful processing skips the DLQ; DLQ failures keep the source message 
   const failedDlq = harness({ findReservation: async () => null })
   failedDlq.consumer.producer.send = async () => { throw new Error('DLQ unavailable') }
   await assert.rejects(failedDlq.handle(event('ErrandExpired', {})), /DLQ unavailable/)
+})
+test('a temporary errand DLQ failure is retried before acknowledgement', async () => {
+  const { consumer, sent } = harness()
+  let attempts = 0
+  const send = consumer.producer.send
+  consumer.producer.send = async (record) => {
+    attempts++
+    if (attempts === 1) throw new Error('DLQ temporarily unavailable')
+    await send(record)
+  }
+  await consumer.handleWithRetry({ key: Buffer.from('bad-key'), value: Buffer.from('{bad json') })
+  assert.equal(attempts, 2)
+  assert.equal(sent.length, 1)
 })
