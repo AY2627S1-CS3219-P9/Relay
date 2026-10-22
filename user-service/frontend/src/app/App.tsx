@@ -25,6 +25,7 @@ export default function App({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginNotice, setLoginNotice] = useState('')
+  const [verificationBackView, setVerificationBackView] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
     if (!fetchSession) {
@@ -72,9 +73,14 @@ export default function App({
     view === 'login' || view === 'register' || view === 'verify' || view === 'profile'
 
   /* Verification */
-  function startVerification(email: string, password: string) {
+  function startVerification(
+    email: string,
+    password: string,
+    backView: 'login' | 'register' = 'login',
+  ) {
     setEmail(email)
     setPassword(password)
+    setVerificationBackView(backView)
     setView('verify')
   }
 
@@ -126,20 +132,25 @@ export default function App({
       <RelayBrand />
       <section className={`user-panel${view === 'account' ? ' account-panel' : ''}`}>
         {view === 'register' && (
-          <RegisterForm onRegistered={startVerification} switchToLogin={() => setView('login')} />
+          <RegisterForm
+            onRegistered={(email, password) => startVerification(email, password, 'register')}
+            switchToLogin={() => setView('login')}
+          />
         )}
         {view === 'verify' && (
           <VerificationForm
             email={email}
             password={password}
             onVerified={finishVerification}
-            onBack={() => setView('register')}
+            onBack={() => setView(verificationBackView)}
+            backLabel={verificationBackView === 'login' ? 'Back to login' : 'Back to registration'}
           />
         )}
         {view === 'login' && (
           <LoginForm
             onLoggedIn={onLogin}
             switchToRegister={() => setView('register')}
+            onVerificationRequired={(email, password) => startVerification(email, password, 'login')}
             notice={loginNotice}
           />
         )}

@@ -58,6 +58,17 @@ export const sessionMiddleware: RequestHandler = async (
       return
     }
 
+    if (user.emailVerified !== true || user.profileCreated !== true) {
+      next(new ErrandServiceError(
+        ErrandErrors.FORBIDDEN,
+        user.emailVerified !== true
+          ? 'A verified email is required.'
+          : 'A user profile is required.',
+        403,
+      ))
+      return
+    }
+
     req.user = {
       sub: user.subject,
       email: user.email,

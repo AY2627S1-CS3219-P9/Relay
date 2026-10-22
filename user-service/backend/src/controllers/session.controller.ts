@@ -56,6 +56,7 @@ export class SessionController {
   changePassword = async (req: Request, res: Response, next: NextFunction) =>
     this.run(res, next, async () => {
       await this.service.changePassword(requireSession(req), req.body as ChangePasswordRequest)
+      res.clearCookie(getEnv().sessionCookieName, { path: '/' })
       res.status(204).send()
     })
 

@@ -26,6 +26,9 @@ export type UserApiErrorCode =
   | 'PROFILE_NOT_FOUND'
   | 'USERNAME_TAKEN'
   | 'PASSWORD_REUSED'
+  | 'USER_NOT_FOUND'
+  | 'ALREADY_ADMIN'
+  | 'NOT_ADMIN'
   | 'INTERNAL_ERROR'
 
 /**

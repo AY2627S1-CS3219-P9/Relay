@@ -39,12 +39,15 @@ function claimsToUser(claims: CognitoLikeClaims): AuthenticatedUser {
   }
 
   const groups = claims['cognito:groups'] ?? []
-  const isAdmin = groups.includes(getEnv().cognitoAdminGroupName)
+  const env = getEnv()
+  const role = groups.includes(env.cognitoSuperAdminGroupName)
+    ? 'super-admin'
+    : groups.includes(env.cognitoAdminGroupName) ? 'admin' : 'user'
   return {
     sub: claims.sub,
     email,
     emailVerified: claims.email_verified === true,
-    role: isAdmin ? 'admin' : 'user',
+    role,
   }
 }
 
@@ -53,20 +56,21 @@ let jwksCache: { keys: Jwk[]; expiresAt: number } | undefined
 
 async function getCognitoKey(kid: string): Promise<string> {
   const env = getEnv()
-  if (!jwksCache || jwksCache.expiresAt <= Date.now()) {
+  const refresh = async () => {
     const response = await fetch(env.cognitoJwksUri)
-    if (!response.ok) throw new Error(`Unable to load Cognito signing keys (${response.status}).`)
+    if (!response.ok) throw new Error('Unable to load Cognito signing keys (' + response.status + ').')
     const body = (await response.json()) as { keys?: Jwk[] }
     jwksCache = { keys: body.keys ?? [], expiresAt: Date.now() + 60 * 60 * 1000 }
   }
-  let key = jwksCache.keys.find((candidate) => candidate.kid === kid)
+  if (!jwksCache || jwksCache.expiresAt <= Date.now()) await refresh()
+  let key = jwksCache?.keys.find((candidate) => candidate.kid === kid)
   if (!key) {
-    jwksCache = undefined
-    return getCognitoKey(kid)
+    await refresh()
+    key = jwksCache?.keys.find((candidate) => candidate.kid === kid)
   }
+  if (!key) throw new Error('The Cognito signing key was not found.')
   return createPublicKey({ key, format: 'jwk' }).export({ format: 'pem', type: 'spki' }).toString()
 }
-
 async function verifyCognitoJwt(token: string): Promise<AuthenticatedUser> {
   const env = getEnv()
   const decoded = jwt.decode(token, { complete: true })
@@ -107,7 +111,7 @@ export function generateMockJwt(user: {
   sub: string
   email: string
   emailVerified?: boolean
-  role?: 'admin' | 'user'
+  role?: 'super-admin' | 'admin' | 'user'
   expiresIn?: SignOptions['expiresIn']
 }): string {
   const env = getEnv()
@@ -116,7 +120,7 @@ export function generateMockJwt(user: {
       sub: user.sub,
       email: user.email,
       email_verified: user.emailVerified ?? true,
-      'cognito:groups': [user.role ?? 'user'],
+      'cognito:groups': [user.role === 'super-admin' ? env.cognitoSuperAdminGroupName : user.role === 'admin' ? env.cognitoAdminGroupName : 'user'],
       token_use: 'access',
     },
     env.mockJwtSecret,

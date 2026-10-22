@@ -25,6 +25,23 @@ export type UserDeletedEvent = UserEvent & {
 
 export const UserTopics = {
   USER_EVENTS: 'user-events',
+  USER_DLQ: 'user-events-dlq',
 } as const
 
 export type UserTopic = (typeof UserTopics)[keyof typeof UserTopics]
+
+/** Rejected user event written by Credit Service to the user DLQ. */
+export type UserEventDlqErrorCode =
+  | 'USER_EVENT_INVALID'
+  | 'USER_EVENT_DUPLICATE'
+  | 'USER_EVENT_OUT_OF_ORDER'
+  | 'USER_CREDIT_OPERATION_FAILED'
+
+export type UserEventDlqMessage = {
+  eventId: string
+  eventType: UserEventType | 'UserEventInvalid'
+  timestamp: string
+  version: 1
+  payload: { cognitoSub: string; metadata?: { rawEvent: string } }
+  error: { code: UserEventDlqErrorCode; message: string }
+}

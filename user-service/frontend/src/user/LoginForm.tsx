@@ -7,6 +7,7 @@ import { ErrorMessage, TextButton } from '@relay/ui'
 export function LoginForm({
   onLoggedIn,
   switchToRegister,
+  onVerificationRequired,
   notice,
 }: {
   onLoggedIn: (
@@ -16,6 +17,7 @@ export function LoginForm({
     profileCreated: boolean,
   ) => void | Promise<void>
   switchToRegister: () => void
+  onVerificationRequired: (email: string, password: string) => void
   notice?: string
 }) {
   const [email, setEmail] = useState('')
@@ -47,6 +49,8 @@ export function LoginForm({
         response.data.user.emailVerified,
         response.data.user.profileCreated,
       )
+    } else if (response.error.code === 'EMAIL_NOT_VERIFIED') {
+      onVerificationRequired(email, password)
     } else {
       setErrorMessage(response.error.message)
     }

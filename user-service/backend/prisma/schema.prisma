@@ -25,6 +25,7 @@ model UserSession {
   cognitoSub           String    @map("cognito_sub")
   email                String
   emailVerified        Boolean   @map("email_verified")
+  // Stores user, admin, or super-admin as resolved at login.
   role                 String
   cognitoAccessToken   String    @map("cognito_access_token")
   expiresAt            DateTime  @map("expires_at")
@@ -33,6 +34,7 @@ model UserSession {
 
   @@index([cognitoSub])
   @@index([expiresAt])
+  @@index([revokedAt])
   @@map("user_sessions")
 }
 

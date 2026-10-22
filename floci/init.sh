@@ -31,7 +31,12 @@ aws cognito-idp create-group \
   --group-name "$COGNITO_ADMIN_GROUP_NAME" \
   --description "Admin user group"
 
-# 1d. Add initial admin to user pool
+aws cognito-idp create-group \
+  --user-pool-id "$COGNITO_USER_POOL_ID" \
+  --group-name "$COGNITO_SUPERADMIN_GROUP_NAME" \
+  --description "Super admin user group"
+
+# 1d. Add the only initial super admin to the user pool
 # TODO for AWS:
 # - CloudFormation template should include custom lambda resource to add admin
 # - Admin email should be a real email
@@ -50,7 +55,7 @@ aws cognito-idp admin-set-user-password \
 aws cognito-idp admin-add-user-to-group \
   --user-pool-id "$COGNITO_USER_POOL_ID" \
   --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
-  --group-name "$COGNITO_ADMIN_GROUP_NAME"
+  --group-name "$COGNITO_SUPERADMIN_GROUP_NAME"
 
 # 2. Create s3 bucket for user profile pictures
 aws s3api create-bucket --bucket "$S3_USER_IMAGE_BUCKET"

@@ -100,7 +100,7 @@ function App() {
           email: string
           emailVerified: boolean
           profileCreated: boolean
-          role: 'admin' | 'user'
+          role: 'super-admin' | 'admin' | 'user'
         }
       }
     }
@@ -116,7 +116,7 @@ function App() {
         email: user.email,
         emailVerified: user.emailVerified,
         profileCreated: user.profileCreated,
-        isAdmin: user.role === 'admin',
+        isAdmin: user.role === 'admin' || user.role === 'super-admin',
       },
     }
   }

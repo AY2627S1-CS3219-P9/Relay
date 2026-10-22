@@ -3,13 +3,10 @@ import type { UserApiErrorCode } from '@relay/contracts'
 import { requireAuthenticatedUser } from '../middleware/cognito-auth.middleware.js'
 import { requireSession } from '../middleware/session.middleware.js'
 import { UserService } from '../services/user.service.js'
-import { SessionRepository } from '../repositories/session.repository.js'
+
 
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly sessions: SessionRepository,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   checkAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -67,7 +64,7 @@ export class UserController {
         req.body?.confirmation,
         requireSession(req).cognitoAccessToken,
       )
-      await this.sessions.revokeByCognitoSub(user.sub)
+
       res.status(204).send()
     } catch (error) {
       next(error)

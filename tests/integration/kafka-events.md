@@ -8,7 +8,7 @@ Open Kafbat UI at http://localhost:8081 (the Compose Kafka UI port). Choose the 
 
 These are IDs from the local end-to-end run. Replace them with the IDs you intend to exercise. Keep a given errand's key and `payload.errandId` identical across its events. All values use `version: 1`.
 
-The user service publishes to `user-events`. The errand service publishes to `errand-events`. The credit service consumes both. A rejected errand event is copied to `errand-events-dlq` with an added `error` object. Publishing a Kafka event does **not** create or change an errand row in the errand database.
+The user service publishes to `user-events`. Credit service sends rejected user events to `user-events-dlq`. The errand service publishes to `errand-events`. The credit service consumes both. A rejected errand event is copied to `errand-events-dlq` with an added `error` object. Publishing a Kafka event does **not** create or change an errand row in the errand database.
 
 ## User service events
 

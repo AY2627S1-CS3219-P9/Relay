@@ -1,7 +1,9 @@
 import type {
   ChangePasswordRequest,
+  DemoteAdminToUserRequest,
   DeleteUserRequest,
   LoginRequest,
+  PromoteUserToAdminRequest,
   RegisterRequest,
   ResendVerificationRequest,
   SubmitOtpAndLoginRequest,
@@ -10,6 +12,7 @@ import type {
 import type {
   ApiResult,
   GetSessionResponse,
+  GetAdminsResponse,
   GetUserProfileBySubjectResponse,
   GetUserResponse,
   LoginResponse,
@@ -48,6 +51,8 @@ import type {
  * - `GET /api/user/session`
  * - `POST /api/user/auth/password`
  * - `GET`, `PATCH`, and `DELETE /api/user/me`
+ * - `GET /api/user/admins` (super admin only)
+ * - `POST /api/user/admin/promote` and `/api/user/admin/demote` (super admin only)
  */
 export interface UserApi {
   /** Creates an unverified account and sends a verification code. */
@@ -70,7 +75,7 @@ export interface UserApi {
   /** Returns the identity and role associated with the current session. */
   getSession(): Promise<ApiResult<GetSessionResponse>>
 
-  /** Changes the password associated with the current authenticated identity. */
+  /** Changes the password and revokes all current sessions. */
   changePassword(request: ChangePasswordRequest): Promise<ApiResult<undefined>>
 
   /** Returns the current user's complete Relay profile. */
@@ -81,6 +86,13 @@ export interface UserApi {
 
   /** Deletes the current identity and profile, then revokes the session. */
   deleteUser(request: DeleteUserRequest): Promise<ApiResult<undefined>>
+
+  /** Lists members of the Cognito admin group, joined to their Relay profiles. */
+  getAdmins(): Promise<ApiResult<GetAdminsResponse>>
+  /** Promotes an existing profile; returns 409 ALREADY_ADMIN if already promoted. */
+  promoteUserToAdmin(request: PromoteUserToAdminRequest): Promise<ApiResult<undefined>>
+  /** Demotes an admin; returns 409 NOT_ADMIN if already demoted. */
+  demoteAdminToUser(request: DemoteAdminToUserRequest): Promise<ApiResult<undefined>>
 }
 
 /**

@@ -11,6 +11,7 @@ export type UserServiceEnv = {
   cognitoJwksUri: string
   cognitoUserPoolId: string
   cognitoAdminGroupName: string
+  cognitoSuperAdminGroupName: string
   sessionCookieName: string
   sessionTtlSeconds: number
   sessionCookieSecure: boolean
@@ -41,12 +42,21 @@ export function getEnv(): UserServiceEnv {
     throw new Error('PORT must be an integer between 1 and 65535')
   }
 
+  const authMode = process.env.AUTH_MODE ?? 'mock'
+  if (authMode !== 'mock' && authMode !== 'cognito') {
+    throw new Error('AUTH_MODE must be mock or cognito')
+  }
+  const sessionTtlSeconds = Number(process.env.SESSION_TTL_SECONDS ?? '86400')
+  if (!Number.isSafeInteger(sessionTtlSeconds) || sessionTtlSeconds < 1) {
+    throw new Error('SESSION_TTL_SECONDS must be a positive integer')
+  }
+
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port,
     awsEndpointUrl: process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
     awsRegion: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
-    authMode: (process.env.AUTH_MODE ?? 'mock') as 'mock' | 'cognito',
+    authMode,
     cognitoIssuer: required('COGNITO_ISSUER', 'http://localhost:4566/us-east-1_test'),
     cognitoClientId: required('COGNITO_CLIENT_ID', 'test'),
     cognitoJwksUri: required(
@@ -55,8 +65,9 @@ export function getEnv(): UserServiceEnv {
     ),
     cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),
     cognitoAdminGroupName: required('COGNITO_ADMIN_GROUP_NAME', 'AdminGroup'),
+    cognitoSuperAdminGroupName: required('COGNITO_SUPERADMIN_GROUP_NAME', 'SuperAdminGroup'),
     sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'relay_session',
-    sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? '86400'),
+    sessionTtlSeconds,
     sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? 'false') === 'true',
     internalServiceToken: required(
       'INTERNAL_USER_SERVICE_TOKEN',

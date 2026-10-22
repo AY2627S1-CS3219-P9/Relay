@@ -22,6 +22,13 @@ import { getEnv } from '../config/env.js'
 import { SessionRepository, type StoredSession } from '../repositories/session.repository.js'
 import { UserRepository } from '../repositories/user.repository.js'
 import { UserServiceError } from '../types/user.types.js'
+import {
+  validateChangePassword,
+  validateLogin,
+  validateRegister,
+  validateResend,
+  validateVerification,
+} from '../validators/auth.validator.js'
 
 export class SessionService {
   private readonly client: CognitoIdentityProviderClient
@@ -38,6 +45,7 @@ export class SessionService {
   }
 
   async register(request: RegisterRequest): Promise<{ verificationRequired: true }> {
+    request = validateRegister(request)
     if (request.password !== request.passwordConfirmation) {
       throw new UserServiceError('VALIDATION_FAILED', 'Passwords must match.', 400, {
         passwordConfirmation: 'Passwords must match.',
@@ -59,6 +67,7 @@ export class SessionService {
   }
 
   async resendVerification(request: ResendVerificationRequest): Promise<void> {
+    request = validateResend(request)
     try {
       await this.client.send(
         new ResendConfirmationCodeCommand({
@@ -74,6 +83,7 @@ export class SessionService {
   async submitOtpAndLogin(
     request: SubmitOtpAndLoginRequest,
   ): Promise<{ session: UserSession; cookie: string }> {
+    request = validateVerification(request)
     try {
       await this.client.send(
         new ConfirmSignUpCommand({
@@ -84,11 +94,13 @@ export class SessionService {
       )
       return this.login(request)
     } catch (error) {
+      if (error instanceof UserServiceError) throw error
       throw mapCognitoError(error)
     }
   }
 
   async login(request: LoginRequest): Promise<{ session: UserSession; cookie: string }> {
+    request = validateLogin(request)
     try {
       const result = await this.client.send(
         new InitiateAuthCommand({
@@ -114,6 +126,7 @@ export class SessionService {
   }
 
   async changePassword(session: StoredSession, request: ChangePasswordRequest): Promise<void> {
+    request = validateChangePassword(request)
     if (request.newPassword !== request.newPasswordConfirmation) {
       throw new UserServiceError('VALIDATION_FAILED', 'Passwords must match.', 400)
     }
@@ -128,6 +141,7 @@ export class SessionService {
     } catch (error) {
       throw mapCognitoError(error)
     }
+    await this.sessions.revokeByCognitoSub(session.cognitoSub)
   }
 
   async revoke(sessionCookie: string): Promise<void> {
@@ -149,7 +163,15 @@ export class SessionService {
       cognitoAccessToken: accessToken,
       expiresAt,
     })
-    return { session: { user: await this.sessionUser(stored) }, cookie }
+    try {
+      return {
+        session: { user: await this.sessionUser(stored) },
+        cookie,
+      }
+    } catch (error) {
+      await this.sessions.revokeByTokenHash(hash(cookie))
+      throw error
+    }
   }
 
   private async sessionUser(session: StoredSession): Promise<SessionUser> {
@@ -174,7 +196,9 @@ export class SessionService {
       throw new UserServiceError('INTERNAL_ERROR', 'Cognito identity is incomplete.', 500)
     const idClaims = idToken ? decodeJwtPayload(idToken) : {}
     const groups = Array.isArray(idClaims['cognito:groups']) ? idClaims['cognito:groups'] : []
-    const role = groups.includes(this.env.cognitoAdminGroupName) ? 'admin' : 'user'
+    const role: UserRole = groups.includes(this.env.cognitoSuperAdminGroupName)
+      ? 'super-admin'
+      : groups.includes(this.env.cognitoAdminGroupName) ? 'admin' : 'user'
     return { subject, email, emailVerified: attributes.get('email_verified') === 'true', role }
   }
 }
@@ -208,6 +232,12 @@ function mapCognitoError(error: unknown): UserServiceError {
     return new UserServiceError('OTP_EXPIRED', 'The verification code has expired.', 400)
   if (name === 'PasswordHistoryPolicyViolationException')
     return new UserServiceError('PASSWORD_REUSED', 'You cannot reuse a previous password.', 409)
+  if (name === 'InvalidPasswordException')
+    return new UserServiceError('VALIDATION_FAILED', 'The password does not meet the required policy.', 400, {
+      newPassword: 'Choose a password that meets the required policy.',
+    })
+  if (name === 'LimitExceededException' || name === 'TooManyRequestsException')
+    return new UserServiceError('RATE_LIMITED', 'Too many attempts. Please try again later.', 429)
   return new UserServiceError('INTERNAL_ERROR', 'The identity provider request failed.', 500)
 }
 

@@ -31,6 +31,7 @@ services:
     build: ./kafka
     environment:
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
     depends_on:
@@ -38,7 +39,27 @@ services:
         condition: service_healthy
 
   user-postgres:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM postgres:16-alpine
+        RUN apk add --no-cache --virtual .pgcron-build-deps build-base curl \
+            && curl -fsSL https://github.com/citusdata/pg_cron/archive/refs/tags/v1.6.7.tar.gz \
+              | tar -xz -C /tmp \
+            && make -C /tmp/pg_cron-1.6.7 with_llvm=no \
+            && make -C /tmp/pg_cron-1.6.7 with_llvm=no install \
+            && rm -rf /tmp/pg_cron-1.6.7 \
+            && apk del .pgcron-build-deps
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=relay
+      - -c
+      - cron.timezone=Asia/Singapore
+      - -c
+      - cron.use_background_workers=on
     environment:
       POSTGRES_USER: relay
       POSTGRES_PASSWORD: relay
@@ -320,6 +341,7 @@ services:
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token

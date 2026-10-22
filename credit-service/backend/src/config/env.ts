@@ -10,6 +10,7 @@ const schema = z.object({
   CREDIT_SERVICE_INTERNAL_TOKEN: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1).default('kafka:9092'),
   KAFKA_TOPIC_USER_EVENTS: z.string().min(1),
+  KAFKA_TOPIC_USER_DLQ: z.string().min(1),
   KAFKA_TOPIC_ERRAND_EVENTS: z.string().min(1),
   KAFKA_TOPIC_ERRAND_DLQ: z.string().min(1),
 })
@@ -26,6 +27,7 @@ export function getEnv() {
     kafkaBrokers: env.KAFKA_BROKERS.split(','),
     kafkaTopics: {
       userEvents: env.KAFKA_TOPIC_USER_EVENTS,
+      userDlq: env.KAFKA_TOPIC_USER_DLQ,
       errandEvents: env.KAFKA_TOPIC_ERRAND_EVENTS,
       errandDlq: env.KAFKA_TOPIC_ERRAND_DLQ,
     },

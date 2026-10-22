@@ -1,0 +1,2103 @@
+{
+  "info": {
+    "name": "Relay full errand lifecycle and credit integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folders in order against local Compose and Floci, with Collection Runner request delay 1000 ms. Each full run creates fresh identities and one supplier. Assertions check credit snapshots and history after three 10/15/20-credit errands. Credit event settlement is asynchronous; bounded polling is in the relevant GET requests. See the companion README for architecture, interfaces, and fault-demo guidance. Every authenticated request reads its selected session from this collection and sets exactly one explicit Cookie header. Disable stored cookies in Postman Runner."
+  },
+  "item": [
+    {
+      "name": "1. Requester registration and setup",
+      "description": "Fresh requester, email verification, profile creation, initial allocation, then super admin login, profile creation, and supplier setup.",
+      "item": [
+        {
+          "name": "01 Register requester",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/user/auth/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{requesterEmail}}\",\"password\":\"{{password}}\",\"passwordConfirmation\":\"{{password}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);",
+                  "pm.collectionVariables.set('requesterEmail','relay-requester-'+s+'@example.com');",
+                  "pm.collectionVariables.set('requesterName','relayrequester'+s);",
+                  "pm.collectionVariables.set('supplierName','Relay E2E '+s);",
+                  "pm.collectionVariables.set('supplierUpdatedName','Relay E2E Updated '+s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(201);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "02 Read requester OTP from Floci",
+          "request": {
+            "method": "GET",
+            "url": "{{flociUrl}}/_aws/ses",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const m=pm.response.json().messages.find(x=>x.Destination.ToAddresses.includes(pm.collectionVariables.get('requesterEmail')));",
+                  "pm.expect(m).to.exist;",
+                  "pm.collectionVariables.set('requesterCode',m.Body.text_part.match(/\\b\\d{6}\\b/)[0]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "03 Verify requester and sign in",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{requesterEmail}}\",\"password\":\"{{password}}\",\"code\":\"{{requesterCode}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "pm.collectionVariables.set('requesterSub',pm.response.json().data.user.subject);",
+                  "pm.collectionVariables.set('requesterCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "04 Create requester profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/user/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{requesterName}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "05 Initial requester balance",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==100||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Sign in as super admin",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/user/auth/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{superAdminEmail}}\",\"password\":\"{{superAdminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "pm.expect(pm.response.json().data.user.role).to.eql('super-admin');",
+                  "pm.collectionVariables.set('superAdminCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "07 Create or update super admin profile",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('superAdminCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('superAdminCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('profile created',()=>pm.expect(pm.response.json().data.profileCreated).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/user/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{superAdminCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"relaySuperAdmin\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 Create operational supplier",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/supplier",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{superAdminCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"{{supplierName}}\",\"location\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"E2E Pickup\",\"floorNumber\":1},\"isOperational\":true,\"operatingHours\":{\"openingTime\":\"00:00\",\"closingTime\":\"00:00\",\"daysOfWeek\":[0,1,2,3,4,5,6]},\"serviceTypes\":[1]}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('superAdminCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('superAdminCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(201);",
+                  "pm.collectionVariables.set('supplierId',pm.response.json().supplier.id);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Courier registration and setup",
+      "description": "Fresh courier, email verification, profile creation, and initial allocation.",
+      "item": [
+        {
+          "name": "01 Register courier",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/user/auth/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{courierEmail}}\",\"password\":\"{{password}}\",\"passwordConfirmation\":\"{{password}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);",
+                  "pm.collectionVariables.set('courierEmail','relay-courier-'+s+'@example.com');",
+                  "pm.collectionVariables.set('courierName','relaycourier'+s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(201);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "02 Read courier OTP from Floci",
+          "request": {
+            "method": "GET",
+            "url": "{{flociUrl}}/_aws/ses",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const m=pm.response.json().messages.find(x=>x.Destination.ToAddresses.includes(pm.collectionVariables.get('courierEmail')));",
+                  "pm.expect(m).to.exist;",
+                  "pm.collectionVariables.set('courierCode',m.Body.text_part.match(/\\b\\d{6}\\b/)[0]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "03 Verify courier and sign in",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{courierEmail}}\",\"password\":\"{{password}}\",\"code\":\"{{courierCode}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "pm.collectionVariables.set('courierSub',pm.response.json().data.user.subject);",
+                  "pm.collectionVariables.set('courierCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "04 Create courier profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/user/me",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":\"{{courierName}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          }
+        },
+        {
+          "name": "05 Initial courier balance",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==100||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Expiring errand",
+      "description": "Short future expiry. Keep this folder in runner order; GET triggers due lifecycle processing and credit release arrives asynchronously via Kafka.",
+      "item": [
+        {
+          "name": "01 Create expiring errand (10 credits, 15 second deadline)",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"supplierDetails\":{\"supplierId\":\"{{supplierId}}\",\"supplierName\":\"{{supplierName}}\",\"serviceType\":1},\"name\":\"01 Create expiring errand (10 credits, 15 second deadline)\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Postman credit lifecycle demo\"},\"creditAmount\":10,\"expiresAt\":\"{{expiryAt}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('expiryAt',new Date(Date.now()+15000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('expiryId',pm.response.json().errand.id);",
+                  "pm.test('opens after reserve',()=>pm.expect(pm.response.json().errand.status).to.eql('OPEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Requester after reserve: 90 available, 10 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 90',()=>pm.expect(b.availableCredit).to.eql(90));pm.test('reserved = 10',()=>pm.expect(b.reserveCredit).to.eql(10));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Reject second order that exceeds available credit",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": "Only 90 credits remain available while 10 are reserved. A 95-credit second order must fail without consuming the reserved 10.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"supplierDetails\":{\"supplierId\":\"{{supplierId}}\",\"supplierName\":\"{{supplierName}}\",\"serviceType\":1},\"name\":\"Over available balance\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Postman credit lifecycle demo\"},\"creditAmount\":95}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('insufficient available credit rejected',()=>pm.response.to.have.status(422));",
+                  "pm.test('insufficient credit code',()=>pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_CREDIT')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Rejected order did not change balance",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 90',()=>pm.expect(b.availableCredit).to.eql(90));pm.test('reserved = 10',()=>pm.expect(b.reserveCredit).to.eql(10));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Wait for EXPIRED state",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/{{expiryId}}",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const e=pm.response.code===200?pm.response.json().errand:null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!e||e.status!=='EXPIRED')&&n<50){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "if(e)pm.test('status EXPIRED',()=>pm.expect(e.status).to.eql('EXPIRED'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Requester after release: 100 available, 0 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==100||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Courier unchanged",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Requester history contains release",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "const records=pm.response.json().records;",
+                  "pm.test('records returned',()=>pm.expect(records).to.be.an('array'));",
+                  "pm.test('CREDIT_RELEASE recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('expiryId')&&r.type==='CREDIT_RELEASE')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Requester-cancelled errand",
+      "description": "Reservation stays unavailable until the requester cancels an OPEN errand; Kafka release restores available balance.",
+      "item": [
+        {
+          "name": "01 Create cancellable errand (15 credits)",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"supplierDetails\":{\"supplierId\":\"{{supplierId}}\",\"supplierName\":\"{{supplierName}}\",\"serviceType\":1},\"name\":\"01 Create cancellable errand (15 credits)\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Postman credit lifecycle demo\"},\"creditAmount\":15}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelId',pm.response.json().errand.id);",
+                  "pm.test('opens after reserve',()=>pm.expect(pm.response.json().errand.status).to.eql('OPEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Requester after reserve: 85 available, 15 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 85',()=>pm.expect(b.availableCredit).to.eql(85));pm.test('reserved = 15',()=>pm.expect(b.reserveCredit).to.eql(15));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Requester cancels OPEN errand",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/{{cancelId}}/cancel",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('status CANCELLED',()=>pm.expect(pm.response.json().errand.status).to.eql('CANCELLED')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Requester after release: 100 available, 0 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==100||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Courier unchanged",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Requester history contains release",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "const records=pm.response.json().records;",
+                  "pm.test('records returned',()=>pm.expect(records).to.be.an('array'));",
+                  "pm.test('CREDIT_RELEASE recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('cancelId')&&r.type==='CREDIT_RELEASE')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Completed errand",
+      "description": "OPEN ? ACCEPTED ? PICKED_UP ? DELIVERED ? CONFIRMED. Confirm emits the transfer event; credit changes settle asynchronously.",
+      "item": [
+        {
+          "name": "01 Requester before order",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Courier before order",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Create delivery errand (20 credits)",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"supplierDetails\":{\"supplierId\":\"{{supplierId}}\",\"supplierName\":\"{{supplierName}}\",\"serviceType\":1},\"name\":\"03 Create delivery errand (20 credits)\",\"pickupLocation\":{\"lat\":1.3,\"lng\":103.8,\"buildingName\":\"Pickup\",\"floorNumber\":1},\"targetLocation\":{\"lat\":1.31,\"lng\":103.81,\"buildingName\":\"Dropoff\",\"floorNumber\":2},\"deliveryDetails\":{\"description\":\"Postman credit lifecycle demo\"},\"creditAmount\":20}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('completeId',pm.response.json().errand.id);",
+                  "pm.test('opens after reserve',()=>pm.expect(pm.response.json().errand.status).to.eql('OPEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Requester after reserve: 80 available, 20 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 80',()=>pm.expect(b.availableCredit).to.eql(80));pm.test('reserved = 20',()=>pm.expect(b.reserveCredit).to.eql(20));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Courier before transfer",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Courier accepts",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/{{completeId}}/accept",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('status ACCEPTED',()=>pm.expect(pm.response.json().errand.status).to.eql('ACCEPTED')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Courier picks up",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/{{completeId}}/pickup",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('status PICKED_UP',()=>pm.expect(pm.response.json().errand.status).to.eql('PICKED_UP')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Courier delivers",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/{{completeId}}/deliver",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('status DELIVERED',()=>pm.expect(pm.response.json().errand.status).to.eql('DELIVERED')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Requester confirms",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/errands/{{completeId}}/confirm",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('status CONFIRMED',()=>pm.expect(pm.response.json().errand.status).to.eql('CONFIRMED')); "
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 Requester after transfer: 80 available, 0 reserved",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==80||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 80',()=>pm.expect(b.availableCredit).to.eql(80));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Courier after transfer: 120 available",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "const key='retry:'+pm.info.requestName;",
+                  "const n=Number(pm.collectionVariables.get(key)||0);",
+                  "if((!b||b.availableCredit!==120||b.reserveCredit!==0)&&n<45){pm.collectionVariables.set(key,String(n+1));pm.execution.setNextRequest(pm.info.requestName);}else{pm.collectionVariables.unset(key);",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 120',()=>pm.expect(b.availableCredit).to.eql(120));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 Requester history contains transfer",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "const records=pm.response.json().records;",
+                  "pm.test('records returned',()=>pm.expect(records).to.be.an('array'));",
+                  "pm.test('CREDIT_TRANSFER recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('completeId')&&r.type==='CREDIT_TRANSFER')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 Courier history contains transfer",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "const records=pm.response.json().records;",
+                  "pm.test('records returned',()=>pm.expect(records).to.be.an('array'));",
+                  "pm.test('CREDIT_TRANSFER recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('completeId')&&r.type==='CREDIT_TRANSFER')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Credit balances and history",
+      "description": "Read-only Credit Service endpoints for requester and courier. History identifies reserve/release/transfer by errand ID.",
+      "item": [
+        {
+          "name": "01 Requester final balance",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 80',()=>pm.expect(b.availableCredit).to.eql(80));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Requester history",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "pm.test('history array',()=>pm.expect(pm.response.json().records).to.be.an('array'));",
+                  "pm.test('three reserves',()=>pm.expect(pm.response.json().records.filter(r=>['expiryId','cancelId','completeId'].some(k=>r.reference?.id===pm.collectionVariables.get(k))&&r.type==='CREDIT_RESERVE').length).to.eql(3));",
+                  "pm.test('two releases',()=>pm.expect(pm.response.json().records.filter(r=>['expiryId','cancelId'].some(k=>r.reference?.id===pm.collectionVariables.get(k))&&r.type==='CREDIT_RELEASE').length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Courier final balance",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b=pm.response.code===200?pm.response.json():null;",
+                  "pm.test('balance returned',()=>pm.response.to.have.status(200));",
+                  "if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 120',()=>pm.expect(b.availableCredit).to.eql(120));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Courier history",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/credit/history?offset=0",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "const records=pm.response.json().records;",
+                  "pm.test('records returned',()=>pm.expect(records).to.be.an('array'));",
+                  "pm.test('CREDIT_TRANSFER recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('completeId')&&r.type==='CREDIT_TRANSFER')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Errand views",
+      "description": "Read current errands by scope or ID. Can be run again after the lifecycle folders.",
+      "item": [
+        {
+          "name": "01 Requester errands",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/?scope=mine",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Courier visible errands",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/?scope=visible",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{courierCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('courierCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('courierCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Expired errand",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/{{expiryId}}",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const e=pm.response.code===200?pm.response.json().errand:null;",
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "if(e)pm.test('status EXPIRED',()=>pm.expect(e.status).to.eql('EXPIRED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Cancelled errand",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/{{cancelId}}",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const e=pm.response.code===200?pm.response.json().errand:null;",
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "if(e)pm.test('status CANCELLED',()=>pm.expect(e.status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Confirmed errand",
+          "protocolProfileBehavior": {
+            "disableCookieJar": true
+          },
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/errands/{{completeId}}",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "{{requesterCookie}}"
+              }
+            ],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const selectedSession=pm.collectionVariables.get('requesterCookie');",
+                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "pm.variables.set('requesterCookie',selectedSession);",
+                  "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const e=pm.response.code===200?pm.response.json().errand:null;",
+                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+                  "if(e)pm.test('status CONFIRMED',()=>pm.expect(e.status).to.eql('CONFIRMED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "flociUrl",
+      "value": "http://localhost:4566"
+    },
+    {
+      "key": "password",
+      "value": "Test1234!",
+      "type": "secret"
+    },
+    {
+      "key": "superAdminEmail",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "superAdminPassword",
+      "value": "Admin123%",
+      "type": "secret"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const cookieHeaders=pm.request.headers.all().filter(h=>h.key.toLowerCase()==='cookie'&&!h.disabled);",
+          "if(cookieHeaders.length>1)throw new Error('Only one explicit Cookie header is allowed.');"
+        ]
+      }
+    }
+  ]
+}
