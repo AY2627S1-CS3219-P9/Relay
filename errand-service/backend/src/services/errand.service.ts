@@ -134,14 +134,14 @@ export class ErrandService {
       return this.enrichCourierProfile(updated)
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message.includes('Errand is no longer available')) {
+        if (error.message === 'ERRAND NOT AVAILABLE') {
           throw new ErrandServiceError(
             ErrandErrors.CONFLICT,
             'Errand has already been accepted by another courier.',
             409,
           )
         }
-        if (error.message.includes('maximum errands')) {
+        if (error.message === 'MAX ERRANDS REACHED') {
           throw new ErrandServiceError(
             ErrandErrors.CONFLICT,
             'You already have the maximum number of errands assigned',
