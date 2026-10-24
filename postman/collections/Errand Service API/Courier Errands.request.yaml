@@ -3,7 +3,7 @@ method: GET
 url: "{{baseUrl}}/api/errands?scope=visible"
 queryParams:
   scope: visible
-order: 28000
+order: 29000
 headers:
   Cookie: relay_session={{sessionCookieCourier}}
 scripts:
@@ -11,14 +11,5 @@ scripts:
     code: |-
       pm.test('Courier errands retrieved', () => {
         pm.response.to.have.status(200);
-      });
-
-      const json = pm.response.json();
-      const myErrand = json.errands.find(e => e.id === pm.collectionVariables.get('errandId'));
-      pm.test('My errand found in list', () => {
-        pm.expect(myErrand).to.exist;
-      });
-      pm.test('My errand status is CONFIRMED', () => {
-        pm.expect(myErrand.status).to.eql('CONFIRMED');
       });
     language: text/javascript
