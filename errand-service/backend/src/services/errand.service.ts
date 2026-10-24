@@ -120,7 +120,7 @@ export class ErrandService {
     await this.repository.expireOpenErrands()
 
     try {
-      const updated = await this.repository.assignCourier(id, courier.sub)
+      const updated = await this.repository.accept(id, courier.sub)
       return this.enrichCourierProfile(updated)
     } catch (error) {
       throw translateError(error as Error)
@@ -171,7 +171,7 @@ export class ErrandService {
 
   async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
     try {
-      await this.repository.deleteErrand(id, user.sub)
+      await this.repository.delete(id, user.sub)
     } catch (error) {
       throw translateError(error as Error)
     }
@@ -200,7 +200,7 @@ export class ErrandService {
         (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
       )
       for (const errand of openAcceptedErrands) {
-        await this.repository.deleteErrand(errand.id, errand.requesterSub)
+        await this.repository.delete(errand.id, errand.requesterSub)
       }
       return {
         processed: true,

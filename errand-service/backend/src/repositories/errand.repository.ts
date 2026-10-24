@@ -236,7 +236,7 @@ export class ErrandRepository {
   // State transitions
   // ============================================================================
 
-  async assignCourier(errandId: string, courierSub: string): Promise<Errand> {
+  async accept(errandId: string, actorSub: string): Promise<Errand> {
     return this.prisma.$transaction(async (tx) => {
       const errand = await tx.errand.findFirst({
         where: {
@@ -256,14 +256,14 @@ export class ErrandRepository {
         throw new Error('ERRAND NOT IN OPEN')
       }
 
-      if (errand.requesterSub === courierSub) {
+      if (errand.requesterSub === actorSub) {
         throw new Error('REQUESTER CANNOT ACCEPT OWN ERRAND')
       }
 
       try {
         const currentCount = await tx.errand.count({
           where: {
-            courierSub,
+            courierSub: actorSub,
             status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
           },
         })
@@ -275,7 +275,7 @@ export class ErrandRepository {
         const updated = await tx.errand.update({
           where: { id: errandId, status: ErrandStatus.Open, courierSub: null },
           data: {
-            courierSub,
+            courierSub: actorSub,
             status: ErrandStatus.Accepted,
           },
         })
@@ -286,7 +286,7 @@ export class ErrandRepository {
             errandId,
             errandStatus: ErrandStatus.Accepted,
             previousStatus: ErrandStatus.Open,
-            actorSub: courierSub,
+            actorSub: actorSub,
             actorType: 'courier',
             requesterSub: updated.requesterSub,
           },
@@ -625,7 +625,7 @@ export class ErrandRepository {
     })
   }
 
-  async deleteErrand(errandId: string, requesterSub: string): Promise<void> {
+  async delete(errandId: string, actorSub: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const errand = await tx.errand.findFirst({
         where: {
@@ -649,7 +649,7 @@ export class ErrandRepository {
         throw new Error('ERRAND NOT IN TERMINAL')
       }
 
-      if (errand.requesterSub !== requesterSub) {
+      if (errand.requesterSub !== actorSub) {
         throw new Error('ONLY REQUESTER CAN DELETE')
       }
 
@@ -663,7 +663,7 @@ export class ErrandRepository {
         })
         await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_DELETED,
-          payload: { errandId, requesterSub },
+          payload: { errandId, requesterSub: actorSub },
         })
       } catch (error) {
         if (isUpdateUnsuccessful(error)) {
