@@ -167,6 +167,14 @@ export class ErrandService {
       )
     }
 
+    if (errand.status !== 'OPEN') {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_TRANSITION,
+        'Only open errands can be cancelled.',
+        409,
+      )
+    }
+
     const cancelled = await this.repository.cancel(id, user.sub)
 
     return this.enrichCourierProfile(cancelled)

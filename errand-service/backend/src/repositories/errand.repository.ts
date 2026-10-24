@@ -333,14 +333,14 @@ export class ErrandRepository {
       const updated = await tx.errand.updateMany({
         where: {
           id: errandId,
-          status: { in: ['OPEN', 'ACCEPTED'] },
+          status: 'OPEN',
         },
         data: { status: 'CANCELLED' },
       })
 
       if (updated.count === 0) {
         throw new Error(
-          'Errand is no longer cancellable - it may have already been cancelled or moved to another state.',
+          'Errand is no longer open - it may have already been cancelled or moved to another state.',
         )
       }
 
