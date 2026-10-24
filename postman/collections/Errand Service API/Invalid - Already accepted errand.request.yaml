@@ -1,13 +1,13 @@
 $kind: http-request
 method: POST
-url: '{{baseUrl}}/api/errands/{{errandId}}/accept'
-order: 17000
+url: "{{baseUrl}}/api/errands/{{errandId}}/accept"
+order: 18000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookieCourier}}
 body:
   type: json
-  content: ''
+  content: ""
 scripts:
   - type: afterResponse
     code: |-
@@ -17,9 +17,9 @@ scripts:
 
       const json = pm.response.json();
       pm.test('Error code is CONFLICT', () => {
-        pm.expect(json.code).to.eql('CONFLICT');
+        pm.expect(json.code).to.eql('INVALID_TRANSITION');
       });
       pm.test('Error message is correct', () => {
-        pm.expect(json.message).to.include('already');
+        pm.expect(json.message).to.include('Errand is already accepted by a courier.');
       });
     language: text/javascript

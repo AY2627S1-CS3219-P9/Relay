@@ -1,7 +1,7 @@
 $kind: http-request
 method: PATCH
 url: '{{baseUrl}}/api/user/me'
-order: 5000
+order: 6000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookie}}

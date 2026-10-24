@@ -1,7 +1,7 @@
 $kind: http-request
 method: POST
 url: '{{baseUrl}}/api/errands/{{errandId}}/accept'
-order: 16000
+order: 17000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookieCourier}}
