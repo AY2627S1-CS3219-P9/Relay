@@ -325,41 +325,41 @@ export class ErrandRepository {
     return rows.map(toContract)
   }
 
-  async findOpenById(errandId: string): Promise<Errand | null> {
-    const row = await this.prisma.errand.findFirst({
-      where: {
-        id: errandId,
-        status: 'OPEN',
-        courierSub: null,
-      },
-    })
-    return row ? toContract(row) : null
-  }
-
-  async findAcceptedById(errandId: string): Promise<Errand | null> {
-    const row = await this.prisma.errand.findFirst({
-      where: { id: errandId, status: 'ACCEPTED' },
-    })
-    return row ? toContract(row) : null
-  }
-
-  async checkCourierReachMaxErrand(courierSub: string): Promise<boolean> {
-    // Max errands in ACCEPTED, PICKED_UP, or DELIVERED states
-    const result = await this.prisma.errand.count({
-      where: {
-        courierSub,
-        status: { in: ['ACCEPTED', 'PICKED_UP', 'DELIVERED'] },
-      },
-    })
-    return result >= MAX_ERRANDS_PER_COURIER
-  }
-
-  async assignCourier(errandId: string, courierSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.errand.update({
-        where: { id: errandId },
-        data: { courierSub, status: 'ACCEPTED' },
+  async assignCourierAndIncrementCount(errandId: string, courierSub: string): Promise<Errand> {
+    // Atomic operation: check count AND assign in one transaction
+    // This prevents race conditions in checking max errands
+    const result = await this.prisma.$transaction(async (tx) => {
+      // First check if courier has space (with row lock on the errands they have)
+      const currentCount = await tx.errand.count({
+        where: {
+          courierSub,
+          status: { in: ['ACCEPTED', 'PICKED_UP', 'DELIVERED'] },
+        },
       })
+
+      if (currentCount >= MAX_ERRANDS_PER_COURIER) {
+        throw new Error('Courier has reached maximum errands allowed.')
+      }
+
+      // Then assign the errand optimistically
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: 'OPEN',
+          courierSub: null,
+        },
+        data: {
+          courierSub,
+          status: 'ACCEPTED',
+        },
+      })
+
+      if (updated.count === 0) {
+        throw new Error('Errand is no longer available for acceptance.')
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
+
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
         payload: {
@@ -384,14 +384,28 @@ export class ErrandRepository {
 
       return toContract(row)
     })
+    return result
   }
 
   async cancel(errandId: string, actorSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.errand.update({
-        where: { id: errandId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Try to update to CANCELLED from either OPEN or ACCEPTED
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: { in: ['OPEN', 'ACCEPTED'] },
+        },
         data: { status: 'CANCELLED' },
       })
+
+      if (updated.count === 0) {
+        throw new Error(
+          'Errand is no longer cancellable - it may have already been cancelled or moved to another state.',
+        )
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
+
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_CANCELLED,
         payload: { errandId, actorSub, requesterSub: row.requesterSub },
@@ -401,11 +415,7 @@ export class ErrandRepository {
 
       return toContract(row)
     })
-  }
-
-  async findErrandsBySupplier(supplierId: string): Promise<Errand[]> {
-    const rows = await this.prisma.errand.findMany({ where: { supplierId } })
-    return rows.map(toContract)
+    return result
   }
 
   async updateErrandsBySupplier(
@@ -450,11 +460,23 @@ export class ErrandRepository {
   }
 
   async pickUp(errandId: string, actorSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.errand.update({
-        where: { id: errandId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: 'ACCEPTED',
+        },
         data: { status: 'PICKED_UP' },
       })
+
+      if (updated.count === 0) {
+        throw new Error(
+          'Errand is no longer in ACCEPTED status - it may have already been picked up.',
+        )
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
+
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
         payload: {
@@ -479,18 +501,31 @@ export class ErrandRepository {
 
       return toContract(row)
     })
+    return result
   }
 
   async deliver(errandId: string, actorSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const deliveredAt = new Date()
-      const row = await tx.errand.update({
-        where: { id: errandId },
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: 'PICKED_UP',
+        },
         data: {
           status: 'DELIVERED',
           confirmationDeadline: endOfSingaporeDay(deliveredAt),
         },
       })
+
+      if (updated.count === 0) {
+        throw new Error(
+          'Errand is no longer in PICKED_UP status - it may have already been delivered.',
+        )
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
+
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
         payload: {
@@ -515,15 +550,28 @@ export class ErrandRepository {
 
       return toContract(row)
     })
+    return result
   }
 
   async confirm(errandId: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.errand.update({
-        where: { id: errandId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: 'DELIVERED',
+        },
         data: { status: 'CONFIRMED' },
       })
+
+      if (updated.count === 0) {
+        throw new Error(
+          'Errand is no longer in DELIVERED status - it may have already been confirmed.',
+        )
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
       if (!row.courierSub) throw new Error('A courier is required to confirm an errand.')
+
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_COMPLETED,
         payload: { errandId, requesterSub: row.requesterSub, courierSub: row.courierSub },
@@ -541,14 +589,26 @@ export class ErrandRepository {
 
       return toContract(row)
     })
+    return result
   }
 
   async dropCourier(errandId: string, newStatus: ErrandStatus, actorSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
-      const row = await tx.errand.update({
-        where: { id: errandId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: errandId,
+          status: 'ACCEPTED',
+        },
         data: { courierSub: null, status: newStatus },
       })
+
+      if (updated.count === 0) {
+        throw new Error(
+          'Errand is no longer in ACCEPTED status - it may have already been dropped or moved to another state.',
+        )
+      }
+
+      const row = await tx.errand.findUniqueOrThrow({ where: { id: errandId } })
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
         payload: {
@@ -578,23 +638,31 @@ export class ErrandRepository {
 
       return toContract(row)
     })
+    return result
   }
 
   async deleteErrand(errandId: string, requesterSub: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
+      // First check that the errand exists and is in a terminal state
+      const errand = await tx.errand.findFirst({
+        where: {
+          id: errandId,
+          requesterSub,
+          status: { in: ['CANCELLED', 'EXPIRED', 'CONFIRMED', 'DELETED'] },
+        },
+      })
+
+      if (!errand) {
+        throw new Error('Errand not found or not in a deletable state.')
+      }
+
       await tx.errand.delete({ where: { id: errandId } })
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_DELETED,
         payload: { errandId, requesterSub },
       })
     })
-  }
-
-  async findExpired(): Promise<Errand[]> {
-    const rows = await this.prisma.errand.findMany({
-      where: { status: 'OPEN', expiresAt: { lte: new Date() } },
-    })
-    return rows.map(toContract)
+    return result
   }
 }
 

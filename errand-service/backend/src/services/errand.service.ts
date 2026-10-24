@@ -92,9 +92,10 @@ export class ErrandService {
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
     await this.processDueReadLifecycleTransitions()
-    const errands = options.scope === 'mine'
-      ? this.repository.listOwnedBy(user.sub)
-      : this.repository.listVisibleTo(user.sub)
+    const errands =
+      options.scope === 'mine'
+        ? this.repository.listOwnedBy(user.sub)
+        : this.repository.listVisibleTo(user.sub)
     return this.enrichCourierProfiles(await errands)
   }
 
@@ -127,42 +128,29 @@ export class ErrandService {
 
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
     await this.repository.expireOpenErrands()
-    const errand = await this.repository.findOpenById(id)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
-    }
-    if (errand.expiresAt <= new Date().toISOString()) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand has expired.', 404)
-    }
 
-    if (errand.courierSub !== null) {
-      throw new ErrandServiceError(
-        ErrandErrors.CONFLICT,
-        'Errand has already been accepted by another courier.',
-        409,
-      )
+    try {
+      const updated = await this.repository.assignCourierAndIncrementCount(id, courier.sub)
+      return this.enrichCourierProfile(updated)
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Errand is no longer available')) {
+          throw new ErrandServiceError(
+            ErrandErrors.CONFLICT,
+            'Errand has already been accepted by another courier.',
+            409,
+          )
+        }
+        if (error.message.includes('maximum errands')) {
+          throw new ErrandServiceError(
+            ErrandErrors.CONFLICT,
+            'You already have the maximum number of errands assigned',
+            409,
+          )
+        }
+      }
+      throw error
     }
-
-    if (errand.requesterSub === courier.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Requesters cannot accept their own errands.',
-        403,
-      )
-    }
-
-    const maxReached = await this.repository.checkCourierReachMaxErrand(courier.sub)
-    if (maxReached) {
-      throw new ErrandServiceError(
-        ErrandErrors.CONFLICT,
-        `You already have the maximum number of errands assigned`,
-        409,
-      )
-    }
-
-    const updated = await this.repository.assignCourier(id, courier.sub)
-
-    return this.enrichCourierProfile(updated)
   }
 
   async cancelErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
@@ -171,19 +159,11 @@ export class ErrandService {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
     }
 
-if (errand.requesterSub !== user.sub) {
+    if (errand.requesterSub !== user.sub) {
       throw new ErrandServiceError(
         ErrandErrors.FORBIDDEN,
         'You do not have permission to cancel this errand.',
         403,
-      )
-    }
-
-    if (errand.status !== 'OPEN') {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Only open errands can be cancelled.',
-        409,
       )
     }
 
@@ -203,18 +183,6 @@ if (errand.requesterSub !== user.sub) {
         ErrandErrors.FORBIDDEN,
         'Only the assigned courier can deliver this errand.',
         403,
-      )
-    }
-
-    if (errand.status !== 'PICKED_UP') {
-      const message =
-        errand.status === 'DELIVERED'
-          ? 'Errand has already been delivered.'
-          : 'Errand must be picked up before it can be delivered.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
       )
     }
 
@@ -238,18 +206,6 @@ if (errand.requesterSub !== user.sub) {
       )
     }
 
-    if (errand.status !== 'DELIVERED') {
-      const message =
-        errand.status === 'CONFIRMED'
-          ? 'Errand has already been confirmed.'
-          : 'Errand must be delivered before it can be confirmed.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
-      )
-    }
-
     const confirmed = await this.repository.confirm(id)
 
     return this.enrichCourierProfile(confirmed)
@@ -269,18 +225,6 @@ if (errand.requesterSub !== user.sub) {
       )
     }
 
-    if (errand.status !== 'ACCEPTED') {
-      const message =
-        errand.status === 'PICKED_UP'
-          ? 'Errand has already been picked up.'
-          : 'Errand must be accepted before it can be picked up.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
-      )
-    }
-
     const updated = await this.repository.pickUp(id, user.sub)
 
     return this.enrichCourierProfile(updated)
@@ -297,14 +241,6 @@ if (errand.requesterSub !== user.sub) {
         ErrandErrors.FORBIDDEN,
         'Only the assigned courier can drop this errand.',
         403,
-      )
-    }
-
-    if (errand.status !== 'ACCEPTED') {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Only accepted errands can be dropped.',
-        409,
       )
     }
 
@@ -330,15 +266,6 @@ if (errand.requesterSub !== user.sub) {
     const existing = await this.repository.findVisibleById(id, user.sub)
     if (!existing) {
       throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
-    }
-
-    const allowedStatuses: ErrandStatus[] = ['CANCELLED', 'EXPIRED', 'CONFIRMED', 'DELETED']
-    if (!allowedStatuses.includes(existing.status)) {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Errands in this state cannot be deleted. Only cancelled, expired, confirmed, or deleted errands can be deleted.',
-        409,
-      )
     }
 
     if (existing.requesterSub !== user.sub) {
