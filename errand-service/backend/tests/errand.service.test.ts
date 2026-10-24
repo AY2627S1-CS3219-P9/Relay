@@ -81,7 +81,6 @@ describe('ErrandService cancellation', () => {
       status: 'OPEN' as const,
     }
     const repository = {
-      findVisibleById: vi.fn().mockResolvedValue(errand),
       cancel: vi.fn().mockResolvedValue({ ...errand, status: 'CANCELLED' as const }),
     } as unknown as ErrandRepository
     const service = new ErrandService(repository)
@@ -93,44 +92,41 @@ describe('ErrandService cancellation', () => {
   })
 
   it('rejects cancellation by a courier or another user', async () => {
-    const errand = {
-      id: 'errand-1',
-      requesterSub: 'requester-2',
-      courierSub: user.sub,
-      courierProfile: null,
-      status: 'ACCEPTED' as const,
-    }
     const repository = {
-      findVisibleById: vi.fn().mockResolvedValue(errand),
-      cancel: vi.fn(),
+      cancel: vi.fn().mockRejectedValue(new Error('ONLY REQUESTER CAN CANCEL')),
     } as unknown as ErrandRepository
     const service = new ErrandService(repository)
 
-    await expect(service.cancelErrand(user, errand.id)).rejects.toMatchObject({
+    await expect(service.cancelErrand(user, 'errand-1')).rejects.toMatchObject({
       code: 'FORBIDDEN',
       statusCode: 403,
     })
-    expect(repository.cancel).not.toHaveBeenCalled()
+    expect(repository.cancel).toHaveBeenCalledWith('errand-1', user.sub)
   })
 
   it('rejects requester cancellation unless the errand is open', async () => {
-    const errand = {
-      id: 'errand-1',
-      requesterSub: user.sub,
-      courierSub: 'courier-1',
-      courierProfile: null,
-      status: 'ACCEPTED' as const,
-    }
     const repository = {
-      findVisibleById: vi.fn().mockResolvedValue(errand),
-      cancel: vi.fn(),
+      cancel: vi.fn().mockRejectedValue(new Error('ERRAND NOT IN OPEN')),
     } as unknown as ErrandRepository
     const service = new ErrandService(repository)
 
-    await expect(service.cancelErrand(user, errand.id)).rejects.toMatchObject({
+    await expect(service.cancelErrand(user, 'errand-1')).rejects.toMatchObject({
       code: 'INVALID_TRANSITION',
       statusCode: 409,
     })
-    expect(repository.cancel).not.toHaveBeenCalled()
+    expect(repository.cancel).toHaveBeenCalledWith('errand-1', user.sub)
+  })
+
+  it('rejects cancellation of already cancelled errand', async () => {
+    const repository = {
+      cancel: vi.fn().mockRejectedValue(new Error('ERRAND ALREADY CANCELLED')),
+    } as unknown as ErrandRepository
+    const service = new ErrandService(repository)
+
+    await expect(service.cancelErrand(user, 'errand-1')).rejects.toMatchObject({
+      code: 'INVALID_TRANSITION',
+      statusCode: 409,
+    })
+    expect(repository.cancel).toHaveBeenCalledWith('errand-1', user.sub)
   })
 })
