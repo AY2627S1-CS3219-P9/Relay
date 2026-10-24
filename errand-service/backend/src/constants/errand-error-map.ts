@@ -69,7 +69,7 @@ export const ERRAND_ERROR_MAP = {
   },
   'ERRAND NOT IN FOUND': {
     code: ErrandErrors.NOT_FOUND,
-    userMessage: 'Errand was not found',
+    userMessage: 'Errand was not found.',
     statusCode: 404,
   },
   'ERRAND ALREADY CONFIRMED': {
@@ -102,7 +102,7 @@ export const ERRAND_ERROR_MAP = {
     userMessage: 'Errand is already deleted.',
     statusCode: 409,
   },
-  'ERRAND ALREADY EXPRIRED': {
+  'ERRAND ALREADY EXPIRED': {
     code: ErrandErrors.INVALID_TRANSITION,
     userMessage: 'Errand is already expired.',
     statusCode: 409,

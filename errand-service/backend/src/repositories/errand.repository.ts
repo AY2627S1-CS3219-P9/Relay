@@ -153,6 +153,10 @@ export class ErrandRepository {
     return result.count
   }
 
+  // ============================================================================
+  // Query methods
+  // ============================================================================
+
   async findVisibleById(errandId: string, userSub: string): Promise<Errand | null> {
     const row = await this.prisma.errand.findFirst({
       where: {
@@ -163,10 +167,6 @@ export class ErrandRepository {
     })
     return row ? toContract(row) : null
   }
-
-  // ============================================================================
-  // List methods
-  // ============================================================================
 
   async listOwnedBy(requesterSub: string): Promise<Errand[]> {
     const rows = await this.prisma.errand.findMany({
@@ -715,7 +715,7 @@ export class ErrandRepository {
   }
 
   // ============================================================================
-  // Lifecycle/Background tasks
+  // Background tasks
   // ============================================================================
 
   async expireOpenErrands(now = new Date()): Promise<number> {
@@ -813,6 +813,10 @@ export class ErrandRepository {
     return count
   }
 }
+
+// ============================================================================`
+// Helper functions
+// ============================================================================
 
 function isUpdateUnsuccessful(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
