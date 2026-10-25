@@ -11,6 +11,7 @@
     "errand-service/backend",
     "credit-service/frontend",
     "credit-service/backend",
+    "credit-estimation-service/backend",
     "packages/*"
   ],
   "scripts": {
