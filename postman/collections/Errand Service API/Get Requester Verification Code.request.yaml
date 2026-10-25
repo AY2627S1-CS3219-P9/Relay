@@ -1,7 +1,7 @@
 $kind: http-request
 method: GET
 url: http://localhost:4566/_aws/ses
-order: 3000
+order: 4000
 description: Fetch verification code from SES mock
 scripts:
   - type: afterResponse

@@ -1,7 +1,7 @@
 $kind: http-request
 method: POST
 url: '{{baseUrl}}/api/errands/{{errandId}}/confirm'
-order: 22000
+order: 23000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookie}}

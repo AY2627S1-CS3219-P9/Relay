@@ -1,7 +1,7 @@
 $kind: http-request
 method: POST
 url: "{{baseUrl}}/api/errands"
-order: 30000
+order: 31000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookie}}
@@ -14,7 +14,7 @@ body:
         "supplierName": "InstaChef",
         "serviceType": 0
       },
-      "name": "Invalid State Test Errand 3",
+      "name": "The final succulent scrumptious chinese meal",
       "pickupLocation": {
         "lat": 1.2938898,
         "lng": 103.7736305,
@@ -28,8 +28,8 @@ body:
         "floorNumber": 2
       },
       "deliveryDetails": {
-        "description": "Invalid state test errand 3",
-        "instructions": "something"
+        "description": "Give me the best one",
+        "instructions": "Careful its hot"
       },
       "creditAmount": 10,
       "expiresAt": "{{expiresAt}}"

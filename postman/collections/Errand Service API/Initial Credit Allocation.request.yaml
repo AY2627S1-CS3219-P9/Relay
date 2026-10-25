@@ -4,4 +4,4 @@ url: http://localhost:8080/api/credit/history
 method: GET
 headers:
   Cookie: relay_session={{sessionCookie}}
-order: 6000
+order: 7000

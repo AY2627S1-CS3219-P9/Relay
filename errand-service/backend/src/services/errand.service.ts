@@ -16,17 +16,7 @@ import { CreditClient } from '../clients/credit.client.js'
 import { UserClient } from '../clients/user.client.js'
 import { SupplierClient } from '../clients/supplier.client.js'
 import { ErrandEventStream } from './errandEventStream.js'
-
-export const LIFECYCLE_ORDER: Record<ErrandStatus, number> = {
-  DELIVERED: 0,
-  PICKED_UP: 1,
-  ACCEPTED: 2,
-  OPEN: 3,
-  EXPIRED: 4,
-  CANCELLED: 5,
-  CONFIRMED: 6,
-  DELETED: 7,
-}
+import { translateError } from '../utils/translate-error.js'
 
 export class ErrandService {
   constructor(
@@ -100,9 +90,10 @@ export class ErrandService {
 
   async getErrands(user: AuthenticatedUser, options: GetErrandsOptions = {}): Promise<Errand[]> {
     await this.processDueReadLifecycleTransitions()
-    const errands = options.scope === 'mine'
-      ? this.repository.listOwnedBy(user.sub)
-      : this.repository.listVisibleTo(user.sub)
+    const errands =
+      options.scope === 'mine'
+        ? this.repository.listOwnedBy(user.sub)
+        : this.repository.listVisibleTo(user.sub)
     return this.enrichCourierProfiles(await errands)
   }
 
@@ -135,229 +126,63 @@ export class ErrandService {
 
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
     await this.repository.expireOpenErrands()
-    const errand = await this.repository.findOpenById(id)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
-    }
-    if (errand.expiresAt <= new Date().toISOString()) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand has expired.', 404)
-    }
 
-    if (errand.courierSub !== null) {
-      throw new ErrandServiceError(
-        ErrandErrors.CONFLICT,
-        'Errand has already been accepted by another courier.',
-        409,
-      )
+    try {
+      const updated = await this.repository.accept(id, courier.sub)
+      return this.enrichCourierProfile(updated)
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    if (errand.requesterSub === courier.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Requesters cannot accept their own errands.',
-        403,
-      )
-    }
-
-    const maxReached = await this.repository.checkCourierReachMaxErrand(courier.sub)
-    if (maxReached) {
-      throw new ErrandServiceError(
-        ErrandErrors.CONFLICT,
-        `You already have the maximum number of errands assigned`,
-        409,
-      )
-    }
-
-    const updated = await this.repository.assignCourier(id, courier.sub)
-
-    return this.enrichCourierProfile(updated)
   }
 
   async cancelErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
-    const errand = await this.repository.findVisibleById(id, user.sub)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    try {
+      return this.enrichCourierProfile(await this.repository.cancel(id, user.sub))
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-if (errand.requesterSub !== user.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'You do not have permission to cancel this errand.',
-        403,
-      )
-    }
-
-    if (errand.status !== 'OPEN') {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Only open errands can be cancelled.',
-        409,
-      )
-    }
-
-    const cancelled = await this.repository.cancel(id, user.sub)
-
-    return this.enrichCourierProfile(cancelled)
   }
 
   async deliverErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
-    const errand = await this.repository.findVisibleById(id, user.sub)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    try {
+      return this.enrichCourierProfile(await this.repository.deliver(id, user.sub))
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    if (errand.courierSub !== user.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Only the assigned courier can deliver this errand.',
-        403,
-      )
-    }
-
-    if (errand.status !== 'PICKED_UP') {
-      const message =
-        errand.status === 'DELIVERED'
-          ? 'Errand has already been delivered.'
-          : 'Errand must be picked up before it can be delivered.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
-      )
-    }
-
-    const updated = await this.repository.deliver(id, user.sub)
-
-    return this.enrichCourierProfile(updated)
   }
 
   async confirmErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
     await this.repository.confirmDeliveredErrands()
-    const errand = await this.repository.findVisibleById(id, user.sub)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+
+    try {
+      return this.enrichCourierProfile(await this.repository.confirm(id, user.sub))
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    if (errand.requesterSub !== user.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Only the requester can confirm this errand.',
-        403,
-      )
-    }
-
-    if (errand.status !== 'DELIVERED') {
-      const message =
-        errand.status === 'CONFIRMED'
-          ? 'Errand has already been confirmed.'
-          : 'Errand must be delivered before it can be confirmed.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
-      )
-    }
-
-    const confirmed = await this.repository.confirm(id)
-
-    return this.enrichCourierProfile(confirmed)
   }
 
   async pickUpErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
-    const errand = await this.repository.findVisibleById(id, user.sub)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    try {
+      return this.enrichCourierProfile(await this.repository.pickUp(id, user.sub))
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    if (errand.courierSub !== user.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Only the assigned courier can pick up this errand.',
-        403,
-      )
-    }
-
-    if (errand.status !== 'ACCEPTED') {
-      const message =
-        errand.status === 'PICKED_UP'
-          ? 'Errand has already been picked up.'
-          : 'Errand must be accepted before it can be picked up.';
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        message,
-        409,
-      )
-    }
-
-    const updated = await this.repository.pickUp(id, user.sub)
-
-    return this.enrichCourierProfile(updated)
   }
 
-  async dropErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
-    const errand = await this.repository.findVisibleById(id, courier.sub)
-    if (!errand) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+  async dropErrand(user: AuthenticatedUser, id: string): Promise<Errand> {
+    try {
+      return this.enrichCourierProfile(await this.repository.drop(id, user.sub))
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    if (errand.courierSub !== courier.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'Only the assigned courier can drop this errand.',
-        403,
-      )
-    }
-
-    if (errand.status !== 'ACCEPTED') {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Only accepted errands can be dropped.',
-        409,
-      )
-    }
-
-    const now = new Date()
-    const isExpired = errand.expiresAt && new Date(errand.expiresAt) <= now
-
-    let status: ErrandStatus
-
-    if (isExpired) {
-      // If deadline exceeded, set to expired
-      status = ErrandStatus.Expired
-    } else {
-      // Change state from accepted to open
-      status = ErrandStatus.Open
-    }
-
-    const updated = await this.repository.dropCourier(id, status, courier.sub)
-
-    return this.enrichCourierProfile(updated)
   }
 
   async deleteErrand(user: AuthenticatedUser, id: string): Promise<void> {
-    const existing = await this.repository.findVisibleById(id, user.sub)
-    if (!existing) {
-      throw new ErrandServiceError(ErrandErrors.NOT_FOUND, 'Errand was not found.', 404)
+    try {
+      await this.repository.delete(id, user.sub)
+    } catch (error) {
+      throw translateError(error as Error)
     }
-
-    const allowedStatuses: ErrandStatus[] = ['CANCELLED', 'EXPIRED', 'CONFIRMED', 'DELETED']
-    if (!allowedStatuses.includes(existing.status)) {
-      throw new ErrandServiceError(
-        ErrandErrors.INVALID_TRANSITION,
-        'Errands in this state cannot be deleted. Only cancelled, expired, confirmed, or deleted errands can be deleted.',
-        409,
-      )
-    }
-
-    if (existing.requesterSub !== user.sub) {
-      throw new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        'You can only delete your own errands.',
-        403,
-      )
-    }
-
-    await this.repository.deleteErrand(id, user.sub)
   }
 
   async receiveSupplierEvent(event: {
@@ -380,10 +205,10 @@ if (errand.requesterSub !== user.sub) {
     // If supplier is no longer operational, mark open/accepted errands as DELETED
     if (event.isOperational === false) {
       const openAcceptedErrands = allErrands.filter(
-        (e) => e.status === 'OPEN' || e.status === 'ACCEPTED',
+        (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
       )
       for (const errand of openAcceptedErrands) {
-        await this.repository.deleteErrand(errand.id, errand.requesterSub)
+        await this.repository.delete(errand.id, errand.requesterSub)
       }
       return {
         processed: true,
@@ -392,7 +217,9 @@ if (errand.requesterSub !== user.sub) {
     }
 
     // Otherwise, update errands with new supplier information
-    const affectedErrands = allErrands.filter((e) => e.status === 'OPEN' || e.status === 'ACCEPTED')
+    const affectedErrands = allErrands.filter(
+      (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
+    )
     const affectedIds = affectedErrands.map((e) => e.id)
 
     if (affectedIds.length === 0) {
