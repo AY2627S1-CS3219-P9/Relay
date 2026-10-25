@@ -10,6 +10,8 @@
     ".": "./src/index.ts",
     "./errand": "./src/errand/index.ts",
     "./supplier": "./src/supplier/index.ts",
-    "./user": "./src/user/index.ts"
+    "./user": "./src/user/index.ts",
+    "./credit": "./src/credit/index.ts",
+    "./credit-estimation": "./src/credit-estimation/index.ts"
   }
 }
