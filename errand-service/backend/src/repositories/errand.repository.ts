@@ -237,7 +237,11 @@ export class ErrandRepository {
   // ============================================================================
 
   async accept(errandId: string, actorSub: string): Promise<Errand> {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${actorSub})::bigint)
+      `
+
       const errand = await tx.errand.findFirst({
         where: {
           id: errandId,
@@ -260,56 +264,51 @@ export class ErrandRepository {
         throw new Error('REQUESTER CANNOT ACCEPT OWN ERRAND')
       }
 
-      try {
-        const currentCount = await tx.errand.count({
-          where: {
-            courierSub: actorSub,
-            status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
-          },
-        })
+      const currentCount = await tx.errand.count({
+        where: {
+          courierSub: actorSub,
+          status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
+        },
+      })
 
-        if (currentCount >= MAX_ERRANDS_PER_COURIER) {
-          throw new Error('MAX ERRANDS REACHED')
-        }
-
-        const updated = await tx.errand.update({
-          where: { id: errandId, status: ErrandStatus.Open, courierSub: null },
-          data: {
-            courierSub: actorSub,
-            status: ErrandStatus.Accepted,
-          },
-        })
-
-        await appendEvent(tx, {
-          eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
-          payload: {
-            errandId,
-            errandStatus: ErrandStatus.Accepted,
-            previousStatus: ErrandStatus.Open,
-            actorSub: actorSub,
-            actorType: 'courier',
-            requesterSub: updated.requesterSub,
-          },
-        })
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: ErrandStatus.Accepted,
-            previousStatus: ErrandStatus.Open,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester'],
-        )
-
-        return toContract(updated)
-      } catch (error) {
-        if (isUpdateUnsuccessful(error)) {
-          throw new Error('ERRAND NOT IN OPEN')
-        }
-        throw error
+      if (currentCount >= MAX_ERRANDS_PER_COURIER) {
+        throw new Error('MAX ERRANDS REACHED')
       }
+
+      const updated = await tx.errand.update({
+        where: { id: errandId, status: ErrandStatus.Open, courierSub: null },
+        data: {
+          courierSub: actorSub,
+          status: ErrandStatus.Accepted,
+        },
+      })
+
+      return updated
     })
+
+    await appendEvent(this.prisma, {
+      eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+      payload: {
+        errandId,
+        errandStatus: ErrandStatus.Accepted,
+        previousStatus: ErrandStatus.Open,
+        actorSub: actorSub,
+        actorType: 'courier',
+        requesterSub: result.requesterSub,
+      },
+    })
+
+    this.eventStream?.publish(
+      errandId,
+      {
+        newStatus: ErrandStatus.Accepted,
+        previousStatus: ErrandStatus.Open,
+        timestamp: new Date().toISOString(),
+      },
+      ['requester'],
+    )
+
+    return toContract(result)
   }
 
   async cancel(errandId: string, actorSub: string): Promise<Errand> {
