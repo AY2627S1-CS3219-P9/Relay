@@ -47,7 +47,9 @@ init({
 })
 
 export async function loadServiceRemote(service: ServiceId): Promise<RemoteModule> {
-  const { name, exposedModule } = REMOTE_REGISTRY[service]
+  const remoteDef = REMOTE_REGISTRY[service]
+  if (!remoteDef) throw new Error(`${service} frontend is not available.`)
+  const { name, exposedModule } = remoteDef
   const remote = await loadRemote<RemoteModule>(`${name}/${exposedModule.replace('./', '')}`)
   if (!remote) throw new Error(`${service} frontend returned no application.`)
   return remote

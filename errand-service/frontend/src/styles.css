@@ -61,6 +61,39 @@
 .errand-form-grid > .errand-field { min-width: 0; }
 .errand-reward-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); }
 .errand-reward-grid input { min-width: 0; }
+.errand-credit-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.errand-credit-input-wrapper input {
+  flex: 1;
+  min-width: 0;
+}
+.errand-credit-input-wrapper button {
+  padding: 8px 12px;
+  background: var(--relay-glass-soft-bg);
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.errand-credit-input-wrapper button:hover:not(:disabled) {
+  background: rgba(0,0,0,.05);
+  border-color: #007aff;
+}
+.errand-credit-input-wrapper button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.errand-estimate-icon {
+  width: 18px;
+  height: 18px;
+  color: #1c1c1e;
+}
 .errand-form-note { margin: -2px 0 0; color: var(--relay-text-muted); font-size: .78rem; }
 .errand-filter-panel { position: absolute; z-index: var(--relay-layer-card); top: 78px; left: 18px; width: min(350px, calc(100vw - 36px)); padding: 24px; }
 .errand-filter-panel fieldset { padding: 0; margin: 22px 0; border: 0; }

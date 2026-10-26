@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { ErrandApi, ServiceType, Supplier, SupplierApi } from '@relay/contracts'
 import {
+  ClockIcon,
   ErrorMessage,
   LoadingState,
   RelayButton,
@@ -57,6 +58,8 @@ export function CreateErrandCard({
   const [errorMessage, setErrorMessage] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+  const [isEstimating, setIsEstimating] = useState(false)
+  const [estimatedCredits, setEstimatedCredits] = useState<number | null>(null)
   const [form, setForm] = useState<CreateForm>({
     name: '',
     supplierId: initialSupplierId ?? '',
@@ -71,6 +74,58 @@ export function CreateErrandCard({
     startAt: defaultStartValue(),
     expiresAt: defaultDeadlineValue(),
   })
+
+  const handleEstimateCredits = async () => {
+    // Validate required fields
+    if (!form.name.trim()) {
+      setErrorMessage('Please fill in the errand name before estimating.')
+      return
+    }
+    if (!form.description.trim()) {
+      setErrorMessage('Please fill in the description before estimating.')
+      return
+    }
+    if (form.serviceType === '') {
+      setErrorMessage('Please select a service type before estimating.')
+      return
+    }
+
+    setIsEstimating(true)
+    setErrorMessage('')
+
+    try {
+      const response = await fetch('/internal/errands/estimate-credit', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-errand-service-token': 'local-internal-errand-service-token',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: form.name.trim(),
+          description: form.description.trim(),
+          serviceType: form.serviceType as ServiceType,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        setErrorMessage(`Estimation failed: ${response.status} ${errorData}`)
+        return
+      }
+
+      const data = await response.json()
+      setEstimatedCredits(data.estimatedCredits)
+      setForm((current) => ({
+        ...current,
+        creditAmount: String(data.estimatedCredits),
+      }))
+    } catch (error) {
+      setErrorMessage('Credit estimation service is unavailable. Please try again.')
+    } finally {
+      setIsEstimating(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -312,18 +367,33 @@ export function CreateErrandCard({
           />
         </label>
         <div className="errand-form-grid errand-reward-grid">
-          <label className="errand-field">
+          <div className="errand-field">
             <span>Reward credits</span>
-            <input
-              type="number"
-              required
-              min="0"
-              step="1"
-              value={form.creditAmount}
-              onChange={(e) => update('creditAmount', e.target.value)}
-              placeholder="15"
-            />
-          </label>
+            <div className="errand-credit-input-wrapper">
+              <input
+                type="number"
+                required
+                min="0"
+                step="1"
+                value={form.creditAmount}
+                onChange={(e) => update('creditAmount', e.target.value)}
+                placeholder="15"
+              />
+              <button
+                type="button"
+                onClick={handleEstimateCredits}
+                disabled={
+                  isEstimating ||
+                  !form.name.trim() ||
+                  !form.description.trim() ||
+                  form.serviceType === ''
+                }
+                title="Estimate credits based on errand details"
+              >
+                <ClockIcon className="errand-estimate-icon" />
+              </button>
+            </div>
+          </div>
           <RelayFormField label="Start time" required error={errorFor('startAt')}>
             <input
               type="datetime-local"
