@@ -1,29 +1,14 @@
 import { Router, type Request, type Response } from 'express'
 import { translateEstimationError } from '../types/estimation.types'
 import { handleEstimateCredit } from '../controllers/estimation.controller'
-import { sessionMiddleware, requireUser } from '../middleware/session.middleware'
-import { checkRateLimit, getRateLimitStatus } from '../middleware/rate-limit'
 
 const router = Router()
 
 /**
- * Estimate credit value for an errand
- * Rate limited to 10 requests per minute per user
+ * Estimate credit value for an errand (internal only)
+ * Authenticated via service token
  */
-router.post('/estimate-credit', sessionMiddleware, async (req: Request, res: Response) => {
-  // Get user ID from authenticated session
-  const user = requireUser(req)
-  const userId = user.sub
-
-  if (!checkRateLimit(userId, 10, 60000)) {
-    const status = getRateLimitStatus(userId)
-    res.status(429).json({
-      code: 'RATE_LIMITED',
-      message: `Rate limit exceeded. Max 10 requests per minute. Try again in ${(status.resetTime - Date.now()) / 1000}s.`,
-    })
-    return
-  }
-
+router.post('/estimate-credit', async (req: Request, res: Response) => {
   try {
     const { name, description, serviceType } = req.body
 
