@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express'
-import { userAuthMiddleware } from '@relay/backend-auth-middleware'
+import { userAuthMiddleware } from '@relay/user-auth-backend-middleware'
 import { CreditServiceError } from '../types/credit.types.js'
 const requireVerifiedEmail: RequestHandler = (req,res,next) => {
   if (!req.user?.emailVerified) { next(new CreditServiceError('FORBIDDEN','A verified email is required.',403)); return }

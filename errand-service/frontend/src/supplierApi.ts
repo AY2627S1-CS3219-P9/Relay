@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import type { GetSuppliersResponse, SupplierApi } from '@relay/contracts'
 
 const supplierApiBaseUrl = import.meta.env.VITE_SUPPLIER_API_URL ?? '/api/supplier'

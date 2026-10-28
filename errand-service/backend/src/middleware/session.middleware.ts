@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express'
-import { userAuthMiddleware, type AuthenticatedUser } from '@relay/backend-auth-middleware'
+import { userAuthMiddleware, type AuthenticatedUser } from '@relay/user-auth-backend-middleware'
 import { ErrandErrors } from '@relay/contracts'
 import { ErrandServiceError } from '../types/errand.types.js'
 const requireVerifiedEmail: RequestHandler = (req,_res,next) => {

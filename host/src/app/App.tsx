@@ -1,4 +1,4 @@
-import { authFetch, refreshAccessToken } from '@relay/frontend-auth-fetch'
+import { authFetch, refreshAccessToken } from '@relay/user-auth-frontend-fetch'
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
@@ -14,7 +14,6 @@ import {
 } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
-import { Hub } from 'aws-amplify/utils'
 import { hostErrandApi } from './errandApi'
 import { hostSupplierApi } from './supplierApi'
 
@@ -138,20 +137,8 @@ function App() {
       }
     }
     void loadProfile()
-    const removeAuthListener = Hub.listen('auth', ({ payload }) => {
-      if (
-        payload.event === 'signedIn' ||
-        payload.event === 'signedOut' ||
-        payload.event === 'tokenRefresh'
-      ) {
-        if (payload.event === 'signedOut') setStoredCreditBalance(null)
-        setAuthVersion((version) => version + 1)
-        void loadProfile()
-      }
-    })
     return () => {
       cancelled = true
-      removeAuthListener()
     }
   }, [])
 

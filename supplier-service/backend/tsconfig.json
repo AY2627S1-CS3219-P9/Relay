@@ -18,8 +18,8 @@
       "@relay/contracts/*": [
         "../../packages/contracts/src/*"
       ],
-      "@relay/backend-auth-middleware": [
-        "../../user-service/packages/backend-auth-middleware/src/index.ts"
+      "@relay/user-auth-backend-middleware": [
+        "../../packages/user-auth-backend-middleware/src/index.ts"
       ]
     }
   },

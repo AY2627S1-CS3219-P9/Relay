@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { SupplierErrors } from '@relay/contracts'
 import type {
   CreateSupplierRequest,

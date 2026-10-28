@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, UpdateUserResponse, User } from '@relay/contracts'
 import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'

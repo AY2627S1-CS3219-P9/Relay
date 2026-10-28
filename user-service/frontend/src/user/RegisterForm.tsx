@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, RegisterResponse } from '@relay/contracts/user-auth'
 import { isNusEmail, passwordErrors, passwordRequirements } from '../validation/validation'

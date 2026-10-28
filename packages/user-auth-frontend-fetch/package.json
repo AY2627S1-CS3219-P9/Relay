@@ -1,5 +1,5 @@
 {
-  "name": "@relay/frontend-auth-fetch",
+  "name": "@relay/user-auth-frontend-fetch",
   "version": "0.1.0",
   "private": true,
   "type": "module",

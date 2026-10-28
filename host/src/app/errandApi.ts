@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import type { ErrandApi } from '@relay/contracts'
 
 const baseUrl = '/api/errands'

@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, LoginResponse } from '@relay/contracts/user-auth'
 import { EmailField } from '../components/base-elements/EmailField'

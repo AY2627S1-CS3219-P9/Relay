@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { AuthController } from '../controllers/auth.controller.js'
-import { userAuthMiddleware, userAuthSuperAdminMiddleware } from '@relay/backend-auth-middleware'
+import { userAuthMiddleware, userAuthSuperAdminMiddleware } from '@relay/user-auth-backend-middleware'
 import { requireSameOrigin } from '../middleware/origin.middleware.js'
 export function createAuthRouter(controller=new AuthController()):Router {
   const router=Router()

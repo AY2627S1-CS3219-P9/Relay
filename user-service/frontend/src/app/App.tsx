@@ -1,4 +1,4 @@
-import { authFetch } from '@relay/frontend-auth-fetch'
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './App.css'
 import { useEffect, useState } from 'react'

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
-import { createCognitoFixture } from '../../../user-service/packages/backend-auth-middleware/tests/cognito-token-fixture.mjs'
+import { createCognitoFixture } from '../../../packages/user-auth-backend-middleware/tests/cognito-token-fixture.mjs'
 import { Kafka } from 'kafkajs'
 import { createApp, closeAppResources } from '../dist/app.js'
 import { prisma } from '../dist/repositories/credit.repository.js'
