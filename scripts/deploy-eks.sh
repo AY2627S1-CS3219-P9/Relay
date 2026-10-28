@@ -49,9 +49,10 @@ aws ecr get-login-password --region "$aws_region" | docker login --username AWS 
 
 build_and_push() {
   local output_name="$1" dockerfile="$2"
+  shift 2
   local image_uri
   image_uri="$(output "$output_name"):${IMAGE_TAG:-latest}"
-  local build_args=(--platform linux/amd64 -f "$dockerfile" -t "$image_uri")
+  local build_args=(--platform linux/amd64 -f "$dockerfile" -t "$image_uri" "$@")
   if [[ "${NO_CACHE:-0}" == "1" ]]; then
     build_args+=(--no-cache)
   fi
@@ -60,7 +61,10 @@ build_and_push() {
   printf '%s' "$image_uri"
 }
 
-host_image="$(build_and_push HostRepositoryUri host/Dockerfile)"
+host_image="$(build_and_push HostRepositoryUri host/Dockerfile \
+  --build-arg "AWS_ENDPOINT_URL=${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
+  --build-arg "COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID" \
+  --build-arg "COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID")"
 supplier_frontend_image="$(build_and_push SupplierFrontendRepositoryUri supplier-service/frontend/Dockerfile)"
 user_frontend_image="$(build_and_push UserFrontendRepositoryUri user-service/frontend/Dockerfile)"
 errand_frontend_image="$(build_and_push ErrandFrontendRepositoryUri errand-service/frontend/Dockerfile)"

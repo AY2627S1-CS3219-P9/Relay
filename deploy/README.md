@@ -24,7 +24,7 @@ Use SSO Login to access the Sanbox AWS Account.
 
 1. `aws configure sso` to configure sso
 2. `aws sts get-caller-identity --profile user` to confirm you logged in
-3. `aws sso login --profile relay --use-device-code` to log in using sso
+3. `aws sso login --profile user --use-device-code` to log in using SSO
 
 Use a supported EKS Kubernetes version in the target
 Region.
@@ -58,7 +58,7 @@ aws cloudformation deploy \
 ```
 
 If using sso login, include the parameter
-`--profile relay --region ap-southeast-1`
+`--profile user --region ap-southeast-1`
 
 Create the storage stack. The bucket name must be globally unique:
 
@@ -71,7 +71,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_IAM
 ```
 If using sso login, include the parameter
-`--profile relay --region ap-southeast-1`
+`--profile user --region ap-southeast-1`
 
 Read the generated values:
 
@@ -152,7 +152,7 @@ aws cognito-idp admin-add-user-to-group \
 ```
 
 If using sso login, include the parameter
-`--profile relay --region ap-southeast-1`
+`--profile user --region ap-southeast-1`
 
 This bootstrap is idempotent only up to the first user creation. If the user
 already exists, use `admin-set-user-password` and
@@ -162,7 +162,7 @@ already exists, use `admin-set-user-password` and
 
 ```bash
 chmod +x scripts/deploy-eks.sh
-AWS_REGION="$AWS_REGION" ./scripts/deploy-eks.sh relay
+AWS_PROFILE=user AWS_REGION="$AWS_REGION" ./scripts/deploy-eks.sh relay
 ```
 
 The script generates a shared Kafka password on first deployment and keeps it

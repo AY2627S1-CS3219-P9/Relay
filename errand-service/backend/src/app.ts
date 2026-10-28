@@ -19,7 +19,7 @@ import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
 import { PendingErrandWorker } from './workers/pending-errand.worker.js'
 import { ErrandEventPublisher } from './workers/errand-event-publisher.js'
 
-export function createApp() {
+export function createApp(isReady: () => boolean = () => true) {
   const app = express()
 
   app.use(express.json())
@@ -29,7 +29,8 @@ export function createApp() {
   })
 
   app.get('/healthz', (_req, res) => {
-    res.status(200).send('ok\n')
+    const ready = isReady()
+    res.status(ready ? 200 : 503).send(ready ? 'ok\n' : 'Kafka unavailable\n')
   })
 
   const eventStream = new ErrandEventStream()
@@ -62,7 +63,8 @@ export function createApp() {
   return app
 }
 
-export const app = createApp()
+let kafkaReady = process.env.NODE_ENV === 'test'
+export const app = createApp(() => kafkaReady)
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
@@ -108,10 +110,21 @@ if (process.env.NODE_ENV !== 'test') {
     env.kafkaTopicErrandEvents,
   )
   worker.start()
-  publisher.start().catch((err) => {
-    console.error('Failed to connect Kafka producer:', err)
-    process.exit(1)
-  })
+  let stopping = false
+  const connectPublisher = async () => {
+    while (!stopping) {
+      try {
+        await publisher.start()
+        kafkaReady = true
+        return
+      } catch (err) {
+        console.error('Failed to connect Kafka producer; retrying:', err)
+        await publisher.stop().catch(() => undefined)
+        if (!stopping) await new Promise((resolve) => setTimeout(resolve, 5_000))
+      }
+    }
+  }
+  const publisherConnection = connectPublisher()
 
   const server = app.listen(env.port, () => {
     console.log(`Errand Service listening on port ${env.port}`)
@@ -119,8 +132,11 @@ if (process.env.NODE_ENV !== 'test') {
 
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
+    stopping = true
+    kafkaReady = false
     worker.stop()
     server.close(async () => {
+      await publisherConnection
       await publisher.stop()
       await consumer.stop()
       process.exit(0)
