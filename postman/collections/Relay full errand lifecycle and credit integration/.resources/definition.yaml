@@ -12,6 +12,21 @@ variables:
   superAdminRefreshCookie: ""
   courierCookie: ""
   courierRefreshCookie: ""
+  requesterEmail: ""
+  requesterName: ""
+  supplierName: ""
+  supplierUpdatedName: ""
+  requesterCode: ""
+  requesterSub: ""
+  supplierId: ""
+  courierEmail: ""
+  courierName: ""
+  courierCode: ""
+  courierSub: ""
+  expiryAt: ""
+  expiryId: ""
+  cancelId: ""
+  completeId: ""
 scripts:
   - type: http:beforeRequest
     code: |-

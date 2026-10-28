@@ -1,12 +1,23 @@
 import { z } from 'zod'
 import { AuthError } from '../types/auth.types.js'
-const email = z.email().trim().toLowerCase()
-const password = z.string().min(1)
-export const loginSchema = z.object({ email, password })
-export const registerSchema = loginSchema.extend({ passwordConfirmation: password })
+const bootstrapAdminEmail = (process.env.AUTH_BOOTSTRAP_ADMIN_EMAIL ?? process.env.FLOCI_INITIAL_ADMIN_EMAIL ?? '').trim().toLowerCase()
+const nusEmailPattern = /^[^\s@]+@(u\.nus\.edu|nus\.edu\.sg)$/i
+const email = z.string().toLowerCase().refine(value =>
+  nusEmailPattern.test(value) || (bootstrapAdminEmail.length > 0 && value === bootstrapAdminEmail),
+  'Use a valid NUS email address.',
+)
+const password = z.string().superRefine((value, context) => {
+  if (value.length < 8) context.addIssue({code: 'custom', message: 'At least 8 characters'})
+  if (!/[a-z]/.test(value)) context.addIssue({code: 'custom', message: 'One lowercase letter'})
+  if (!/[A-Z]/.test(value)) context.addIssue({code: 'custom', message: 'One uppercase letter'})
+  if (!/[0-9]/.test(value)) context.addIssue({code: 'custom', message: 'One number'})
+  if (!/[!@#$%^&*]/.test(value)) context.addIssue({code: 'custom', message: 'One special character (!@#$%^&*)'})
+})
+export const loginSchema = z.object({ email, password: z.string().min(1) })
+export const registerSchema = loginSchema.extend({ password, passwordConfirmation: z.string() })
 export const resendSchema = z.object({ email })
 export const verificationSchema = loginSchema.extend({ code: z.string().trim().min(1) })
-export const passwordSchema = z.object({ currentPassword: password, newPassword: password, newPasswordConfirmation: password })
+export const passwordSchema = z.object({ currentPassword: z.string().min(1), newPassword: password, newPasswordConfirmation: z.string() })
 export const adminSchema = z.object({ email })
 export function validate<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input)

@@ -10,7 +10,7 @@ scripts:
   - type: beforeRequest
     code: |-
       const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-      pm.collectionVariables.set('requesterEmail','relay-requester-'+s+'@example.com');
+      pm.collectionVariables.set('requesterEmail','relay-requester-'+s+'@u.nus.edu');
       pm.collectionVariables.set('requesterName','relayrequester'+s);
       pm.collectionVariables.set('supplierName','Relay E2E '+s);
       pm.collectionVariables.set('supplierUpdatedName','Relay E2E Updated '+s);

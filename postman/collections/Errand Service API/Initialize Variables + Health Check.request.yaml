@@ -21,6 +21,8 @@ scripts:
       pm.collectionVariables.set('idCookieCourier', '');
       pm.collectionVariables.set('refreshCookieCourier', '');
 
+      pm.collectionVariables.unset('preCreateCreditAttempts');
+
       // Clear verification codes
       pm.collectionVariables.set('requesterVerificationCode', '');
       pm.collectionVariables.set('courierVerificationCode', '');

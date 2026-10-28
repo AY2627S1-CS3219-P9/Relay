@@ -9,5 +9,4 @@ variables:
   verificationCode: ""
   sessionCookie: ""
   cognitoSub: ""
-  balanceAttempts: "0"
   sessionRefreshCookie: ""

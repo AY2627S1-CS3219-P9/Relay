@@ -10,7 +10,7 @@ scripts:
   - type: beforeRequest
     code: |-
       const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-      pm.collectionVariables.set('courierEmail','relay-courier-'+s+'@example.com');
+      pm.collectionVariables.set('courierEmail','relay-courier-'+s+'@u.nus.edu');
       pm.collectionVariables.set('courierName','relaycourier'+s);
   - type: afterResponse
     code: pm.response.to.have.status(201);

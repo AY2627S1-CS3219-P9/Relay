@@ -10,8 +10,8 @@ scripts:
   - type: beforeRequest
     code: |-
       const s=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-      pm.collectionVariables.set('adminEmail',`relay-admin-${s}@example.com`);
-      pm.collectionVariables.set('normalEmail',`relay-user-${s}@example.com`);
+      pm.collectionVariables.set('adminEmail',`relay-admin-${s}@u.nus.edu`);
+      pm.collectionVariables.set('normalEmail',`relay-user-${s}@u.nus.edu`);
       pm.collectionVariables.set('adminUsername',`relayAdmin${s}`);
       pm.collectionVariables.set('normalUsername',`relayUser${s}`);
       pm.collectionVariables.set('supplierName',`Relay Postman ${s}`);

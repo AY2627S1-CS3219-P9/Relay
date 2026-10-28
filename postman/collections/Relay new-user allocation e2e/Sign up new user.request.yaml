@@ -10,7 +10,7 @@ scripts:
   - type: beforeRequest
     code: |-
       const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-      pm.collectionVariables.set('testEmail', `relay-${suffix}@example.com`);
+      pm.collectionVariables.set('testEmail', `relay-${suffix}@u.nus.edu`);
       pm.collectionVariables.set('testUsername', `relay${suffix}`);
       pm.collectionVariables.set('testPassword', 'Test1234!');
   - type: afterResponse

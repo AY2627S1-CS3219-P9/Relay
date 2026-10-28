@@ -309,6 +309,7 @@ services:
     expose:
       - '3000'
     environment:
+      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${FLOCI_INITIAL_ADMIN_EMAIL:-admin@example.com}
       NODE_ENV: production
       PORT: '3000'
     healthcheck:
