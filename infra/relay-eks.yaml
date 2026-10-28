@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Creates a EKS Auto Mode cluster, private application
-  network, ECR repositories, four PostgreSQL databases, MSK Serverless, and
-  generated database credentials. 
+  network, ECR repositories, four PostgreSQL databases, and generated
+  database credentials.
   [NOTE] Application workloads are deployed separately
   with the Kubernetes manifests in k8s/base.
 
@@ -175,17 +175,6 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !GetAtt EksCluster.ClusterSecurityGroupId
-  MskSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Kafka access from Relay EKS workloads
-      VpcId: !Ref Vpc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 9098
-          ToPort: 9098
-          SourceSecurityGroupId: !GetAtt EksCluster.ClusterSecurityGroupId
-
   DbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -298,15 +287,6 @@ Resources:
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
       BackupRetentionPeriod: 7
-  RelayMsk:
-    Type: AWS::MSK::ServerlessCluster
-    Properties:
-      ClusterName: !Sub '${ProjectName}-events'
-      ClientAuthentication: { Sasl: { Iam: { Enabled: true } } }
-      VpcConfigs:
-        - SecurityGroups: [!GetAtt MskSecurityGroup.GroupId]
-          SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
-
   UserApiMskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -317,13 +297,6 @@ Resources:
             Principal: { Service: pods.eks.amazonaws.com }
             Action: ['sts:AssumeRole', 'sts:TagSession']
       Policies:
-        - PolicyName: UserEventProducer
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: ['kafka-cluster:Connect', 'kafka-cluster:DescribeCluster', 'kafka-cluster:DescribeTopic', 'kafka-cluster:WriteData']
-                Resource: '*'
         - PolicyName: ProfileImageBucketAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -339,47 +312,6 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource: !Sub 'arn:${AWS::Partition}:s3:::${ProfileImageBucketName}/*'
-  ErrandApiMskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: { Service: pods.eks.amazonaws.com }
-            Action: ['sts:AssumeRole', 'sts:TagSession']
-      Policies:
-        - PolicyName: ErrandEventProducer
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: ['kafka-cluster:Connect', 'kafka-cluster:DescribeCluster', 'kafka-cluster:DescribeTopic', 'kafka-cluster:WriteData']
-                Resource: '*'
-  CreditApiMskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: { Service: pods.eks.amazonaws.com }
-            Action: ['sts:AssumeRole', 'sts:TagSession']
-      Policies:
-        - PolicyName: CreditEventConsumerAndProducer
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'kafka-cluster:Connect'
-                  - 'kafka-cluster:DescribeCluster'
-                  - 'kafka-cluster:DescribeTopic'
-                  - 'kafka-cluster:ReadData'
-                  - 'kafka-cluster:WriteData'
-                  - 'kafka-cluster:DescribeGroup'
-                  - 'kafka-cluster:AlterGroup'
-                Resource: '*'
   UserApiPodIdentity:
     Type: AWS::EKS::PodIdentityAssociation
     Properties:
@@ -387,21 +319,6 @@ Resources:
       Namespace: relay
       ServiceAccount: user-api
       RoleArn: !GetAtt UserApiMskRole.Arn
-  ErrandApiPodIdentity:
-    Type: AWS::EKS::PodIdentityAssociation
-    Properties:
-      ClusterName: !Ref EksCluster
-      Namespace: relay
-      ServiceAccount: errand-api
-      RoleArn: !GetAtt ErrandApiMskRole.Arn
-  CreditApiPodIdentity:
-    Type: AWS::EKS::PodIdentityAssociation
-    Properties:
-      ClusterName: !Ref EksCluster
-      Namespace: relay
-      ServiceAccount: credit-api
-      RoleArn: !GetAtt CreditApiMskRole.Arn
-
   HostRepository:
     Type: AWS::ECR::Repository
     Properties: { RepositoryName: !Sub '${ProjectName}/host', ImageScanningConfiguration: { ScanOnPush: true } }
@@ -433,7 +350,6 @@ Resources:
 Outputs:
   ClusterName: { Value: !Ref EksCluster }
   ClusterEndpoint: { Value: !GetAtt EksCluster.Endpoint }
-  MskClusterArn: { Value: !Ref RelayMsk }
   UserDatabaseEndpoint: { Value: !GetAtt UserDatabase.Endpoint.Address }
   ErrandDatabaseEndpoint: { Value: !GetAtt ErrandDatabase.Endpoint.Address }
   CreditDatabaseEndpoint: { Value: !GetAtt CreditDatabase.Endpoint.Address }

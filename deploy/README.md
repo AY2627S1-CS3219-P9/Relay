@@ -1,14 +1,16 @@
 # Relay AWS deployment
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, MSK Serverless, and their credentials.
+  four private PostgreSQL databases, and their credentials. The sandbox demo
+  runs its own single-node Kafka broker in EKS.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
 - `infra/relay-storage.yaml` provisions the private profile-image bucket.
   The user API accesses it through an EKS Pod Identity role, without static
   S3 credentials.
 - `scripts/deploy-eks.sh` builds the existing Dockerfiles, pushes the images,
-  creates the in-cluster runtime Secret, applies one-off database migrations,
+  creates the in-cluster runtime and Kafka Secrets, starts the demo broker,
+  applies one-off database migrations,
   and applies the workloads, HPA policies, and ALB Ingress.
 
 ## Prerequisites
@@ -163,8 +165,26 @@ chmod +x scripts/deploy-eks.sh
 AWS_REGION="$AWS_REGION" ./scripts/deploy-eks.sh relay
 ```
 
+The script generates a shared Kafka password on first deployment and keeps it
+in the `kafka-auth` and `kafka-broker-config` Kubernetes Secrets. The broker is
+available only through the in-cluster `kafka:9092` Service. User, Errand, and
+Credit API use Kafka's SASL/PLAIN authentication; the password is not placed in
+the ConfigMap or the repository. The broker and its one-partition topics are
+for a short-lived demo: the broker uses ephemeral storage, and restarting its
+Pod loses Kafka data. SASL/PLAIN over this internal listener does not encrypt
+traffic, so do not use this configuration for production or expose the Service
+outside the cluster.
+
+Check the demo broker and topic initializer before testing the application:
+
+```bash
+kubectl -n relay rollout status deployment/kafka
+kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
+kubectl -n relay get pods -l app=kafka
+```
+
 The first deployment can take several minutes while AWS creates the cluster,
-databases, MSK cluster, and load balancer. The script prints the command for
+databases, and load balancer. The script prints the command for
 finding the public ALB hostname at the end:
 
 ```bash
@@ -191,13 +211,10 @@ names (`user-api`, `supplier-api`, `errand-api`, and `credit-api`).
   but its consumers share Kafka consumer groups. With the current one-partition
   local topic model, additional replicas do not add consumer throughput.
 - A later phase should split Credit HTTP handling and Kafka consumption into
-  separate Deployments, increase topic partitions, and use KEDA/MSK lag to
-  scale the worker Deployment.
-- MSK access is isolated with EKS Pod Identity: only User, Errand, and Credit
-  API ServiceAccounts receive temporary Kafka credentials. The host, all
-  frontends, Supplier API, and the shared EKS node role receive no MSK access.
-  The API roles remain deliberately broad across Relay topics for this first
-  deployment; narrow them to topic and consumer-group ARNs before production.
+  separate Deployments, increase topic partitions, and use Kafka lag to scale
+  the worker Deployment.
+- The demo broker uses one shared Kafka account for User, Errand, and Credit
+  API. User API retains EKS Pod Identity only for profile-image S3 access.
 - Each API database is a separate small, single-AZ RDS instance. This preserves
   the current service data boundaries but is a cost-conscious learning setup,
   not a highly available database design.

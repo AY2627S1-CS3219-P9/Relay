@@ -11,7 +11,7 @@ import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
-const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
+const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
   ? {
       ssl: true,
       sasl: {
@@ -25,9 +25,20 @@ const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
         },
       },
     }
-  : {}
+  : process.env.KAFKA_AUTH_MODE === 'plain'
+    ? {
+        sasl: {
+          mechanism: 'plain' as const,
+          username: process.env.KAFKA_USERNAME ?? '',
+          password: process.env.KAFKA_PASSWORD ?? '',
+        },
+      }
+    : {}
+if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+  throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
+}
 const kafka = new Kafka({
-  clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR, ...mskIam,
+  clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR, ...kafkaAuth,
 })
 const errandConsumer = new ErrandEventConsumer(creditService, kafka)
 const userConsumer = new UserEventConsumer(creditService, kafka)

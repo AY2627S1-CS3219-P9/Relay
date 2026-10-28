@@ -80,9 +80,25 @@ user_password="$(password_from_secret "$(secret_value UserDatabaseSecretArn)")"
 errand_password="$(password_from_secret "$(secret_value ErrandDatabaseSecretArn)")"
 credit_password="$(password_from_secret "$(secret_value CreditDatabaseSecretArn)")"
 supplier_password="$(password_from_secret "$(secret_value SupplierDatabaseSecretArn)")"
-kafka_brokers="$(aws kafka get-bootstrap-brokers --region "$aws_region" --cluster-arn "$(output MskClusterArn)" --query BootstrapBrokerStringSaslIam --output text)"
-
 kubectl apply -f k8s/base/namespace.yaml -f k8s/base/configmap.yaml
+if ! kubectl -n relay get secret kafka-auth >/dev/null 2>&1; then
+  kubectl -n relay create secret generic kafka-auth \
+    --from-literal=KAFKA_USERNAME=relaydemo \
+    --from-literal=KAFKA_PASSWORD="$(openssl rand -hex 24)"
+fi
+kafka_password="$(kubectl -n relay get secret kafka-auth -o json | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => process.stdout.write(Buffer.from(JSON.parse(input).data.KAFKA_PASSWORD, "base64").toString()))')"
+if ! kubectl -n relay get secret kafka-broker-config >/dev/null 2>&1; then
+  broker_jaas="KafkaServer { org.apache.kafka.common.security.plain.PlainLoginModule required username=\"relaydemo\" password=\"${kafka_password}\" user_relaydemo=\"${kafka_password}\"; };"
+  client_properties="$(printf 'security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="relaydemo" password="%s";\n' "$kafka_password")"
+  kubectl -n relay create secret generic kafka-broker-config \
+    --from-literal=broker_jaas.conf="$broker_jaas" \
+    --from-literal=client.properties="$client_properties"
+fi
+unset kafka_password broker_jaas client_properties
+kubectl -n relay delete job kafka-init --ignore-not-found
+kubectl apply -f k8s/base/kafka-demo.yaml
+kubectl -n relay rollout status deployment/kafka --timeout=10m
+kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
 kubectl -n relay create configmap supplier-schema \
   --from-file=schema.sql=supplier-service/backend/src/schema.sql \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -93,7 +109,7 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=SUPPLIER_DATABASE_URL="postgresql://relay:${supplier_password}@$(output SupplierDatabaseEndpoint):5432/relay" \
   --from-literal=SUPPLIER_DB_HOST="$(output SupplierDatabaseEndpoint)" \
   --from-literal=SUPPLIER_DB_PASSWORD="$supplier_password" \
-  --from-literal=KAFKA_BROKERS="$kafka_brokers" \
+  --from-literal=KAFKA_BROKERS=kafka:9092 \
   --from-literal=AWS_REGION="$aws_region" \
   --from-literal=AWS_DEFAULT_REGION="$aws_region" \
   --from-literal=AWS_ENDPOINT_URL="${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \

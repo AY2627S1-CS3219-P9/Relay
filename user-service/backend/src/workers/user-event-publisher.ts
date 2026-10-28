@@ -12,7 +12,7 @@ export class UserEventPublisher {
   private lastCleanup = 0
 
   constructor() {
-    const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
+    const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
       ? {
           ssl: true,
           sasl: {
@@ -26,12 +26,23 @@ export class UserEventPublisher {
             },
           },
         }
-      : {}
+      : process.env.KAFKA_AUTH_MODE === 'plain'
+        ? {
+            sasl: {
+              mechanism: 'plain' as const,
+              username: process.env.KAFKA_USERNAME ?? '',
+              password: process.env.KAFKA_PASSWORD ?? '',
+            },
+          }
+        : {}
+    if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+      throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
+    }
     this.producer = new Kafka({
       clientId: 'user-service',
       brokers: getEnv().kafkaBrokers,
       logLevel: logLevel.ERROR,
-      ...mskIam,
+      ...kafkaAuth,
     }).producer()
   }
 
