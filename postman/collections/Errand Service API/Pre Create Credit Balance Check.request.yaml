@@ -3,5 +3,5 @@ description: ""
 url: http://localhost:8080/api/credit
 method: GET
 headers:
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 order: 13000

@@ -4,7 +4,7 @@ url: '{{baseUrl}}/api/supplier'
 order: 11907
 headers:
   Content-Type: application/json
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 body:
   type: json
   content: |-

@@ -18,8 +18,8 @@
       "@relay/contracts/*": [
         "../../packages/contracts/src/*"
       ],
-      "@relay/user-auth-jwt-verify": [
-        "../../user-service/user-auth-jwt-verify/dist/index.d.ts"
+      "@relay/user-auth-middleware": [
+        "../../user-service/user-auth-middleware/src/index.ts"
       ]
     }
   },

@@ -13,7 +13,7 @@
           "name": "01 Register requester",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/register",
+            "url": "{{baseUrl}}/api/auth/register",
             "header": [
               {
                 "key": "Content-Type",
@@ -79,7 +79,7 @@
           "name": "03 Verify requester and sign in",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "url": "{{baseUrl}}/api/auth/verification/confirm-and-login",
             "header": [
               {
                 "key": "Content-Type",
@@ -98,7 +98,7 @@
                 "exec": [
                   "pm.response.to.have.status(200);",
                   "pm.collectionVariables.set('requesterSub',pm.response.json().data.user.subject);",
-                  "pm.collectionVariables.set('requesterCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                  "pm.collectionVariables.set('requesterCookie',pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '));"
                 ]
               }
             }
@@ -133,7 +133,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -174,7 +174,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -200,7 +200,7 @@
           "name": "06 Sign in as super admin",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/login",
+            "url": "{{baseUrl}}/api/auth/login",
             "header": [
               {
                 "key": "Content-Type",
@@ -219,7 +219,7 @@
                 "exec": [
                   "pm.response.to.have.status(200);",
                   "pm.expect(pm.response.json().data.user.role).to.eql('super-admin');",
-                  "pm.collectionVariables.set('superAdminCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                  "pm.collectionVariables.set('superAdminCookie',pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '));"
                 ]
               }
             }
@@ -236,7 +236,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('superAdminCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
                   "pm.variables.set('superAdminCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -305,7 +305,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('superAdminCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid superAdminCookie in this collection. Run its login step first.');",
                   "pm.variables.set('superAdminCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -335,7 +335,7 @@
           "name": "01 Register courier",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/register",
+            "url": "{{baseUrl}}/api/auth/register",
             "header": [
               {
                 "key": "Content-Type",
@@ -399,7 +399,7 @@
           "name": "03 Verify courier and sign in",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "url": "{{baseUrl}}/api/auth/verification/confirm-and-login",
             "header": [
               {
                 "key": "Content-Type",
@@ -418,7 +418,7 @@
                 "exec": [
                   "pm.response.to.have.status(200);",
                   "pm.collectionVariables.set('courierSub',pm.response.json().data.user.subject);",
-                  "pm.collectionVariables.set('courierCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);"
+                  "pm.collectionVariables.set('courierCookie',pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '));"
                 ]
               }
             }
@@ -453,7 +453,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -494,7 +494,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -557,7 +557,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -605,7 +605,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -658,7 +658,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -697,7 +697,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -737,7 +737,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -781,7 +781,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -825,7 +825,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -865,7 +865,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -925,7 +925,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -965,7 +965,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1005,7 +1005,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1044,7 +1044,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1088,7 +1088,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1128,7 +1128,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1175,7 +1175,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1215,7 +1215,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1268,7 +1268,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1308,7 +1308,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1348,7 +1348,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1388,7 +1388,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1427,7 +1427,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1466,7 +1466,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1505,7 +1505,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1544,7 +1544,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1588,7 +1588,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1632,7 +1632,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1673,7 +1673,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1720,7 +1720,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1760,7 +1760,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1801,7 +1801,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1841,7 +1841,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1888,7 +1888,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1926,7 +1926,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('courierCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid courierCookie in this collection. Run its login step first.');",
                   "pm.variables.set('courierCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -1964,7 +1964,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -2004,7 +2004,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]
@@ -2044,7 +2044,7 @@
               "script": {
                 "exec": [
                   "const selectedSession=pm.collectionVariables.get('requesterCookie');",
-                  "if(typeof selectedSession!=='string'||!/^relay_session=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
+                  "if(typeof selectedSession!=='string'||!/^relay_access=[^;]+; relay_id=[^;]+$/.test(selectedSession))throw new Error('Missing or invalid requesterCookie in this collection. Run its login step first.');",
                   "pm.variables.set('requesterCookie',selectedSession);",
                   "pm.request.headers.upsert({key:'Cookie',value:selectedSession});"
                 ]

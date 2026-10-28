@@ -1,6 +1,6 @@
 $kind: http-request
 method: POST
-url: "{{baseUrl}}/api/user/auth/login"
+url: "{{baseUrl}}/api/auth/login"
 order: 1000
 headers:
   Content-Type: application/json
@@ -18,22 +18,13 @@ scripts:
         pm.response.to.have.status(200);
       });
 
-      const cookieHeader = pm.response.headers.all().find(header =>
-        header.key.toLowerCase() === 'set-cookie' &&
-        header.value.startsWith('relay_session=')
-      );
-
-      const sessionCookie = cookieHeader?.value
-        .split(';')[0]
-        .slice('relay_session='.length);
-
-      pm.test('Login sets session cookie', () => {
-        pm.expect(sessionCookie).to.be.a('string').and.not.empty;
+      const cookies = pm.response.headers.all().filter(header => header.key.toLowerCase() === 'set-cookie').map(header => header.value.split(';')[0]);
+      const access = cookies.find(cookie => cookie.startsWith('relay_access='))?.slice('relay_access='.length);
+      const id = cookies.find(cookie => cookie.startsWith('relay_id='))?.slice('relay_id='.length);
+      pm.test('Login sets Cognito cookies', () => {
+        pm.expect(access).to.be.a('string').and.not.empty;
+        pm.expect(id).to.be.a('string').and.not.empty;
       });
-
-      if (sessionCookie) {
-        pm.collectionVariables.set('sessionCookie', sessionCookie);
-      } else {
-        pm.collectionVariables.unset('sessionCookie');
-      }
+      pm.collectionVariables.set('sessionCookie', access);
+      pm.collectionVariables.set('idCookie', id);
     language: text/javascript

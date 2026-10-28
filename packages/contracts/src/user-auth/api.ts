@@ -1,10 +1,8 @@
-import type { UserAuthJwks } from './models'
 import type { ChangePasswordRequest, DemoteAdminToUserRequest, LoginRequest, PromoteUserToAdminRequest, RegisterRequest, ResendVerificationRequest, SubmitOtpAndLoginRequest } from './requests'
 import type { ApiResult, LoginResponse, RegisterResponse, SubmitOtpAndLoginResponse } from './responses'
 
 /** Identity and role management boundary served under /api/auth. */
 export interface UserAuthApi {
-  getJwks(): Promise<UserAuthJwks>
   register(request: RegisterRequest): Promise<ApiResult<RegisterResponse>>
   resendVerification(request: ResendVerificationRequest): Promise<ApiResult<undefined>>
   submitOtpAndLogin(request: SubmitOtpAndLoginRequest): Promise<ApiResult<SubmitOtpAndLoginResponse>>

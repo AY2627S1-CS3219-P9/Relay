@@ -26,5 +26,3 @@ export type UpdateUserResponse = User
 
 /** Response from the private profile lookup used by backend services. */
 export type GetUserProfileBySubjectResponse = UserProfileSummary
-
-export type GetAdminsResponse = User[]

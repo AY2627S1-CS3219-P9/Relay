@@ -4,7 +4,7 @@ url: "{{baseUrl}}/api/errands/{{errandId}}/pickup"
 order: 16000
 headers:
   Content-Type: application/json
-  Cookie: relay_session={{sessionCookieCourier}}
+  Cookie: relay_access={{sessionCookieCourier}}; relay_id={{idCookieCourier}}
 body:
   type: json
   content: ""

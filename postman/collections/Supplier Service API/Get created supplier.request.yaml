@@ -3,7 +3,7 @@ method: GET
 url: '{{baseUrl}}/api/supplier/{{supplierId}}'
 order: 18000
 headers:
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 scripts:
   - type: afterResponse
     code: |-

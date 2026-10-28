@@ -12,7 +12,7 @@
     "@relay/contracts": "*",
     "express": "^5.1.0",
     "pg": "^8.11.3",
-    "@relay/user-auth-jwt-verify": "*",
+    "@relay/user-auth-middleware": "*",
     "dotenv": "^16.6.1"
   },
   "devDependencies": {

@@ -1,22 +1,13 @@
-import { AdminAddUserToGroupCommand, AdminGetUserCommand, AdminRemoveUserFromGroupCommand, AdminUserGlobalSignOutCommand, ChangePasswordCommand, CognitoIdentityProviderClient, ConfirmSignUpCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, ListUsersInGroupCommand, ResendConfirmationCodeCommand, RevokeTokenCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider'
-import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { AdminAddUserToGroupCommand, AdminGetUserCommand, AdminRemoveUserFromGroupCommand, AdminUserGlobalSignOutCommand, ChangePasswordCommand, CognitoIdentityProviderClient, ConfirmSignUpCommand, GetTokensFromRefreshTokenCommand, InitiateAuthCommand, ListUsersInGroupCommand, ResendConfirmationCodeCommand, RevokeTokenCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import { AuthError } from '../types/auth.types.js'
 import { adminSchema, loginSchema, passwordSchema, registerSchema, resendSchema, validate, verificationSchema } from '../validators/auth.validator.js'
-import type { AuthenticatedUser } from '@relay/user-auth-jwt-verify'
+import { verifyCognitoTokens, type AuthenticatedUser } from '@relay/user-auth-middleware'
 
 const env = getEnv()
 const cognito = new CognitoIdentityProviderClient({ region: env.region, endpoint: env.endpoint })
-const cognitoKeys = createRemoteJWKSet(new URL(env.jwksUri), { cacheMaxAge: 300_000, timeoutDuration: 5_000 })
-async function identity(accessToken: string): Promise<AuthenticatedUser> {
-  const { payload } = await jwtVerify(accessToken, cognitoKeys, { issuer: env.issuer, algorithms: ['RS256'] })
-  if (payload.token_use !== 'access' || payload.client_id !== env.clientId || typeof payload.sub !== 'string') throw new AuthError('UNAUTHENTICATED', 'Cognito returned an invalid access token.', 401)
-  const result = await cognito.send(new GetUserCommand({ AccessToken: accessToken }))
-  const attrs = new Map((result.UserAttributes ?? []).map(x => [x.Name, x.Value]))
-  const groups = Array.isArray(payload['cognito:groups']) ? payload['cognito:groups'] : []
-  const email = attrs.get('email')
-  if (!email) throw new AuthError('INTERNAL_ERROR', 'Cognito identity has no email.', 500)
-  return { sub: payload.sub, email, emailVerified: attrs.get('email_verified') === 'true', role: groups.includes(env.superGroup) ? 'super-admin' : groups.includes(env.adminGroup) ? 'admin' : 'user' }
+async function identity(accessToken: string, idToken: string): Promise<AuthenticatedUser> {
+  return verifyCognitoTokens(accessToken, idToken)
 }
 function mapError(error: unknown): never {
   if (error instanceof AuthError) throw error
@@ -48,17 +39,17 @@ export class AuthService {
     const {email,password}=validate(loginSchema,input)
     try {
       const result=await cognito.send(new InitiateAuthCommand({AuthFlow:'USER_PASSWORD_AUTH',ClientId:env.clientId,AuthParameters:{USERNAME:email,PASSWORD:password}}))
-      const access=result.AuthenticationResult?.AccessToken, refresh=result.AuthenticationResult?.RefreshToken
-      if (!access || !refresh) throw new AuthError('INTERNAL_ERROR','Cognito did not return the required tokens.',500)
-      return {user:await identity(access),refreshToken:refresh}
+      const access=result.AuthenticationResult?.AccessToken, id=result.AuthenticationResult?.IdToken, refresh=result.AuthenticationResult?.RefreshToken
+      if (!access || !id || !refresh) throw new AuthError('INTERNAL_ERROR','Cognito did not return the required tokens.',500)
+      return {user:await identity(access,id),accessToken:access,idToken:id,refreshToken:refresh}
     } catch(error) { mapError(error) }
   }
   async refresh(refreshToken: string) {
     try {
       const result=await cognito.send(new GetTokensFromRefreshTokenCommand({ClientId:env.clientId,RefreshToken:refreshToken}))
-      const access=result.AuthenticationResult?.AccessToken
-      if (!access) throw new AuthError('UNAUTHENTICATED','The refresh token is invalid.',401)
-      return {user:await identity(access),refreshToken:result.AuthenticationResult?.RefreshToken ?? refreshToken}
+      const access=result.AuthenticationResult?.AccessToken, id=result.AuthenticationResult?.IdToken
+      if (!access || !id) throw new AuthError('UNAUTHENTICATED','The refresh token is invalid.',401)
+      return {user:await identity(access,id),accessToken:access,idToken:id,refreshToken:result.AuthenticationResult?.RefreshToken ?? refreshToken}
     } catch(error) { mapError(error) }
   }
   async logout(refreshToken?: string) {

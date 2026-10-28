@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { userAuthMiddleware } from '@relay/user-auth-jwt-verify'
+import { userAuthMiddleware } from '@relay/user-auth-middleware'
 import { UserController } from '../controllers/user.controller.js'
 
 export function createUserRouter(controller: UserController): Router {

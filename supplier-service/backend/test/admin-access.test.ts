@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { SupplierController } from '../src/controllers/supplier.controller'
+import { createSupplierRouter } from '../src/routes/supplier.routes'
+import { userAuthAdminMiddleware } from '@relay/user-auth-middleware'
 const body = { name:'Supplier', location:{lat:1,lng:103,buildingName:'Building',floorNumber:1}, isOperational:true, operatingHours:{openingTime:'09:00',closingTime:'18:00',daysOfWeek:[1]}, serviceTypes:[0] }
 function response() {
   const res: Record<string, unknown> = { statusCode:200 }
@@ -25,11 +27,11 @@ for (const role of ['admin','super-admin'] as const) {
     assert.deepEqual(calls,['create','update','delete'])
   })
 }
-test('ordinary users cannot mutate suppliers',async()=>{
-  const controller=new SupplierController({updateSupplier:async()=>{throw new Error('must not update')}} as never)
-  const res=response()
-  await controller.updateSupplier({user:{sub:'subject',email:'u@example.com',emailVerified:true,role:'user'},body:{},params:{id:'s1'}} as never,res as never,(e)=>{throw e})
-  assert.equal(res.statusCode,403)
+test('supplier mutation routes require Cognito admin middleware',()=>{
+  const router=createSupplierRouter(new SupplierController({} as never))
+  const mutations=router.stack.filter((layer) => layer.route && ['post','put','delete'].some((method) => layer.route.methods[method]))
+  assert.equal(mutations.length,3)
+  for (const layer of mutations) assert.equal(layer.route.stack[0].handle,userAuthAdminMiddleware)
 })
 test('unverified users cannot access suppliers',async()=>{
   const controller=new SupplierController({getAllSuppliers:async()=>{throw new Error('must not read')}} as never)

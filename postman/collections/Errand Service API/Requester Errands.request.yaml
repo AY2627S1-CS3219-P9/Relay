@@ -5,7 +5,7 @@ queryParams:
   scope: mine
 order: 28000
 headers:
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 scripts:
   - type: afterResponse
     code: |-

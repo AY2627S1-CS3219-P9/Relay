@@ -11,9 +11,6 @@ import { getEnv } from './config/env.js'
 import { LocalImageStorage } from './storage/local-image-storage.js'
 import { UserServiceError } from './types/user.types.js'
 import { internalServiceAuth } from './middleware/internal-auth.middleware.js'
-import { createAdminRouter } from './routes/admin.routes.js'
-import { AdminController } from './controllers/admin.controller.js'
-import { AdminService } from './services/admin.service.js'
 
 const repository = new UserRepository()
 const imageStorage = new LocalImageStorage()
@@ -36,7 +33,6 @@ app.get('/healthz', (_req, res) => {
 })
 
 app.use('/api/user', createUserRouter(userController))
-app.use('/api/user', createAdminRouter(new AdminController(new AdminService())))
 app.get('/internal/user/profile/:sub', internalServiceAuth, userController.getProfileBySubject)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {

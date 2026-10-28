@@ -12,12 +12,7 @@
     "sourceMap": true,
     "types": [
       "node"
-    ],
-    "paths": {
-      "@relay/user-auth-jwt-verify": [
-        "../../user-service/user-auth-jwt-verify/dist/index.d.ts"
-      ]
-    }
+    ]
   },
   "include": [
     "src/**/*.ts"

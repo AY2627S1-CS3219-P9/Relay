@@ -39,7 +39,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/register",
+            "url": "{{baseUrl}}/api/auth/register",
             "header": [
               {
                 "key": "Content-Type",
@@ -92,7 +92,7 @@
                 "exec": [
                   "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
                   "pm.test('initial user role',()=>pm.expect(pm.response.json().data.user.role).to.eql('user'));",
-                  "const c=pm.response.headers.get('Set-Cookie'); pm.test('session cookie',()=>pm.expect(c).to.include('relay_session=')); if(c)pm.collectionVariables.set('adminCookie',c.split(';')[0]);"
+                  "const c=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '); pm.test('access cookie',()=>pm.expect(c).to.include('relay_access=')); if(c)pm.collectionVariables.set('adminCookie',c);"
                 ]
               }
             }
@@ -102,7 +102,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "url": "{{baseUrl}}/api/auth/verification/confirm-and-login",
             "header": [
               {
                 "key": "Content-Type",
@@ -177,7 +177,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/register",
+            "url": "{{baseUrl}}/api/auth/register",
             "header": [
               {
                 "key": "Content-Type",
@@ -229,7 +229,7 @@
               "script": {
                 "exec": [
                   "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-                  "const c=pm.response.headers.get('Set-Cookie'); pm.test('session cookie',()=>pm.expect(c).to.include('relay_session=')); if(c)pm.collectionVariables.set('normalCookie',c.split(';')[0]);"
+                  "const c=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '); pm.test('access cookie',()=>pm.expect(c).to.include('relay_access=')); if(c)pm.collectionVariables.set('normalCookie',c);"
                 ]
               }
             }
@@ -239,7 +239,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/verification/confirm-and-login",
+            "url": "{{baseUrl}}/api/auth/verification/confirm-and-login",
             "header": [
               {
                 "key": "Content-Type",
@@ -311,7 +311,7 @@
                 "exec": [
                   "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
                   "pm.test('super admin role',()=>pm.expect(pm.response.json().data.user.role).to.eql('super-admin'));",
-                  "const c=pm.response.headers.get('Set-Cookie'); pm.test('session cookie',()=>pm.expect(c).to.include('relay_session=')); if(c)pm.collectionVariables.set('superAdminCookie',c.split(';')[0]);"
+                  "const c=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '); pm.test('access cookie',()=>pm.expect(c).to.include('relay_access=')); if(c)pm.collectionVariables.set('superAdminCookie',c);"
                 ]
               }
             }
@@ -321,7 +321,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/login",
+            "url": "{{baseUrl}}/api/auth/login",
             "header": [
               {
                 "key": "Content-Type",
@@ -380,34 +380,6 @@
           }
         },
         {
-          "name": "03 View admins before promotion",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-                  "const a=pm.response.json().data; pm.test('admin list',()=>pm.expect(a).to.be.an('array'));",
-                  "pm.test('candidate absent',()=>pm.expect(a.some(x=>x.email===pm.collectionVariables.get('adminEmail'))).to.eql(false));"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookieJar": true
-          },
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/user/admins",
-            "header": [
-              {
-                "key": "Cookie",
-                "value": "{{superAdminCookie}}"
-              }
-            ]
-          }
-        },
-        {
           "name": "04 Promote candidate",
           "event": [
             {
@@ -424,7 +396,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/admin/promote",
+            "url": "{{baseUrl}}/api/auth/admin/promote",
             "header": [
               {
                 "key": "Content-Type",
@@ -444,34 +416,6 @@
                 }
               }
             }
-          }
-        },
-        {
-          "name": "05 View admins after promotion",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-                  "const a=pm.response.json().data; pm.test('admin list',()=>pm.expect(a).to.be.an('array'));",
-                  "pm.test('candidate listed',()=>pm.expect(a.some(x=>x.email===pm.collectionVariables.get('adminEmail'))).to.eql(true));"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookieJar": true
-          },
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/user/admins",
-            "header": [
-              {
-                "key": "Cookie",
-                "value": "{{superAdminCookie}}"
-              }
-            ]
           }
         },
         {
@@ -491,7 +435,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/admin/demote",
+            "url": "{{baseUrl}}/api/auth/admin/demote",
             "header": [
               {
                 "key": "Content-Type",
@@ -514,34 +458,6 @@
           }
         },
         {
-          "name": "07 View admins after demotion",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-                  "const a=pm.response.json().data; pm.test('admin list',()=>pm.expect(a).to.be.an('array'));",
-                  "pm.test('candidate absent',()=>pm.expect(a.some(x=>x.email===pm.collectionVariables.get('adminEmail'))).to.eql(false));"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookieJar": true
-          },
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/api/user/admins",
-            "header": [
-              {
-                "key": "Cookie",
-                "value": "{{superAdminCookie}}"
-              }
-            ]
-          }
-        },
-        {
           "name": "08 Promote candidate for supplier checks",
           "event": [
             {
@@ -558,7 +474,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/admin/promote",
+            "url": "{{baseUrl}}/api/auth/admin/promote",
             "header": [
               {
                 "key": "Content-Type",
@@ -594,7 +510,7 @@
                 "exec": [
                   "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
                   "pm.test('admin role',()=>pm.expect(pm.response.json().data.user.role).to.eql('admin'));",
-                  "const c=pm.response.headers.get('Set-Cookie'); pm.test('session cookie',()=>pm.expect(c).to.include('relay_session=')); if(c)pm.collectionVariables.set('adminCookie',c.split(';')[0]);"
+                  "const c=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '); pm.test('access cookie',()=>pm.expect(c).to.include('relay_access=')); if(c)pm.collectionVariables.set('adminCookie',c);"
                 ]
               }
             }
@@ -604,7 +520,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/login",
+            "url": "{{baseUrl}}/api/auth/login",
             "header": [
               {
                 "key": "Content-Type",
@@ -719,7 +635,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/admin/demote",
+            "url": "{{baseUrl}}/api/auth/admin/demote",
             "header": [
               {
                 "key": "Content-Type",
@@ -789,7 +705,7 @@
                 "exec": [
                   "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
                   "pm.test('user role',()=>pm.expect(pm.response.json().data.user.role).to.eql('user'));",
-                  "const c=pm.response.headers.get('Set-Cookie'); pm.test('session cookie',()=>pm.expect(c).to.include('relay_session=')); if(c)pm.collectionVariables.set('adminCookie',c.split(';')[0]);"
+                  "const c=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).filter(x=>x.startsWith('relay_access=')||x.startsWith('relay_id=')).join('; '); pm.test('access cookie',()=>pm.expect(c).to.include('relay_access=')); if(c)pm.collectionVariables.set('adminCookie',c);"
                 ]
               }
             }
@@ -799,7 +715,7 @@
           },
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/user/auth/login",
+            "url": "{{baseUrl}}/api/auth/login",
             "header": [
               {
                 "key": "Content-Type",

@@ -237,6 +237,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       PORT: '3000'
       DB_HOST: supplier-db
       DB_PORT: '5432'
@@ -266,12 +272,15 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@user-postgres:5432/relay?schema=public
-      MOCK_JWT_SECRET: local-development-only-secret
-      MOCK_JWT_ISSUER: relay-user-service
-      MOCK_JWT_AUDIENCE: relay-user-frontend
       S3_ENDPOINT: http://host.docker.internal:4566
       S3_PUBLIC_ENDPOINT: http://localhost:4566
       S3_REGION: us-east-1
@@ -299,9 +308,6 @@ services:
       dockerfile: user-service/auth/Dockerfile
     expose:
       - '3000'
-    volumes:
-      - user-auth-keys:/var/lib/user-auth
-    command: ['sh', '-c', 'set -e; umask 077; test -f /var/lib/user-auth/private.pem || openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /var/lib/user-auth/private.pem; exec node user-service/auth/dist/server.js']
     environment:
       NODE_ENV: production
       PORT: '3000'
@@ -317,6 +323,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
@@ -352,6 +364,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
@@ -376,7 +394,6 @@ services:
       retries: 5
 
 volumes:
-  user-auth-keys:
   user-postgres-data:
   errand-postgres-data:
   credit-postgres-data:

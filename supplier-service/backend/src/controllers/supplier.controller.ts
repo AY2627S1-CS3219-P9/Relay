@@ -24,9 +24,8 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<global
   }
 }
 
-function checkAuth(req: Request): { role: 'super-admin' | 'admin' | 'user' } | null {
-  if (!req.user?.emailVerified) return null
-  return { role: req.user.role }
+function checkAuth(req: Request): boolean {
+  return req.user?.emailVerified === true
 }
 
 function parseFilters(query: Request['query']):
@@ -150,10 +149,6 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
-        res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
-        return
-      }
 
       const { name, location, isOperational, operatingHours, serviceTypes } = req.body
 
@@ -220,10 +215,6 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
-        res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
-        return
-      }
 
       const { name, location, isOperational, operatingHours, serviceTypes } = req.body
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
@@ -252,10 +243,6 @@ export class SupplierController {
         return
       }
 
-      if (authResult.role !== 'admin' && authResult.role !== 'super-admin') {
-        res.status(403).json({ code: SupplierErrors.FORBIDDEN, message: 'Admin access required' })
-        return
-      }
 
       await this.service.deleteSupplier((Array.isArray(req.params.id) ? req.params.id[0] : req.params.id))
       res.status(204).send()

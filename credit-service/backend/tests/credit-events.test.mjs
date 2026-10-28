@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
-import { generateKeyPair, exportJWK, SignJWT } from 'jose'
+import { createCognitoFixture } from '../../../user-service/user-auth-middleware/tests/cognito-token-fixture.mjs'
 import { Kafka } from 'kafkajs'
 import { createApp, closeAppResources } from '../dist/app.js'
 import { prisma } from '../dist/repositories/credit.repository.js'
@@ -40,15 +39,8 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const failedReservedId = randomUUID()
   const failedUnreservedId = randomUUID()
   const ids = [requester, courier]
-  const { privateKey, publicKey } = await generateKeyPair('RS256')
-  const jwk = { ...await exportJWK(publicKey), kid: 'credit-events-test', alg: 'RS256', use: 'sig' }
-  const userService = createServer((_req,res) => res.writeHead(200, {'Content-Type':'application/json'}).end(JSON.stringify({keys:[jwk]})))
-  await new Promise((resolve) => userService.listen(0, '127.0.0.1', resolve))
-  process.env.USER_AUTH_JWKS_URL = `http://127.0.0.1:${userService.address().port}/jwks`
-  const sign = (sub) => new SignJWT({email:'test@example.com',emailVerified:true,role:'user'})
-    .setProtectedHeader({alg:'RS256',kid:'credit-events-test'}).setIssuer('relay-user-auth')
-    .setAudience('relay-services').setSubject(sub).setIssuedAt().setExpirationTime('15m').sign(privateKey)
-  const cookies = { requester: `relay_access=${await sign(requester)}`, courier: `relay_access=${await sign(courier)}` }
+  const fixture = await createCognitoFixture('credit-events-test')
+  const cookies = { requester: fixture.cookie(requester), courier: fixture.cookie(courier) }
   const api = createApp().listen(0, '127.0.0.1')
   await new Promise((resolve) => api.once('listening', resolve))
   const url = `http://127.0.0.1:${api.address().port}`
@@ -257,10 +249,9 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     await prisma.creditBalance.deleteMany({ where: { userId: { in: ids } } })
     api.closeAllConnections()
-    userService.closeAllConnections()
     await Promise.all([
       new Promise((resolve) => api.close(resolve)),
-      new Promise((resolve) => userService.close(resolve)),
+      fixture.close(),
     ])
     await closeAppResources()
   }

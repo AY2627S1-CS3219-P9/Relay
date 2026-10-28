@@ -5,7 +5,7 @@ queryParams:
   scope: visible
 order: 29000
 headers:
-  Cookie: relay_session={{sessionCookieCourier}}
+  Cookie: relay_access={{sessionCookieCourier}}; relay_id={{idCookieCourier}}
 scripts:
   - type: afterResponse
     code: |-

@@ -63,6 +63,7 @@ export class UserController {
       )
 
       res.clearCookie('relay_access', { path: '/', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
+      res.clearCookie('relay_id', { path: '/', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
       res.clearCookie('relay_refresh', { path: '/api/auth', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
       res.status(204).send()
     } catch (error) {
