@@ -1,7 +1,7 @@
 $kind: http-request
 method: GET
 url: "{{baseUrl}}/api/supplier"
-order: 10000
+order: 11000
 headers:
   Cookie: relay_session={{sessionCookie}}
 scripts:

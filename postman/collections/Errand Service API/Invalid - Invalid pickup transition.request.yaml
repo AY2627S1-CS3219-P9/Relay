@@ -1,17 +1,17 @@
 $kind: http-request
 method: POST
 url: "{{baseUrl}}/api/errands/{{errandId}}/pickup"
-order: 15000
+order: 16000
 headers:
   Content-Type: application/json
   Cookie: relay_session={{sessionCookieCourier}}
 body:
   type: json
-  content: ''
+  content: ""
 scripts:
   - type: afterResponse
     code: |-
-      pm.test('Cannot pick up non-PICKED_UP errand', () => {
+      pm.test('Cannot pick up non-ACCEPTED errand', () => {
         pm.response.to.have.status(409);
       });
 
@@ -20,6 +20,6 @@ scripts:
         pm.expect(json.code).to.eql('INVALID_TRANSITION');
       });
       pm.test('Error message is correct', () => {
-        pm.expect(json.message).to.include('picked up');
+        pm.expect(json.message).to.include('Errand was not in expected state: Accepted.');
       });
     language: text/javascript

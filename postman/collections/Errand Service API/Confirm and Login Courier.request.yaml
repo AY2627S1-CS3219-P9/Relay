@@ -1,7 +1,7 @@
 $kind: http-request
 method: POST
 url: "{{baseUrl}}/api/user/auth/verification/confirm-and-login"
-order: 8000
+order: 9000
 description: Confirm signup with verification code and login for courier
 headers:
   Content-Type: application/json
