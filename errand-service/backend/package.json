@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@aws-sdk/credential-provider-http": "^3.972.74",
     "@relay/contracts": "*",
     "aws-msk-iam-sasl-signer-js": "^1.0.3",
     "dotenv": "^16.6.1",

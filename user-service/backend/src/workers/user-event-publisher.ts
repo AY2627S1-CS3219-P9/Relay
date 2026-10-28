@@ -1,5 +1,6 @@
 import { Kafka, logLevel, type Producer } from 'kafkajs'
-import { generateAuthToken } from 'aws-msk-iam-sasl-signer-js'
+import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
+import { fromHttp } from '@aws-sdk/credential-provider-http'
 import { prisma } from '../repositories/user.repository.js'
 import { getEnv } from '../config/env.js'
 
@@ -17,7 +18,10 @@ export class UserEventPublisher {
           sasl: {
             mechanism: 'oauthbearer' as const,
             oauthBearerProvider: async () => {
-              const { token } = await generateAuthToken({ region: process.env.AWS_REGION ?? 'us-east-1' })
+            const { token } = await generateAuthTokenFromCredentialsProvider({
+              region: process.env.AWS_REGION ?? 'us-east-1',
+              awsCredentialsProvider: fromHttp(),
+            })
               return { value: token }
             },
           },

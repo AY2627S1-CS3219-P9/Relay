@@ -133,5 +133,7 @@ sed \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   k8s/base/workloads.yaml | kubectl apply -f -
 kubectl apply -f k8s/base/autoscaling.yaml -f k8s/base/ingress.yaml
-kubectl -n relay rollout status deployment --all --timeout=10m
+kubectl -n relay get deployment -o name | while read -r deployment; do
+  kubectl -n relay rollout status "$deployment" --timeout=10m
+done
 echo "Deployment complete. Run: kubectl -n relay get ingress relay"

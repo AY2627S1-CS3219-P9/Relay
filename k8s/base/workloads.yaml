@@ -169,7 +169,7 @@ spec:
       containers:
         - name: api
           image: IMAGE_USER_API
-          command: [node, user-service/backend/dist/server.js]
+          command: [node, --import, tsx, user-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
@@ -196,7 +196,7 @@ spec:
       containers:
         - name: api
           image: IMAGE_ERRAND_API
-          command: [node, errand-service/backend/dist/app.js]
+          command: [node, --import, tsx, errand-service/backend/dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
@@ -226,7 +226,7 @@ spec:
       containers:
         - name: api
           image: IMAGE_CREDIT_API
-          command: [node, credit-service/backend/dist/server.js]
+          command: [node, --import, tsx, credit-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } } }
