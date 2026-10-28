@@ -199,8 +199,8 @@ export class ErrandService {
       const openAcceptedErrands = allErrands.filter(
         (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
       )
-      for (const errand of openAcceptedErrands) {
-        await this.repository.delete(errand.id, errand.requesterSub)
+      if (openAcceptedErrands.length > 0) {
+        await this.repository.supplierUpdateDeleteErrands(openAcceptedErrands.map((e) => e.id))
       }
       return {
         processed: true,

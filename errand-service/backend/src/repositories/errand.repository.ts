@@ -260,6 +260,10 @@ export class ErrandRepository {
         throw new Error('ERRAND NOT IN OPEN')
       }
 
+      if (errand.expiresAt <= new Date()) {
+        throw new Error('ERRAND ALREADY EXPIRED')
+      }
+
       if (errand.requesterSub === actorSub) {
         throw new Error('REQUESTER CANNOT ACCEPT OWN ERRAND')
       }
@@ -283,19 +287,19 @@ export class ErrandRepository {
         },
       })
 
-      return updated
-    })
+      await appendEvent(tx, {
+        eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+        payload: {
+          errandId,
+          errandStatus: ErrandStatus.Accepted,
+          previousStatus: ErrandStatus.Open,
+          actorSub: actorSub,
+          actorType: 'courier',
+          requesterSub: updated.requesterSub,
+        },
+      })
 
-    await appendEvent(this.prisma, {
-      eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
-      payload: {
-        errandId,
-        errandStatus: ErrandStatus.Accepted,
-        previousStatus: ErrandStatus.Open,
-        actorSub: actorSub,
-        actorType: 'courier',
-        requesterSub: result.requesterSub,
-      },
+      return updated
     })
 
     this.eventStream?.publish(
@@ -668,6 +672,41 @@ export class ErrandRepository {
         if (isUpdateUnsuccessful(error)) {
           throw new Error('ERRAND NOT IN TERMINAL')
         }
+        throw error
+      }
+    })
+  }
+
+  async supplierUpdateDeleteErrands(errandIds: string[]): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const errands = await tx.errand.findMany({
+        where: {
+          id: { in: errandIds },
+          status: { in: [ErrandStatus.Open, ErrandStatus.Accepted] },
+        },
+      })
+
+      if (errands.length === 0) {
+        throw new Error('ERRAND NOT FOUND')
+      }
+
+      const updated = await tx.errand.updateMany({
+        where: {
+          id: { in: errandIds },
+          status: { in: [ErrandStatus.Open, ErrandStatus.Accepted] },
+        },
+        data: { status: ErrandStatus.Deleted },
+      })
+
+      if (updated.count !== errands.length) {
+        throw new Error('ERRAND NOT IN TERMINAL')
+      }
+
+      for (const errand of errands) {
+        await appendEvent(tx, {
+          eventType: ErrandEventTypes.ERRAND_DELETED,
+          payload: { errandId: errand.id, requesterSub: errand.requesterSub },
+        })
       }
     })
   }
