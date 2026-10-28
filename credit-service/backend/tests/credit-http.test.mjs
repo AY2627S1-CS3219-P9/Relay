@@ -23,9 +23,12 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
     const response = await fetch(url + path, {
       method,
       headers: {
-        ...(cookie ? { Cookie: cookie === 'owner' ? ownerCookie : cookie === 'empty' ? emptyCookie : cookie } : {}),
+        ...(cookie
+          ? { Cookie: cookie === 'owner' ? ownerCookie : cookie === 'empty' ? emptyCookie : cookie }
+          : {}),
         ...(path === '/internal/credit/reserve' && serviceToken
-          ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
+          ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN }
+          : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -148,7 +151,15 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
       }
     })
     await t.test('history rejects malformed offsets', async () => {
-      for (const offset of ['-1', '1.5', 'foo', '1e2', '1&offset=2', '2147483648', '9007199254740992']) {
+      for (const offset of [
+        '-1',
+        '1.5',
+        'foo',
+        '1e2',
+        '1&offset=2',
+        '2147483648',
+        '9007199254740992',
+      ]) {
         const response = await request(`/api/credit/history?offset=${offset}`, 'owner')
         assert.equal(response.status, 400, offset)
         assert.equal(response.body.code, 'INVALID_REQUEST')
@@ -160,10 +171,7 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
         assert.equal(forbidden.status, 403)
         assert.equal(forbidden.body.code, 'FORBIDDEN')
         assert.equal((await request(`${path}?userId=`, 'owner')).status, 400)
-        assert.equal(
-          (await request(`${path}?userId=a&userId=b`, 'owner')).status,
-          400,
-        )
+        assert.equal((await request(`${path}?userId=a&userId=b`, 'owner')).status, 400)
         assert.equal((await request(`${path}?userId=${owner}`, 'owner')).status, 200)
       }
     })
@@ -182,10 +190,7 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
     await t.test('internal reserve validates service token, amount, and reference', async () => {
       const reference = { service: 'delivery', id: `${prefix}-reserve`, type: 'CREDIT_RESERVE' }
       const body = { transactionReference: reference, userId: owner, amount: 10.25 }
-      assert.equal(
-        (await request('/internal/credit/reserve', 'owner', 'POST')).status,
-        400,
-      )
+      assert.equal((await request('/internal/credit/reserve', 'owner', 'POST')).status, 400)
       assert.equal(
         (await request('/internal/credit/reserve', undefined, 'POST', body, false)).status,
         401,
@@ -298,15 +303,24 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
         request('/internal/credit/reserve', 'owner', 'POST', body),
       ])
       assert.deepEqual(responses.map((response) => response.status).sort(), [200, 409])
-      assert.equal(responses.find((response) => response.status === 409).body.code, 'TRANSACTION_CONFLICT')
+      assert.equal(
+        responses.find((response) => response.status === 409).body.code,
+        'TRANSACTION_CONFLICT',
+      )
       const balance = await request('/api/credit', 'owner')
       assert.equal(balance.body.availableCredit, 15)
       assert.equal(balance.body.reserveCredit, 72.75)
     })
     await t.test('no public credit mutation endpoint is exposed', async () => {
       assert.equal((await request('/api/credit', 'owner', 'POST')).status, 404)
-      assert.equal((await request('/api/credit/reserve', 'owner', 'POST', { amount: 1 })).status, 404)
-      assert.equal((await request('/api/credit/reserve', undefined, 'POST', { amount: 1 })).status, 404)
+      assert.equal(
+        (await request('/api/credit/reserve', 'owner', 'POST', { amount: 1 })).status,
+        404,
+      )
+      assert.equal(
+        (await request('/api/credit/reserve', undefined, 'POST', { amount: 1 })).status,
+        404,
+      )
     })
   } finally {
     await prisma.transactionRecord.deleteMany({
@@ -314,10 +328,7 @@ test('credit HTTP reads verify JWTs locally and isolate user data', async (t) =>
     })
     await prisma.creditBalance.deleteMany({ where: { userId: { in: ids } } })
     api.closeAllConnections()
-    await Promise.all([
-      new Promise((resolve) => api.close(resolve)),
-      fixture.close(),
-    ])
+    await Promise.all([new Promise((resolve) => api.close(resolve)), fixture.close()])
     await closeAppResources()
   }
 })

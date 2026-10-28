@@ -1,9 +1,9 @@
 $kind: http-request
-description: ""
-url: "{{baseUrl}}/api/errands/{{completeId}}/deliver"
+description: ''
+url: '{{baseUrl}}/api/errands/{{completeId}}/deliver'
 method: POST
 headers:
-  Cookie: "{{courierCookie}}"
+  Cookie: '{{courierCookie}}'
 scripts:
   - type: beforeRequest
     code: |-
@@ -14,6 +14,6 @@ scripts:
   - type: afterResponse
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
-      pm.test('status DELIVERED',()=>pm.expect(pm.response.json().errand.status).to.eql('DELIVERED')); 
+      pm.test('status DELIVERED',()=>pm.expect(pm.response.json().errand.status).to.eql('DELIVERED'));
 settings: {}
 order: 8000

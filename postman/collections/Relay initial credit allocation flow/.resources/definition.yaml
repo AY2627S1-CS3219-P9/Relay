@@ -6,7 +6,7 @@ variables:
   testEmail: relay-credit@example.com
   testPassword: Test1234!
   testUsername: relayCreditUser
-  verificationCode: ""
-  sessionCookie: ""
-  cognitoSub: ""
-  sessionRefreshCookie: ""
+  verificationCode: ''
+  sessionCookie: ''
+  cognitoSub: ''
+  sessionRefreshCookie: ''

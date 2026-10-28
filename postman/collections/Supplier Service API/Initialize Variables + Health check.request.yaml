@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/healthz"
+url: '{{baseUrl}}/healthz'
 order: 970
 scripts:
   - type: afterResponse

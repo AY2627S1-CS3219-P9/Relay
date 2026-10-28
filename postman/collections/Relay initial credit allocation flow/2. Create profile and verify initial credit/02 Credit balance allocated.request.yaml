@@ -1,8 +1,8 @@
 $kind: http-request
-url: "{{baseUrl}}/api/credit"
+url: '{{baseUrl}}/api/credit'
 method: GET
 headers:
-  Cookie: "{{sessionCookie}}"
+  Cookie: '{{sessionCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

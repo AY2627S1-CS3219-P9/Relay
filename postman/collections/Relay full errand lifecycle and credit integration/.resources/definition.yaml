@@ -6,27 +6,27 @@ variables:
   password: Test1234!
   superAdminEmail: admin@example.com
   superAdminPassword: Admin123%
-  requesterCookie: ""
-  requesterRefreshCookie: ""
-  superAdminCookie: ""
-  superAdminRefreshCookie: ""
-  courierCookie: ""
-  courierRefreshCookie: ""
-  requesterEmail: ""
-  requesterName: ""
-  supplierName: ""
-  supplierUpdatedName: ""
-  requesterCode: ""
-  requesterSub: ""
-  supplierId: ""
-  courierEmail: ""
-  courierName: ""
-  courierCode: ""
-  courierSub: ""
-  expiryAt: ""
-  expiryId: ""
-  cancelId: ""
-  completeId: ""
+  requesterCookie: ''
+  requesterRefreshCookie: ''
+  superAdminCookie: ''
+  superAdminRefreshCookie: ''
+  courierCookie: ''
+  courierRefreshCookie: ''
+  requesterEmail: ''
+  requesterName: ''
+  supplierName: ''
+  supplierUpdatedName: ''
+  requesterCode: ''
+  requesterSub: ''
+  supplierId: ''
+  courierEmail: ''
+  courierName: ''
+  courierCode: ''
+  courierSub: ''
+  expiryAt: ''
+  expiryId: ''
+  cancelId: ''
+  completeId: ''
 scripts:
   - type: http:beforeRequest
     code: |-

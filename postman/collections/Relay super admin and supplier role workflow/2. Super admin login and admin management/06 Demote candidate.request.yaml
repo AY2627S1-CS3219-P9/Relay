@@ -1,9 +1,9 @@
 $kind: http-request
-url: "{{baseUrl}}/api/auth/admin/demote"
+url: '{{baseUrl}}/api/auth/admin/demote'
 method: POST
 headers:
   Content-Type: application/json
-  Cookie: "{{superAdminCookie}}"
+  Cookie: '{{superAdminCookie}}'
 body:
   type: json
   content: '{"email":"{{adminEmail}}"}'

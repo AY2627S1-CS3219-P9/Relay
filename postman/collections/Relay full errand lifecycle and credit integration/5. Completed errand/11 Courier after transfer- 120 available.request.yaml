@@ -1,10 +1,10 @@
 $kind: http-request
-name: "11 Courier after transfer: 120 available"
-description: ""
-url: "{{baseUrl}}/api/credit"
+name: '11 Courier after transfer: 120 available'
+description: ''
+url: '{{baseUrl}}/api/credit'
 method: GET
 headers:
-  Cookie: "{{courierCookie}}"
+  Cookie: '{{courierCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

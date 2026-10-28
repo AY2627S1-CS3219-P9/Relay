@@ -1,11 +1,11 @@
 $kind: http-request
-description: ""
+description: ''
 url: '{{baseUrl}}/api/credit/history?offset=0'
 queryParams:
   offset: '0'
 method: GET
 headers:
-  Cookie: "{{courierCookie}}"
+  Cookie: '{{courierCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

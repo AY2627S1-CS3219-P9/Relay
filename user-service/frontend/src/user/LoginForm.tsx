@@ -45,7 +45,11 @@ export function LoginForm({
         return
       }
       const profile = await authFetch('/api/user/me', { credentials: 'include' })
-      if (!profile.ok && profile.status !== 404) { setErrorMessage('Unable to load your profile.'); setLoading(false); return }
+      if (!profile.ok && profile.status !== 404) {
+        setErrorMessage('Unable to load your profile.')
+        setLoading(false)
+        return
+      }
       await onLoggedIn(email, password, response.data.user.emailVerified, profile.ok)
     } else if (response.error.code === 'EMAIL_NOT_VERIFIED') {
       onVerificationRequired(email, password)

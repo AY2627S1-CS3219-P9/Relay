@@ -7,8 +7,11 @@ import type { SupplierClient } from '../src/clients/supplier.client.js'
 import { validateCreateErrand } from '../src/validators/errand.validator.js'
 
 const user = {
-  sub: 'requester', email: 'requester@example.com', emailVerified: true,
-  role: 'user' as const, profileCreated: true,
+  sub: 'requester',
+  email: 'requester@example.com',
+  emailVerified: true,
+  role: 'user' as const,
+  profileCreated: true,
 }
 const request: CreateErrandRequest = {
   name: 'Delivery',
@@ -38,31 +41,41 @@ function setup() {
 
 describe('errand creation and credit reservation', () => {
   it('validates that a supplied start time is before the deadline', () => {
-    expect(() => validateCreateErrand({
-      ...request,
-      startAt: '2026-10-21T12:00:00.000Z',
-      expiresAt: '2026-10-21T11:00:00.000Z',
-    })).toThrow('The errand request is invalid.')
+    expect(() =>
+      validateCreateErrand({
+        ...request,
+        startAt: '2026-10-21T12:00:00.000Z',
+        expiresAt: '2026-10-21T11:00:00.000Z',
+      }),
+    ).toThrow('The errand request is invalid.')
   })
 
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit, supplier } = setup()
     await service.createErrand(user, request)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({
+      supplierId: 'supplier',
+      serviceType: 1,
+    })
     expect(repository.addPendingErrand).toHaveBeenCalledWith(user.sub)
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 10)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, request)
-    expect(repository.addPendingErrand.mock.invocationCallOrder[0])
-      .toBeLessThan(credit.reserve.mock.invocationCallOrder[0])
-    expect(credit.reserve.mock.invocationCallOrder[0])
-      .toBeLessThan(repository.createErrand.mock.invocationCallOrder[0])
+    expect(repository.addPendingErrand.mock.invocationCallOrder[0]).toBeLessThan(
+      credit.reserve.mock.invocationCallOrder[0],
+    )
+    expect(credit.reserve.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.createErrand.mock.invocationCallOrder[0],
+    )
   })
 
   it('accepts a zero-credit errand and reserves zero before creating it', async () => {
     const { service, repository, credit, supplier } = setup()
     const freeRequest = validateCreateErrand({ ...request, creditAmount: 0 })
     await service.createErrand(user, freeRequest)
-    expect(supplier.validateSelection).toHaveBeenCalledWith({ supplierId: 'supplier', serviceType: 1 })
+    expect(supplier.validateSelection).toHaveBeenCalledWith({
+      supplierId: 'supplier',
+      serviceType: 1,
+    })
     expect(credit.reserve).toHaveBeenCalledWith('pending-id', user.sub, 0)
     expect(repository.createErrand).toHaveBeenCalledWith('pending-id', user.sub, freeRequest)
   })
@@ -79,9 +92,7 @@ describe('errand creation and credit reservation', () => {
 
   it('rejects inactive or unavailable suppliers before reserving credit', async () => {
     const { service, repository, credit, supplier } = setup()
-    supplier.validateSelection.mockRejectedValue(
-      new Error('Supplier is not currently active.'),
-    )
+    supplier.validateSelection.mockRejectedValue(new Error('Supplier is not currently active.'))
 
     await expect(service.createErrand(user, request)).rejects.toThrow(
       'Supplier is not currently active.',
@@ -92,7 +103,9 @@ describe('errand creation and credit reservation', () => {
 
   it('rejects unverified users before inserting a pending row', async () => {
     const { service, repository, credit } = setup()
-    await expect(service.createErrand({ ...user, emailVerified: false }, request)).rejects.toMatchObject({
+    await expect(
+      service.createErrand({ ...user, emailVerified: false }, request),
+    ).rejects.toMatchObject({
       statusCode: 403,
     })
     expect(repository.addPendingErrand).not.toHaveBeenCalled()

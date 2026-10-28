@@ -1,9 +1,9 @@
 $kind: http-request
-url: "{{baseUrl}}/api/user/me"
+url: '{{baseUrl}}/api/user/me'
 method: PATCH
 headers:
   Content-Type: application/json
-  Cookie: "{{sessionCookie}}"
+  Cookie: '{{sessionCookie}}'
 body:
   type: json
   content: '{"username":"{{testUsername}}"}'

@@ -1,10 +1,10 @@
 $kind: http-request
 method: POST
-url: "{{baseUrl}}/api/auth/refresh"
+url: '{{baseUrl}}/api/auth/refresh'
 order: 1000
 scripts:
   - type: beforeRequest
-    code: |- 
+    code: |-
       setTimeout(()=>{},11000);
       pm.request.headers.upsert({key:'Cookie',value:'relay_refresh='+pm.collectionVariables.get('s1OldRefresh')});
   - type: afterResponse

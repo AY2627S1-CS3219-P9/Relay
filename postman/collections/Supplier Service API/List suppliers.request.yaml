@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/api/supplier"
+url: '{{baseUrl}}/api/supplier'
 order: 3000
 headers:
   Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}

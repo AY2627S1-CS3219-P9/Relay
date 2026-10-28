@@ -1,9 +1,9 @@
 $kind: http-request
-url: "{{baseUrl}}/api/supplier"
+url: '{{baseUrl}}/api/supplier'
 method: POST
 headers:
   Content-Type: application/json
-  Cookie: "{{normalCookie}}"
+  Cookie: '{{normalCookie}}'
 body:
   type: json
   content: '{"name":"{{supplierName}}","location":{"lat":1.3,"lng":103.8,"buildingName":"Postman Test Building","floorNumber":1},"isOperational":true,"operatingHours":{"openingTime":"09:00","closingTime":"18:00","daysOfWeek":[0,1,2,3,4]},"serviceTypes":[0,1]}'

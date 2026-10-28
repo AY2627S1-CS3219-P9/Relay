@@ -1,7 +1,9 @@
 import { createServer } from 'node:http'
 import { createSign, generateKeyPairSync } from 'node:crypto'
 
-function encode(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
+function encode(value) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url')
+}
 export async function createCognitoFixture(kid = 'test-key') {
   const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
   const jwk = { ...publicKey.export({ format: 'jwk' }), kid, alg: 'RS256', use: 'sig' }
@@ -10,7 +12,7 @@ export async function createCognitoFixture(kid = 'test-key') {
     requests.push(req.url)
     res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ keys: [jwk] }))
   })
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const issuer = `http://127.0.0.1:${server.address().port}/us-east-1_test`
   process.env.COGNITO_ISSUER = issuer
   process.env.COGNITO_JWKS_URI = `http://127.0.0.1:${server.address().port}/jwks`
@@ -25,15 +27,28 @@ export async function createCognitoFixture(kid = 'test-key') {
   function cookie(sub, { groups = [], verified = true } = {}) {
     const now = Math.floor(Date.now() / 1000)
     const base = { iss: issuer, sub, iat: now, exp: now + 900 }
-    const access = sign({ ...base, token_use: 'access', client_id: 'test', 'cognito:groups': groups })
-    const id = sign({ ...base, token_use: 'id', aud: 'test', email: 'test@example.com', email_verified: verified })
+    const access = sign({
+      ...base,
+      token_use: 'access',
+      client_id: 'test',
+      'cognito:groups': groups,
+    })
+    const id = sign({
+      ...base,
+      token_use: 'id',
+      aud: 'test',
+      email: 'test@example.com',
+      email_verified: verified,
+    })
     return `relay_access=${access}; relay_id=${id}`
   }
   return {
-    cookie, requests, server,
+    cookie,
+    requests,
+    server,
     close: async () => {
       server.closeAllConnections()
-      await new Promise(resolve => server.close(resolve))
+      await new Promise((resolve) => server.close(resolve))
     },
   }
 }

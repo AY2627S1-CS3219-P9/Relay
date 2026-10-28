@@ -1,10 +1,10 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/healthz"
+url: '{{baseUrl}}/healthz'
 order: 1000
 scripts:
   - type: afterResponse
-    code: |- 
+    code: |-
       pm.test('health 200',()=>pm.response.to.have.status(200));
       const suffix=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
       pm.collectionVariables.set('email','relay-auth-'+suffix+'@u.nus.edu');

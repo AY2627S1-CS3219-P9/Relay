@@ -1,9 +1,9 @@
 $kind: http-request
-url: "{{baseUrl}}/api/supplier/{{supplierId}}"
+url: '{{baseUrl}}/api/supplier/{{supplierId}}'
 method: PUT
 headers:
   Content-Type: application/json
-  Cookie: "{{adminCookie}}"
+  Cookie: '{{adminCookie}}'
 body:
   type: json
   content: '{"isOperational":false,"operatingHours":{"openingTime":"10:00","closingTime":"17:00","daysOfWeek":[0,1,2,3,4]}}'

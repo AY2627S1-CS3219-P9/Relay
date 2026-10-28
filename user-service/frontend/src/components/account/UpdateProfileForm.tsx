@@ -48,14 +48,18 @@ export function UpdateProfileForm({
   }
 
   return (
-    <RelayFormSurface className="account-section account-profile-section" title="Update profile details" onClose={onBack}>
+    <RelayFormSurface
+      className="account-section account-profile-section"
+      title="Update profile details"
+      onClose={onBack}
+    >
       <form onSubmit={submit}>
-      <UsernameField value={username} onChange={setUsername} />
-      <ImageUploadField value={picture} onChange={setPicture} />
-      <ErrorMessage message={error} />
-      <RelayButton variant="primary" type="submit" disabled={saving}>
-        {saving ? 'Saving…' : 'Save profile'}
-      </RelayButton>
+        <UsernameField value={username} onChange={setUsername} />
+        <ImageUploadField value={picture} onChange={setPicture} />
+        <ErrorMessage message={error} />
+        <RelayButton variant="primary" type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save profile'}
+        </RelayButton>
       </form>
     </RelayFormSurface>
   )

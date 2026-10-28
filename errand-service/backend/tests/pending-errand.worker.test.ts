@@ -13,9 +13,12 @@ describe('pending errand recovery worker', () => {
   })
 
   it('retries repository failures on the next tick', async () => {
-    const repository = { recoverExpiredPending: vi.fn()
-      .mockRejectedValueOnce(new Error('Database unavailable'))
-      .mockResolvedValueOnce(1) }
+    const repository = {
+      recoverExpiredPending: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Database unavailable'))
+        .mockResolvedValueOnce(1),
+    }
     const worker = new PendingErrandWorker(repository as unknown as ErrandRepository)
     await expect(worker.runOnce()).rejects.toThrow('Database unavailable')
     await worker.runOnce()

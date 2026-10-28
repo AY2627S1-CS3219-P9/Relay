@@ -9,11 +9,13 @@ process.env.KAFKA_TOPIC_ERRAND_EVENTS ??= 'errand-events'
 process.env.KAFKA_TOPIC_ERRAND_DLQ ??= 'errand-events-dlq'
 
 test('credit rejects an unverified identity', () => {
-  const next=(error)=>assert.equal(error?.code,'FORBIDDEN')
-  creditAuthMiddleware[1]({user:{sub:'sub',emailVerified:false}}, {locals:{}}, next)
+  const next = (error) => assert.equal(error?.code, 'FORBIDDEN')
+  creditAuthMiddleware[1]({ user: { sub: 'sub', emailVerified: false } }, { locals: {} }, next)
 })
 test('credit accepts a verified identity without profile state', () => {
-  const res={locals:{}}
-  creditAuthMiddleware[1]({user:{sub:'sub',emailVerified:true}}, res, (error)=>assert.equal(error,undefined))
-  assert.equal(res.locals.creditUserId,'sub')
+  const res = { locals: {} }
+  creditAuthMiddleware[1]({ user: { sub: 'sub', emailVerified: true } }, res, (error) =>
+    assert.equal(error, undefined),
+  )
+  assert.equal(res.locals.creditUserId, 'sub')
 })

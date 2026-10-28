@@ -1,11 +1,11 @@
 $kind: http-request
-description: ""
+description: ''
 url: '{{baseUrl}}/api/errands/?scope=mine'
 queryParams:
   scope: mine
 method: GET
 headers:
-  Cookie: "{{requesterCookie}}"
+  Cookie: '{{requesterCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

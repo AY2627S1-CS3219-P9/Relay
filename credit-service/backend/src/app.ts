@@ -7,9 +7,7 @@ import { CreditServiceError } from './types/credit.types.js'
 import { getEnv } from './config/env.js'
 import { timingSafeEqual } from 'node:crypto'
 
-export function createApp(
-  repository = new CreditRepository(),
-) {
+export function createApp(repository = new CreditRepository()) {
   const app = express()
   app.use(express.json())
   app.get(['/health', '/healthz'], async (_req, res) => {
@@ -22,15 +20,19 @@ export function createApp(
     }
   })
   const controller = new CreditController(new CreditService(repository))
-  app.post('/internal/credit/reserve', (req, res, next) => {
-    const expected = Buffer.from(getEnv().creditServiceInternalToken)
-    const supplied = Buffer.from(req.header('x-credit-service-token') ?? '')
-    if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
-      res.status(401).json({ code: 'UNAUTHENTICATED', message: 'Invalid service token.' })
-      return
-    }
-    next()
-  }, controller.reserveCredit)
+  app.post(
+    '/internal/credit/reserve',
+    (req, res, next) => {
+      const expected = Buffer.from(getEnv().creditServiceInternalToken)
+      const supplied = Buffer.from(req.header('x-credit-service-token') ?? '')
+      if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+        res.status(401).json({ code: 'UNAUTHENTICATED', message: 'Invalid service token.' })
+        return
+      }
+      next()
+    },
+    controller.reserveCredit,
+  )
   app.use('/api/credit', createCreditRouter(controller))
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof CreditServiceError) {

@@ -93,7 +93,9 @@ export function AccountPage({
               }}
             />
           )}
-          {page == 'change-password' && <ChangePasswordForm onBack={() => setPage('account')} onLoggedOut={onLoggedOut} />}
+          {page == 'change-password' && (
+            <ChangePasswordForm onBack={() => setPage('account')} onLoggedOut={onLoggedOut} />
+          )}
           {page == 'delete' && (
             <DeleteAccountForm
               onBack={() => setPage('account')}

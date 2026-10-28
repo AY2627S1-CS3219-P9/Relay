@@ -1,5 +1,10 @@
 import type { DeleteUserRequest, UpdateUserRequest } from './requests'
-import type { ApiResult, GetUserResponse, UpdateUserResponse, GetUserProfileBySubjectResponse } from './responses'
+import type {
+  ApiResult,
+  GetUserResponse,
+  UpdateUserResponse,
+  GetUserProfileBySubjectResponse,
+} from './responses'
 /** Browser-facing profile boundary served by User Service. */
 export interface UserApi {
   getUser(): Promise<ApiResult<GetUserResponse>>

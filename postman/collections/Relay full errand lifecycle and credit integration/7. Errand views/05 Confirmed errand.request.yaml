@@ -1,9 +1,9 @@
 $kind: http-request
-description: ""
-url: "{{baseUrl}}/api/errands/{{completeId}}"
+description: ''
+url: '{{baseUrl}}/api/errands/{{completeId}}'
 method: GET
 headers:
-  Cookie: "{{requesterCookie}}"
+  Cookie: '{{requesterCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

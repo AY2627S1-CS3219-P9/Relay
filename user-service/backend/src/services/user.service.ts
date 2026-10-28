@@ -37,7 +37,9 @@ export class CognitoIdentityGateway implements IdentityGateway {
   }
 
   async deleteAccount(user: AuthenticatedUser): Promise<void> {
-    await this.client.send(new AdminDeleteUserCommand({ UserPoolId: getEnv().cognitoUserPoolId, Username: user.sub }))
+    await this.client.send(
+      new AdminDeleteUserCommand({ UserPoolId: getEnv().cognitoUserPoolId, Username: user.sub }),
+    )
   }
 }
 
@@ -140,10 +142,7 @@ export class UserService {
     return this.toPublicProfile(user, profile)
   }
 
-  async deleteUser(
-    user: AuthenticatedUser,
-    confirmation: unknown,
-  ): Promise<void> {
+  async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<void> {
     if (user.role === 'super-admin') {
       throw new UserServiceError('FORBIDDEN', 'The super admin account cannot be deleted.', 403)
     }

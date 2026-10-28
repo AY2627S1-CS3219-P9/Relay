@@ -1,9 +1,9 @@
 $kind: http-request
-description: ""
-url: "{{baseUrl}}/api/errands/{{cancelId}}/cancel"
+description: ''
+url: '{{baseUrl}}/api/errands/{{cancelId}}/cancel'
 method: POST
 headers:
-  Cookie: "{{requesterCookie}}"
+  Cookie: '{{requesterCookie}}'
 scripts:
   - type: beforeRequest
     code: |-
@@ -14,6 +14,6 @@ scripts:
   - type: afterResponse
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
-      pm.test('status CANCELLED',()=>pm.expect(pm.response.json().errand.status).to.eql('CANCELLED')); 
+      pm.test('status CANCELLED',()=>pm.expect(pm.response.json().errand.status).to.eql('CANCELLED'));
 settings: {}
 order: 3000

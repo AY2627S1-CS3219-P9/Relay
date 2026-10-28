@@ -3,5 +3,5 @@ description: Run against the Compose host proxy. This collection creates a fresh
 variables:
   baseUrl: http://localhost:8080
   flociUrl: http://localhost:4566
-  sessionCookie: ""
-  sessionRefreshCookie: ""
+  sessionCookie: ''
+  sessionRefreshCookie: ''

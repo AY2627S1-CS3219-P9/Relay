@@ -9,7 +9,11 @@ import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
-const kafka = new Kafka({ clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR })
+const kafka = new Kafka({
+  clientId: 'credit-service',
+  brokers: env.kafkaBrokers,
+  logLevel: logLevel.ERROR,
+})
 const errandConsumer = new ErrandEventConsumer(creditService, kafka)
 const userConsumer = new UserEventConsumer(creditService, kafka)
 let server: Server | undefined

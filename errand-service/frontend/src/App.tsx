@@ -119,12 +119,12 @@ export default function App({
 
   const visibleErrands = useMemo(() => {
     let filtered = errands
-    
+
     // For 'my-errands' view, only show errands assigned to this user as courier
     if (view === 'my-errands') {
       filtered = filtered.filter((errand) => errand.courierSub === authenticatedSubject)
     }
-    
+
     // Filter by status and service type (for explore/requests views)
     if (view !== 'my-errands') {
       filtered = filtered.filter(
@@ -133,7 +133,7 @@ export default function App({
           filters.serviceTypes.includes(errand.supplierDetails.serviceType as ServiceType),
       )
     }
-    
+
     return [...filtered].sort((left, right) => {
       if (filters.sort === 'deadline') return left.expiresAt.localeCompare(right.expiresAt)
       if (filters.sort === 'start') return left.startAt.localeCompare(right.startAt)
@@ -272,18 +272,21 @@ export default function App({
   }
 
   // SSE notifications for other users' changes
-  const handleErrandUpdate = useCallback((errandId: string, newStatus: string) => {
-    const updateStatus = (current: Errand[]) =>
-      current.map((errand) =>
-        errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
-      )
-    setErrands(updateStatus)
-    setUpdates(updateStatus)
-    // Invalidate credit balance when errand status changes affect credits
-    if (newStatus === 'CANCELLED' || newStatus === 'CONFIRMED' || newStatus === 'EXPIRED') {
-      invalidateCreditBalance?.()
-    }
-  }, [invalidateCreditBalance])
+  const handleErrandUpdate = useCallback(
+    (errandId: string, newStatus: string) => {
+      const updateStatus = (current: Errand[]) =>
+        current.map((errand) =>
+          errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
+        )
+      setErrands(updateStatus)
+      setUpdates(updateStatus)
+      // Invalidate credit balance when errand status changes affect credits
+      if (newStatus === 'CANCELLED' || newStatus === 'CONFIRMED' || newStatus === 'EXPIRED') {
+        invalidateCreditBalance?.()
+      }
+    },
+    [invalidateCreditBalance],
+  )
 
   useErrandNotifications(errands, handleErrandUpdate)
 
@@ -469,7 +472,12 @@ export default function App({
         </BubblePopover>
       )}
       {showUpdates && (
-        <BubblePopover anchor={updatesAnchor} maxWidth={405} placement="above" className="errand-updates-popover">
+        <BubblePopover
+          anchor={updatesAnchor}
+          maxWidth={405}
+          placement="above"
+          className="errand-updates-popover"
+        >
           <UpdatesCard
             errands={updates}
             loading={updatesLoading}

@@ -1,5 +1,5 @@
 $kind: http-request
-description: ""
+description: ''
 url: http://localhost:8080/api/credit
 method: GET
 headers:

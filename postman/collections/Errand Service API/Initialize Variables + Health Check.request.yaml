@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/healthz"
+url: '{{baseUrl}}/healthz'
 order: 1000
 description: Initialize/clear variables before test run
 scripts:

@@ -1,10 +1,10 @@
 $kind: http-request
 method: GET
-url: "{{flociUrl}}/_aws/ses"
+url: '{{flociUrl}}/_aws/ses'
 order: 13000
 scripts:
   - type: afterResponse
-    code: |- 
+    code: |-
       pm.test('SES 200',()=>pm.response.to.have.status(200));
       const email=pm.collectionVariables.get('email');
       const messages=(pm.response.json().messages||[]).filter(m=>(m.Destination?.ToAddresses||[]).includes(email));

@@ -1,9 +1,9 @@
 $kind: http-request
 method: POST
-url: "{{baseUrl}}/api/auth/register"
+url: '{{baseUrl}}/api/auth/register'
 order: 8100
 headers:
-  Content-Type: "application/json"
+  Content-Type: 'application/json'
 body:
   type: json
   content: '{"email":"{{email}}","password":"Abcdefg1+","passwordConfirmation":"Abcdefg1+"}'

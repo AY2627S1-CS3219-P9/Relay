@@ -1,6 +1,6 @@
 $kind: http-request
 method: PATCH
-url: "{{baseUrl}}/api/user/me"
+url: '{{baseUrl}}/api/user/me'
 order: 10000
 headers:
   Content-Type: application/json

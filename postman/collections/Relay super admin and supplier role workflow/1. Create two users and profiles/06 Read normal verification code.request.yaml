@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{flociUrl}}/_aws/ses"
+url: '{{flociUrl}}/_aws/ses'
 method: GET
 scripts:
   - type: afterResponse

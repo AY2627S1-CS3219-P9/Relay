@@ -39,7 +39,6 @@ export class ErrandService {
       )
     }
 
-
     // Validate the supplier's current operational status before reserving credit
     // or creating any pending/database records. serviceType remains optional.
     try {

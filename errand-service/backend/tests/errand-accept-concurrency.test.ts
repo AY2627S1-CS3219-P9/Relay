@@ -56,87 +56,79 @@ describe('errand accept - concurrency tests', () => {
   }
 
   describe('same courier accepts errands concurrently', () => {
-    it(
-      'should accept up to MAX_ERRANDS_PER_COURIER errands with 100 concurrent requests',
-      async () => {
-        const courierSub = `courier-${Date.now()}-${Math.random()}`
-        const requesterSub = `requester-${Date.now()}-${Math.random()}`
+    it('should accept up to MAX_ERRANDS_PER_COURIER errands with 100 concurrent requests', async () => {
+      const courierSub = `courier-${Date.now()}-${Math.random()}`
+      const requesterSub = `requester-${Date.now()}-${Math.random()}`
 
-        // Create MAX_ERRANDS_PER_COURIER + 5 errands (10 total with limit of 5)
-        const errandIds = await createOpenErrands(MAX_ERRANDS_PER_COURIER + 5, requesterSub)
+      // Create MAX_ERRANDS_PER_COURIER + 5 errands (10 total with limit of 5)
+      const errandIds = await createOpenErrands(MAX_ERRANDS_PER_COURIER + 5, requesterSub)
 
-        // Create the errands in the database concurrently
-        await Promise.all(errandIds.map((id) => createErrand(id, requesterSub)))
+      // Create the errands in the database concurrently
+      await Promise.all(errandIds.map((id) => createErrand(id, requesterSub)))
 
-        // Try to accept all errands concurrently using Promise.all
-        const results = await Promise.allSettled(
-          errandIds.map((id) => repo.accept(id, courierSub)),
-        )
+      // Try to accept all errands concurrently using Promise.all
+      const results = await Promise.allSettled(errandIds.map((id) => repo.accept(id, courierSub)))
 
-        const successes = results.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      const successes = results.filter(
+        (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled',
+      )
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
-        // Exactly MAX_ERRANDS_PER_COURIER should succeed
-        expect(successes).toHaveLength(MAX_ERRANDS_PER_COURIER)
-        expect(failures).toHaveLength(5)
+      // Exactly MAX_ERRANDS_PER_COURIER should succeed
+      expect(successes).toHaveLength(MAX_ERRANDS_PER_COURIER)
+      expect(failures).toHaveLength(5)
 
-        // All failures should be due to "MAX ERRANDS REACHED" error
-        for (const failure of failures) {
-          expect(failure.reason.message).toContain('MAX ERRANDS REACHED')
-        }
+      // All failures should be due to "MAX ERRANDS REACHED" error
+      for (const failure of failures) {
+        expect(failure.reason.message).toContain('MAX ERRANDS REACHED')
+      }
 
-        // Verify the courier has exactly MAX_ERRANDS_PER_COURIER errands
-        const count = await prisma.errand.count({
-          where: {
-            courierSub,
-            status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
-          },
-        })
-        expect(count).toBe(MAX_ERRANDS_PER_COURIER)
-      },
-      30000,
-    )
+      // Verify the courier has exactly MAX_ERRANDS_PER_COURIER errands
+      const count = await prisma.errand.count({
+        where: {
+          courierSub,
+          status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
+        },
+      })
+      expect(count).toBe(MAX_ERRANDS_PER_COURIER)
+    }, 30000)
 
-    it(
-      'should accept up to MAX_ERRANDS_PER_COURIER errands with 1000 concurrent requests',
-      async () => {
-        const courierSub = `courier-${Date.now()}-${Math.random()}`
-        const requesterSub = `requester-${Date.now()}-${Math.random()}`
+    it('should accept up to MAX_ERRANDS_PER_COURIER errands with 1000 concurrent requests', async () => {
+      const courierSub = `courier-${Date.now()}-${Math.random()}`
+      const requesterSub = `requester-${Date.now()}-${Math.random()}`
 
-        // Create MAX_ERRANDS_PER_COURIER + 50 errands (60 total with limit of 5)
-        const errandIds = await createOpenErrands(MAX_ERRANDS_PER_COURIER + 50, requesterSub)
+      // Create MAX_ERRANDS_PER_COURIER + 50 errands (60 total with limit of 5)
+      const errandIds = await createOpenErrands(MAX_ERRANDS_PER_COURIER + 50, requesterSub)
 
-        // Create the errands in the database concurrently
-        await Promise.all(errandIds.map((id) => createErrand(id, requesterSub)))
+      // Create the errands in the database concurrently
+      await Promise.all(errandIds.map((id) => createErrand(id, requesterSub)))
 
-        // Try to accept all errands concurrently using Promise.all
-        const results = await Promise.allSettled(
-          errandIds.map((id) => repo.accept(id, courierSub)),
-        )
+      // Try to accept all errands concurrently using Promise.all
+      const results = await Promise.allSettled(errandIds.map((id) => repo.accept(id, courierSub)))
 
-        const successes = results.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      const successes = results.filter(
+        (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled',
+      )
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
-        // Exactly MAX_ERRANDS_PER_COURIER should succeed
-        expect(successes).toHaveLength(MAX_ERRANDS_PER_COURIER)
-        expect(failures).toHaveLength(50)
+      // Exactly MAX_ERRANDS_PER_COURIER should succeed
+      expect(successes).toHaveLength(MAX_ERRANDS_PER_COURIER)
+      expect(failures).toHaveLength(50)
 
-        // All failures should be due to "MAX ERRANDS REACHED" error
-        for (const failure of failures) {
-          expect(failure.reason.message).toContain('MAX ERRANDS REACHED')
-        }
+      // All failures should be due to "MAX ERRANDS REACHED" error
+      for (const failure of failures) {
+        expect(failure.reason.message).toContain('MAX ERRANDS REACHED')
+      }
 
-        // Verify the courier has exactly MAX_ERRANDS_PER_COURIER errands
-        const count = await prisma.errand.count({
-          where: {
-            courierSub,
-            status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
-          },
-        })
-        expect(count).toBe(MAX_ERRANDS_PER_COURIER)
-      },
-      30000,
-    )
+      // Verify the courier has exactly MAX_ERRANDS_PER_COURIER errands
+      const count = await prisma.errand.count({
+        where: {
+          courierSub,
+          status: { in: [ErrandStatus.Accepted, ErrandStatus.PickedUp, ErrandStatus.Delivered] },
+        },
+      })
+      expect(count).toBe(MAX_ERRANDS_PER_COURIER)
+    }, 30000)
   })
 
   describe('same courier accepts errands sequentially', () => {

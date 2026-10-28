@@ -57,7 +57,9 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       headers: {
         Cookie: cookies[cookie] ?? `relay_access=${cookie}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
+        ...(path === '/internal/credit/reserve'
+          ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN }
+          : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -108,14 +110,27 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal((await reserve(zeroConfirmId, 0)).status, 200)
     assert.equal((await reserve(zeroCancelId, 0)).status, 200)
     await send(topics.errandEvents, zeroConfirmId, 'ErrandCompleted', {
-      errandId: zeroConfirmId, requesterSub: requester, courierSub: courier,
+      errandId: zeroConfirmId,
+      requesterSub: requester,
+      courierSub: courier,
     })
     await send(topics.errandEvents, zeroCancelId, 'ErrandCancelled', {
-      errandId: zeroCancelId, requesterSub: requester,
+      errandId: zeroCancelId,
+      requesterSub: requester,
     })
-    await until(async () => (await prisma.transactionRecord.count({ where: { reference: { in: [
-      `errand:${zeroConfirmId}:CREDIT_TRANSFER`, `errand:${zeroCancelId}:CREDIT_RELEASE`,
-    ] } } })) === 2)
+    await until(
+      async () =>
+        (await prisma.transactionRecord.count({
+          where: {
+            reference: {
+              in: [
+                `errand:${zeroConfirmId}:CREDIT_TRANSFER`,
+                `errand:${zeroCancelId}:CREDIT_RELEASE`,
+              ],
+            },
+          },
+        })) === 2,
+    )
     assert.equal((await request('requester')).body.availableCredit, 100)
     assert.equal((await request('requester')).body.reserveCredit, 0)
     assert.equal((await request('courier')).body.availableCredit, 100)
@@ -176,12 +191,18 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(lateReservation.status, 409)
     assert.equal(lateReservation.body.code, 'TRANSACTION_CONFLICT')
     assert.equal((await reserve(confirmId, 10)).status, 409)
-    assert.equal(await prisma.transactionRecord.count({
-      where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
-    }), 1)
-    await until(async () => (await prisma.transactionRecord.count({
-      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
-    })) === 1)
+    assert.equal(
+      await prisma.transactionRecord.count({
+        where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+      }),
+      1,
+    )
+    await until(
+      async () =>
+        (await prisma.transactionRecord.count({
+          where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+        })) === 1,
+    )
     const zeroReserve = await prisma.transactionRecord.findUniqueOrThrow({
       where: { reference: `errand:${failedUnreservedId}:CREDIT_RESERVE` },
     })
@@ -221,15 +242,21 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       assert.ok(event.error.message)
     }
     await send(topics.errandEvents, confirmId, 'ErrandCancelled', {
-      errandId: confirmId, requesterSub: requester,
+      errandId: confirmId,
+      requesterSub: requester,
     })
     await send(topics.errandEvents, cancelId, 'ErrandCompleted', {
-      errandId: cancelId, requesterSub: requester, courierSub: courier,
+      errandId: cancelId,
+      requesterSub: requester,
+      courierSub: courier,
     })
     await until(async () => dlqEvents.length === 5)
     assert.deepEqual(
-      new Set(dlqEvents.filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
-        .map((item) => item.payload.errandId)),
+      new Set(
+        dlqEvents
+          .filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
+          .map((item) => item.payload.errandId),
+      ),
       new Set([confirmId, cancelId]),
     )
 
@@ -249,10 +276,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     await prisma.creditBalance.deleteMany({ where: { userId: { in: ids } } })
     api.closeAllConnections()
-    await Promise.all([
-      new Promise((resolve) => api.close(resolve)),
-      fixture.close(),
-    ])
+    await Promise.all([new Promise((resolve) => api.close(resolve)), fixture.close()])
     await closeAppResources()
   }
 })

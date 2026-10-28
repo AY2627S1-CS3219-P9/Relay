@@ -1,16 +1,22 @@
 type RefreshState = { pending?: Promise<boolean>; generation: number }
 
 const sharedState = globalThis as typeof globalThis & { __relayAuthRefresh?: RefreshState }
-const state = sharedState.__relayAuthRefresh ??= { generation: 0 }
+const state = (sharedState.__relayAuthRefresh ??= { generation: 0 })
 
 export function refreshAccessToken(): Promise<boolean> {
-  state.pending ??= globalThis.fetch('/api/auth/refresh', {
-    method: 'POST',
-    credentials: 'include',
-  }).then((response) => {
-    if (response.ok) state.generation += 1
-    return response.ok
-  }).catch(() => false).finally(() => { state.pending = undefined })
+  state.pending ??= globalThis
+    .fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    })
+    .then((response) => {
+      if (response.ok) state.generation += 1
+      return response.ok
+    })
+    .catch(() => false)
+    .finally(() => {
+      state.pending = undefined
+    })
   return state.pending
 }
 
@@ -23,7 +29,10 @@ function canRefresh(request: Request): boolean {
 
 /** Retry protected requests after a tab wakes up with an expired access cookie. */
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const url = typeof input === 'string' ? new URL(input, globalThis.location?.href ?? 'http://localhost') : input
+  const url =
+    typeof input === 'string'
+      ? new URL(input, globalThis.location?.href ?? 'http://localhost')
+      : input
   const request = new Request(url, { ...init, credentials: 'include' })
   if (!canRefresh(request)) return globalThis.fetch(request)
 

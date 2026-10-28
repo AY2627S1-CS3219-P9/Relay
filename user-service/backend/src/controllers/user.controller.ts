@@ -2,7 +2,6 @@ import type { NextFunction, Request, Response } from 'express'
 import type { UserApiErrorCode } from '@relay/contracts'
 import { UserService } from '../services/user.service.js'
 
-
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -57,14 +56,26 @@ export class UserController {
   deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!
-      await this.userService.deleteUser(
-        user,
-        req.body?.confirmation,
-      )
+      await this.userService.deleteUser(user, req.body?.confirmation)
 
-      res.clearCookie('relay_access', { path: '/', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
-      res.clearCookie('relay_id', { path: '/', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
-      res.clearCookie('relay_refresh', { path: '/api/auth', httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE !== 'false' })
+      res.clearCookie('relay_access', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.COOKIE_SECURE !== 'false',
+      })
+      res.clearCookie('relay_id', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.COOKIE_SECURE !== 'false',
+      })
+      res.clearCookie('relay_refresh', {
+        path: '/api/auth',
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.COOKIE_SECURE !== 'false',
+      })
       res.status(204).send()
     } catch (error) {
       next(error)

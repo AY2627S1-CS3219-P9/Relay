@@ -77,7 +77,9 @@ export default function App({
     status: 'all',
     serviceTypes: Object.values(ServiceType),
   })
-  const [activeMode, setActiveMode] = useState<'explore' | 'requests' | 'my-errands'>(supplierMode ?? 'explore')
+  const [activeMode, setActiveMode] = useState<'explore' | 'requests' | 'my-errands'>(
+    supplierMode ?? 'explore',
+  )
   const [errorMessage, setErrorMessage] = useState('')
   const [map, setMap] = useState<LeafletMap>()
   const [adminMode, setAdminMode] = useState<'add' | 'edit' | undefined>()
@@ -163,7 +165,10 @@ export default function App({
 
   useEffect(() => {
     void activeApi
-      .getSuppliers({ status: debouncedFilters.status, serviceTypes: debouncedFilters.serviceTypes })
+      .getSuppliers({
+        status: debouncedFilters.status,
+        serviceTypes: debouncedFilters.serviceTypes,
+      })
       .then(({ suppliers: loadedSuppliers }) => {
         setSuppliers(loadedSuppliers)
         setErrorMessage('')
@@ -234,7 +239,8 @@ export default function App({
           onChange={(nextMode) => {
             setActiveMode(nextMode)
             if (nextMode === 'requests' && openErrandView) {
-              openErrandView({ view: 'requests' }); return
+              openErrandView({ view: 'requests' })
+              return
             }
             if (nextMode === 'my-errands' && openErrandView) {
               openErrandView({ view: 'my-errands' })
@@ -351,7 +357,12 @@ export default function App({
         />
       )}
       {showUpdates && (
-        <BubblePopover anchor={updatesAnchor} maxWidth={405} placement="above" className="supplier-updates-popover">
+        <BubblePopover
+          anchor={updatesAnchor}
+          maxWidth={405}
+          placement="above"
+          className="supplier-updates-popover"
+        >
           <UpdatesCard
             errands={updates}
             loading={updatesLoading}
@@ -370,17 +381,19 @@ export default function App({
                 onBack={() => setSelectedErrand(undefined)}
                 onAccepted={onErrandAccepted}
               />
-            ) : <SupplierDetailCard
-              supplier={selectedSupplier}
-              errandApi={errandApi}
-              onErrandSelect={setSelectedErrand}
-              onClose={() => {
-                setSelectedSupplier(undefined)
-                setSelectedErrand(undefined)
-                setSelectedSupplierAnchor(undefined)
-                setNearbySuppliers(undefined)
-              }}
-            />
+            ) : (
+              <SupplierDetailCard
+                supplier={selectedSupplier}
+                errandApi={errandApi}
+                onErrandSelect={setSelectedErrand}
+                onClose={() => {
+                  setSelectedSupplier(undefined)
+                  setSelectedErrand(undefined)
+                  setSelectedSupplierAnchor(undefined)
+                  setNearbySuppliers(undefined)
+                }}
+              />
+            )
           ) : (
             <SupplierList
               suppliers={nearbySuppliers ?? []}
@@ -400,7 +413,12 @@ export default function App({
         </BubblePopover>
       )}
       {isAdmin && adminMode && adminAnchor && (
-        <RelayCardAnchor placement="anchored" anchor={adminAnchor} preferredSide="top-end" className="supplier-admin-anchor">
+        <RelayCardAnchor
+          placement="anchored"
+          anchor={adminAnchor}
+          preferredSide="top-end"
+          className="supplier-admin-anchor"
+        >
           <SupplierAdminPanel
             api={activeApi}
             supplier={adminMode === 'edit' ? selectedSupplier : undefined}

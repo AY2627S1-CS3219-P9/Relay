@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/api/errands?scope=mine"
+url: '{{baseUrl}}/api/errands?scope=mine'
 queryParams:
   scope: mine
 order: 28000

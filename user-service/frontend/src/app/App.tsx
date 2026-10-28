@@ -151,7 +151,9 @@ export default function App({
           <LoginForm
             onLoggedIn={onLogin}
             switchToRegister={() => setView('register')}
-            onVerificationRequired={(email, password) => startVerification(email, password, 'login')}
+            onVerificationRequired={(email, password) =>
+              startVerification(email, password, 'login')
+            }
             notice={loginNotice}
           />
         )}

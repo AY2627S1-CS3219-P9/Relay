@@ -46,14 +46,17 @@ export function ProfileSetupForm({
   }
 
   return (
-    <RelayFormSurface title="Set up your profile" description="Choose how other Relay users will see you.">
+    <RelayFormSurface
+      title="Set up your profile"
+      description="Choose how other Relay users will see you."
+    >
       <form onSubmit={submit}>
-      <UsernameField value={username} onChange={setUsername} />
-      <ImageUploadField value={picture} onChange={setPicture} />
-      <ErrorMessage message={errorMessage} />
-      <RelayButton variant="primary" type="submit" disabled={loading}>
-        {loading ? 'Saving profile…' : 'Finish setup'}
-      </RelayButton>
+        <UsernameField value={username} onChange={setUsername} />
+        <ImageUploadField value={picture} onChange={setPicture} />
+        <ErrorMessage message={errorMessage} />
+        <RelayButton variant="primary" type="submit" disabled={loading}>
+          {loading ? 'Saving profile…' : 'Finish setup'}
+        </RelayButton>
       </form>
     </RelayFormSurface>
   )

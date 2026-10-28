@@ -13,9 +13,15 @@ export function createHttpSupplierApi(): SupplierApi {
   return {
     getSuppliers: () => request<GetSuppliersResponse>(''),
     getSupplier: (id) => request(`/${encodeURIComponent(id)}`),
-    addSupplier: async () => { throw new Error('Supplier administration is not available here.') },
-    updateSupplier: async () => { throw new Error('Supplier administration is not available here.') },
-    removeSupplier: async () => { throw new Error('Supplier administration is not available here.') },
+    addSupplier: async () => {
+      throw new Error('Supplier administration is not available here.')
+    },
+    updateSupplier: async () => {
+      throw new Error('Supplier administration is not available here.')
+    },
+    removeSupplier: async () => {
+      throw new Error('Supplier administration is not available here.')
+    },
   }
 }
 

@@ -1,10 +1,10 @@
 $kind: http-request
-name: "02 Requester after reserve: 90 available, 10 reserved"
-description: ""
-url: "{{baseUrl}}/api/credit"
+name: '02 Requester after reserve: 90 available, 10 reserved'
+description: ''
+url: '{{baseUrl}}/api/credit'
 method: GET
 headers:
-  Cookie: "{{requesterCookie}}"
+  Cookie: '{{requesterCookie}}'
 scripts:
   - type: beforeRequest
     code: |-

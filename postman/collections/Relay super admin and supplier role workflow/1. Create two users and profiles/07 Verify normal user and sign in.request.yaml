@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/api/auth/verification/confirm-and-login"
+url: '{{baseUrl}}/api/auth/verification/confirm-and-login'
 method: POST
 headers:
   Content-Type: application/json

@@ -1,13 +1,13 @@
 $kind: http-request
 method: POST
-url: "{{baseUrl}}/api/errands/{{errandId3}}/cancel"
+url: '{{baseUrl}}/api/errands/{{errandId3}}/cancel'
 order: 33000
 headers:
   Content-Type: application/json
   Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 body:
   type: json
-  content: ""
+  content: ''
 scripts:
   - type: beforeRequest
     code: |-

@@ -7,14 +7,23 @@ export const hostSupplierApi: SupplierApi = {
   async getSuppliers(filters) {
     const params = new URLSearchParams()
     if (filters?.status) params.set('status', filters.status)
-    if (filters?.serviceTypes?.length) params.set('serviceTypes', JSON.stringify(filters.serviceTypes))
+    if (filters?.serviceTypes?.length)
+      params.set('serviceTypes', JSON.stringify(filters.serviceTypes))
     const query = params.toString()
     return request(query ? `?${query}` : '')
   },
-  async getSupplier(id) { return request(`/${encodeURIComponent(id)}`) },
-  async addSupplier(body) { return request('', { method: 'POST', body: JSON.stringify(body) }) },
-  async updateSupplier(id, body) { return request(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }) },
-  async removeSupplier(id) { await request(`/${encodeURIComponent(id)}`, { method: 'DELETE' }) },
+  async getSupplier(id) {
+    return request(`/${encodeURIComponent(id)}`)
+  },
+  async addSupplier(body) {
+    return request('', { method: 'POST', body: JSON.stringify(body) })
+  },
+  async updateSupplier(id, body) {
+    return request(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) })
+  },
+  async removeSupplier(id) {
+    await request(`/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  },
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

@@ -5,7 +5,13 @@ import type { ApiResult } from '@relay/contracts/user-auth'
 import { PasswordField } from '../base-elements/PasswordField'
 import { passwordErrors, passwordRequirements } from '../../validation/validation'
 
-export function ChangePasswordForm({ onBack, onLoggedOut }: { onBack: () => void; onLoggedOut: () => void }) {
+export function ChangePasswordForm({
+  onBack,
+  onLoggedOut,
+}: {
+  onBack: () => void
+  onLoggedOut: () => void
+}) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('')

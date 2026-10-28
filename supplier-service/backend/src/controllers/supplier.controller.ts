@@ -7,7 +7,11 @@ import type {
 } from '@relay/contracts/supplier'
 import { getEnv } from '../config/env'
 import { SupplierService } from '../services/supplier.service'
-import { validateLocation, validateOperatingHours, validateServiceTypes } from '../validators/supplier.validator'
+import {
+  validateLocation,
+  validateOperatingHours,
+  validateServiceTypes,
+} from '../validators/supplier.validator'
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<globalThis.Response> {
   const controller = new AbortController()
@@ -28,9 +32,9 @@ function checkAuth(req: Request): boolean {
   return req.user?.emailVerified === true
 }
 
-function parseFilters(query: Request['query']):
-  | { filters: GetSuppliersFilterParams }
-  | { error: string } {
+function parseFilters(
+  query: Request['query'],
+): { filters: GetSuppliersFilterParams } | { error: string } {
   const { status, serviceTypes } = query
   const filters: GetSuppliersFilterParams = {}
 
@@ -128,7 +132,9 @@ export class SupplierController {
         return
       }
 
-      const supplier = await this.service.getSupplierById((Array.isArray(req.params.id) ? req.params.id[0] : req.params.id))
+      const supplier = await this.service.getSupplierById(
+        Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+      )
       if (!supplier) {
         res.status(404).json({ code: SupplierErrors.NOT_FOUND, message: 'Supplier not found' })
         return
@@ -148,7 +154,6 @@ export class SupplierController {
           .json({ code: SupplierErrors.UNAUTHORIZED, message: 'Authentication required' })
         return
       }
-
 
       const { name, location, isOperational, operatingHours, serviceTypes } = req.body
 
@@ -215,7 +220,6 @@ export class SupplierController {
         return
       }
 
-
       const { name, location, isOperational, operatingHours, serviceTypes } = req.body
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 
@@ -243,8 +247,9 @@ export class SupplierController {
         return
       }
 
-
-      await this.service.deleteSupplier((Array.isArray(req.params.id) ? req.params.id[0] : req.params.id))
+      await this.service.deleteSupplier(
+        Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
+      )
       res.status(204).send()
     } catch (error) {
       next(error)

@@ -29,48 +29,57 @@ export function SupplierFilterPanel({
     onChange({ ...filters, serviceTypes })
   }
   return (
-    <aside className="supplier-filter-panel glass-card relay-mobile-sheet-surface relay-mobile-toolbar-sheet" aria-label="Supplier filters">
+    <aside
+      className="supplier-filter-panel glass-card relay-mobile-sheet-surface relay-mobile-toolbar-sheet"
+      aria-label="Supplier filters"
+    >
       <div className="relay-mobile-toolbar-sheet-content">
-      <div className="supplier-filter-header">
-        <div>
-          <p className="supplier-filter-eyebrow">FILTERS</p>
-          <h2>Filter suppliers</h2>
+        <div className="supplier-filter-header">
+          <div>
+            <p className="supplier-filter-eyebrow">FILTERS</p>
+            <h2>Filter suppliers</h2>
+          </div>
+          <IconButton label="Close filters" onClick={onClose}>
+            ×
+          </IconButton>
         </div>
-        <IconButton label="Close filters" onClick={onClose}>×</IconButton>
-      </div>
-      <fieldset>
-        <legend>Operational status</legend>
-        <div className="supplier-filter-chip-grid">
-          {(['all', 'operational', 'not-operational'] as const).map((status) => (
-            <button
-              className={`supplier-filter-chip${filters.status === status ? ' selected' : ''}`}
-              key={status}
-              type="button"
-              onClick={() => onChange({ ...filters, status })}
-            >
-              {status === 'all' ? 'All suppliers' : status === 'operational' ? 'Operational' : 'Not operational'}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Service type</legend>
-        <div className="supplier-filter-chip-grid">
-          {serviceOptions.map((option) => (
-            <button
-              className={`supplier-filter-chip${filters.serviceTypes.includes(option.value) ? ' selected' : ''}`}
-              key={option.value}
-              type="button"
-              onClick={() => toggleServiceType(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <RelayButton variant="primary" onClick={onClose}>
-        <FilterIcon className="supplier-filter-button-icon" /> Done
-      </RelayButton>
+        <fieldset>
+          <legend>Operational status</legend>
+          <div className="supplier-filter-chip-grid">
+            {(['all', 'operational', 'not-operational'] as const).map((status) => (
+              <button
+                className={`supplier-filter-chip${filters.status === status ? ' selected' : ''}`}
+                key={status}
+                type="button"
+                onClick={() => onChange({ ...filters, status })}
+              >
+                {status === 'all'
+                  ? 'All suppliers'
+                  : status === 'operational'
+                    ? 'Operational'
+                    : 'Not operational'}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Service type</legend>
+          <div className="supplier-filter-chip-grid">
+            {serviceOptions.map((option) => (
+              <button
+                className={`supplier-filter-chip${filters.serviceTypes.includes(option.value) ? ' selected' : ''}`}
+                key={option.value}
+                type="button"
+                onClick={() => toggleServiceType(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <RelayButton variant="primary" onClick={onClose}>
+          <FilterIcon className="supplier-filter-button-icon" /> Done
+        </RelayButton>
       </div>
     </aside>
   )

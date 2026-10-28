@@ -146,8 +146,10 @@ export function CreateErrandCard({
     if (form.serviceType === '') validationErrors.serviceType = 'Select a service type.'
     else if (selectedSupplier && !selectedSupplier.serviceTypes.includes(form.serviceType))
       validationErrors.serviceType = 'This service type is not offered by the selected supplier.'
-    if (!form.deliveryBuildingName.trim()) validationErrors.deliveryBuildingName = 'Enter a delivery building.'
-    if (!form.deliveryFloorNumber.trim()) validationErrors.deliveryFloorNumber = 'Enter a delivery floor.'
+    if (!form.deliveryBuildingName.trim())
+      validationErrors.deliveryBuildingName = 'Enter a delivery building.'
+    if (!form.deliveryFloorNumber.trim())
+      validationErrors.deliveryFloorNumber = 'Enter a delivery floor.'
     else if (!Number.isInteger(Number(form.deliveryFloorNumber)))
       validationErrors.deliveryFloorNumber = 'Floor must be a number.'
     if (!form.description.trim()) validationErrors.description = 'Enter a description.'
@@ -221,7 +223,11 @@ export function CreateErrandCard({
           />
         </RelayFormField>
         <RelayFormField label="Supplier" required error={errorFor('supplierId')}>
-          <select required value={form.supplierId} onChange={(e) => handleSupplierChange(e.target.value)}>
+          <select
+            required
+            value={form.supplierId}
+            onChange={(e) => handleSupplierChange(e.target.value)}
+          >
             <option value="">Select a supplier</option>
             {suppliers.map((supplier) => (
               <option key={supplier.id} value={supplier.id}>
@@ -251,17 +257,23 @@ export function CreateErrandCard({
         </RelayFormField>
         <div className="errand-form-grid">
           <div className="errand-field">
-            <span>Pickup building <b aria-hidden="true">*</b></span>
+            <span>
+              Pickup building <b aria-hidden="true">*</b>
+            </span>
             <div className="errand-readonly-value">{form.pickupBuildingName}</div>
           </div>
           <div className="errand-field">
-            <span>Floor <b aria-hidden="true">*</b></span>
+            <span>
+              Floor <b aria-hidden="true">*</b>
+            </span>
             <div className="errand-readonly-value">Level {form.pickupFloorNumber}</div>
           </div>
         </div>
         <div className="errand-form-grid">
           <label className="errand-field">
-            <span>Delivery building <b aria-hidden="true">*</b></span>
+            <span>
+              Delivery building <b aria-hidden="true">*</b>
+            </span>
             <input
               required
               value={form.deliveryBuildingName}
@@ -270,7 +282,9 @@ export function CreateErrandCard({
             />
           </label>
           <label className="errand-field">
-            <span>Floor <b aria-hidden="true">*</b></span>
+            <span>
+              Floor <b aria-hidden="true">*</b>
+            </span>
             <input
               type="number"
               required

@@ -52,7 +52,11 @@ export function VerificationComponent({
         return
       }
       const profile = await authFetch('/api/user/me', { credentials: 'include' })
-      if (!profile.ok && profile.status !== 404) { setErrorMessage('Unable to load your profile.'); setLoading(false); return }
+      if (!profile.ok && profile.status !== 404) {
+        setErrorMessage('Unable to load your profile.')
+        setLoading(false)
+        return
+      }
       await onVerified(profile.ok)
     } else {
       setErrorMessage(response.error.message)
