@@ -23,6 +23,7 @@ ENV NODE_ENV=production
 
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/user-service/backend/node_modules ./user-service/backend/node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/packages/user-prisma ./packages/user-prisma
 COPY --from=build /app/user-service/backend/package.json ./user-service/backend/

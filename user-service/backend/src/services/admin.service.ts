@@ -17,7 +17,7 @@ export class AdminService {
     ).filter((subject): subject is string => Boolean(subject))
     const profiles = await this.repository.findProfiles(subjects)
     const bySubject = new Map(profiles.map((profile) => [profile.cognitoSub, profile]))
-    return identities.flatMap((identity): User[] => {
+    const users = await Promise.all(identities.map(async (identity): Promise<User | null> => {
       const attributes = new Map(identity.Attributes?.map((attribute) => [attribute.Name, attribute.Value]))
       const subject = attributes.get('sub')
       const profile = subject ? bySubject.get(subject) : undefined
@@ -25,16 +25,19 @@ export class AdminService {
       if (!profile || !email) {
         throw new UserServiceError('PROFILE_NOT_FOUND', 'An admin account has no complete Relay profile.', 404)
       }
-      return [{
+      return {
         id: profile.id as UserId,
         email,
         username: profile.username,
-        profilePictureUrl: profile.profilePictureKey ? this.imageStorage.url(profile.profilePictureKey) : null,
+        profilePictureUrl: profile.profilePictureKey
+          ? await this.imageStorage.url(profile.profilePictureKey)
+          : null,
         emailVerified: attributes.get('email_verified') === 'true',
         profileCreated: true,
         role: 'admin',
-      }]
-    })
+      }
+    }))
+    return users.filter((user): user is User => user !== null)
   }
 
   async promote(input: unknown): Promise<void> {

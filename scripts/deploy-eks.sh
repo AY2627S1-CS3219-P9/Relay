@@ -20,7 +20,7 @@ fi
 # shellcheck disable=SC1090
 source "$env_file"
 
-required=(COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_BUCKET)
+required=(COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { echo "Missing $name in $env_file" >&2; exit 2; }
 done
@@ -30,7 +30,10 @@ aws cloudformation deploy \
   --stack-name "$stack_name" \
   --template-file infra/relay-eks.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}"
+  --parameter-overrides \
+    "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
+    "ProfileImageBucketName=${S3_BUCKET}" \
+    "DatabaseEngineFamily=${DATABASE_ENGINE_FAMILY:-postgres17}"
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
@@ -97,8 +100,6 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=S3_ENDPOINT="$S3_ENDPOINT" \
   --from-literal=S3_PUBLIC_ENDPOINT="$S3_PUBLIC_ENDPOINT" \
   --from-literal=S3_REGION="$aws_region" \
-  --from-literal=S3_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID" \
-  --from-literal=S3_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY" \
   --from-literal=S3_BUCKET="$S3_BUCKET" \
   --from-literal=S3_FORCE_PATH_STYLE=false \
   --dry-run=client -o yaml | kubectl apply -f -

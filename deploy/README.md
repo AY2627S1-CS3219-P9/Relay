@@ -4,20 +4,27 @@
   four private PostgreSQL databases, MSK Serverless, and their credentials.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
-- `infra/relay-storage.yaml` provisions the private profile-image bucket and a
-  least-privilege static S3 application user. The generated access key is kept
-  in Secrets Manager and is copied into the deployment environment only when
-  needed.
+- `infra/relay-storage.yaml` provisions the private profile-image bucket.
+  The user API accesses it through an EKS Pod Identity role, without static
+  S3 credentials.
 - `scripts/deploy-eks.sh` builds the existing Dockerfiles, pushes the images,
   creates the in-cluster runtime Secret, applies one-off database migrations,
   and applies the workloads, HPA policies, and ALB Ingress.
-- No local Docker Compose configuration or application route changes are needed.
 
 ## Prerequisites
 
 Install and authenticate the AWS CLI, Docker, and `kubectl`. The identity used
 to deploy needs permission to create the CloudFormation resources and access
-the generated EKS cluster. Use a supported EKS Kubernetes version in the target
+the generated EKS cluster.
+
+### AWS Sandbox Specific Instructions
+Use SSO Login to access the Sanbox AWS Account.
+
+1. `aws configure sso` to configure sso
+2. `aws sts get-caller-identity --profile user` to confirm you logged in
+3. `aws sso login --profile relay --use-device-code` to log in using sso
+
+Use a supported EKS Kubernetes version in the target
 Region.
 
 Copy the non-committed configuration file:
@@ -48,6 +55,9 @@ aws cloudformation deploy \
   --template-file infra/relay-auth.yaml
 ```
 
+If using sso login, include the parameter
+`--profile relay --region ap-southeast-1`
+
 Create the storage stack. The bucket name must be globally unique:
 
 ```bash
@@ -55,8 +65,11 @@ aws cloudformation deploy \
   --region "$AWS_REGION" \
   --stack-name "$STORAGE_STACK" \
   --template-file infra/relay-storage.yaml \
-  --parameter-overrides BucketName=REPLACE_WITH_UNIQUE_PROFILE_BUCKET_NAME
+  --parameter-overrides BucketName=relay-user-profile-images \
+  --capabilities CAPABILITY_IAM
 ```
+If using sso login, include the parameter
+`--profile relay --region ap-southeast-1`
 
 Read the generated values:
 
@@ -78,27 +91,30 @@ export S3_ENDPOINT="$(stack_output "$STORAGE_STACK" S3Endpoint)"
 export S3_PUBLIC_ENDPOINT="$(stack_output "$STORAGE_STACK" S3PublicEndpoint)"
 ```
 
-Retrieve the generated S3 credentials from Secrets Manager and put them in
-`deploy/relay.aws.env`:
+Copy the Cognito and S3 values above into `deploy/relay.aws.env`. Keep that
+file uncommitted. The EKS deployment passes the bucket name to the cluster
+stack, which grants the `user-api` Pod Identity role access to the bucket.
+
+`DATABASE_ENGINE_FAMILY` must match the PostgreSQL major version used by the
+RDS instances, for example `postgres17`. Check the current value before the
+first deployment with:
 
 ```bash
-credentials_secret="$(stack_output "$STORAGE_STACK" ApplicationCredentialsSecretArn)"
-aws secretsmanager get-secret-value \
+USER_DB_ID="$(aws cloudformation describe-stack-resources \
+  --stack-name relay \
+  --logical-resource-id UserDatabase \
   --region "$AWS_REGION" \
-  --secret-id "$credentials_secret" \
-  --query SecretString \
+  --profile user \
+  --query 'StackResources[0].PhysicalResourceId' \
+  --output text)"
+
+aws rds describe-db-instances \
+  --db-instance-identifier "$USER_DB_ID" \
+  --region "$AWS_REGION" \
+  --profile user \
+  --query 'DBInstances[0].EngineVersion' \
   --output text
 ```
-
-Set the returned `accessKeyId` and `secretAccessKey` as:
-
-```text
-S3_ACCESS_KEY_ID=...
-S3_SECRET_ACCESS_KEY=...
-```
-
-Also copy the Cognito and S3 values above into `deploy/relay.aws.env`. Keep
-that file uncommitted.
 
 ## Bootstrap the initial super-admin
 
@@ -132,6 +148,9 @@ aws cognito-idp admin-add-user-to-group \
   --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
   --group-name SuperAdminGroup
 ```
+
+If using sso login, include the parameter
+`--profile relay --region ap-southeast-1`
 
 This bootstrap is idempotent only up to the first user creation. If the user
 already exists, use `admin-set-user-password` and

@@ -20,6 +20,15 @@ Parameters:
   DatabaseAllocatedStorage:
     Type: Number
     Default: 20
+  DatabaseEngineFamily:
+    Type: String
+    Default: postgres17
+    Description: RDS PostgreSQL parameter group family for the database engine major version.
+    AllowedPattern: '^postgres[0-9]+$'
+  ProfileImageBucketName:
+    Type: String
+    Description: Existing private S3 bucket used for user profile images.
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
 
 Resources:
   Vpc:
@@ -117,8 +126,15 @@ Resources:
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
-        Statement: [{ Effect: Allow, Principal: { Service: eks.amazonaws.com }, Action: 'sts:AssumeRole' }]
+        Statement:
+          - Effect: Allow
+            Principal: { Service: eks.amazonaws.com }
+            Action: ['sts:AssumeRole', 'sts:TagSession']
       ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSComputePolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSBlockStoragePolicyV2'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSLoadBalancingPolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSNetworkingPolicy'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
   EksAutoNodeRole:
     Type: AWS::IAM::Role
@@ -183,6 +199,15 @@ Resources:
         GenerateStringKey: password
         PasswordLength: 32
         ExcludePunctuation: true
+  UserDatabaseParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Relay user database pg_cron configuration
+      Family: !Ref DatabaseEngineFamily
+      Parameters:
+        shared_preload_libraries: pg_cron,pg_stat_statements
+        cron.database_name: relay
+        cron.timezone: Asia/Singapore
   ErrandDatabaseSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -220,9 +245,11 @@ Resources:
       MasterUsername: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:password}}'
       DBSubnetGroupName: !Ref DbSubnetGroup
+      DBParameterGroupName: !Ref UserDatabaseParameterGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
       BackupRetentionPeriod: 7
+      ApplyImmediately: true
   ErrandDatabase:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
@@ -297,6 +324,21 @@ Resources:
               - Effect: Allow
                 Action: ['kafka-cluster:Connect', 'kafka-cluster:DescribeCluster', 'kafka-cluster:DescribeTopic', 'kafka-cluster:WriteData']
                 Resource: '*'
+        - PolicyName: ProfileImageBucketAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ListProfileImageBucket
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ProfileImageBucketName}'
+              - Sid: ManageProfileImages
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ProfileImageBucketName}/*'
   ErrandApiMskRole:
     Type: AWS::IAM::Role
     Properties:

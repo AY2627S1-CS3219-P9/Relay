@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Relay private profile-image bucket and static S3 access credentials.
+Description: Relay private profile-image bucket.
 
 Parameters:
   BucketName:
@@ -26,42 +26,6 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
-  ApplicationUser:
-    Type: AWS::IAM::User
-    Properties:
-      Policies:
-        - PolicyName: ProfileImageBucketAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: ListProfileImageBucket
-                Effect: Allow
-                Action:
-                  - s3:ListBucket
-                Resource: !GetAtt UserImageBucket.Arn
-              - Sid: ManageProfileImages
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: !Sub '${UserImageBucket.Arn}/*'
-
-  ApplicationAccessKey:
-    Type: AWS::IAM::AccessKey
-    Properties:
-      UserName: !Ref ApplicationUser
-
-  ApplicationCredentials:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Relay static S3 application credentials. Retrieve only during deployment.
-      SecretString: !Sub |
-        {
-          "accessKeyId": "${ApplicationAccessKey}",
-          "secretAccessKey": "${ApplicationAccessKey.SecretAccessKey}"
-        }
-
 Outputs:
   BucketName:
     Description: Profile image S3 bucket name
@@ -75,6 +39,3 @@ Outputs:
   S3PublicEndpoint:
     Description: Endpoint used in profile image URLs
     Value: !Sub https://s3.${AWS::Region}.amazonaws.com
-  ApplicationCredentialsSecretArn:
-    Description: Secrets Manager ARN containing the generated S3 credentials
-    Value: !Ref ApplicationCredentials
