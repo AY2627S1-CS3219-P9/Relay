@@ -46,3 +46,26 @@ for (const { id, federationName } of frontendServices) {
     }
   })
 }
+
+test('browser login reaches the auth API through the shell', async () => {
+  const response = await fetch(`${shellUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { Origin: shellUrl, 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  assert.equal(response.status, 400)
+  const body = await response.json()
+  assert.equal(body.ok, false)
+  assert.notEqual(body.error.code, 'FORBIDDEN')
+})
+
+test('cross-origin browser login is rejected', async () => {
+  const response = await fetch(`${shellUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { Origin: 'https://unrelated.example', 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  assert.equal(response.status, 403)
+  const body = await response.json()
+  assert.equal(body.error.code, 'FORBIDDEN')
+})

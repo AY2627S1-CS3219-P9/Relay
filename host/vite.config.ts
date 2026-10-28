@@ -16,6 +16,10 @@ export default defineConfig(() => {
         // Keep browser requests same-origin during local development. The
         // backend services use separate host ports because both default to
         // port 3000 inside their Docker containers.
+        '/api/auth': {
+          target: 'http://localhost:3004',
+          changeOrigin: false,
+        },
         '/api/user': {
           target: 'http://localhost:3001',
           changeOrigin: true,
