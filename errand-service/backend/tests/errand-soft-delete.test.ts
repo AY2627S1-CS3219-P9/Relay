@@ -19,7 +19,7 @@ describe('errand delete - soft delete with pending errands', () => {
     await prisma.$disconnect()
   })
 
-  it('should throw ERRAND NOT FOUND when trying to delete non-existent errands', async () => {
+  it('should handle non-existent errands gracefully (returns empty list)', async () => {
     // Generate valid UUIDs that don't exist
     const id1 = await repo.addPendingErrand('requester')
     const id2 = await repo.addPendingErrand('requester')
@@ -28,8 +28,9 @@ describe('errand delete - soft delete with pending errands', () => {
     await prisma.errand.deleteMany({ where: { id: { in: [id1, id2] } } })
     await prisma.pendingErrand.deleteMany({ where: { id: { in: [id1, id2] } } })
 
-    // Try to delete errands that don't exist
-    await expect(repo.supplierUpdateDeleteErrands([id1, id2])).rejects.toThrow('ERRAND NOT FOUND')
+    // Try to delete errands that don't exist - should return empty list (not throw)
+    const result = await repo.deleteOpenOrAcceptedErrandsBySupplier('non-existent-supplier')
+    expect(result.deletedErrandIds).toEqual([])
   })
 
   it('should create outbox events for each deleted errand', async () => {
@@ -89,7 +90,7 @@ describe('errand delete - soft delete with pending errands', () => {
     })
 
     // Simulate supplier deactivation
-    await repo.supplierUpdateDeleteErrands([errandId1, errandId2])
+    await repo.deleteOpenOrAcceptedErrandsBySupplier(supplierId)
 
     // Verify outbox events have correct requesterSub in payload
     const event1 = await prisma.errandEventOutbox.findFirst({

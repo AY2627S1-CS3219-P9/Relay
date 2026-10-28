@@ -204,7 +204,7 @@ describe('errand accept - expiry edge cases', () => {
 
       try {
         // Simulate supplier deactivation by calling the new method
-        await repo.supplierUpdateDeleteErrands([errandId1, errandId2])
+        await repo.deleteOpenOrAcceptedErrandsBySupplier(supplierId)
 
         // Verify both errands are now DELETED
         const errand1 = await prisma.errand.findUnique({ where: { id: errandId1 } })
@@ -263,7 +263,7 @@ describe('errand accept - expiry edge cases', () => {
 
       try {
         // Simulate supplier deactivation
-        await repo.supplierUpdateDeleteErrands([errandId])
+        await repo.deleteOpenOrAcceptedErrandsBySupplier(supplierId)
 
         // Verify errand is now DELETED
         const errand = await prisma.errand.findUnique({ where: { id: errandId } })
@@ -274,8 +274,8 @@ describe('errand accept - expiry edge cases', () => {
       }
     })
 
-    it('should throw ERRAND NOT FOUND when trying to delete non-existent errands', async () => {
-      // Generate valid UUIDs that don't exist using addPendingErrand
+    it('should handle non-existent errands gracefully (returns empty list)', async () => {
+      // Generate valid UUIDs that don't exist
       const id1 = await repo.addPendingErrand('requester')
       const id2 = await repo.addPendingErrand('requester')
 
@@ -283,8 +283,9 @@ describe('errand accept - expiry edge cases', () => {
       await prisma.errand.deleteMany({ where: { id: { in: [id1, id2] } } })
       await prisma.pendingErrand.deleteMany({ where: { id: { in: [id1, id2] } } })
 
-      // Try to delete errands that don't exist
-      await expect(repo.supplierUpdateDeleteErrands([id1, id2])).rejects.toThrow('ERRAND NOT FOUND')
+      // Try to delete errands that don't exist - should return empty list (not throw)
+      const result = await repo.deleteOpenOrAcceptedErrandsBySupplier('non-existent-supplier')
+      expect(result.deletedErrandIds).toEqual([])
     })
   })
 })
