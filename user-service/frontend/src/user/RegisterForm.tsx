@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, RegisterResponse } from '@relay/contracts/user-auth'
 import { isNusEmail, passwordErrors, passwordRequirements } from '../validation/validation'
@@ -26,7 +27,7 @@ export function RegisterForm({
     if (password !== confirmation) return setErrorMessage('Passwords must match exactly.')
     setLoading(true)
     setErrorMessage('')
-    const response = (await fetch('/api/auth/register', {
+    const response = (await authFetch('/api/auth/register', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

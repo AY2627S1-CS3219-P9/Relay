@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
 import type { ApiResult } from '@relay/contracts/user-auth'
@@ -21,7 +22,7 @@ export function ChangePasswordForm({ onBack, onLoggedOut }: { onBack: () => void
     setSavingPassword(true)
     setSuccessMessage('')
     setErrorMessage('')
-    const response = (await fetch('/api/auth/password', {
+    const response = (await authFetch('/api/auth/password', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, IconButton } from '@relay/ui'
 import type { ApiResult } from '@relay/contracts'
@@ -24,7 +25,7 @@ export function DeleteAccountForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      const response = (await fetch('/api/user/me', {
+      const response = (await authFetch('/api/user/me', {
         method: 'DELETE',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
@@ -38,7 +39,7 @@ export function VerificationComponent({
     setLoading(true)
     setErrorMessage('')
 
-    const response = (await fetch('/api/auth/verification/confirm-and-login', {
+    const response = (await authFetch('/api/auth/verification/confirm-and-login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +51,7 @@ export function VerificationComponent({
         setLoading(false)
         return
       }
-      const profile = await fetch('/api/user/me', { credentials: 'include' })
+      const profile = await authFetch('/api/user/me', { credentials: 'include' })
       if (!profile.ok && profile.status !== 404) { setErrorMessage('Unable to load your profile.'); setLoading(false); return }
       await onVerified(profile.ok)
     } else {
@@ -64,7 +65,7 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      const response = (await fetch('/api/auth/verification/resend', {
+      const response = (await authFetch('/api/auth/verification/resend', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

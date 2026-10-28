@@ -1,3 +1,4 @@
+import { authFetch, refreshAccessToken } from '@relay/frontend-auth-fetch'
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
@@ -17,14 +18,6 @@ import { Hub } from 'aws-amplify/utils'
 import { hostErrandApi } from './errandApi'
 import { hostSupplierApi } from './supplierApi'
 
-let activeRefresh: Promise<boolean> | undefined
-function refreshAccessToken(): Promise<boolean> {
-  activeRefresh ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-    .then((response) => response.ok)
-    .catch(() => false)
-    .finally(() => { activeRefresh = undefined })
-  return activeRefresh
-}
 
 function App() {
   /*
@@ -73,9 +66,17 @@ function App() {
   const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
 
   useEffect(() => {
+    if (!authenticatedSubject) return
+    const refreshOnReturn = () => { if (document.visibilityState === 'visible') void refreshAccessToken() }
     const timer = window.setInterval(() => { void refreshAccessToken() }, 12 * 60 * 1000)
-    return () => window.clearInterval(timer)
-  }, [])
+    window.addEventListener('focus', refreshOnReturn)
+    document.addEventListener('visibilitychange', refreshOnReturn)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshOnReturn)
+      document.removeEventListener('visibilitychange', refreshOnReturn)
+    }
+  }, [authenticatedSubject])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -102,15 +103,12 @@ function App() {
   }
 
   const fetchSession: FetchSessionHandler = async () => {
-    let response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
-    if (response.status === 401) {
-      if (await refreshAccessToken()) response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
-    }
+    const response = await authFetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
     if (!response.ok) throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
     const body = await response.json() as { ok: boolean; data?: { user: { subject: string; email: string; emailVerified: boolean; role: 'super-admin' | 'admin' | 'user' } } }
     if (!body.ok || !body.data?.user) throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
     const user = body.data.user
-    const profile = await fetch('/api/user/me', { credentials: 'include', cache: 'no-store' })
+    const profile = await authFetch('/api/user/me', { credentials: 'include', cache: 'no-store' })
     if (!profile.ok && profile.status !== 404) throw new Error('Unable to determine profile state.')
     return { token: '', userData: { id: user.subject, email: user.email, emailVerified: user.emailVerified, profileCreated: profile.ok, isAdmin: user.role === 'admin' || user.role === 'super-admin' } }
   }
@@ -125,7 +123,7 @@ function App() {
           if (!cancelled) setUserProfile(null)
           return
         }
-        const response = await fetch('/api/user/me', { credentials: 'include' })
+        const response = await authFetch('/api/user/me', { credentials: 'include' })
         if (cancelled) return
         if (response.ok) {
           const body = (await response.json()) as { ok?: boolean; data?: User }
@@ -181,7 +179,7 @@ function App() {
     async function pollBalance() {
       attempts += 1
       try {
-        const response = await fetch('/api/credit', {
+        const response = await authFetch('/api/credit', {
           credentials: 'include',
           cache: 'no-store',
           signal: controller.signal,
@@ -225,7 +223,7 @@ function App() {
         setAuthVersion((version) => version + 1)
         return
       }
-      const response = await fetch('/api/user/me', { credentials: 'include' })
+      const response = await authFetch('/api/user/me', { credentials: 'include' })
       if (response.ok) {
         const body = (await response.json()) as { ok?: boolean; data?: User }
         if (body.ok && body.data) setUserProfile(body.data)

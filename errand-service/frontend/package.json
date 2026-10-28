@@ -9,6 +9,7 @@
     "preview": "vite preview --port 5003"
   },
   "dependencies": {
+    "@relay/frontend-auth-fetch": "*",
     "@relay/contracts": "*",
     "@relay/ui": "*",
     "aws-amplify": "^6.22.0",

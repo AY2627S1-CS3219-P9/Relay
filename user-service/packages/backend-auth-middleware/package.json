@@ -1,5 +1,5 @@
 {
-  "name": "@relay/user-auth-middleware",
+  "name": "@relay/backend-auth-middleware",
   "version": "0.1.0",
   "private": true,
   "type": "module",

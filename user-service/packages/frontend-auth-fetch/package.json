@@ -1,0 +1,8 @@
+{
+  "name": "@relay/frontend-auth-fetch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "test": "node --experimental-strip-types --test tests/*.test.mjs" }
+}

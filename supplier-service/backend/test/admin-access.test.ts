@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { SupplierController } from '../src/controllers/supplier.controller'
 import { createSupplierRouter } from '../src/routes/supplier.routes'
-import { userAuthAdminMiddleware } from '@relay/user-auth-middleware'
+import { userAuthAdminMiddleware } from '@relay/backend-auth-middleware'
 const body = { name:'Supplier', location:{lat:1,lng:103,buildingName:'Building',floorNumber:1}, isOperational:true, operatingHours:{openingTime:'09:00',closingTime:'18:00',daysOfWeek:[1]}, serviceTypes:[0] }
 function response() {
   const res: Record<string, unknown> = { statusCode:200 }

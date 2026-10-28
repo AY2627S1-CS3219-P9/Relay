@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import type {
   CreateErrandRequest,
   CreateErrandResponse,
@@ -21,7 +22,7 @@ export class ErrandApiError extends Error {
 
 export function createHttpErrandApi(): ErrandApi {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${errandApiBaseUrl}${path}`, {
+    const response = await authFetch(`${errandApiBaseUrl}${path}`, {
       ...init,
       credentials: 'include',
       headers: {

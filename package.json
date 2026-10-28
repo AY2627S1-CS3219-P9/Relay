@@ -13,7 +13,7 @@
     "credit-service/backend",
     "packages/*",
     "user-service/auth",
-    "user-service/user-auth-middleware"
+    "user-service/packages/*"
   ],
   "scripts": {
     "dev": "npm run dev-infra && concurrently --kill-others-on-fail --names frontend,backend \"npm run dev-fe\" \"npm run dev-be\"",

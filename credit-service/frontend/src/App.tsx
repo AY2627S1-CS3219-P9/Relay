@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import '@relay/ui/styles.css'
 import './styles.css'
 import { useEffect, useRef, useState } from 'react'
@@ -6,7 +7,7 @@ import { ErrorMessage, IconButton, RelayButton } from '@relay/ui'
 import { HISTORY_BATCH_SIZE, HISTORY_PAGE_SIZE, transactionDisplay, transactionTime } from './history'
 
 async function fetchCreditHistory(offset: number, signal: AbortSignal): Promise<TransactionRecord[]> {
-  const response = await fetch(`/api/credit/history?offset=${offset}`, {
+  const response = await authFetch(`/api/credit/history?offset=${offset}`, {
     credentials: 'include',
     cache: 'no-store',
     signal,

@@ -1,10 +1,11 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import type { GetSuppliersResponse, SupplierApi } from '@relay/contracts'
 
 const supplierApiBaseUrl = import.meta.env.VITE_SUPPLIER_API_URL ?? '/api/supplier'
 
 export function createHttpSupplierApi(): SupplierApi {
   async function request<T>(path: string): Promise<T> {
-    const response = await fetch(`${supplierApiBaseUrl}${path}`, { credentials: 'include' })
+    const response = await authFetch(`${supplierApiBaseUrl}${path}`, { credentials: 'include' })
     if (!response.ok) throw new Error(`Supplier service request failed (${response.status}).`)
     return (await response.json()) as T
   }

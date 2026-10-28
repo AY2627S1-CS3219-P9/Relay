@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, UpdateUserResponse, User } from '@relay/contracts'
 import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
@@ -30,7 +31,7 @@ export function UpdateProfileForm({
     setSaving(true)
     setError('')
     try {
-      const response = (await fetch('/api/user/me', {
+      const response = (await authFetch('/api/user/me', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

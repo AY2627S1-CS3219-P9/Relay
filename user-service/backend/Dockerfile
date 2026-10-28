@@ -4,19 +4,19 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/contracts/package.json ./packages/contracts/
-COPY user-service/user-auth-middleware/package.json ./user-service/user-auth-middleware/
+COPY user-service/packages/backend-auth-middleware/package.json ./user-service/packages/backend-auth-middleware/
 COPY packages/user-prisma/package.json ./packages/user-prisma/
 COPY user-service/backend/package.json ./user-service/backend/
 
 RUN npm ci
 
 COPY packages/contracts ./packages/contracts
-COPY user-service/user-auth-middleware ./user-service/user-auth-middleware
+COPY user-service/packages/backend-auth-middleware ./user-service/packages/backend-auth-middleware
 COPY packages/user-prisma ./packages/user-prisma
 COPY user-service/backend ./user-service/backend
 
 RUN npx prisma generate --schema=user-service/backend/prisma/schema.prisma
-RUN npm run build --workspace @relay/user-auth-middleware
+RUN npm run build --workspace @relay/backend-auth-middleware
 RUN npm run build --workspace @relay/user-backend
 
 FROM node:22-alpine AS runtime
@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
-COPY --from=build /app/user-service/user-auth-middleware ./user-service/user-auth-middleware
+COPY --from=build /app/user-service/packages/backend-auth-middleware ./user-service/packages/backend-auth-middleware
 COPY --from=build /app/packages/user-prisma ./packages/user-prisma
 COPY --from=build /app/user-service/backend/package.json ./user-service/backend/
 COPY --from=build /app/user-service/backend/dist ./user-service/backend/dist

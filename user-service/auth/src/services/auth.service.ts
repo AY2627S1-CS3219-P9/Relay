@@ -2,7 +2,7 @@ import { AdminAddUserToGroupCommand, AdminGetUserCommand, AdminRemoveUserFromGro
 import { getEnv } from '../config/env.js'
 import { AuthError } from '../types/auth.types.js'
 import { adminSchema, loginSchema, passwordSchema, registerSchema, resendSchema, validate, verificationSchema } from '../validators/auth.validator.js'
-import { verifyCognitoTokens, type AuthenticatedUser } from '@relay/user-auth-middleware'
+import { verifyCognitoTokens, type AuthenticatedUser } from '@relay/backend-auth-middleware'
 
 const env = getEnv()
 const cognito = new CognitoIdentityProviderClient({ region: env.region, endpoint: env.endpoint })

@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import type { SupplierApi } from '@relay/contracts'
 
 const baseUrl = '/api/supplier'
@@ -17,7 +18,7 @@ export const hostSupplierApi: SupplierApi = {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await authFetch(`${baseUrl}${path}`, {
     ...init,
     credentials: 'include',
     headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },

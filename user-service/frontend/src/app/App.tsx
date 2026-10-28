@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/frontend-auth-fetch'
 import '@relay/ui/styles.css'
 import './App.css'
 import { useEffect, useState } from 'react'
@@ -112,7 +113,7 @@ export default function App({
   }
 
   async function finishLogout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    await authFetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     await refreshUserProfile?.()
     setView('login')
     closeProfile?.()

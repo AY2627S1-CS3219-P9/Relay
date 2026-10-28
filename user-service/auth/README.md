@@ -18,7 +18,7 @@ in User Service.
 
 Login and OTP confirmation set Cognito access, ID, and refresh tokens as HTTP-only, Secure, SameSite=Strict cookies. Cognito access and ID tokens are configured for 15 minutes.
 
-Other services import `@relay/user-auth-middleware` and verify Cognito tokens locally with `aws-jwt-verify`.
+Other services import `@relay/backend-auth-middleware` and verify Cognito tokens locally with `aws-jwt-verify`.
 
 HTTPS is required for Secure cookies outside localhost.
 
