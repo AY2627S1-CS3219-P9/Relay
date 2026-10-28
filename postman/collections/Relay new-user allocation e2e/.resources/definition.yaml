@@ -1,0 +1,7 @@
+$kind: collection
+description: Run against the Compose host proxy. This collection creates a fresh user and profile. Access and ID cookies are stored in collection variables; the Postman cookie jar is disabled for every request.
+variables:
+  baseUrl: http://localhost:8080
+  flociUrl: http://localhost:4566
+  sessionCookie: ""
+  sessionRefreshCookie: ""

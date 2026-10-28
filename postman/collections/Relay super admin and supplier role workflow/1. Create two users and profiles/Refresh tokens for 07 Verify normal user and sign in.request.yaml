@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/refresh"
+method: POST
+headers:
+  Cookie: "{{normalRefreshCookie}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const selectedCookie=pm.collectionVariables.get('normalRefreshCookie');
+      if(typeof selectedCookie!=='string'||!/^relay_refresh=[^;]+$/.test(selectedCookie))throw new Error('Missing or invalid normalRefreshCookie in this collection. Run its sign-in step first.');
+      pm.variables.set('normalRefreshCookie',selectedCookie);
+      pm.request.headers.upsert({key:'Cookie',value:selectedCookie});
+  - type: afterResponse
+    code: |-
+      pm.test('refresh accepted',()=>pm.response.to.have.status(200));
+      const cookies=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]);
+      const access=cookies.find(x=>x.startsWith('relay_access='));
+      const id=cookies.find(x=>x.startsWith('relay_id='));
+      const refresh=cookies.find(x=>x.startsWith('relay_refresh='));
+      pm.test('Cognito cookies refreshed',()=>{pm.expect(access).to.match(/^relay_access=[^;]+$/);pm.expect(id).to.match(/^relay_id=[^;]+$/);pm.expect(refresh).to.match(/^relay_refresh=[^;]+$/);});
+      if(access&&id&&refresh){pm.collectionVariables.set('normalCookie',access+'; '+id);pm.collectionVariables.set('normalRefreshCookie',refresh);}
+settings: {}
+order: 9000

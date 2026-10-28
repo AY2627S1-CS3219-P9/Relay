@@ -1,0 +1,7 @@
+# Postman collections
+
+The v3 collections under `postman/collections` use the Compose host at `http://localhost:8080` by default. Run requests in order. Sign-in stores Cognito `relay_access`, `relay_id`, and `relay_refresh` values in collection variables. Protected requests send only the selected identity's access and ID cookies. Refresh requests send only that identity's refresh cookie to `/api/auth/refresh` and replace all three stored values.
+
+For a Collection Runner run, select **No environment** and no data file, **Run collection without using stored cookies**, and **Save cookies after collection run: off**. Reimport the latest files before running. If a manual demo pauses for more than 15 minutes, run the matching refresh request before the next protected request. Check the sent `Cookie` header in the Postman Console if a request is unexpectedly unauthorized; each protected request should have one access and one ID cookie for the same user.
+
+All six v3 collections are under `postman/collections`. Each registration flow generates fresh users on every run and reads its OTP by matching the recipient email in Floci SES. The Supplier Service API generates fresh supplier names on every run. Other collections' variables do not override collection variables; avoid adding environment variables with the same names. Run each collection from its first request so its initialization scripts clear old tokens and IDs.
