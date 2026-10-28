@@ -51,7 +51,11 @@ build_and_push() {
   local output_name="$1" dockerfile="$2"
   local image_uri
   image_uri="$(output "$output_name"):${IMAGE_TAG:-latest}"
-  docker build --platform linux/amd64 -f "$dockerfile" -t "$image_uri" . >&2
+  local build_args=(--platform linux/amd64 -f "$dockerfile" -t "$image_uri")
+  if [[ "${NO_CACHE:-0}" == "1" ]]; then
+    build_args+=(--no-cache)
+  fi
+  docker build "${build_args[@]}" . >&2
   docker push "$image_uri" >&2
   printf '%s' "$image_uri"
 }
