@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler } from 'express'
 import { Kafka } from 'kafkajs'
+import { generateAuthToken } from 'aws-msk-iam-sasl-signer-js'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
@@ -64,11 +65,24 @@ export const app = createApp()
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
+  const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
+    ? {
+        ssl: true,
+        sasl: {
+          mechanism: 'oauthbearer' as const,
+          oauthBearerProvider: async () => {
+            const { token } = await generateAuthToken({ region: process.env.AWS_REGION ?? 'us-east-1' })
+            return { value: token }
+          },
+        },
+      }
+    : {}
 
   const kafka = new Kafka({
     clientId: 'errand-service',
     brokers: env.kafkaBrokers.split(','),
     retry: { retries: 3, initialRetryTime: 100, maxRetryTime: 1000 },
+    ...mskIam,
   })
   const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())

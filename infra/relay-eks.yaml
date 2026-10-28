@@ -1,0 +1,411 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Creates a EKS Auto Mode cluster, private application
+  network, ECR repositories, four PostgreSQL databases, MSK Serverless, and
+  generated database credentials. 
+  [NOTE] Application workloads are deployed separately
+  with the Kubernetes manifests in k8s/base.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: relay
+    AllowedPattern: '^[a-z][a-z0-9-]{1,20}$'
+  KubernetesVersion:
+    Type: String
+    Description: A currently supported EKS Kubernetes version in the target Region.
+  DatabaseInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  DatabaseAllocatedStorage:
+    Type: Number
+    Default: 20
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.40.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: !Sub '${ProjectName}-vpc' }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: { InternetGatewayId: !Ref InternetGateway, VpcId: !Ref Vpc }
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.40.0.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - { Key: Name, Value: !Sub '${ProjectName}-public-a' }
+        - { Key: kubernetes.io/role/elb, Value: '1' }
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.40.16.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - { Key: Name, Value: !Sub '${ProjectName}-public-b' }
+        - { Key: kubernetes.io/role/elb, Value: '1' }
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetA, RouteTableId: !Ref PublicRouteTable }
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetB, RouteTableId: !Ref PublicRouteTable }
+  NatEip:
+    Type: AWS::EC2::EIP
+    Properties: { Domain: vpc }
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: InternetGatewayAttachment
+    Properties: { AllocationId: !GetAtt NatEip.AllocationId, SubnetId: !Ref PublicSubnetA }
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.40.32.0/20
+      Tags:
+        - { Key: Name, Value: !Sub '${ProjectName}-private-a' }
+        - { Key: kubernetes.io/role/internal-elb, Value: '1' }
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.40.48.0/20
+      Tags:
+        - { Key: Name, Value: !Sub '${ProjectName}-private-b' }
+        - { Key: kubernetes.io/role/internal-elb, Value: '1' }
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateSubnetA, RouteTableId: !Ref PrivateRouteTable }
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateSubnetB, RouteTableId: !Ref PrivateRouteTable }
+
+  EksClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: eks.amazonaws.com }, Action: 'sts:AssumeRole' }]
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy'
+  EksAutoNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: ec2.amazonaws.com }, Action: 'sts:AssumeRole' }]
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodeMinimalPolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly'
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ProjectName
+      Version: !Ref KubernetesVersion
+      RoleArn: !GetAtt EksClusterRole.Arn
+      AccessConfig: { AuthenticationMode: API_AND_CONFIG_MAP }
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: true
+        EndpointPublicAccess: true
+        SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB, !Ref PublicSubnetA, !Ref PublicSubnetB]
+      ComputeConfig:
+        Enabled: true
+        NodeRoleArn: !GetAtt EksAutoNodeRole.Arn
+        NodePools: [general-purpose, system]
+      KubernetesNetworkConfig:
+        ElasticLoadBalancing: { Enabled: true }
+      StorageConfig:
+        BlockStorage: { Enabled: true }
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: PostgreSQL access from the Relay EKS cluster
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt EksCluster.ClusterSecurityGroupId
+  MskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Kafka access from Relay EKS workloads
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9098
+          ToPort: 9098
+          SourceSecurityGroupId: !GetAtt EksCluster.ClusterSecurityGroupId
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private Relay database subnets
+      SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+  UserDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"relay"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+  ErrandDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"relay"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+  CreditDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"relay"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+  SupplierDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"relay"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+  UserDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      StorageType: gp3
+      DBName: relay
+      MasterUsername: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+  ErrandDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      StorageType: gp3
+      DBName: relayerrand
+      MasterUsername: !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+  CreditDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      StorageType: gp3
+      DBName: relay
+      MasterUsername: !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+  SupplierDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      StorageType: gp3
+      DBName: relay
+      MasterUsername: !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+  RelayMsk:
+    Type: AWS::MSK::ServerlessCluster
+    Properties:
+      ClusterName: !Sub '${ProjectName}-events'
+      ClientAuthentication: { Sasl: { Iam: { Enabled: true } } }
+      VpcConfigs:
+        - SecurityGroups: [!GetAtt MskSecurityGroup.GroupId]
+          SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+
+  UserApiMskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: pods.eks.amazonaws.com }
+            Action: ['sts:AssumeRole', 'sts:TagSession']
+      Policies:
+        - PolicyName: UserEventProducer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ['kafka-cluster:Connect', 'kafka-cluster:DescribeCluster', 'kafka-cluster:DescribeTopic', 'kafka-cluster:WriteData']
+                Resource: '*'
+  ErrandApiMskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: pods.eks.amazonaws.com }
+            Action: ['sts:AssumeRole', 'sts:TagSession']
+      Policies:
+        - PolicyName: ErrandEventProducer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ['kafka-cluster:Connect', 'kafka-cluster:DescribeCluster', 'kafka-cluster:DescribeTopic', 'kafka-cluster:WriteData']
+                Resource: '*'
+  CreditApiMskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: pods.eks.amazonaws.com }
+            Action: ['sts:AssumeRole', 'sts:TagSession']
+      Policies:
+        - PolicyName: CreditEventConsumerAndProducer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kafka-cluster:Connect'
+                  - 'kafka-cluster:DescribeCluster'
+                  - 'kafka-cluster:DescribeTopic'
+                  - 'kafka-cluster:ReadData'
+                  - 'kafka-cluster:WriteData'
+                  - 'kafka-cluster:DescribeGroup'
+                  - 'kafka-cluster:AlterGroup'
+                Resource: '*'
+  UserApiPodIdentity:
+    Type: AWS::EKS::PodIdentityAssociation
+    Properties:
+      ClusterName: !Ref EksCluster
+      Namespace: relay
+      ServiceAccount: user-api
+      RoleArn: !GetAtt UserApiMskRole.Arn
+  ErrandApiPodIdentity:
+    Type: AWS::EKS::PodIdentityAssociation
+    Properties:
+      ClusterName: !Ref EksCluster
+      Namespace: relay
+      ServiceAccount: errand-api
+      RoleArn: !GetAtt ErrandApiMskRole.Arn
+  CreditApiPodIdentity:
+    Type: AWS::EKS::PodIdentityAssociation
+    Properties:
+      ClusterName: !Ref EksCluster
+      Namespace: relay
+      ServiceAccount: credit-api
+      RoleArn: !GetAtt CreditApiMskRole.Arn
+
+  HostRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/host', ImageScanningConfiguration: { ScanOnPush: true } }
+  SupplierFrontendRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/supplier-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+  UserFrontendRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/user-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+  ErrandFrontendRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/errand-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+  CreditFrontendRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/credit-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+  SupplierApiRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/supplier-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  UserApiRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/user-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  ErrandApiRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/errand-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  CreditApiRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
+
+Outputs:
+  ClusterName: { Value: !Ref EksCluster }
+  ClusterEndpoint: { Value: !GetAtt EksCluster.Endpoint }
+  MskClusterArn: { Value: !Ref RelayMsk }
+  UserDatabaseEndpoint: { Value: !GetAtt UserDatabase.Endpoint.Address }
+  ErrandDatabaseEndpoint: { Value: !GetAtt ErrandDatabase.Endpoint.Address }
+  CreditDatabaseEndpoint: { Value: !GetAtt CreditDatabase.Endpoint.Address }
+  SupplierDatabaseEndpoint: { Value: !GetAtt SupplierDatabase.Endpoint.Address }
+  UserDatabaseSecretArn: { Value: !Ref UserDatabaseSecret }
+  ErrandDatabaseSecretArn: { Value: !Ref ErrandDatabaseSecret }
+  CreditDatabaseSecretArn: { Value: !Ref CreditDatabaseSecret }
+  SupplierDatabaseSecretArn: { Value: !Ref SupplierDatabaseSecret }
+  HostRepositoryUri: { Value: !GetAtt HostRepository.RepositoryUri }
+  SupplierFrontendRepositoryUri: { Value: !GetAtt SupplierFrontendRepository.RepositoryUri }
+  UserFrontendRepositoryUri: { Value: !GetAtt UserFrontendRepository.RepositoryUri }
+  ErrandFrontendRepositoryUri: { Value: !GetAtt ErrandFrontendRepository.RepositoryUri }
+  CreditFrontendRepositoryUri: { Value: !GetAtt CreditFrontendRepository.RepositoryUri }
+  SupplierApiRepositoryUri: { Value: !GetAtt SupplierApiRepository.RepositoryUri }
+  UserApiRepositoryUri: { Value: !GetAtt UserApiRepository.RepositoryUri }
+  ErrandApiRepositoryUri: { Value: !GetAtt ErrandApiRepository.RepositoryUri }
+  CreditApiRepositoryUri: { Value: !GetAtt CreditApiRepository.RepositoryUri }

@@ -1,0 +1,6 @@
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - workloads.yaml
+  - autoscaling.yaml
+  - ingress.yaml

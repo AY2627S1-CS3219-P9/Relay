@@ -1,5 +1,6 @@
 import type { Server } from 'node:http'
 import { Kafka, logLevel } from 'kafkajs'
+import { generateAuthToken } from 'aws-msk-iam-sasl-signer-js'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
 import { ErrandEventConsumer } from './consumers/errand.consumer.js'
@@ -9,7 +10,21 @@ import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
-const kafka = new Kafka({ clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR })
+const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
+  ? {
+      ssl: true,
+      sasl: {
+        mechanism: 'oauthbearer' as const,
+        oauthBearerProvider: async () => {
+          const { token } = await generateAuthToken({ region: process.env.AWS_REGION ?? 'us-east-1' })
+          return { value: token }
+        },
+      },
+    }
+  : {}
+const kafka = new Kafka({
+  clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR, ...mskIam,
+})
 const errandConsumer = new ErrandEventConsumer(creditService, kafka)
 const userConsumer = new UserEventConsumer(creditService, kafka)
 let server: Server | undefined

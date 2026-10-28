@@ -1,4 +1,5 @@
 import { Kafka, logLevel, type Producer } from 'kafkajs'
+import { generateAuthToken } from 'aws-msk-iam-sasl-signer-js'
 import { prisma } from '../repositories/user.repository.js'
 import { getEnv } from '../config/env.js'
 
@@ -10,10 +11,23 @@ export class UserEventPublisher {
   private lastCleanup = 0
 
   constructor() {
+    const mskIam = process.env.KAFKA_AUTH_MODE === 'iam'
+      ? {
+          ssl: true,
+          sasl: {
+            mechanism: 'oauthbearer' as const,
+            oauthBearerProvider: async () => {
+              const { token } = await generateAuthToken({ region: process.env.AWS_REGION ?? 'us-east-1' })
+              return { value: token }
+            },
+          },
+        }
+      : {}
     this.producer = new Kafka({
       clientId: 'user-service',
       brokers: getEnv().kafkaBrokers,
       logLevel: logLevel.ERROR,
+      ...mskIam,
     }).producer()
   }
 

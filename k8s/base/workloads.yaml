@@ -1,0 +1,237 @@
+apiVersion: v1
+kind: Service
+metadata: { name: host, namespace: relay }
+spec: { selector: { app: host }, ports: [{ port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: host, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: host } }
+  template:
+    metadata: { labels: { app: host } }
+    spec:
+      containers:
+        - name: host
+          image: IMAGE_HOST
+          ports: [{ name: http, containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 3 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 250m, memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: supplier-frontend, namespace: relay }
+spec: { selector: { app: supplier-frontend }, ports: [{ port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: supplier-frontend, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: supplier-frontend } }
+  template:
+    metadata: { labels: { app: supplier-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: IMAGE_SUPPLIER_FRONTEND
+          ports: [{ name: http, containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 150m, memory: 96Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: user-frontend, namespace: relay }
+spec: { selector: { app: user-frontend }, ports: [{ port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: user-frontend, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: user-frontend } }
+  template:
+    metadata: { labels: { app: user-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: IMAGE_USER_FRONTEND
+          ports: [{ name: http, containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 150m, memory: 96Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: errand-frontend, namespace: relay }
+spec: { selector: { app: errand-frontend }, ports: [{ port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: errand-frontend, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: errand-frontend } }
+  template:
+    metadata: { labels: { app: errand-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: IMAGE_ERRAND_FRONTEND
+          ports: [{ name: http, containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 150m, memory: 96Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: credit-frontend, namespace: relay }
+spec: { selector: { app: credit-frontend }, ports: [{ port: 80, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: credit-frontend, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: credit-frontend } }
+  template:
+    metadata: { labels: { app: credit-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: IMAGE_CREDIT_FRONTEND
+          ports: [{ name: http, containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http } }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 150m, memory: 96Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: supplier-api, namespace: relay }
+spec: { selector: { app: supplier-api }, ports: [{ port: 3000, targetPort: http }] }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: user-api, namespace: relay }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: errand-api, namespace: relay }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: credit-api, namespace: relay }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: supplier-api, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: supplier-api } }
+  template:
+    metadata: { labels: { app: supplier-api } }
+    spec:
+      containers:
+        - name: api
+          image: IMAGE_SUPPLIER_API
+          command: [node, dist/app.js]
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: DB_HOST, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_HOST } } }
+            - { name: DB_PORT, value: "5432" }
+            - { name: DB_NAME, value: relay }
+            - { name: DB_USER, value: relay }
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PASSWORD } } }
+            - { name: USER_API_URL, value: "http://user-api:3000" }
+          envFrom: [{ configMapRef: { name: relay-runtime } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: user-api, namespace: relay }
+spec: { selector: { app: user-api }, ports: [{ port: 3000, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: user-api, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: user-api } }
+  template:
+    metadata: { labels: { app: user-api } }
+    spec:
+      serviceAccountName: user-api
+      containers:
+        - name: api
+          image: IMAGE_USER_API
+          command: [node, user-service/backend/dist/server.js]
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: errand-api, namespace: relay }
+spec: { selector: { app: errand-api }, ports: [{ port: 3000, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: errand-api, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: errand-api } }
+  template:
+    metadata: { labels: { app: errand-api } }
+    spec:
+      serviceAccountName: errand-api
+      containers:
+        - name: api
+          image: IMAGE_ERRAND_API
+          command: [node, errand-service/backend/dist/app.js]
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
+            - { name: USER_API_URL, value: "http://user-api:3000" }
+            - { name: SUPPLIER_API_URL, value: "http://supplier-api:3000" }
+            - { name: CREDIT_API_URL, value: "http://credit-api:3000" }
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: credit-api, namespace: relay }
+spec: { selector: { app: credit-api }, ports: [{ port: 3000, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: credit-api, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: credit-api } }
+  template:
+    metadata: { labels: { app: credit-api } }
+    spec:
+      serviceAccountName: credit-api
+      containers:
+        - name: api
+          image: IMAGE_CREDIT_API
+          command: [node, credit-service/backend/dist/server.js]
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } } }
+            - { name: USER_API_URL, value: "http://user-api:3000" }
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 150m, memory: 256Mi }, limits: { cpu: 750m, memory: 768Mi } }
