@@ -7,12 +7,12 @@
     "supplier-service/backend",
     "user-service/frontend",
     "user-service/backend",
+    "user-service/auth",
     "errand-service/frontend",
     "errand-service/backend",
     "credit-service/frontend",
     "credit-service/backend",
-    "packages/*",
-    "user-service/auth"
+    "packages/*"
   ],
   "scripts": {
     "dev": "npm run dev-infra && concurrently --kill-others-on-fail --names frontend,backend \"npm run dev-fe\" \"npm run dev-be\"",
@@ -22,7 +22,7 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test:workspaces && npm run test:services",
-    "test:workspaces": "npm run test --workspaces --if-present",
+    "test:workspaces": "npm run build --workspace=@relay/user-auth-backend-middleware && npm run test --workspaces --if-present",
     "test:services": "npm run test:services:integration",
     "test:services:integration": "node --test tests/integration/*.test.mjs",
     "format": "prettier . --write"
