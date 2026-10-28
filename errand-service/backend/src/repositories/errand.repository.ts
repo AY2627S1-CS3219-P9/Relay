@@ -677,38 +677,50 @@ export class ErrandRepository {
     })
   }
 
-  async supplierUpdateDeleteErrands(errandIds: string[]): Promise<void> {
+  async deleteOpenOrAcceptedErrandsBySupplier(
+    supplierId: string,
+  ): Promise<{ deletedErrandIds: string[] }> {
+    const result = { deletedErrandIds: [] as string[] }
+
     await this.prisma.$transaction(async (tx) => {
+      // This findMany is necessary to get the IDs of the errands that will be deleted,
+      // since updateMany does not return the updated rows
       const errands = await tx.errand.findMany({
         where: {
-          id: { in: errandIds },
+          supplierId,
           status: { in: [ErrandStatus.Open, ErrandStatus.Accepted] },
         },
       })
 
       if (errands.length === 0) {
-        throw new Error('ERRAND NOT FOUND')
+        return
       }
 
-      const updated = await tx.errand.updateMany({
+      const updateResult = await tx.errand.updateMany({
         where: {
-          id: { in: errandIds },
+          supplierId,
           status: { in: [ErrandStatus.Open, ErrandStatus.Accepted] },
         },
         data: { status: ErrandStatus.Deleted },
       })
 
-      if (updated.count !== errands.length) {
-        throw new Error('ERRAND NOT IN TERMINAL')
+      const deletedErrandIds = errands.slice(0, updateResult.count).map((e) => e.id)
+
+      for (const errandId of deletedErrandIds) {
+        const errand = errands.find((e) => e.id === errandId)
+        if (errand) {
+          await appendEvent(tx, {
+            eventType: ErrandEventTypes.ERRAND_DELETED,
+            payload: { errandId: errand.id, requesterSub: errand.requesterSub },
+          })
+        }
       }
 
-      for (const errand of errands) {
-        await appendEvent(tx, {
-          eventType: ErrandEventTypes.ERRAND_DELETED,
-          payload: { errandId: errand.id, requesterSub: errand.requesterSub },
-        })
-      }
+      result.deletedErrandIds = deletedErrandIds
+      return
     })
+
+    return result
   }
 
   async updateErrandsBySupplier(
@@ -720,36 +732,47 @@ export class ErrandRepository {
       isOperational: boolean
       serviceTypes: ServiceType[]
     }>,
-  ): Promise<Errand[]> {
-    const rows = await this.prisma.errand.findMany({ where: { supplierId } })
+  ): Promise<{ deletedErrandIds: string[] }> {
+    const result = { deletedErrandIds: [] as string[] }
 
-    const updatedRows = await Promise.all(
-      rows.map(async (row: any) => {
-        const changes: any = { updatedAt: new Date() }
+    await this.prisma.$transaction(async (tx) => {
+      // Only update OPEN and ACCEPTED errands
+      const rows = await tx.errand.findMany({
+        where: { supplierId, status: { in: [ErrandStatus.Open, ErrandStatus.Accepted] } },
+      })
 
-        if (updates.name !== undefined) {
-          changes.supplierName = updates.name
-        }
+      const updatedRows = await Promise.all(
+        rows.map(async (row: any) => {
+          const changes: any = { updatedAt: new Date() }
 
-        if (updates.location) {
-          changes.pickupLat = updates.location.lat
-          changes.pickupLng = updates.location.lng
-          if (updates.location.buildingName !== undefined) {
-            changes.pickupBuildingName = updates.location.buildingName
+          if (updates.name !== undefined) {
+            changes.supplierName = updates.name
           }
-          if (updates.location.floorNumber !== undefined) {
-            changes.pickupFloorNumber = updates.location.floorNumber
+
+          if (updates.location) {
+            changes.pickupLat = updates.location.lat
+            changes.pickupLng = updates.location.lng
+            if (updates.location.buildingName !== undefined) {
+              changes.pickupBuildingName = updates.location.buildingName
+            }
+            if (updates.location.floorNumber !== undefined) {
+              changes.pickupFloorNumber = updates.location.floorNumber
+            }
           }
-        }
 
-        return await this.prisma.errand.update({
-          where: { id: row.id },
-          data: changes,
-        })
-      }),
-    )
+          return await tx.errand.update({
+            where: { id: row.id },
+            data: changes,
+          })
+        }),
+      )
 
-    return updatedRows.map(toContract)
+      result.deletedErrandIds = updatedRows.map(toContract).map((e) => e.id)
+
+      return
+    })
+
+    return result
   }
 
   // ============================================================================
