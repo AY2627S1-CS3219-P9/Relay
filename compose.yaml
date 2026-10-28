@@ -123,6 +123,8 @@ services:
         condition: service_healthy
       user-frontend:
         condition: service_healthy
+      user-auth-api:
+        condition: service_healthy
       errand-frontend:
         condition: service_healthy
       errand-api:
@@ -291,6 +293,20 @@ services:
       timeout: 3s
       retries: 5
   #
+  user-auth-api:
+    build:
+      context: .
+      dockerfile: user-service/auth/Dockerfile
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
   errand-api:
     build:
       context: .

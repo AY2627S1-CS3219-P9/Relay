@@ -11,7 +11,8 @@
     "errand-service/backend",
     "credit-service/frontend",
     "credit-service/backend",
-    "packages/*"
+    "packages/*",
+    "user-service/auth"
   ],
   "scripts": {
     "dev": "npm run dev-infra && concurrently --kill-others-on-fail --names frontend,backend \"npm run dev-fe\" \"npm run dev-be\"",
