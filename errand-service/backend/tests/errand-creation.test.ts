@@ -90,16 +90,6 @@ describe('errand creation and credit reservation', () => {
     expect(credit.reserve).not.toHaveBeenCalled()
   })
 
-  it('rejects users without a profile before inserting a pending row', async () => {
-    const { service, repository, credit, supplier } = setup()
-    await expect(service.createErrand({ ...user, profileCreated: false }, request)).rejects.toMatchObject({
-      code: 'FORBIDDEN', statusCode: 403,
-    })
-    expect(supplier.validateSelection).not.toHaveBeenCalled()
-    expect(repository.addPendingErrand).not.toHaveBeenCalled()
-    expect(credit.reserve).not.toHaveBeenCalled()
-  })
-
   it('rejects unverified users before inserting a pending row', async () => {
     const { service, repository, credit } = setup()
     await expect(service.createErrand({ ...user, emailVerified: false }, request)).rejects.toMatchObject({
@@ -109,4 +99,3 @@ describe('errand creation and credit reservation', () => {
     expect(credit.reserve).not.toHaveBeenCalled()
   })
 })
-

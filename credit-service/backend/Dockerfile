@@ -2,13 +2,16 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/contracts/package.json ./packages/contracts/
+COPY user-service/user-auth-jwt-verify/package.json ./user-service/user-auth-jwt-verify/
 COPY packages/credit-prisma/package.json ./packages/credit-prisma/
 COPY credit-service/backend/package.json ./credit-service/backend/
 RUN npm ci
 COPY packages/contracts ./packages/contracts
+COPY user-service/user-auth-jwt-verify ./user-service/user-auth-jwt-verify
 COPY packages/credit-prisma ./packages/credit-prisma
 COPY credit-service/backend ./credit-service/backend
 RUN npx prisma generate --schema=credit-service/backend/prisma/schema.prisma
+RUN npm run build --workspace @relay/user-auth-jwt-verify
 RUN npm run build --workspace @relay/credit-backend
 
 FROM node:22-alpine AS runtime
@@ -17,6 +20,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
+COPY --from=build /app/user-service/user-auth-jwt-verify ./user-service/user-auth-jwt-verify
 COPY --from=build /app/packages/credit-prisma ./packages/credit-prisma
 COPY --from=build /app/credit-service/backend/package.json ./credit-service/backend/
 COPY --from=build /app/credit-service/backend/dist ./credit-service/backend/dist

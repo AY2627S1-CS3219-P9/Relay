@@ -48,7 +48,7 @@ export function AccountPage({
 
   async function logout() {
     try {
-      const response = await fetch('/api/user/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       })

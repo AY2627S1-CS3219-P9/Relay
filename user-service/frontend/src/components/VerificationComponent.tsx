@@ -5,7 +5,7 @@ import type {
   ApiResult,
   ResendVerificationRequest,
   SubmitOtpAndLoginResponse,
-} from '@relay/contracts'
+} from '@relay/contracts/user-auth'
 
 export function VerificationComponent({
   email,
@@ -38,7 +38,7 @@ export function VerificationComponent({
     setLoading(true)
     setErrorMessage('')
 
-    const response = (await fetch('/api/user/auth/verification/confirm-and-login', {
+    const response = (await fetch('/api/auth/verification/confirm-and-login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +50,9 @@ export function VerificationComponent({
         setLoading(false)
         return
       }
-      await onVerified(response.data.user.profileCreated)
+      const profile = await fetch('/api/user/me', { credentials: 'include' })
+      if (!profile.ok && profile.status !== 404) { setErrorMessage('Unable to load your profile.'); setLoading(false); return }
+      await onVerified(profile.ok)
     } else {
       setErrorMessage(response.error.message)
     }
@@ -62,7 +64,7 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      const response = (await fetch('/api/user/auth/verification/resend', {
+      const response = (await fetch('/api/auth/verification/resend', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

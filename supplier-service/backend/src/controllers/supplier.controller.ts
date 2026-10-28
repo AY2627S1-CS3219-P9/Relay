@@ -5,7 +5,6 @@ import type {
   ServiceType,
   ValidateSupplierSelectionRequest,
 } from '@relay/contracts/supplier'
-import type { ApiResult, ValidateSessionResponse } from '@relay/contracts/user'
 import { getEnv } from '../config/env'
 import { SupplierService } from '../services/supplier.service'
 import { validateLocation, validateOperatingHours, validateServiceTypes } from '../validators/supplier.validator'
@@ -25,35 +24,9 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<global
   }
 }
 
-async function checkAuth(cookieHeader: string): Promise<{ role: 'super-admin' | 'admin' | 'user' } | null> {
-  if (!cookieHeader || cookieHeader.trim() === '') {
-    return null
-  }
-
-  try {
-    const env = getEnv()
-    const response = await fetchWithTimeout(`${env.userApiUrl}/internal/user/session/validate`, {
-      method: 'POST',
-      headers: {
-        Cookie: cookieHeader,
-        'x-user-service-token': env.userServiceInternalToken,
-      },
-    })
-
-    if (!response.ok) {
-      console.error(`checkAuth failed: ${response.status} ${response.statusText}`)
-      return null
-    }
-
-    const data = (await response.json()) as ApiResult<ValidateSessionResponse>
-    if (!data.ok || data.data.user.emailVerified !== true || data.data.user.profileCreated !== true) {
-      return null
-    }
-    return { role: data.data.user.role }
-  } catch (err) {
-    console.error('checkAuth network error:', err)
-    return null
-  }
+function checkAuth(req: Request): { role: 'super-admin' | 'admin' | 'user' } | null {
+  if (!req.user?.emailVerified) return null
+  return { role: req.user.role }
 }
 
 function parseFilters(query: Request['query']):
@@ -93,7 +66,7 @@ export class SupplierController {
 
   getAllSuppliers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authResult = await checkAuth(req.header('cookie') ?? '')
+      const authResult = await checkAuth(req)
       if (!authResult) {
         res
           .status(401)
@@ -148,7 +121,7 @@ export class SupplierController {
 
   getSupplierById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authResult = await checkAuth(req.header('cookie') ?? '')
+      const authResult = await checkAuth(req)
       if (!authResult) {
         res
           .status(401)
@@ -156,7 +129,7 @@ export class SupplierController {
         return
       }
 
-      const supplier = await this.service.getSupplierById(req.params.id)
+      const supplier = await this.service.getSupplierById((Array.isArray(req.params.id) ? req.params.id[0] : req.params.id))
       if (!supplier) {
         res.status(404).json({ code: SupplierErrors.NOT_FOUND, message: 'Supplier not found' })
         return
@@ -169,7 +142,7 @@ export class SupplierController {
 
   createSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authResult = await checkAuth(req.header('cookie') ?? '')
+      const authResult = await checkAuth(req)
       if (!authResult) {
         res
           .status(401)
@@ -239,7 +212,7 @@ export class SupplierController {
 
   updateSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authResult = await checkAuth(req.header('cookie') ?? '')
+      const authResult = await checkAuth(req)
       if (!authResult) {
         res
           .status(401)
@@ -253,7 +226,7 @@ export class SupplierController {
       }
 
       const { name, location, isOperational, operatingHours, serviceTypes } = req.body
-      const id = req.params.id
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
 
       const supplier = await this.service.updateSupplier(id, {
         name,
@@ -271,7 +244,7 @@ export class SupplierController {
 
   deleteSupplier = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authResult = await checkAuth(req.header('cookie') ?? '')
+      const authResult = await checkAuth(req)
       if (!authResult) {
         res
           .status(401)
@@ -284,7 +257,7 @@ export class SupplierController {
         return
       }
 
-      await this.service.deleteSupplier(req.params.id)
+      await this.service.deleteSupplier((Array.isArray(req.params.id) ? req.params.id[0] : req.params.id))
       res.status(204).send()
     } catch (error) {
       next(error)

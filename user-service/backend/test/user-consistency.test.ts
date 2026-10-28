@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { UserService } from '../src/services/user.service.js'
 import type { UserRepository } from '../src/repositories/user.repository.js'
-import type { SessionRepository } from '../src/repositories/session.repository.js'
 import type { ImageStorage } from '../src/storage/image-storage.js'
 import type { AuthenticatedUser } from '../src/types/user.types.js'
 
@@ -14,7 +13,7 @@ const admin: AuthenticatedUser = {
 }
 
 describe('account and profile consistency', () => {
-  it('lets the only normal admin delete their own account and revokes sessions first', async () => {
+  it('lets a normal admin delete their own account', async () => {
     const calls: string[] = []
     const service = new UserService(
       {
@@ -23,10 +22,9 @@ describe('account and profile consistency', () => {
       } as unknown as UserRepository,
       { delete: async () => { calls.push('image') } } as unknown as ImageStorage,
       { deleteAccount: async () => { calls.push('identity') } },
-      { revokeByCognitoSub: async () => { calls.push('sessions') } } as unknown as SessionRepository,
     )
-    await service.deleteUser(admin, 'Alice', 'access-token')
-    expect(calls).toEqual(['sessions', 'identity', 'profile', 'image'])
+    await service.deleteUser(admin, 'Alice')
+    expect(calls).toEqual(['identity', 'profile', 'image'])
   })
 
   it('protects the sole super admin account', async () => {
@@ -34,9 +32,8 @@ describe('account and profile consistency', () => {
       { findByCognitoSub: async () => profile } as unknown as UserRepository,
       {} as ImageStorage,
       { deleteAccount: async () => { throw new Error('must not delete') } },
-      {} as SessionRepository,
     )
-    await expect(service.deleteUser({ ...admin, role: 'super-admin' }, 'Alice', 'token'))
+    await expect(service.deleteUser({ ...admin, role: 'super-admin' }, 'Alice'))
       .rejects.toMatchObject({ code: 'FORBIDDEN', statusCode: 403 })
   })
 
@@ -53,7 +50,6 @@ describe('account and profile consistency', () => {
         url: (key: string) => key,
       } as unknown as ImageStorage,
       { deleteAccount: async () => {} },
-      {} as SessionRepository,
     )
     const result = await service.updateUser(admin, { profilePicture: 'data:image/png;base64,aGVsbG8=' })
     expect(result.profilePictureUrl).toBe('new-image')

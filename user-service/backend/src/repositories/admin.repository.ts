@@ -8,7 +8,6 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
 import { prisma } from './user.repository.js'
-import { SessionRepository } from './session.repository.js'
 
 export class AdminRepository {
   private readonly env = getEnv()
@@ -16,7 +15,6 @@ export class AdminRepository {
     region: this.env.awsRegion,
     endpoint: this.env.awsEndpointUrl,
   })
-  private readonly sessions = new SessionRepository()
 
   async listAdminIdentities(): Promise<UserType[]> {
     const users: UserType[] = []
@@ -70,22 +68,18 @@ export class AdminRepository {
   }
 
   async addAdmin(email: string, subject: string): Promise<void> {
-    await this.sessions.revokeByCognitoSub(subject)
     await this.client.send(new AdminAddUserToGroupCommand({
       UserPoolId: this.env.cognitoUserPoolId,
       Username: email,
       GroupName: this.env.cognitoAdminGroupName,
     }))
-    await this.sessions.revokeByCognitoSub(subject)
   }
 
   async removeAdmin(email: string, subject: string): Promise<void> {
-    await this.sessions.revokeByCognitoSub(subject)
     await this.client.send(new AdminRemoveUserFromGroupCommand({
       UserPoolId: this.env.cognitoUserPoolId,
       Username: email,
       GroupName: this.env.cognitoAdminGroupName,
     }))
-    await this.sessions.revokeByCognitoSub(subject)
   }
 }

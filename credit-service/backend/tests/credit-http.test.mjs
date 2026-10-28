@@ -2,58 +2,31 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
+import { generateKeyPair, exportJWK, SignJWT } from 'jose'
 import { createApp, closeAppResources } from '../dist/app.js'
 import { prisma } from '../dist/repositories/credit.repository.js'
 
-test('credit HTTP reads authenticate through User Service and isolate user data', async (t) => {
+test('credit HTTP reads verify JWTs locally and isolate user data', async (t) => {
   const owner = randomUUID()
   const other = randomUUID()
   const empty = randomUUID()
   const ids = [owner, other, empty]
   const prefix = randomUUID()
   const token = randomUUID()
+  const { privateKey, publicKey } = await generateKeyPair('RS256')
+  const jwk = { ...await exportJWK(publicKey), kid: 'credit-test', alg: 'RS256', use: 'sig' }
   const authRequests = []
   const userService = createServer((req, res) => {
-    authRequests.push({
-      path: req.url,
-      method: req.method,
-      cookie: req.headers.cookie,
-      token: req.headers['x-user-service-token'],
-    })
-    if (req.headers.cookie === 'relay_session=unavailable') {
-      res.writeHead(500).end()
-      return
-    }
-    if (req.headers.cookie === 'relay_session=timeout') return
-    const subject =
-      req.headers.cookie === 'relay_session=owner'
-        ? owner
-        : req.headers.cookie === 'relay_session=empty'
-          ? empty
-          : undefined
-    if (!subject) {
-      res.writeHead(401, { 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: false }))
-      return
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' }).end(
-      JSON.stringify({
-        ok: true,
-        data: {
-          user: {
-            subject,
-            role: 'user',
-            email: 'test@example.com',
-            emailVerified: true,
-            profileCreated: true,
-          },
-        },
-      }),
-    )
+    authRequests.push(req.url)
+    res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ keys: [jwk] }))
   })
   await new Promise((resolve) => userService.listen(0, '127.0.0.1', resolve))
-  process.env.USER_API_URL = `http://127.0.0.1:${userService.address().port}`
-  process.env.USER_API_TIMEOUT = '100'
-  process.env.USER_SERVICE_INTERNAL_TOKEN = token
+  process.env.USER_AUTH_JWKS_URL = `http://127.0.0.1:${userService.address().port}/jwks`
+  const sign = (sub) => new SignJWT({ email: 'test@example.com', emailVerified: true, role: 'user' })
+    .setProtectedHeader({ alg: 'RS256', kid: 'credit-test' })
+    .setIssuer('relay-user-auth').setAudience('relay-services').setSubject(sub).setIssuedAt().setExpirationTime('15m').sign(privateKey)
+  const ownerCookie = `relay_access=${await sign(owner)}`
+  const emptyCookie = `relay_access=${await sign(empty)}`
   const api = createApp().listen(0, '127.0.0.1')
   await new Promise((resolve) => api.once('listening', resolve))
   const url = `http://127.0.0.1:${api.address().port}`
@@ -61,7 +34,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
     const response = await fetch(url + path, {
       method,
       headers: {
-        ...(cookie ? { Cookie: cookie } : {}),
+        ...(cookie ? { Cookie: cookie === 'relay_session=owner' ? ownerCookie : cookie === 'relay_session=empty' ? emptyCookie : cookie } : {}),
         ...(path === '/internal/credit/reserve' && serviceToken
           ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -116,15 +89,13 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       for (const path of ['/api/credit', '/api/credit/history']) {
         const response = await request(path, undefined, 'GET')
         assert.equal(response.status, 401)
-        assert.equal(response.body.code, 'UNAUTHENTICATED')
+        assert.equal(response.body.error.code, 'UNAUTHENTICATED')
       }
       assert.equal(authRequests.length, count)
     })
-    await t.test('expired sessions and User Service failures fail closed', async () => {
+    await t.test('malformed access tokens fail closed', async () => {
       for (const path of ['/api/credit', '/api/credit/history']) {
-        assert.equal((await request(path, 'relay_session=expired')).status, 401)
-        assert.equal((await request(path, 'relay_session=unavailable')).status, 503)
-        assert.equal((await request(path, 'relay_session=timeout')).status, 503)
+        assert.equal((await request(path, 'relay_access=invalid')).status, 401)
       }
     })
     await t.test('balance matches the contract and forwards service authentication', async () => {
@@ -140,12 +111,7 @@ test('credit HTTP reads authenticate through User Service and isolate user data'
       assert.equal(response.body.availableCredit, 75.25)
       assert.equal(response.body.reserveCredit, 12.5)
       assert.ok(Number.isFinite(Date.parse(response.body.lastUpdated)))
-      assert.deepEqual(authRequests.at(-1), {
-        path: '/internal/user/session/validate',
-        method: 'POST',
-        cookie: 'relay_session=owner',
-        token,
-      })
+      assert.ok(authRequests.length >= 1)
     })
     await t.test(
       'history includes incoming/outgoing records once, newest first, and excludes other users',

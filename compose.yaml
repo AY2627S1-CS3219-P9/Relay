@@ -299,6 +299,9 @@ services:
       dockerfile: user-service/auth/Dockerfile
     expose:
       - '3000'
+    volumes:
+      - user-auth-keys:/var/lib/user-auth
+    command: ['sh', '-c', 'set -e; umask 077; test -f /var/lib/user-auth/private.pem || openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /var/lib/user-auth/private.pem; exec node user-service/auth/dist/server.js']
     environment:
       NODE_ENV: production
       PORT: '3000'
@@ -373,6 +376,7 @@ services:
       retries: 5
 
 volumes:
+  user-auth-keys:
   user-postgres-data:
   errand-postgres-data:
   credit-postgres-data:

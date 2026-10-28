@@ -2,7 +2,6 @@ import express, { type ErrorRequestHandler } from 'express'
 import { CreditRepository, prisma } from './repositories/credit.repository.js'
 import { CreditService } from './services/credit.service.js'
 import { CreditController } from './controllers/credit.controller.js'
-import { UserSessionService } from './services/user-session.service.js'
 import { createCreditRouter } from './routes/credit.routes.js'
 import { CreditServiceError } from './types/credit.types.js'
 import { getEnv } from './config/env.js'
@@ -10,7 +9,6 @@ import { timingSafeEqual } from 'node:crypto'
 
 export function createApp(
   repository = new CreditRepository(),
-  sessions = new UserSessionService(),
 ) {
   const app = express()
   app.use(express.json())
@@ -33,7 +31,7 @@ export function createApp(
     }
     next()
   }, controller.reserveCredit)
-  app.use('/api/credit', createCreditRouter(controller, sessions))
+  app.use('/api/credit', createCreditRouter(controller))
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof CreditServiceError) {
       res.status(error.statusCode).json({ code: error.code, message: error.message })

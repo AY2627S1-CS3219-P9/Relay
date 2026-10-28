@@ -22,9 +22,7 @@ export class AdminService {
       const subject = attributes.get('sub')
       const profile = subject ? bySubject.get(subject) : undefined
       const email = attributes.get('email')
-      if (!profile || !email) {
-        throw new UserServiceError('PROFILE_NOT_FOUND', 'An admin account has no complete Relay profile.', 404)
-      }
+      if (!profile || !email) return []
       return [{
         id: profile.id as UserId,
         email,

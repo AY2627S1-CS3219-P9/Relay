@@ -1,8 +1,10 @@
 import { Router } from 'express'
+import { userAuthMiddleware } from '@relay/user-auth-jwt-verify'
 import { SupplierController } from '../controllers/supplier.controller'
 
 export function createSupplierRouter(controller: SupplierController) {
   const router = Router()
+  router.use(userAuthMiddleware)
 
   // GET /api/supplier - Get all suppliers (authenticated users only)
   router.get('/', controller.getAllSuppliers)

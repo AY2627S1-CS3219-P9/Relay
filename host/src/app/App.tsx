@@ -17,6 +17,15 @@ import { Hub } from 'aws-amplify/utils'
 import { hostErrandApi } from './errandApi'
 import { hostSupplierApi } from './supplierApi'
 
+let activeRefresh: Promise<boolean> | undefined
+function refreshAccessToken(): Promise<boolean> {
+  activeRefresh ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => { activeRefresh = undefined })
+  return activeRefresh
+}
+
 function App() {
   /*
    * MFE lifecycle note:
@@ -64,6 +73,11 @@ function App() {
   const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
 
   useEffect(() => {
+    const timer = window.setInterval(() => { void refreshAccessToken() }, 12 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => setUserLocation({ lat: coords.latitude, lng: coords.longitude }),
@@ -87,38 +101,18 @@ function App() {
     })
   }
 
-  const fetchSession: FetchSessionHandler = async (options) => {
-    const response = await fetch('/api/user/session', {
-      credentials: 'include',
-      cache: options?.forceRefresh ? 'no-store' : 'default',
-    })
-    const body = (await response.json()) as {
-      ok?: boolean
-      data?: {
-        user: {
-          subject: string
-          email: string
-          emailVerified: boolean
-          profileCreated: boolean
-          role: 'super-admin' | 'admin' | 'user'
-        }
-      }
+  const fetchSession: FetchSessionHandler = async () => {
+    let response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
+    if (response.status === 401) {
+      if (await refreshAccessToken()) response = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
     }
-    if (!response.ok || !body.ok || !body.data) {
-      const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No active session.' }
-      throw error
-    }
+    if (!response.ok) throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
+    const body = await response.json() as { ok: boolean; data?: { user: { subject: string; email: string; emailVerified: boolean; role: 'super-admin' | 'admin' | 'user' } } }
+    if (!body.ok || !body.data?.user) throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
     const user = body.data.user
-    return {
-      token: '',
-      userData: {
-        id: user.subject,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        profileCreated: user.profileCreated,
-        isAdmin: user.role === 'admin' || user.role === 'super-admin',
-      },
-    }
+    const profile = await fetch('/api/user/me', { credentials: 'include', cache: 'no-store' })
+    if (!profile.ok && profile.status !== 404) throw new Error('Unable to determine profile state.')
+    return { token: '', userData: { id: user.subject, email: user.email, emailVerified: user.emailVerified, profileCreated: profile.ok, isAdmin: user.role === 'admin' || user.role === 'super-admin' } }
   }
 
   useEffect(() => {

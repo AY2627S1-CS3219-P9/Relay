@@ -112,7 +112,7 @@ export default function App({
   }
 
   async function finishLogout() {
-    await fetch('/api/user/auth/logout', { method: 'POST', credentials: 'include' })
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     await refreshUserProfile?.()
     setView('login')
     closeProfile?.()
