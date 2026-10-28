@@ -44,6 +44,12 @@ docker compose up -d
 docker compose down
 ```
 
+For AWS RDS, the supplier image includes the Amazon RDS CA bundle and the EKS
+deployment sets `DB_SSL_CA_PATH`. The API then requires TLS and verifies the
+database certificate and hostname. Local Compose leaves this setting unset for
+its local PostgreSQL container. `/healthz` checks the database connection;
+`/health` checks that the API process is running.
+
 ### Services
 
 | Service           | Port | Description                         |

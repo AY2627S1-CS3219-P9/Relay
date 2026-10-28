@@ -8,6 +8,7 @@ import { internalServiceAuth } from './middleware/internal-auth.middleware'
 import { getEnv } from './config/env'
 import { SupplierErrors } from '@relay/contracts/supplier'
 import { SupplierServiceError } from './types/supplier.types'
+import { query } from './db'
 
 const repository = new SupplierRepository()
 const service = new SupplierService(repository)
@@ -20,8 +21,13 @@ const env = getEnv()
 
 app.use(express.json())
 
-app.get('/healthz', (req, res) => {
-  res.json({ status: 'ok' })
+app.get('/healthz', async (_req, res) => {
+  try {
+    await query('SELECT 1')
+    res.json({ status: 'ok' })
+  } catch {
+    res.status(503).json({ status: 'unavailable' })
+  }
 })
 
 app.get('/health', (_req, res) => {
