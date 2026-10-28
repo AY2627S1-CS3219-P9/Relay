@@ -4,6 +4,8 @@ kind: Service
 metadata: { name: kafka, namespace: relay }
 spec:
   type: ClusterIP
+  # Kafka's advertised address must resolve while its readiness probe starts.
+  publishNotReadyAddresses: true
   selector: { app: kafka }
   ports: [{ name: kafka, port: 9092, targetPort: kafka }]
 ---
