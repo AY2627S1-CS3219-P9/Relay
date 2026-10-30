@@ -17,11 +17,15 @@ import { CreditServiceError } from '../types/credit.types.js'
 export class CreditService {
   constructor(private readonly repository: CreditRepository) {}
 
-  async findReservation(ref: Pick<TransactionReference, 'service' | 'id'>): Promise<{ userId: string; amount: number } | null> {
+  async findReservation(
+    ref: Pick<TransactionReference, 'service' | 'id'>,
+  ): Promise<{ userId: string; amount: number } | null> {
     return this.repository.findReservation(ref)
   }
 
-  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<UserCreditEventOutcome> {
+  async allocateInitialCredit(
+    command: AllocateInitialCreditCommand,
+  ): Promise<UserCreditEventOutcome> {
     return this.repository.allocateInitialCredit(command)
   }
 

@@ -1,11 +1,10 @@
 import { Router } from 'express'
 import { CreditController } from '../controllers/credit.controller.js'
-import { createSessionMiddleware } from '../middleware/session.middleware.js'
-import { UserSessionService } from '../services/user-session.service.js'
+import { creditAuthMiddleware } from '../middleware/session.middleware.js'
 
-export function createCreditRouter(controller: CreditController, sessions: UserSessionService) {
+export function createCreditRouter(controller: CreditController) {
   const router = Router()
-  router.get('/', createSessionMiddleware(sessions), controller.viewCredit)
-  router.get('/history', createSessionMiddleware(sessions), controller.viewCreditHistory)
+  router.get('/', creditAuthMiddleware, controller.viewCredit)
+  router.get('/history', creditAuthMiddleware, controller.viewCreditHistory)
   return router
 }

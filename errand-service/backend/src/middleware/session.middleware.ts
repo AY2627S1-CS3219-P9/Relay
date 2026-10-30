@@ -1,98 +1,17 @@
-import type { NextFunction, Request, RequestHandler, Response } from 'express'
-import { ApiResult, ErrandErrors, ValidateSessionResponse } from '@relay/contracts'
-import { getEnv } from '../config/env.js'
-import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.types.js'
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser
-    }
-  }
-}
-
-export const sessionMiddleware: RequestHandler = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const cookie = req.header('cookie')
-  if (!cookie) {
-    next(new ErrandServiceError(ErrandErrors.UNAUTHENTICATED, 'Authentication is required.', 401))
+import type { RequestHandler } from 'express'
+import { userAuthMiddleware, type AuthenticatedUser } from '@relay/user-auth-backend-middleware'
+import { ErrandErrors } from '@relay/contracts'
+import { ErrandServiceError } from '../types/errand.types.js'
+const requireVerifiedEmail: RequestHandler = (req, _res, next) => {
+  if (!req.user?.emailVerified) {
+    next(new ErrandServiceError(ErrandErrors.FORBIDDEN, 'A verified email is required.', 403))
     return
   }
-
-  const env = getEnv()
-
-  try {
-    const response = await fetch(`${env.userApiUrl}/internal/user/session/validate`, {
-      method: 'POST',
-      headers: {
-        cookie,
-        'x-user-service-token': env.userServiceInternalToken,
-      },
-      signal: AbortSignal.timeout(env.timeoutMs),
-    })
-
-    if (!response.ok) {
-      next(
-        new ErrandServiceError(
-          ErrandErrors.UNAUTHENTICATED,
-          'The session is invalid or expired.',
-          401,
-        ),
-      )
-      return
-    }
-
-    const body = (await response.json()) as ApiResult<ValidateSessionResponse>
-    const user = body.ok ? body.data.user : undefined
-    if (!body.ok || !user?.subject || !user.email) {
-      next(
-        new ErrandServiceError(
-          ErrandErrors.UNAUTHENTICATED,
-          'The session response is invalid.',
-          401,
-        ),
-      )
-      return
-    }
-
-    if (user.emailVerified !== true || user.profileCreated !== true) {
-      next(new ErrandServiceError(
-        ErrandErrors.FORBIDDEN,
-        user.emailVerified !== true
-          ? 'A verified email is required.'
-          : 'A user profile is required.',
-        403,
-      ))
-      return
-    }
-
-    req.user = {
-      sub: user.subject,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      role: user.role,
-      profileCreated: user.profileCreated,
-    }
-    next()
-  } catch (error) {
-    next(
-      new ErrandServiceError(
-        ErrandErrors.UNAUTHENTICATED,
-        error instanceof Error && error.name === 'TimeoutError'
-          ? 'User Service authentication timed out.'
-          : 'User Service authentication is unavailable.',
-        503,
-      ),
-    )
-  }
+  next()
 }
-
-export function requireUser(req: Request): AuthenticatedUser {
-  if (!req.user) {
+export const sessionMiddleware = [userAuthMiddleware, requireVerifiedEmail]
+export function requireUser(req: { user?: AuthenticatedUser }): AuthenticatedUser {
+  if (!req.user)
     throw new ErrandServiceError(ErrandErrors.UNAUTHENTICATED, 'Authentication is required.', 401)
-  }
   return req.user
 }

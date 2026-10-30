@@ -10,25 +10,14 @@ import {
 import { getEnv } from './config/env.js'
 import { LocalImageStorage } from './storage/local-image-storage.js'
 import { UserServiceError } from './types/user.types.js'
-import { SessionRepository } from './repositories/session.repository.js'
-import { SessionService } from './services/session.service.js'
-import { SessionController } from './controllers/session.controller.js'
-import { createAuthRouter } from './routes/auth.routes.js'
 import { internalServiceAuth } from './middleware/internal-auth.middleware.js'
-import { sessionMiddleware } from './middleware/session.middleware.js'
-import { createAdminRouter } from './routes/admin.routes.js'
-import { AdminController } from './controllers/admin.controller.js'
-import { AdminService } from './services/admin.service.js'
 
 const repository = new UserRepository()
 const imageStorage = new LocalImageStorage()
 const identityGateway =
   getEnv().authMode === 'cognito' ? new CognitoIdentityGateway() : new MockIdentityGateway()
-const sessionRepository = new SessionRepository()
-const userService = new UserService(repository, imageStorage, identityGateway, sessionRepository)
+const userService = new UserService(repository, imageStorage, identityGateway)
 const userController = new UserController(userService)
-const sessionService = new SessionService(sessionRepository, repository)
-const sessionController = new SessionController(sessionService)
 
 export const app = express()
 
@@ -44,14 +33,6 @@ app.get('/healthz', (_req, res) => {
 })
 
 app.use('/api/user', createUserRouter(userController))
-app.use('/api/user', createAuthRouter(sessionController))
-app.use('/api/user', createAdminRouter(new AdminController(new AdminService())))
-app.post(
-  '/internal/user/session/validate',
-  internalServiceAuth,
-  sessionMiddleware,
-  sessionController.validateInternalSession,
-)
 app.get('/internal/user/profile/:sub', internalServiceAuth, userController.getProfileBySubject)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {

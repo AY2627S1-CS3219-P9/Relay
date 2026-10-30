@@ -26,26 +26,21 @@ assert.equal(
 )
 
 async function main(): Promise<void> {
-  const service = new SupplierService(
-    {
-      findById: async (id: string) => (id === supplier.id ? supplier : null),
-    } as never,
-  )
+  const service = new SupplierService({
+    findById: async (id: string) => (id === supplier.id ? supplier : null),
+  } as never)
 
-  assert.deepEqual(
-    await service.validateSupplierSelection({ supplierId: supplier.id }),
-    { valid: true, supplierId: supplier.id },
-  )
+  assert.deepEqual(await service.validateSupplierSelection({ supplierId: supplier.id }), {
+    valid: true,
+    supplierId: supplier.id,
+  })
 
-  assert.deepEqual(
-    await service.validateSupplierSelection({ supplierId: 'missing' }),
-    {
-      valid: false,
-      supplierId: 'missing',
-      code: 'SUPPLIER_NOT_FOUND',
-      message: 'Supplier not found.',
-    },
-  )
+  assert.deepEqual(await service.validateSupplierSelection({ supplierId: 'missing' }), {
+    valid: false,
+    supplierId: 'missing',
+    code: 'SUPPLIER_NOT_FOUND',
+    message: 'Supplier not found.',
+  })
 
   console.log('supplier service checks passed')
 }

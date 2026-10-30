@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, Session, UpdateUserResponse } from '@relay/contracts'
 import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
@@ -26,7 +27,7 @@ export function ProfileSetupForm({
     setLoading(true)
     setErrorMessage('')
     try {
-      const response = (await fetch('/api/user/me', {
+      const response = (await authFetch('/api/user/me', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -45,14 +46,17 @@ export function ProfileSetupForm({
   }
 
   return (
-    <RelayFormSurface title="Set up your profile" description="Choose how other Relay users will see you.">
+    <RelayFormSurface
+      title="Set up your profile"
+      description="Choose how other Relay users will see you."
+    >
       <form onSubmit={submit}>
-      <UsernameField value={username} onChange={setUsername} />
-      <ImageUploadField value={picture} onChange={setPicture} />
-      <ErrorMessage message={errorMessage} />
-      <RelayButton variant="primary" type="submit" disabled={loading}>
-        {loading ? 'Saving profile…' : 'Finish setup'}
-      </RelayButton>
+        <UsernameField value={username} onChange={setUsername} />
+        <ImageUploadField value={picture} onChange={setPicture} />
+        <ErrorMessage message={errorMessage} />
+        <RelayButton variant="primary" type="submit" disabled={loading}>
+          {loading ? 'Saving profile…' : 'Finish setup'}
+        </RelayButton>
       </form>
     </RelayFormSurface>
   )

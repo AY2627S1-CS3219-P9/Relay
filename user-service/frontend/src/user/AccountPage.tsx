@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useEffect, useState } from 'react'
 import type { ApiResult, GetUserResponse, User } from '@relay/contracts'
 import { ErrorMessage } from '@relay/ui'
@@ -25,7 +26,7 @@ export function AccountPage({
 
   async function loadProfile() {
     try {
-      const response = (await fetch('/api/user/me', { credentials: 'include' }).then((result) =>
+      const response = (await authFetch('/api/user/me', { credentials: 'include' }).then((result) =>
         result.json(),
       )) as ApiResult<GetUserResponse>
       if (response.ok) {
@@ -48,7 +49,7 @@ export function AccountPage({
 
   async function logout() {
     try {
-      const response = await fetch('/api/user/auth/logout', {
+      const response = await authFetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       })
@@ -92,7 +93,9 @@ export function AccountPage({
               }}
             />
           )}
-          {page == 'change-password' && <ChangePasswordForm onBack={() => setPage('account')} onLoggedOut={onLoggedOut} />}
+          {page == 'change-password' && (
+            <ChangePasswordForm onBack={() => setPage('account')} onLoggedOut={onLoggedOut} />
+          )}
           {page == 'delete' && (
             <DeleteAccountForm
               onBack={() => setPage('account')}

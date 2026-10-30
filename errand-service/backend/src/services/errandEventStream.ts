@@ -11,9 +11,17 @@ export type ErrandEventSubscriber = 'requester' | 'courier'
 
 export class ErrandEventStream {
   // errandId -> Map<userId, { response, role: 'requester' | 'courier' }>
-  private subscribers: Map<string, Map<string, { response: ServerResponse; role: ErrandEventSubscriber }>> = new Map()
+  private subscribers: Map<
+    string,
+    Map<string, { response: ServerResponse; role: ErrandEventSubscriber }>
+  > = new Map()
 
-  subscribe(errandId: string, userId: string, res: ServerResponse, role: ErrandEventSubscriber): void {
+  subscribe(
+    errandId: string,
+    userId: string,
+    res: ServerResponse,
+    role: ErrandEventSubscriber,
+  ): void {
     if (!this.subscribers.has(errandId)) {
       this.subscribers.set(errandId, new Map())
     }
@@ -60,7 +68,9 @@ export class ErrandEventStream {
   /**
    * Get all subscribers for an errand
    */
-  getSubscribers(errandId: string): Map<string, { response: ServerResponse; role: ErrandEventSubscriber }> | undefined {
+  getSubscribers(
+    errandId: string,
+  ): Map<string, { response: ServerResponse; role: ErrandEventSubscriber }> | undefined {
     return this.subscribers.get(errandId)
   }
 }

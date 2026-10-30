@@ -1,53 +1,17 @@
 $kind: http-request
 method: GET
 url: http://localhost:4566/_aws/ses
-order: 3000
+order: 4000
 description: Fetch verification code from SES mock
 scripts:
   - type: afterResponse
     code: |-
-      pm.test('SES messages available', () => {
-        pm.response.to.have.status(200);
-      });
-
-      const json = pm.response.json();
-      const messages = json.messages || [];
-
-      // Get the latest requester code (last message at even index: 0, 2, 4, ...)
-      let latestRequesterCode = null;
-      for (let i = 0; i < messages.length; i += 2) {
-        const msg = messages[i];
-        if (msg.Body && msg.Body.text_part) {
-          const match = msg.Body.text_part.match(/\b(\d{6})\b/);
-          if (match) {
-            latestRequesterCode = match[1];
-          }
-        }
-      }
-
-      if (latestRequesterCode) {
-        pm.collectionVariables.set('requesterVerificationCode', latestRequesterCode);
-        pm.test('Latest requester verification code found', () => {
-          pm.expect(latestRequesterCode).to.exist;
-        });
-      }
-
-      // Get the latest courier code (last message at odd index: 1, 3, 5, ...)
-      let latestCourierCode = null;
-      for (let i = 1; i < messages.length; i += 2) {
-        const msg = messages[i];
-        if (msg.Body && msg.Body.text_part) {
-          const match = msg.Body.text_part.match(/\b(\d{6})\b/);
-          if (match) {
-            latestCourierCode = match[1];
-          }
-        }
-      }
-
-      if (latestCourierCode) {
-        pm.collectionVariables.set('courierVerificationCode', latestCourierCode);
-        pm.test('Latest courier verification code found', () => {
-          pm.expect(latestCourierCode).to.exist;
-        });
-      }
+      pm.test('SES messages available', () => pm.response.to.have.status(200));
+      const messages = pm.response.json().messages || [];
+      const email = pm.collectionVariables.get('requesterEmail').toLowerCase();
+      const matching = messages.filter(msg => JSON.stringify(msg).toLowerCase().includes(email));
+      const latest = matching[matching.length - 1];
+      const code = latest?.Body?.text_part?.match(/\b(\d{6})\b/)?.[1];
+      pm.test('Requester OTP for current run found', () => pm.expect(code, `No OTP for ${email}`).to.exist);
+      if (code) pm.collectionVariables.set('requesterVerificationCode', code);
     language: text/javascript

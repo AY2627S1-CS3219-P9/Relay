@@ -55,22 +55,23 @@ docker compose down
 
 ## API Endpoints
 
-| Endpoint                | Method | Auth   | Description                           |
-| ----------------------- | ------ | ------ | ------------------------------------- |
-| `/api/supplier`         | GET    | Public | List suppliers with optional filters  |
-| `/api/supplier/:id`     | GET    | Public | Get supplier by ID                    |
-| `/api/supplier`         | POST   | Admin  | Create supplier                       |
-| `/api/supplier/:id`     | PUT    | Admin  | Update supplier                       |
-| `/api/supplier/:id`     | DELETE | Admin  | Delete supplier                       |
+| Endpoint            | Method | Auth   | Description                          |
+| ------------------- | ------ | ------ | ------------------------------------ |
+| `/api/supplier`     | GET    | Public | List suppliers with optional filters |
+| `/api/supplier/:id` | GET    | Public | Get supplier by ID                   |
+| `/api/supplier`     | POST   | Admin  | Create supplier                      |
+| `/api/supplier/:id` | PUT    | Admin  | Update supplier                      |
+| `/api/supplier/:id` | DELETE | Admin  | Delete supplier                      |
 
 ### Query Parameters
 
-| Parameter      | Type             | Description                                            |
-| -------------- | ---------------- | ------------------------------------------------------ |
+| Parameter      | Type             | Description                                               |
+| -------------- | ---------------- | --------------------------------------------------------- |
 | `status`       | string           | Filter by status: `all`, `operational`, `not-operational` |
-| `serviceTypes` | array of numbers | Filter by service types (OR logic)                     |
+| `serviceTypes` | array of numbers | Filter by service types (OR logic)                        |
 
 Examples:
+
 - `/api/supplier?status=operational`
 - `/api/supplier?serviceTypes=[0,1]` (Food and Drink)
 - `/api/supplier?status=operational&serviceTypes=[0,2,3]`

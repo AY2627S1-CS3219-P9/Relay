@@ -47,62 +47,62 @@ export function ErrandFilterPanel({
       aria-label="Errand filters"
     >
       <div className="relay-mobile-toolbar-sheet-content">
-      <div className="errand-panel-header">
-        <div>
-          <p className="errand-eyebrow">FILTERS</p>
-          <h2>Find an errand</h2>
+        <div className="errand-panel-header">
+          <div>
+            <p className="errand-eyebrow">FILTERS</p>
+            <h2>Find an errand</h2>
+          </div>
+          <IconButton label="Close filters" onClick={onClose}>
+            ×
+          </IconButton>
         </div>
-        <IconButton label="Close filters" onClick={onClose}>
-          ×
-        </IconButton>
-      </div>
-      <fieldset>
-        <legend>Lifecycle</legend>
-        <div className="errand-chip-grid">
-          {statuses.map((status) => (
-            <button
-              className={`errand-filter-chip${filters.statuses.includes(status.value) ? ' selected' : ''}`}
-              key={status.value}
-              type="button"
-              onClick={() => toggleStatus(status.value)}
-            >
-              {status.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Service type</legend>
-        <div className="errand-chip-grid">
-          {Object.entries(SERVICE_TYPE_LABELS).map(([value, label]) => (
-            <button
-              className={`errand-filter-chip${filters.serviceTypes.includes(Number(value) as ServiceType) ? ' selected' : ''}`}
-              key={value}
-              type="button"
-              onClick={() => toggleServiceType(Number(value) as ServiceType)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <label className="errand-field">
-        <span>Sort by</span>
-        <select
-          value={filters.sort}
-          onChange={(event) =>
-            onChange({ ...filters, sort: event.target.value as ErrandFilters['sort'] })
-          }
-        >
-          <option value="lifecycle">Lifecycle</option>
-          <option value="start">Start time</option>
-          <option value="deadline">Deadline</option>
-          <option value="distance">Distance</option>
-        </select>
-      </label>
-      <RelayButton variant="primary" onClick={onClose}>
-        <FilterIcon className="errand-button-icon" /> Done
-      </RelayButton>
+        <fieldset>
+          <legend>Lifecycle</legend>
+          <div className="errand-chip-grid">
+            {statuses.map((status) => (
+              <button
+                className={`errand-filter-chip${filters.statuses.includes(status.value) ? ' selected' : ''}`}
+                key={status.value}
+                type="button"
+                onClick={() => toggleStatus(status.value)}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Service type</legend>
+          <div className="errand-chip-grid">
+            {Object.entries(SERVICE_TYPE_LABELS).map(([value, label]) => (
+              <button
+                className={`errand-filter-chip${filters.serviceTypes.includes(Number(value) as ServiceType) ? ' selected' : ''}`}
+                key={value}
+                type="button"
+                onClick={() => toggleServiceType(Number(value) as ServiceType)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <label className="errand-field">
+          <span>Sort by</span>
+          <select
+            value={filters.sort}
+            onChange={(event) =>
+              onChange({ ...filters, sort: event.target.value as ErrandFilters['sort'] })
+            }
+          >
+            <option value="lifecycle">Lifecycle</option>
+            <option value="start">Start time</option>
+            <option value="deadline">Deadline</option>
+            <option value="distance">Distance</option>
+          </select>
+        </label>
+        <RelayButton variant="primary" onClick={onClose}>
+          <FilterIcon className="errand-button-icon" /> Done
+        </RelayButton>
       </div>
     </aside>
   )

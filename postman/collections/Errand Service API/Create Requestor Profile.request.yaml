@@ -1,10 +1,10 @@
 $kind: http-request
 method: PATCH
 url: '{{baseUrl}}/api/user/me'
-order: 5000
+order: 6000
 headers:
   Content-Type: application/json
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 body:
   type: json
   content: |-
@@ -13,6 +13,13 @@ body:
       "profilePicture": null
     }
 scripts:
+  - type: beforeRequest
+    code: |-
+      const access=pm.collectionVariables.get('sessionCookie');
+      const id=pm.collectionVariables.get('idCookie');
+      if(!access||!id)throw new Error('Run the matching login request before this request.');
+      pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
+    language: text/javascript
   - type: afterResponse
     code: |-
       pm.test('Requester profile created', () => {

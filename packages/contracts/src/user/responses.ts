@@ -1,5 +1,5 @@
 import type { UserApiError } from './errors'
-import type { Session, User, UserProfileSummary } from './models'
+import type { User, UserProfileSummary } from './models'
 
 /** Successful User API result. */
 export type ApiSuccess<T> = {
@@ -21,20 +21,8 @@ export type ApiFailure = {
  */
 export type ApiResult<T> = ApiSuccess<T> | ApiFailure
 
-export type RegisterResponse = {
-  verificationRequired: true
-}
-
-export type LoginResponse = Session
-export type SubmitOtpAndLoginResponse = Session
-export type GetSessionResponse = Session
 export type GetUserResponse = User
 export type UpdateUserResponse = User
 
-/** Result returned by the private service-to-service session validator. */
-export type ValidateSessionResponse = Session
-
 /** Response from the private profile lookup used by backend services. */
 export type GetUserProfileBySubjectResponse = UserProfileSummary
-
-export type GetAdminsResponse = User[]

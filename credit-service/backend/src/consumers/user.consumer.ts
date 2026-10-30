@@ -7,7 +7,12 @@ import {
 } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
 import { CreditService } from '../services/credit.service.js'
-import { parseUserEvent, classifyUserEventError, rejectedUserEvent, validateUserCreditOutcome } from '../validators/user-event.validator.js'
+import {
+  parseUserEvent,
+  classifyUserEventError,
+  rejectedUserEvent,
+  validateUserCreditOutcome,
+} from '../validators/user-event.validator.js'
 
 export class UserEventConsumer {
   private readonly consumer: Consumer
@@ -16,7 +21,10 @@ export class UserEventConsumer {
   private readonly dlqTopic: string
   private stopping = false
 
-  constructor(private readonly creditService: CreditService, kafka: Kafka) {
+  constructor(
+    private readonly creditService: CreditService,
+    kafka: Kafka,
+  ) {
     const env = getEnv()
     this.topic = env.kafkaTopics.userEvents
     this.dlqTopic = env.kafkaTopics.userDlq
@@ -63,7 +71,9 @@ export class UserEventConsumer {
         topic: this.dlqTopic,
         messages: [{ key: failed.payload.cognitoSub, value: JSON.stringify(failed) }],
       })
-      console.warn(`Rejected ${failed.eventType} for ${failed.payload.cognitoSub}: ${rejection.code}`)
+      console.warn(
+        `Rejected ${failed.eventType} for ${failed.payload.cognitoSub}: ${rejection.code}`,
+      )
     }
   }
 
