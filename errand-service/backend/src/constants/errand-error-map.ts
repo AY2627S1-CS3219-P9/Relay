@@ -107,6 +107,11 @@ export const ERRAND_ERROR_MAP = {
     userMessage: 'Errand is already expired.',
     statusCode: 409,
   },
+  'ERRAND HAS EXPIRED': {
+    code: ErrandErrors.NOT_FOUND,
+    userMessage: 'Errand has expired and is no longer available.',
+    statusCode: 404,
+  },
 } as const
 
 export type ErrandErrorMap = typeof ERRAND_ERROR_MAP
