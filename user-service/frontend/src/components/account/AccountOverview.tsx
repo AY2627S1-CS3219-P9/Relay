@@ -25,7 +25,11 @@ export function AccountOverview({
         <RelayListItem title="Log out" onClick={onLoggedOut} />
         <RelayListItem title="Update profile" onClick={onUpdateProfile} />
         <RelayListItem title="Change password" onClick={onChangePassword} />
-        <RelayListItem title="Delete account" className="relay-list-item-danger" onClick={onDeleteAccount} />
+        <RelayListItem
+          title="Delete account"
+          className="relay-list-item-danger"
+          onClick={onDeleteAccount}
+        />
       </RelayList>
     </div>
   )

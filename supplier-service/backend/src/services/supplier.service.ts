@@ -8,7 +8,6 @@ import {
 import { SupplierRepository } from '../repositories/supplier.repository'
 import { isSupplierActive } from './supplier-availability'
 
-
 export class SupplierService {
   constructor(private readonly repository: SupplierRepository) {}
 
@@ -120,19 +119,14 @@ export class SupplierService {
     await this.repository.delete(id)
   }
 
-  async notifyErrandService(
-    supplierId: string,
-    updates: Partial<Supplier>
-  ): Promise<void> {
+  async notifyErrandService(supplierId: string, updates: Partial<Supplier>): Promise<void> {
     const ERRAND_API_URL = process.env.ERRAND_API_URL || 'http://errand-api:3000'
     const ERRAND_SERVICE_INTERNAL_TOKEN =
       process.env.ERRAND_SERVICE_INTERNAL_TOKEN || 'local-internal-errand-service-token'
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const response = await fetch(
-          `${ERRAND_API_URL}/internal/errands/supplier-events`,
-          {
+        const response = await fetch(`${ERRAND_API_URL}/internal/errands/supplier-events`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -146,22 +140,23 @@ export class SupplierService {
             isOperational: updates.isOperational,
             serviceTypes: updates.serviceTypes,
           }),
-          },
-        )
+        })
 
         if (response.ok) {
           console.log(`Successfully notified Errand Service for supplier ${supplierId}`)
           return
         }
 
-        console.error(`Errand notification attempt ${attempt} failed: ${response.status} ${response.statusText}`)
+        console.error(
+          `Errand notification attempt ${attempt} failed: ${response.status} ${response.statusText}`,
+        )
       } catch (err) {
         console.error(`Errand notification attempt ${attempt} network error:`, err)
       }
 
       if (attempt < 3) {
         const delay = 1000 * Math.pow(2, attempt - 1)
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
 

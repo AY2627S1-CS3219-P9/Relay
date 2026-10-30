@@ -1,5 +1,6 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
-import type { ApiResult, LoginResponse } from '@relay/contracts'
+import type { ApiResult, LoginResponse } from '@relay/contracts/user-auth'
 import { EmailField } from '../components/base-elements/EmailField'
 import { PasswordField } from '../components/base-elements/PasswordField'
 import { ErrorMessage, TextButton } from '@relay/ui'
@@ -31,7 +32,7 @@ export function LoginForm({
     setLoading(true)
     setErrorMessage('')
 
-    const response = (await fetch('/api/user/auth/login', {
+    const response = (await authFetch('/api/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -43,12 +44,13 @@ export function LoginForm({
         setLoading(false)
         return
       }
-      await onLoggedIn(
-        email,
-        password,
-        response.data.user.emailVerified,
-        response.data.user.profileCreated,
-      )
+      const profile = await authFetch('/api/user/me', { credentials: 'include' })
+      if (!profile.ok && profile.status !== 404) {
+        setErrorMessage('Unable to load your profile.')
+        setLoading(false)
+        return
+      }
+      await onLoggedIn(email, password, response.data.user.emailVerified, profile.ok)
     } else if (response.error.code === 'EMAIL_NOT_VERIFIED') {
       onVerificationRequired(email, password)
     } else {

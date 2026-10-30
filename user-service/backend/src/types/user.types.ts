@@ -24,12 +24,6 @@ export type ProfileUpdate = {
   profilePictureKey?: string | null
 }
 
-export type AuthenticatedSession = {
-  user: AuthenticatedUser
-  accessToken: string
-  sessionId: string
-}
-
 export type UserServiceErrorCode = UserApiError['code']
 
 export class UserServiceError extends Error {

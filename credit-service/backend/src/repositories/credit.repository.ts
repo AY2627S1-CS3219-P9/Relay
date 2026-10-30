@@ -74,14 +74,18 @@ export class CreditRepository {
     })
   }
 
-  async findReservation(ref: ReferenceIdentity): Promise<{ userId: string; amount: number } | null> {
+  async findReservation(
+    ref: ReferenceIdentity,
+  ): Promise<{ userId: string; amount: number } | null> {
     const record = await prisma.transactionRecord.findUnique({
       where: { reference: referenceWithType(ref, 'CREDIT_RESERVE') },
     })
     return record ? { userId: record.senderId, amount: record.amount.toNumber() } : null
   }
 
-  async allocateInitialCredit(command: AllocateInitialCreditCommand): Promise<UserCreditEventOutcome> {
+  async allocateInitialCredit(
+    command: AllocateInitialCreditCommand,
+  ): Promise<UserCreditEventOutcome> {
     const reference = referenceOf(command)
     if (
       command.transactionReference.type !== 'INITIAL_ALLOCATION' ||
@@ -90,7 +94,8 @@ export class CreditRepository {
       throw new Error('Invalid initial credit allocation command.')
     try {
       return await prisma.$transaction(async (tx) => {
-        if (await tx.transactionRecord.findUnique({ where: { reference } })) return 'duplicate' as const
+        if (await tx.transactionRecord.findUnique({ where: { reference } }))
+          return 'duplicate' as const
         // A delayed registration event must never recreate a deleted user's balance.
         if (
           await tx.transactionRecord.findUnique({
@@ -124,10 +129,7 @@ export class CreditRepository {
 
   async reserveCredit(request: ReserveCreditRequest): Promise<ReserveCreditResponse> {
     const reference = referenceOf(request)
-    if (
-      request.transactionReference.type !== 'CREDIT_RESERVE' ||
-      !request.userId
-    )
+    if (request.transactionReference.type !== 'CREDIT_RESERVE' || !request.userId)
       throw new CreditServiceError('INVALID_REQUEST', 'Invalid credit reservation reference.', 400)
     if (!Number.isFinite(request.amount) || request.amount < 0) {
       throw new CreditServiceError(
@@ -215,14 +217,15 @@ export class CreditRepository {
   }
 
   async closeUnreservedCredit(ref: TransactionReference, userId: string): Promise<void> {
-    if (!userId || ref.type !== 'CREDIT_RELEASE')
-      throw new Error('Invalid transaction reference.')
+    if (!userId || ref.type !== 'CREDIT_RELEASE') throw new Error('Invalid transaction reference.')
     const reserveReference = referenceWithType(ref, 'CREDIT_RESERVE')
     const releaseReference = referenceWithType(ref, 'CREDIT_RELEASE')
     const transferReference = referenceWithType(ref, 'CREDIT_TRANSFER')
     await prisma.$transaction(async (tx) => {
       await this.lockReference(tx, ref)
-      const reservation = await tx.transactionRecord.findUnique({ where: { reference: reserveReference } })
+      const reservation = await tx.transactionRecord.findUnique({
+        where: { reference: reserveReference },
+      })
       if (reservation && reservation.senderId !== userId)
         throw new Error('Reservation requester mismatch.')
       if (await tx.transactionRecord.findUnique({ where: { reference: transferReference } }))
@@ -231,12 +234,24 @@ export class CreditRepository {
 
       if (!reservation) {
         // Tombstone a failure that arrived before the HTTP reservation; no balance row is touched.
-        await tx.transactionRecord.createMany({ data: [
-          { reference: reserveReference, senderId: userId, receiverId: userId,
-            type: 'CREDIT_RESERVE', amount: 0 },
-          { reference: releaseReference, senderId: userId, receiverId: userId,
-            type: 'CREDIT_RELEASE', amount: 0 },
-        ] })
+        await tx.transactionRecord.createMany({
+          data: [
+            {
+              reference: reserveReference,
+              senderId: userId,
+              receiverId: userId,
+              type: 'CREDIT_RESERVE',
+              amount: 0,
+            },
+            {
+              reference: releaseReference,
+              senderId: userId,
+              receiverId: userId,
+              type: 'CREDIT_RELEASE',
+              amount: 0,
+            },
+          ],
+        })
         return
       }
 
@@ -246,19 +261,21 @@ export class CreditRepository {
         data: { reserveCredit: { decrement: amount }, availableCredit: { increment: amount } },
       })
       if (updated.count !== 1) throw new Error('Insufficient reserved credit for release.')
-      await tx.transactionRecord.create({ data: {
-        reference: releaseReference, senderId: userId, receiverId: userId,
-        type: 'CREDIT_RELEASE', amount,
-      } })
+      await tx.transactionRecord.create({
+        data: {
+          reference: releaseReference,
+          senderId: userId,
+          receiverId: userId,
+          type: 'CREDIT_RELEASE',
+          amount,
+        },
+      })
     })
   }
 
   async releaseCredit(command: ReleaseCreditCommand): Promise<void> {
     const reference = referenceOf(command)
-    if (
-      command.transactionReference.type !== 'CREDIT_RELEASE' ||
-      !command.userId
-    )
+    if (command.transactionReference.type !== 'CREDIT_RELEASE' || !command.userId)
       throw new Error('Invalid release credit command.')
     const amount = nonnegativeAmount(command.amount)
     await prisma.$transaction(async (tx) => {
@@ -349,7 +366,8 @@ export class CreditRepository {
       throw new Error('Invalid user deletion command.')
     try {
       return await prisma.$transaction(async (tx) => {
-        if (await tx.transactionRecord.findUnique({ where: { reference } })) return 'duplicate' as const
+        if (await tx.transactionRecord.findUnique({ where: { reference } }))
+          return 'duplicate' as const
         const balance = await tx.creditBalance.findUnique({ where: { userId: command.userId } })
         await tx.transactionRecord.create({
           data: {
@@ -369,7 +387,8 @@ export class CreditRepository {
       if (
         (error as { code?: string }).code === 'P2002' &&
         (await prisma.transactionRecord.findUnique({ where: { reference } }))
-      ) return 'duplicate'
+      )
+        return 'duplicate'
       throw error
     }
   }

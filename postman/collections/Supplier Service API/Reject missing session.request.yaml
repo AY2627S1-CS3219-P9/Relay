@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: '{{baseUrl}}/api/supplier'
+url: 'http://127.0.0.1:8080/api/supplier'
 order: 22000
 scripts:
   - type: afterResponse

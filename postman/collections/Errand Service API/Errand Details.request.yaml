@@ -3,8 +3,15 @@ method: GET
 url: '{{baseUrl}}/api/errands/{{errandId}}'
 order: 30000
 headers:
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 scripts:
+  - type: beforeRequest
+    code: |-
+      const access=pm.collectionVariables.get('sessionCookie');
+      const id=pm.collectionVariables.get('idCookie');
+      if(!access||!id)throw new Error('Run the matching login request before this request.');
+      pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
+    language: text/javascript
   - type: afterResponse
     code: |-
       pm.test('Errand details retrieved', () => {

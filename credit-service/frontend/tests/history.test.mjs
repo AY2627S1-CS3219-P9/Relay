@@ -14,19 +14,27 @@ const base = {
 test('transfer signs and colors follow the viewer, without changing the record', () => {
   const snapshot = structuredClone(base)
   assert.deepEqual(transactionDisplay(base, 'courier'), {
-    type: 'Incoming transfer', amount: '+12 cr', tone: 'incoming',
+    type: 'Incoming transfer',
+    amount: '+12 cr',
+    tone: 'incoming',
   })
   assert.deepEqual(transactionDisplay(base, 'requester'), {
-    type: 'Outgoing transfer', amount: '-12 cr', tone: 'outgoing',
+    type: 'Outgoing transfer',
+    amount: '-12 cr',
+    tone: 'outgoing',
   })
   assert.deepEqual(base, snapshot)
 })
 
 test('reserving and releasing credits use neutral colors and opposite signs', () => {
   assert.deepEqual(transactionDisplay({ ...base, type: 'CREDIT_RESERVE' }, 'requester'), {
-    type: 'Credit reserve', amount: '-12 cr', tone: 'neutral',
+    type: 'Credit reserve',
+    amount: '-12 cr',
+    tone: 'neutral',
   })
   assert.deepEqual(transactionDisplay({ ...base, type: 'CREDIT_RELEASE' }, 'requester'), {
-    type: 'Credit release', amount: '+12 cr', tone: 'neutral',
+    type: 'Credit release',
+    amount: '+12 cr',
+    tone: 'neutral',
   })
 })

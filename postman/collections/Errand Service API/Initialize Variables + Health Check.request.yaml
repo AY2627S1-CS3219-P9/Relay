@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/healthz"
+url: '{{baseUrl}}/healthz'
 order: 1000
 description: Initialize/clear variables before test run
 scripts:
@@ -15,7 +15,13 @@ scripts:
 
       // Clear session cookies
       pm.collectionVariables.set('sessionCookie', '');
+      pm.collectionVariables.set('idCookie', '');
+      pm.collectionVariables.set('refreshCookie', '');
       pm.collectionVariables.set('sessionCookieCourier', '');
+      pm.collectionVariables.set('idCookieCourier', '');
+      pm.collectionVariables.set('refreshCookieCourier', '');
+
+      pm.collectionVariables.unset('preCreateCreditAttempts');
 
       // Clear verification codes
       pm.collectionVariables.set('requesterVerificationCode', '');
@@ -37,11 +43,12 @@ scripts:
 
       // Init other variables
       pm.collectionVariables.set('baseUrl', 'http://localhost:8080');
-      pm.collectionVariables.set('requesterEmail', 'e1111111@u.nus.edu')
-      pm.collectionVariables.set('requesterUsername', 'requester')
+      const runId = Date.now() + Math.floor(Math.random() * 1000000);
+      pm.collectionVariables.set('requesterEmail', 'e' + runId + 'r@u.nus.edu')
+      pm.collectionVariables.set('requesterUsername', 'requester' + runId)
       pm.collectionVariables.set('requesterPassword', 'Test123%')
-      pm.collectionVariables.set('courierEmail', 'e2222222@u.nus.edu')
-      pm.collectionVariables.set('courierUsername', 'courier')
+      pm.collectionVariables.set('courierEmail', 'e' + runId + 'c@u.nus.edu')
+      pm.collectionVariables.set('courierUsername', 'courier' + runId)
       pm.collectionVariables.set('courierPassword', 'Test123%')
       pm.collectionVariables.set('expiresAt', '2028-12-31T12:00:00Z')
     language: text/javascript

@@ -15,7 +15,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 90ms ease-in, visibility 0s linear 90ms;
+  transition:
+    opacity 90ms ease-in,
+    visibility 0s linear 90ms;
 }
 
 .credit-balance-view {
@@ -36,7 +38,9 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 260ms ease-out 85ms, visibility 0s;
+  transition:
+    opacity 260ms ease-out 85ms,
+    visibility 0s;
 }
 
 .credit-history-screen .credit-balance-view,
@@ -158,9 +162,15 @@
 .credit-amount {
   font-weight: 700;
 }
-.credit-amount-incoming { color: var(--relay-green-dark); }
-.credit-amount-outgoing { color: var(--relay-red-dark); }
-.credit-amount-neutral { color: var(--relay-text-muted); }
+.credit-amount-incoming {
+  color: var(--relay-green-dark);
+}
+.credit-amount-outgoing {
+  color: var(--relay-red-dark);
+}
+.credit-amount-neutral {
+  color: var(--relay-text-muted);
+}
 
 .credit-history-pagination {
   display: flex;
@@ -178,7 +188,9 @@
 }
 
 @media (max-width: 500px) {
-  .credit-history-list { font-size: 0.78rem; }
+  .credit-history-list {
+    font-size: 0.78rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

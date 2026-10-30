@@ -6,9 +6,7 @@ export interface GetSuppliersResponse {
 }
 
 export type SupplierValidationFailureCode =
-  | 'SUPPLIER_NOT_FOUND'
-  | 'SUPPLIER_INACTIVE'
-  | 'SERVICE_TYPE_NOT_OFFERED'
+  'SUPPLIER_NOT_FOUND' | 'SUPPLIER_INACTIVE' | 'SERVICE_TYPE_NOT_OFFERED'
 
 export type ValidateSupplierSelectionResponse =
   | {

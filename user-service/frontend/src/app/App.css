@@ -352,7 +352,9 @@ body {
   border-radius: 28px;
   font-weight: 700;
 }
-.account-options-list .relay-list-item-danger > button { color: var(--relay-red); }
+.account-options-list .relay-list-item-danger > button {
+  color: var(--relay-red);
+}
 .glass-btn-red {
   min-height: 46px;
   border-radius: 12px;

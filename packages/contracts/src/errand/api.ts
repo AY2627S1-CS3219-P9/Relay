@@ -28,9 +28,7 @@ export interface ErrandApi {
   listOpenBySupplier(supplierId: string): Promise<ListOpenBySupplierResponse>
 
   /** List errands for a selected supplier in the authenticated user's view. */
-  getSupplierErrandView(
-    request: SupplierErrandViewRequest,
-  ): Promise<GetSupplierErrandViewResponse>
+  getSupplierErrandView(request: SupplierErrandViewRequest): Promise<GetSupplierErrandViewResponse>
   /** List all errands for a specific supplier (when viewing supplier details). */
   listBySupplier(supplierId: string): Promise<GetErrandsResponse>
 

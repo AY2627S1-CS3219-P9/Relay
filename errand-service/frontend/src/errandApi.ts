@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import type {
   CreateErrandRequest,
   CreateErrandResponse,
@@ -13,7 +14,11 @@ import type {
 const errandApiBaseUrl = import.meta.env.VITE_ERRAND_API_URL ?? '/api/errands'
 
 export class ErrandApiError extends Error {
-  constructor(message: string, public readonly status: number, public readonly fieldErrors?: Record<string, string>) {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly fieldErrors?: Record<string, string>,
+  ) {
     super(message)
     this.name = 'ErrandApiError'
   }
@@ -21,7 +26,7 @@ export class ErrandApiError extends Error {
 
 export function createHttpErrandApi(): ErrandApi {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${errandApiBaseUrl}${path}`, {
+    const response = await authFetch(`${errandApiBaseUrl}${path}`, {
       ...init,
       credentials: 'include',
       headers: {
@@ -34,7 +39,10 @@ export function createHttpErrandApi(): ErrandApi {
       let message = `Errand service request failed (${response.status}).`
       let fieldErrors: Record<string, string> | undefined
       try {
-        const body = (await response.json()) as { message?: string; fieldErrors?: Record<string, string> }
+        const body = (await response.json()) as {
+          message?: string
+          fieldErrors?: Record<string, string>
+        }
         if (body.message) message = body.message
         fieldErrors = body.fieldErrors
       } catch {
@@ -58,9 +66,13 @@ export function createHttpErrandApi(): ErrandApi {
       return request<GetErrandsResponse>(query)
     },
     getSupplierErrandView: (requestBody: SupplierErrandViewRequest) =>
-      request<GetSupplierErrandViewResponse>(`/suppliers/${encodeURIComponent(requestBody.supplierId)}/errands?scope=${requestBody.scope === 'explore' ? 'open' : 'all'}`),
+      request<GetSupplierErrandViewResponse>(
+        `/suppliers/${encodeURIComponent(requestBody.supplierId)}/errands?scope=${requestBody.scope === 'explore' ? 'open' : 'all'}`,
+      ),
     listOpenBySupplier: (supplierId: string) =>
-      request<GetErrandsResponse>(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=open`),
+      request<GetErrandsResponse>(
+        `/suppliers/${encodeURIComponent(supplierId)}/errands?scope=open`,
+      ),
     listBySupplier: (supplierId: string) =>
       request<GetErrandsResponse>(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=all`),
     getErrand: (id: string) => request<GetErrandResponse>(`/${encodeURIComponent(id)}`),

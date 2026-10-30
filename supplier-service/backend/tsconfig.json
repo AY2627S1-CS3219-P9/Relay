@@ -11,7 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@relay/contracts": ["../../packages/contracts/src/index.ts"],
-      "@relay/contracts/*": ["../../packages/contracts/src/*"]
+      "@relay/contracts/*": ["../../packages/contracts/src/*"],
+      "@relay/user-auth-backend-middleware": [
+        "../../packages/user-auth-backend-middleware/src/index.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts"],
