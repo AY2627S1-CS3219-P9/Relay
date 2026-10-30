@@ -192,38 +192,24 @@ export class ErrandService {
       }
     }
 
-    const allErrands = await this.repository.listBySupplier(event.supplierId)
-
-    // If supplier is no longer operational, mark open/accepted errands as DELETED
+    // If supplier is no longer operational, delete all open/accepted errands
     if (event.isOperational === false) {
-      const openAcceptedErrands = allErrands.filter(
-        (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
-      )
-      for (const errand of openAcceptedErrands) {
-        await this.repository.delete(errand.id, errand.requesterSub)
-      }
+      const result = await this.repository.deleteOpenOrAcceptedErrandsBySupplier(event.supplierId)
       return {
         processed: true,
-        affectedErrandIds: openAcceptedErrands.map((e) => e.id),
+        affectedErrandIds: result.deletedErrandIds,
       }
     }
 
-    // Otherwise, update errands with new supplier information
-    const affectedErrands = allErrands.filter(
-      (e) => e.status === ErrandStatus.Open || e.status === ErrandStatus.Accepted,
-    )
-    const affectedIds = affectedErrands.map((e) => e.id)
-
-    if (affectedIds.length === 0) {
-      return { processed: true, affectedErrandIds: [] }
-    }
-
-    await this.repository.updateErrandsBySupplier(event.supplierId, {
+    // Supplier is still operational - update open/accepted errands with new info
+    const updatedErrands = await this.repository.updateErrandsBySupplier(event.supplierId, {
       name: event.name,
       location: event.location,
+      operatingHours: event.operatingHours,
+      serviceTypes: event.serviceTypes,
     })
 
-    return { processed: true, affectedErrandIds: affectedIds }
+    return { processed: true, affectedErrandIds: updatedErrands.deletedErrandIds }
   }
 
   private async enrichCourierProfiles(errands: Errand[]): Promise<Errand[]> {
