@@ -1,11 +1,13 @@
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
+import secrets from 'k6/secrets'
 
 const baseUrl = (__ENV.BASE_URL ?? 'http://host.docker.internal:8080').replace(/\/$/, '')
 const email = __ENV.LOAD_TEST_USER_EMAIL
 const password = __ENV.LOAD_TEST_USER_PASSWORD
 const detailErrandId = __ENV.LOAD_TEST_ERRAND_ID
 const summaryPath = __ENV.K6_SUMMARY_PATH ?? 'load-tests/results/errand-browse-summary.json'
+const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 
 export const options = {
   vus: Number(__ENV.SMOKE_VUS ?? 1),
@@ -16,11 +18,17 @@ export const options = {
     'http_req_duration{endpoint:errands-visible}': ['p(95)<2000'],
     'http_req_duration{endpoint:errands-mine}': ['p(95)<2000'],
   },
+  ...(cloudProjectId > 0 ? { cloud: { projectID: cloudProjectId } } : {}),
 }
 
-function required(value, name) {
-  if (!value) fail(`${name} must be provided as a k6 environment variable.`)
-  return value
+async function requiredCredential(value, name) {
+  if (value) return value
+
+  try {
+    return await secrets.get(name)
+  } catch {
+    fail(`${name} must be set in the local environment or configured as a Grafana Cloud k6 secret.`)
+  }
 }
 
 function sessionHeaders(session) {
@@ -49,12 +57,12 @@ function listErrands(session, scope, endpoint) {
   return response
 }
 
-export function setup() {
+export async function setup() {
   const response = http.post(
     `${baseUrl}/api/auth/login`,
     JSON.stringify({
-      email: required(email, 'LOAD_TEST_USER_EMAIL'),
-      password: required(password, 'LOAD_TEST_USER_PASSWORD'),
+      email: await requiredCredential(email, 'loadtestuseremail'),
+      password: await requiredCredential(password, 'loadtestuserpassword'),
     }),
     {
       headers: { 'Content-Type': 'application/json' },
