@@ -59,12 +59,5 @@ export default defineConfig(() => {
       },
     },
     build: { target: 'esnext' },
-
-    // for AWS auth
-    define: {
-      'import.meta.env.AWS_ENDPOINT_URL': JSON.stringify(env.AWS_ENDPOINT_URL ?? ''),
-      'import.meta.env.COGNITO_CLIENT_ID': JSON.stringify(env.COGNITO_CLIENT_ID ?? ''),
-      'import.meta.env.COGNITO_USER_POOL_ID': JSON.stringify(env.COGNITO_USER_POOL_ID ?? ''),
-    },
   }
 })

@@ -33,6 +33,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
+    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
     "DatabaseEngineFamily=${DATABASE_ENGINE_FAMILY:-postgres17}"
 
 output() {
@@ -71,6 +72,7 @@ errand_frontend_image="$(build_and_push ErrandFrontendRepositoryUri errand-servi
 credit_frontend_image="$(build_and_push CreditFrontendRepositoryUri credit-service/frontend/Dockerfile)"
 supplier_api_image="$(build_and_push SupplierApiRepositoryUri supplier-service/backend/Dockerfile)"
 user_api_image="$(build_and_push UserApiRepositoryUri user-service/backend/Dockerfile)"
+user_auth_api_image="$(build_and_push UserAuthRepositoryUri user-service/auth/Dockerfile)"
 errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-service/backend/Dockerfile)"
 credit_api_image="$(build_and_push CreditApiRepositoryUri credit-service/backend/Dockerfile)"
 
@@ -139,6 +141,7 @@ sed \
   -e "s|IMAGE_CREDIT_FRONTEND|$credit_frontend_image|g" \
   -e "s|IMAGE_SUPPLIER_API|$supplier_api_image|g" \
   -e "s|IMAGE_USER_API|$user_api_image|g" \
+  -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   k8s/base/migrations.yaml > "$rendered"
@@ -153,10 +156,12 @@ sed \
   -e "s|IMAGE_CREDIT_FRONTEND|$credit_frontend_image|g" \
   -e "s|IMAGE_SUPPLIER_API|$supplier_api_image|g" \
   -e "s|IMAGE_USER_API|$user_api_image|g" \
+  -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   k8s/base/workloads.yaml | kubectl apply -f -
-kubectl apply -f k8s/base/autoscaling.yaml -f k8s/base/ingress.yaml
+kubectl apply -f k8s/base/autoscaling.yaml
+kubectl apply -f k8s/base/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do
   kubectl -n relay rollout status "$deployment" --timeout=10m
 done

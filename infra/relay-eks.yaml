@@ -25,6 +25,9 @@ Parameters:
     Default: postgres17
     Description: RDS PostgreSQL parameter group family for the database engine major version.
     AllowedPattern: '^postgres[0-9]+$'
+  CognitoUserPoolId:
+    Type: String
+    Description: Existing Cognito user pool in this account and Region.
   ProfileImageBucketName:
     Type: String
     Description: Existing private S3 bucket used for user profile images.
@@ -319,6 +322,38 @@ Resources:
       Namespace: relay
       ServiceAccount: user-api
       RoleArn: !GetAtt UserApiMskRole.Arn
+  UserAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: pods.eks.amazonaws.com }
+            Action: ['sts:AssumeRole', 'sts:TagSession']
+      Policies:
+        - PolicyName: CognitoAdministration
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminAddUserToGroup
+                  - cognito-idp:AdminRemoveUserFromGroup
+                  - cognito-idp:AdminUserGlobalSignOut
+                  - cognito-idp:ListUsersInGroup
+                Resource: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}'
+  UserAuthPodIdentity:
+    Type: AWS::EKS::PodIdentityAssociation
+    Properties:
+      ClusterName: !Ref EksCluster
+      Namespace: relay
+      ServiceAccount: user-auth-api
+      RoleArn: !GetAtt UserAuthRole.Arn
+  UserAuthRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/user-auth-api', ImageScanningConfiguration: { ScanOnPush: true } }
   HostRepository:
     Type: AWS::ECR::Repository
     Properties: { RepositoryName: !Sub '${ProjectName}/host', ImageScanningConfiguration: { ScanOnPush: true } }
@@ -358,6 +393,7 @@ Outputs:
   ErrandDatabaseSecretArn: { Value: !Ref ErrandDatabaseSecret }
   CreditDatabaseSecretArn: { Value: !Ref CreditDatabaseSecret }
   SupplierDatabaseSecretArn: { Value: !Ref SupplierDatabaseSecret }
+  UserAuthRepositoryUri: { Value: !GetAtt UserAuthRepository.RepositoryUri }
   HostRepositoryUri: { Value: !GetAtt HostRepository.RepositoryUri }
   SupplierFrontendRepositoryUri: { Value: !GetAtt SupplierFrontendRepository.RepositoryUri }
   UserFrontendRepositoryUri: { Value: !GetAtt UserFrontendRepository.RepositoryUri }

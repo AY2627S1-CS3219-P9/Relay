@@ -223,7 +223,7 @@ bash scripts/deploy-eks.sh "$STACK_NAME"
 
 Use `NO_CACHE=1 bash scripts/deploy-eks.sh "$STACK_NAME"` to rebuild without
 Docker's build cache. The script uses the selected profile and region, refreshes
-kubeconfig, builds and pushes nine images to ECR, prepares runtime configuration,
+kubeconfig, builds and pushes ten images to ECR, prepares runtime configuration,
 starts Kafka, and waits for topic initialization. It then runs separate Supplier
 SQL and User/Errand/Credit Prisma migration Jobs before applying application
 Deployments, autoscalers, and ingress. Rollout and migration waits use ten-minute
@@ -310,7 +310,7 @@ remote assets load, sign in, complete the profile, and exercise each API with a
 valid session. Verify profile-image loading through presigned S3 URLs. A 401
 response from an unauthenticated API does not prove its database operation works.
 
-### Routing and HTTPS
+### Routing and temporary HTTP access
 
 | Public path | Destination |
 | --- | --- |
@@ -318,6 +318,7 @@ response from an unauthenticated API does not prove its database operation works
 | `/remotes/user/*` | User frontend Service |
 | `/remotes/errand/*` | Errand frontend Service |
 | `/remotes/credit/*` | Credit frontend Service |
+| `/api/auth*` | Host Nginx, then User Auth Service on port 3000 |
 | `/api/user*`, `/api/supplier*`, `/api/errands*`, `/api/credit*` | Host Nginx, then the matching backend Service on port 3000 |
 | Remaining paths | Host frontend |
 
@@ -325,13 +326,20 @@ The ingress preserves remote prefixes; frontend Nginx configurations rewrite
 their prefixes before serving assets. The host also proxies remote routes using
 Kubernetes Service names, without workstation or Docker-host addresses.
 
-The current ingress serves HTTP on port 80. Domains, certificates, HTTPS
-listeners, HTTP redirects, and CloudFront are not provisioned. Direct ALB HTTPS
-requires a domain you control, DNS pointing to the ALB, an issued ACM certificate
-in the ALB region, port 443 access, and HTTPS ingress configuration. See
-[EKS Auto Mode ALB configuration](https://docs.aws.amazon.com/eks/latest/userguide/auto-configure-alb.html).
-When enabling HTTPS, set the User API's `SESSION_COOKIE_SECURE=true` and restart
-it; this setting currently defaults to false.
+The deployment currently serves HTTP on port 80 using the ALB hostname. No
+application domain or ACM certificate is required. The ingress has no hostname
+restriction, HTTPS listener, or HTTPS redirect. Open `http://<ALB_HOST>` after
+the deployment completes.
+
+The runtime ConfigMap and User Auth Deployment set `COOKIE_SECURE="false"` so
+login cookies work over HTTP. Use test accounts only: passwords and session
+cookies are unencrypted. When enabling HTTPS later, configure an ACM certificate
+and HTTPS listener/redirect, then set `COOKIE_SECURE="true"` in both places.
+Host Nginx preserves forwarded HTTPS headers for that future configuration.
+Local Compose continues to use its own cookie setting. CloudFormation creates an ECR
+repository and a dedicated Pod Identity role for `user-auth-api`, restricted to
+admin operations on the configured Cognito pool in the same account and Region.
+The script builds/pushes the auth image and deploys its Service and workload.
 
 ### Backend readiness and Supplier database TLS
 
