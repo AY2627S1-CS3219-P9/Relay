@@ -129,3 +129,19 @@ The bootstrap admin cannot be both actors: the lifecycle test requires different
 5. Query Supplier Service for an active supplier currently within its operating hours, then copy its ID and a listed service type into `.env.local`.
 
 The script creates unique errands and deletes them after confirmation by default; it does not delete the two reusable test accounts.
+
+The acceptance-race scenario additionally requires the second courier credentials as `loadtestcourierbemail` and `loadtestcourierbpassword` in Grafana Cloud Secrets.
+
+## Core create, race, and credit-guard scenarios
+
+Run the remaining core scenarios together with `errand-core-scenarios.js`:
+
+```powershell
+docker run --rm -i `
+  --env-file load-tests/.env.local `
+  -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json `
+  -v "${PWD}/load-tests:/scripts" `
+  grafana/k6 run /scripts/errand-core-scenarios.js
+```
+
+This requires a second courier account in `LOAD_TEST_COURIER_B_EMAIL` and `LOAD_TEST_COURIER_B_PASSWORD`. The acceptance race sends two parallel acceptance requests for the same errand and requires exactly one winner. The credit guard verifies non-negative balances, rejects an insufficient-credit creation, rejects duplicate confirmation, and waits up to 30 seconds for the single asynchronous transfer.
