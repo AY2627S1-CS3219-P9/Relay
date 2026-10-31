@@ -1,7 +1,7 @@
 import express, { type ErrorRequestHandler } from 'express'
 import { getEnv } from './config/env.js'
-import { EstimationServiceError, translateEstimationError } from './types/estimation.types.js'
-import { createEstimationRouter } from './routes/estimation.routes.js'
+import { translateEstimationError } from './types/estimation.types.js'
+import { createEstimationRouter, initializeAIClient } from './routes/estimation.routes.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 
 export function createApp() {
@@ -16,6 +16,10 @@ export function createApp() {
   app.get('/healthz', (_req, res) => {
     res.status(200).send('ok\n')
   })
+
+  // Initialize AI client once at startup
+  const env = getEnv()
+  initializeAIClient(env)
 
   // Internal routes only (authenticated via service token)
   app.use('/internal/estimation', internalServiceAuth)
@@ -38,8 +42,7 @@ export function createApp() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const app = createApp()
-  const env = getEnv()
-  const port = env.port
+  const port = getEnv().port
 
   app.listen(port, () => {
     console.log(`Credit estimation service listening on port ${port}`)

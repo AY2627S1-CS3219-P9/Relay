@@ -115,13 +115,21 @@ export function CreateErrandCard({
       }
 
       const data = await response.json()
+
+      // data.explanation is not displayed to the user, but it is logged for debugging purposes.
+      if (data.estimatedCredits === -1) {
+        setErrorMessage('Unable to estimate credits for the provided errand details.')
+        setEstimatedCredits(null)
+        return
+      }
+
       setEstimatedCredits(data.estimatedCredits)
       setForm((current) => ({
         ...current,
         creditAmount: String(data.estimatedCredits),
       }))
     } catch (error) {
-      setErrorMessage('Credit estimation service is unavailable. Please try again.')
+      setErrorMessage('Error encountered while estimating credits.')
     } finally {
       setIsEstimating(false)
     }
@@ -381,7 +389,7 @@ export function CreateErrandCard({
           />
         </label>
         <div className="errand-form-grid errand-reward-grid">
-          <div className="errand-field">
+          <div className="errand-field has-input-button">
             <span>Reward credits</span>
             <div className="errand-credit-input-wrapper">
               <input
@@ -403,6 +411,7 @@ export function CreateErrandCard({
                   form.serviceType === ''
                 }
                 title="Estimate credits based on errand details"
+                className="errand-estimate-button"
               >
                 <ClockIcon className="errand-estimate-icon" />
               </button>

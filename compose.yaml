@@ -410,11 +410,15 @@ services:
       PORT: '3005'
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
       ESTIMATION_SERVICE_TIMEOUT_MS: '5000'
-      AI_PROVIDER: 'openai'
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: 'gpt-3.5-turbo'
-      ESTIMATION_TIMEOUT_MS: '1500'
+      AI_PROVIDER: '${AI_PROVIDER:-}'
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: '${AI_MODEL:-}'
+      AI_ENDPOINT: '${AI_ENDPOINT:-}'
+      AI_TEMPERATURE: '${AI_TEMPERATURE:-}'
+      AI_MAX_TOKENS: '${AI_MAX_TOKENS:-}'
+      AI_ESTIMATION_TIMEOUT_MS: '${AI_ESTIMATION_TIMEOUT_MS:-}'
     depends_on:
       user-api:
         condition: service_healthy

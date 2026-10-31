@@ -1,19 +1,29 @@
 import type { EstimateCreditResponse } from '@relay/contracts'
 import { analyzeKeywords, generateExplanation } from '../utils/keyword-analyzer'
-import { AIClient } from '../clients/ai.client'
+import { getAIClient } from '../clients/ai.client'
 import { getBaselineForServiceType } from '../config/baselines'
 
 export async function estimateCredit(
   name: string,
   description: string,
   serviceType: number,
-  aiClient?: AIClient,
 ): Promise<EstimateCreditResponse> {
   const baseline = getBaselineForServiceType(serviceType)
+
+  const aiClient = getAIClient()
 
   try {
     if (aiClient) {
       const aiResult = await aiClient.estimateCredit(name, description, baseline)
+
+      // Return error response for invalid requests
+      if (aiResult.estimatedCredits === -1) {
+        return {
+          estimatedCredits: -1,
+          explanation: aiResult.explanation,
+        }
+      }
+
       return {
         estimatedCredits: aiResult.estimatedCredits,
         explanation: aiResult.explanation,

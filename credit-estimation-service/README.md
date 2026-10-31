@@ -4,7 +4,7 @@ A microservice for estimating credit values for errands based on their title and
 
 ## Features
 
-- AI-powered credit estimation using OpenAI
+- AI-powered credit estimation using configurable providers (any OpenAI-compatible API)
 - Keyword-based complexity analysis as fallback
 - Rate limiting (10 requests per minute per user)
 - Authentication via session validation
@@ -40,6 +40,8 @@ Estimate credits for an errand.
 
 ## Configuration
 
+The AI provider is configured entirely within the estimation service via environment variables. No changes needed in calling services.
+
 | Variable                        | Default                                 | Description                         |
 | ------------------------------- | --------------------------------------- | ----------------------------------- |
 | PORT                            | 3005                                    | Service port                        |
@@ -50,8 +52,26 @@ Estimate credits for an errand.
 | RATE_LIMIT_MAX                  | 10                                      | Max requests per window             |
 | RATE_LIMIT_WINDOW_MS            | 60000                                   | Window size in ms                   |
 | AI_PROVIDER                     | openai                                  | AI provider (openai)                |
-| OPENAI_API_KEY                  | -                                       | OpenAI API key (required)           |
-| ESTIMATION_TIMEOUT_MS           | 1500                                    | AI request timeout in ms            |
+| AI_API_KEY                      | -                                       | AI API key (required)               |
+| AI_MODEL                        | -                                       | AI model to use                     |
+| AI_ENDPOINT                     | -                                       | AI API endpoint                     |
+| AI_ESTIMATION_TIMEOUT_MS        | -                                       | AI request timeout in ms            |
+| AI_TEMPERATURE                  | 0                                       | AI temperature setting              |
+| AI_MAX_TOKENS                   | 1000                                    | Max tokens for AI response          |
+
+### Example Configuration
+
+OpenAI-Compatible API**
+
+```bash
+AI_PROVIDER=openai
+AI_API_KEY=your-api-key
+AI_ENDPOINT=https://your-custom-endpoint.com/v1/chat/completions
+AI_MODEL=your-model
+AI_ESTIMATION_TIMEOUT_MS=1500
+AI_TEMPERATURE=0
+AI_MAX_TOKENS=1000
+```
 
 ## Service Baselines
 
