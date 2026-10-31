@@ -1,3 +1,4 @@
+import { authFetch, refreshAccessToken } from '@relay/user-auth-frontend-fetch'
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties, Dispatch, SetStateAction } from 'react'
 import {
@@ -13,7 +14,6 @@ import {
 } from '@relay/contracts'
 import { RemotePage } from '../remote/RemotePage'
 import './App.css'
-import { Hub } from 'aws-amplify/utils'
 import { hostErrandApi } from './errandApi'
 import { hostSupplierApi } from './supplierApi'
 
@@ -56,12 +56,36 @@ function App() {
   }>({ version: 0, baseline: null })
   const [authenticatedSubject, setAuthenticatedSubject] = useState<string>()
   const [authVersion, setAuthVersion] = useState(0)
-  const creditBalance = storedCreditBalance?.userId === authenticatedSubject ? storedCreditBalance : null
+  const creditBalance =
+    storedCreditBalance?.userId === authenticatedSubject ? storedCreditBalance : null
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
   const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
   const [supplierMode, setSupplierMode] = useState<'explore' | 'requests' | 'my-errands'>('explore')
-  const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({ center: { lat: 1.2966, lng: 103.7764 }, zoom: 16 })
+  const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({
+    center: { lat: 1.2966, lng: 103.7764 },
+    zoom: 16,
+  })
+
+  useEffect(() => {
+    if (!authenticatedSubject) return
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible') void refreshAccessToken()
+    }
+    const timer = window.setInterval(
+      () => {
+        void refreshAccessToken()
+      },
+      12 * 60 * 1000,
+    )
+    window.addEventListener('focus', refreshOnReturn)
+    document.addEventListener('visibilitychange', refreshOnReturn)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshOnReturn)
+      document.removeEventListener('visibilitychange', refreshOnReturn)
+    }
+  }, [authenticatedSubject])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -87,35 +111,33 @@ function App() {
     })
   }
 
-  const fetchSession: FetchSessionHandler = async (options) => {
-    const response = await fetch('/api/user/session', {
-      credentials: 'include',
-      cache: options?.forceRefresh ? 'no-store' : 'default',
-    })
+  const fetchSession: FetchSessionHandler = async () => {
+    const response = await authFetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
+    if (!response.ok)
+      throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
     const body = (await response.json()) as {
-      ok?: boolean
+      ok: boolean
       data?: {
         user: {
           subject: string
           email: string
           emailVerified: boolean
-          profileCreated: boolean
           role: 'super-admin' | 'admin' | 'user'
         }
       }
     }
-    if (!response.ok || !body.ok || !body.data) {
-      const error: SessionError = { code: 'SESSION INVALIDATED', message: 'No active session.' }
-      throw error
-    }
+    if (!body.ok || !body.data?.user)
+      throw { code: 'SESSION INVALIDATED', message: 'No active session.' } satisfies SessionError
     const user = body.data.user
+    const profile = await authFetch('/api/user/me', { credentials: 'include', cache: 'no-store' })
+    if (!profile.ok && profile.status !== 404) throw new Error('Unable to determine profile state.')
     return {
       token: '',
       userData: {
         id: user.subject,
         email: user.email,
         emailVerified: user.emailVerified,
-        profileCreated: user.profileCreated,
+        profileCreated: profile.ok,
         isAdmin: user.role === 'admin' || user.role === 'super-admin',
       },
     }
@@ -131,7 +153,7 @@ function App() {
           if (!cancelled) setUserProfile(null)
           return
         }
-        const response = await fetch('/api/user/me', { credentials: 'include' })
+        const response = await authFetch('/api/user/me', { credentials: 'include' })
         if (cancelled) return
         if (response.ok) {
           const body = (await response.json()) as { ok?: boolean; data?: User }
@@ -146,20 +168,8 @@ function App() {
       }
     }
     void loadProfile()
-    const removeAuthListener = Hub.listen('auth', ({ payload }) => {
-      if (
-        payload.event === 'signedIn' ||
-        payload.event === 'signedOut' ||
-        payload.event === 'tokenRefresh'
-      ) {
-        if (payload.event === 'signedOut') setStoredCreditBalance(null)
-        setAuthVersion((version) => version + 1)
-        void loadProfile()
-      }
-    })
     return () => {
       cancelled = true
-      removeAuthListener()
     }
   }, [])
 
@@ -187,7 +197,7 @@ function App() {
     async function pollBalance() {
       attempts += 1
       try {
-        const response = await fetch('/api/credit', {
+        const response = await authFetch('/api/credit', {
           credentials: 'include',
           cache: 'no-store',
           signal: controller.signal,
@@ -195,7 +205,8 @@ function App() {
         if (!response.ok) throw new Error(`Credit balance request failed (${response.status}).`)
         const balance = (await response.json()) as CreditBalance
         if (cancelled) return
-        const unchanged = baseline &&
+        const unchanged =
+          baseline &&
           balance.availableCredit === baseline.availableCredit &&
           balance.reserveCredit === baseline.reserveCredit &&
           String(balance.lastUpdated) === String(baseline.lastUpdated)
@@ -212,7 +223,9 @@ function App() {
         console.error('Credit balance did not update after 20 attempts.', lastError)
         return
       }
-      retryTimer = setTimeout(() => { void pollBalance() }, 1000)
+      retryTimer = setTimeout(() => {
+        void pollBalance()
+      }, 1000)
     }
 
     void pollBalance()
@@ -231,7 +244,7 @@ function App() {
         setAuthVersion((version) => version + 1)
         return
       }
-      const response = await fetch('/api/user/me', { credentials: 'include' })
+      const response = await authFetch('/api/user/me', { credentials: 'include' })
       if (response.ok) {
         const body = (await response.json()) as { ok?: boolean; data?: User }
         if (body.ok && body.data) setUserProfile(body.data)
@@ -295,22 +308,28 @@ function App() {
     setCreditAnchor(undefined)
   }
 
-  const updateViewport = useCallback((
-    setViewport: Dispatch<SetStateAction<{ center: UserLocation; zoom: number }>>,
-    nextViewport: { center: UserLocation; zoom: number },
-  ) => {
-    setViewport((currentViewport) => (
-      currentViewport.zoom === nextViewport.zoom &&
-      currentViewport.center.lat === nextViewport.center.lat &&
-      currentViewport.center.lng === nextViewport.center.lng
-        ? currentViewport
-        : nextViewport
-    ))
-  }, [])
+  const updateViewport = useCallback(
+    (
+      setViewport: Dispatch<SetStateAction<{ center: UserLocation; zoom: number }>>,
+      nextViewport: { center: UserLocation; zoom: number },
+    ) => {
+      setViewport((currentViewport) =>
+        currentViewport.zoom === nextViewport.zoom &&
+        currentViewport.center.lat === nextViewport.center.lat &&
+        currentViewport.center.lng === nextViewport.center.lng
+          ? currentViewport
+          : nextViewport,
+      )
+    },
+    [],
+  )
 
-  const handleMarketplaceMapViewportChange = useCallback((nextViewport: { center: UserLocation; zoom: number }) => {
-    updateViewport(setMarketplaceMapViewport, nextViewport)
-  }, [updateViewport])
+  const handleMarketplaceMapViewportChange = useCallback(
+    (nextViewport: { center: UserLocation; zoom: number }) => {
+      updateViewport(setMarketplaceMapViewport, nextViewport)
+    },
+    [updateViewport],
+  )
 
   function closeProfile() {
     setProfileOpen(false)
@@ -358,8 +377,19 @@ function App() {
             key={id}
             service={id}
             serviceLabel={label}
-            visible={activeService === id || (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)}
-            bubbleAnchor={id === 'user' && profileOpen ? profileAnchor : id === 'credit' && creditOpen ? creditAnchor : undefined}
+            visible={
+              activeService === id ||
+              (id === 'user' && profileOpen) ||
+              (id === 'credit' && creditOpen) ||
+              (id === 'errand' && createErrandOnSupplierMap)
+            }
+            bubbleAnchor={
+              id === 'user' && profileOpen
+                ? profileAnchor
+                : id === 'credit' && creditOpen
+                  ? creditAnchor
+                  : undefined
+            }
             appProps={{
               fetchSession,
               authVersion,
@@ -384,26 +414,36 @@ function App() {
               requestUserLocation,
               supplierMode: id === 'supplier' ? supplierMode : undefined,
               mapViewport: marketplaceMapViewport,
-              onMapViewportChange: activeService === id
-                ? handleMarketplaceMapViewportChange
-                : undefined,
+              onMapViewportChange:
+                activeService === id ? handleMarketplaceMapViewportChange : undefined,
               mapActive: activeService === id,
               closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation: id === 'credit' ? undefined : id === 'user' && profileOpen
-                ? 'card'
-                : id === 'errand' && createErrandOnSupplierMap
-                  ? 'card'
-                  : 'full',
+              presentation:
+                id === 'credit'
+                  ? undefined
+                  : id === 'user' && profileOpen
+                    ? 'card'
+                    : id === 'errand' && createErrandOnSupplierMap
+                      ? 'card'
+                      : 'full',
             }}
             overlay={
-              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen) || (id === 'errand' && createErrandOnSupplierMap)
+              (id === 'user' && profileOpen) ||
+              (id === 'credit' && creditOpen) ||
+              (id === 'errand' && createErrandOnSupplierMap)
             }
-            overlayClassName={id === 'errand' && createErrandOnSupplierMap ? 'errand-create-overlay-page' : undefined}
-            card={
-              (id === 'user' && profileOpen) || (id === 'credit' && creditOpen)
+            overlayClassName={
+              id === 'errand' && createErrandOnSupplierMap
+                ? 'errand-create-overlay-page'
+                : undefined
             }
+            card={(id === 'user' && profileOpen) || (id === 'credit' && creditOpen)}
             cardStyle={
-              id === 'user' && profileOpen ? profileCardStyle() : id === 'credit' && creditOpen ? creditCardStyle() : undefined
+              id === 'user' && profileOpen
+                ? profileCardStyle()
+                : id === 'credit' && creditOpen
+                  ? creditCardStyle()
+                  : undefined
             }
           />
         ))}

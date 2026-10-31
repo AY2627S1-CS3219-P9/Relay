@@ -4,14 +4,21 @@ url: '{{baseUrl}}/api/supplier/{{supplierId}}'
 order: 19000
 headers:
   Content-Type: application/json
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 body:
   type: json
   content: |-
     {
-      "name": "Postman Test Supplier Updated"
+      "name": "{{supplierUpdatedName}}"
     }
 scripts:
+  - type: beforeRequest
+    code: |-
+      const access=pm.collectionVariables.get('sessionCookie');
+      const id=pm.collectionVariables.get('idCookie');
+      if(!access||!id)throw new Error('Run the matching login request before this request.');
+      pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
+    language: text/javascript
   - type: afterResponse
     code: |-
       const json = pm.response.json();
@@ -22,7 +29,7 @@ scripts:
 
       if (json.supplier) {
         pm.test('Supplier name is updated', () => {
-          pm.expect(json.supplier.name).to.eql('Postman Test Supplier Updated');
+          pm.expect(json.supplier.name).to.eql(pm.collectionVariables.get('supplierUpdatedName'));
         });
       }
     language: text/javascript

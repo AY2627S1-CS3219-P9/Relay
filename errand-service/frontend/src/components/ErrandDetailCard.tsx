@@ -100,7 +100,10 @@ export function ErrandDetailCard({
 
       <div className="errand-info-card">
         <span className="route-label">
-          {SERVICE_TYPE_LABELS[errand.supplierDetails.serviceType as keyof typeof SERVICE_TYPE_LABELS]?.toUpperCase()} · INSTRUCTIONS
+          {SERVICE_TYPE_LABELS[
+            errand.supplierDetails.serviceType as keyof typeof SERVICE_TYPE_LABELS
+          ]?.toUpperCase()}{' '}
+          · INSTRUCTIONS
         </span>
         <p>{errand.deliveryDetails.description}</p>
         <small>{errand.deliveryDetails.instructions}</small>

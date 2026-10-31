@@ -6,19 +6,8 @@ export type UserServiceEnv = {
   awsEndpointUrl: string
   awsRegion: string
   authMode: 'mock' | 'cognito'
-  cognitoIssuer: string
-  cognitoClientId: string
-  cognitoJwksUri: string
   cognitoUserPoolId: string
-  cognitoAdminGroupName: string
-  cognitoSuperAdminGroupName: string
-  sessionCookieName: string
-  sessionTtlSeconds: number
-  sessionCookieSecure: boolean
   internalServiceToken: string
-  mockJwtSecret: string
-  mockJwtIssuer: string
-  mockJwtAudience: string
   s3Endpoint: string
   s3PublicEndpoint: string
   s3Region: string
@@ -46,10 +35,6 @@ export function getEnv(): UserServiceEnv {
   if (authMode !== 'mock' && authMode !== 'cognito') {
     throw new Error('AUTH_MODE must be mock or cognito')
   }
-  const sessionTtlSeconds = Number(process.env.SESSION_TTL_SECONDS ?? '86400')
-  if (!Number.isSafeInteger(sessionTtlSeconds) || sessionTtlSeconds < 1) {
-    throw new Error('SESSION_TTL_SECONDS must be a positive integer')
-  }
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -57,25 +42,11 @@ export function getEnv(): UserServiceEnv {
     awsEndpointUrl: process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
     awsRegion: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
     authMode,
-    cognitoIssuer: required('COGNITO_ISSUER', 'http://localhost:4566/us-east-1_test'),
-    cognitoClientId: required('COGNITO_CLIENT_ID', 'test'),
-    cognitoJwksUri: required(
-      'COGNITO_JWKS_URI',
-      'http://localhost:4566/us-east-1_test/.well-known/jwks.json',
-    ),
     cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),
-    cognitoAdminGroupName: required('COGNITO_ADMIN_GROUP_NAME', 'AdminGroup'),
-    cognitoSuperAdminGroupName: required('COGNITO_SUPERADMIN_GROUP_NAME', 'SuperAdminGroup'),
-    sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'relay_session',
-    sessionTtlSeconds,
-    sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? 'false') === 'true',
     internalServiceToken: required(
       'INTERNAL_USER_SERVICE_TOKEN',
       'local-internal-user-service-token',
     ),
-    mockJwtSecret: required('MOCK_JWT_SECRET', 'local-development-only-secret'),
-    mockJwtIssuer: required('MOCK_JWT_ISSUER', 'relay-user-service'),
-    mockJwtAudience: required('MOCK_JWT_AUDIENCE', 'relay-user-frontend'),
     s3Endpoint: required('S3_ENDPOINT', 'http://localhost:4566'),
     s3PublicEndpoint: required(
       'S3_PUBLIC_ENDPOINT',

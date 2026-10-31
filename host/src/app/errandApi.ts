@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import type { ErrandApi } from '@relay/contracts'
 
 const baseUrl = '/api/errands'
@@ -14,23 +15,41 @@ export const hostErrandApi: ErrandApi = {
     return request(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=open`)
   },
   async getSupplierErrandView(options) {
-    return request(`/suppliers/${encodeURIComponent(options.supplierId)}/errands?scope=${options.scope === 'explore' ? 'open' : 'all'}`)
+    return request(
+      `/suppliers/${encodeURIComponent(options.supplierId)}/errands?scope=${options.scope === 'explore' ? 'open' : 'all'}`,
+    )
   },
   async listBySupplier(supplierId) {
     return request(`/suppliers/${encodeURIComponent(supplierId)}/errands?scope=all`)
   },
-  async getErrand(id) { return request(`/${encodeURIComponent(id)}`) },
-  async acceptErrand(id) { return request(`/${encodeURIComponent(id)}/accept`, { method: 'POST' }) },
-  async pickupErrand(id) { return request(`/${encodeURIComponent(id)}/pickup`, { method: 'POST' }) },
-  async deliverErrand(id) { return request(`/${encodeURIComponent(id)}/deliver`, { method: 'POST' }) },
-  async confirmErrand(id) { return request(`/${encodeURIComponent(id)}/confirm`, { method: 'POST' }) },
-  async cancelErrand(id) { return request(`/${encodeURIComponent(id)}/cancel`, { method: 'POST' }) },
-  async dropErrand(id) { return request(`/${encodeURIComponent(id)}/drop`, { method: 'POST' }) },
-  async deleteErrand(id) { return request(`/${encodeURIComponent(id)}`, { method: 'DELETE' }) },
+  async getErrand(id) {
+    return request(`/${encodeURIComponent(id)}`)
+  },
+  async acceptErrand(id) {
+    return request(`/${encodeURIComponent(id)}/accept`, { method: 'POST' })
+  },
+  async pickupErrand(id) {
+    return request(`/${encodeURIComponent(id)}/pickup`, { method: 'POST' })
+  },
+  async deliverErrand(id) {
+    return request(`/${encodeURIComponent(id)}/deliver`, { method: 'POST' })
+  },
+  async confirmErrand(id) {
+    return request(`/${encodeURIComponent(id)}/confirm`, { method: 'POST' })
+  },
+  async cancelErrand(id) {
+    return request(`/${encodeURIComponent(id)}/cancel`, { method: 'POST' })
+  },
+  async dropErrand(id) {
+    return request(`/${encodeURIComponent(id)}/drop`, { method: 'POST' })
+  },
+  async deleteErrand(id) {
+    return request(`/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  },
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await authFetch(`${baseUrl}${path}`, {
     ...init,
     credentials: 'include',
     headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
@@ -39,10 +58,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let message = `Errand service request failed (${response.status}).`
     let fieldErrors: Record<string, string> | undefined
     try {
-      const body = (await response.json()) as { message?: string; fieldErrors?: Record<string, string> }
+      const body = (await response.json()) as {
+        message?: string
+        fieldErrors?: Record<string, string>
+      }
       message = body.message ?? message
       fieldErrors = body.fieldErrors
-    } catch { /* status message */ }
+    } catch {
+      /* status message */
+    }
     const error = new Error(message) as Error & { fieldErrors?: Record<string, string> }
     error.fieldErrors = fieldErrors
     throw error

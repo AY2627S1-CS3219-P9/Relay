@@ -11,6 +11,8 @@ import { CreditRepository } from './repositories/credit.repository.js'
 
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
+
+// AWS Deployment requirement
 const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
   ? {
       ssl: true,
@@ -24,7 +26,7 @@ const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
           return { value: token }
         },
       },
-    }
+  }
   : process.env.KAFKA_AUTH_MODE === 'plain'
     ? {
         sasl: {
@@ -37,9 +39,14 @@ const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
 if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
   throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
 }
+
 const kafka = new Kafka({
-  clientId: 'credit-service', brokers: env.kafkaBrokers, logLevel: logLevel.ERROR, ...kafkaAuth,
+  clientId: 'credit-service', 
+  brokers: env.kafkaBrokers, 
+  logLevel: logLevel.ERROR, 
+  ...kafkaAuth,
 })
+
 const errandConsumer = new ErrandEventConsumer(creditService, kafka)
 const userConsumer = new UserEventConsumer(creditService, kafka)
 let server: Server | undefined

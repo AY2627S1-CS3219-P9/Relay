@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, UpdateUserResponse, User } from '@relay/contracts'
 import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
@@ -30,7 +31,7 @@ export function UpdateProfileForm({
     setSaving(true)
     setError('')
     try {
-      const response = (await fetch('/api/user/me', {
+      const response = (await authFetch('/api/user/me', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -47,14 +48,18 @@ export function UpdateProfileForm({
   }
 
   return (
-    <RelayFormSurface className="account-section account-profile-section" title="Update profile details" onClose={onBack}>
+    <RelayFormSurface
+      className="account-section account-profile-section"
+      title="Update profile details"
+      onClose={onBack}
+    >
       <form onSubmit={submit}>
-      <UsernameField value={username} onChange={setUsername} />
-      <ImageUploadField value={picture} onChange={setPicture} />
-      <ErrorMessage message={error} />
-      <RelayButton variant="primary" type="submit" disabled={saving}>
-        {saving ? 'Saving…' : 'Save profile'}
-      </RelayButton>
+        <UsernameField value={username} onChange={setUsername} />
+        <ImageUploadField value={picture} onChange={setPicture} />
+        <ErrorMessage message={error} />
+        <RelayButton variant="primary" type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save profile'}
+        </RelayButton>
       </form>
     </RelayFormSurface>
   )

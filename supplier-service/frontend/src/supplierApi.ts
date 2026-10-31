@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { SupplierErrors } from '@relay/contracts'
 import type {
   CreateSupplierRequest,
@@ -26,7 +27,7 @@ export class SupplierApiError extends Error {
 
 export function createHttpSupplierApi(): SupplierApi {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${supplierApiBaseUrl}${path}`, {
+    const response = await authFetch(`${supplierApiBaseUrl}${path}`, {
       ...init,
       credentials: 'include',
       headers: {

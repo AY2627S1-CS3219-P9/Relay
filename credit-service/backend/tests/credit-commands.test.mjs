@@ -13,10 +13,13 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
   const userRef = (id, type) => ({ service: 'user', id, type })
   const errandRef = (id, type) => ({ service: 'errand', id, type })
   try {
-    assert.equal(await repository.allocateInitialCredit({
-      transactionReference: userRef(requester, 'INITIAL_ALLOCATION'),
-      userId: requester,
-    }), 'processed')
+    assert.equal(
+      await repository.allocateInitialCredit({
+        transactionReference: userRef(requester, 'INITIAL_ALLOCATION'),
+        userId: requester,
+      }),
+      'processed',
+    )
     await repository.allocateInitialCredit({
       transactionReference: userRef(courier, 'INITIAL_ALLOCATION'),
       userId: courier,
@@ -77,17 +80,28 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
     assert.equal(await repository.deleteUserCredit(deletion), 'processed')
     assert.equal(await repository.deleteUserCredit(deletion), 'duplicate')
     assert.equal(await repository.findBalance(requester), null)
-    assert.equal(await repository.allocateInitialCredit({
-      transactionReference: userRef(requester, 'INITIAL_ALLOCATION'),
-      userId: requester,
-    }), 'duplicate')
+    assert.equal(
+      await repository.allocateInitialCredit({
+        transactionReference: userRef(requester, 'INITIAL_ALLOCATION'),
+        userId: requester,
+      }),
+      'duplicate',
+    )
     assert.equal(await repository.findBalance(requester), null)
-    assert.equal(await repository.deleteUserCredit({
-      transactionReference: userRef(lateUser, 'USER_DELETION'), userId: lateUser,
-    }), 'processed')
-    assert.equal(await repository.allocateInitialCredit({
-      transactionReference: userRef(lateUser, 'INITIAL_ALLOCATION'), userId: lateUser,
-    }), 'out-of-order')
+    assert.equal(
+      await repository.deleteUserCredit({
+        transactionReference: userRef(lateUser, 'USER_DELETION'),
+        userId: lateUser,
+      }),
+      'processed',
+    )
+    assert.equal(
+      await repository.allocateInitialCredit({
+        transactionReference: userRef(lateUser, 'INITIAL_ALLOCATION'),
+        userId: lateUser,
+      }),
+      'out-of-order',
+    )
     const history = await repository.findHistory(requester)
     assert.equal(history.filter((record) => record.type === 'CREDIT_RESERVE').length, 2)
     assert.equal(history.filter((record) => record.type === 'CREDIT_RELEASE').length, 1)
@@ -103,7 +117,9 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
         ],
       },
     })
-    await prisma.creditBalance.deleteMany({ where: { userId: { in: [requester, courier, lateUser] } } })
+    await prisma.creditBalance.deleteMany({
+      where: { userId: { in: [requester, courier, lateUser] } },
+    })
     await prisma.$disconnect()
   }
 })

@@ -1,12 +1,11 @@
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+export default defineConfig(() => {
   return {
     plugins: [tailwindcss(), react(), babel({ presets: [reactCompilerPreset()] })],
     // Mirror the production Nginx routes while developing. Keeping the host's
@@ -17,6 +16,10 @@ export default defineConfig(({ mode }) => {
         // Keep browser requests same-origin during local development. The
         // backend services use separate host ports because both default to
         // port 3000 inside their Docker containers.
+        '/api/auth': {
+          target: 'http://localhost:3004',
+          changeOrigin: false,
+        },
         '/api/user': {
           target: 'http://localhost:3001',
           changeOrigin: true,
@@ -56,6 +59,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: { target: 'esnext' },
+
+    // for AWS auth
     define: {
       'import.meta.env.AWS_ENDPOINT_URL': JSON.stringify(env.AWS_ENDPOINT_URL ?? ''),
       'import.meta.env.COGNITO_CLIENT_ID': JSON.stringify(env.COGNITO_CLIENT_ID ?? ''),

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
+import { createCognitoFixture } from '../../../packages/user-auth-backend-middleware/tests/cognito-token-fixture.mjs'
 import { Kafka } from 'kafkajs'
 import { createApp, closeAppResources } from '../dist/app.js'
 import { prisma } from '../dist/repositories/credit.repository.js'
@@ -39,23 +39,8 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
   const failedReservedId = randomUUID()
   const failedUnreservedId = randomUUID()
   const ids = [requester, courier]
-  const userService = createServer((req, res) => {
-    const subject =
-      req.headers.cookie === 'relay_session=requester'
-        ? requester
-        : req.headers.cookie === 'relay_session=courier'
-          ? courier
-          : undefined
-    if (!subject || req.url !== '/internal/user/session/validate') {
-      res.writeHead(401).end()
-      return
-    }
-    res
-      .writeHead(200, { 'Content-Type': 'application/json' })
-      .end(JSON.stringify({ ok: true, data: { user: { subject, emailVerified: true, profileCreated: true } } }))
-  })
-  await new Promise((resolve) => userService.listen(0, '127.0.0.1', resolve))
-  process.env.USER_API_URL = `http://127.0.0.1:${userService.address().port}`
+  const fixture = await createCognitoFixture('credit-events-test')
+  const cookies = { requester: fixture.cookie(requester), courier: fixture.cookie(courier) }
   const api = createApp().listen(0, '127.0.0.1')
   await new Promise((resolve) => api.once('listening', resolve))
   const url = `http://127.0.0.1:${api.address().port}`
@@ -70,9 +55,11 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     const response = await fetch(url + path, {
       method: body ? 'POST' : 'GET',
       headers: {
-        Cookie: `relay_session=${cookie}`,
+        Cookie: cookies[cookie] ?? `relay_access=${cookie}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(path === '/internal/credit/reserve' ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN } : {}),
+        ...(path === '/internal/credit/reserve'
+          ? { 'x-credit-service-token': process.env.CREDIT_SERVICE_INTERNAL_TOKEN }
+          : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -123,14 +110,27 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal((await reserve(zeroConfirmId, 0)).status, 200)
     assert.equal((await reserve(zeroCancelId, 0)).status, 200)
     await send(topics.errandEvents, zeroConfirmId, 'ErrandCompleted', {
-      errandId: zeroConfirmId, requesterSub: requester, courierSub: courier,
+      errandId: zeroConfirmId,
+      requesterSub: requester,
+      courierSub: courier,
     })
     await send(topics.errandEvents, zeroCancelId, 'ErrandCancelled', {
-      errandId: zeroCancelId, requesterSub: requester,
+      errandId: zeroCancelId,
+      requesterSub: requester,
     })
-    await until(async () => (await prisma.transactionRecord.count({ where: { reference: { in: [
-      `errand:${zeroConfirmId}:CREDIT_TRANSFER`, `errand:${zeroCancelId}:CREDIT_RELEASE`,
-    ] } } })) === 2)
+    await until(
+      async () =>
+        (await prisma.transactionRecord.count({
+          where: {
+            reference: {
+              in: [
+                `errand:${zeroConfirmId}:CREDIT_TRANSFER`,
+                `errand:${zeroCancelId}:CREDIT_RELEASE`,
+              ],
+            },
+          },
+        })) === 2,
+    )
     assert.equal((await request('requester')).body.availableCredit, 100)
     assert.equal((await request('requester')).body.reserveCredit, 0)
     assert.equal((await request('courier')).body.availableCredit, 100)
@@ -191,12 +191,18 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     assert.equal(lateReservation.status, 409)
     assert.equal(lateReservation.body.code, 'TRANSACTION_CONFLICT')
     assert.equal((await reserve(confirmId, 10)).status, 409)
-    assert.equal(await prisma.transactionRecord.count({
-      where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
-    }), 1)
-    await until(async () => (await prisma.transactionRecord.count({
-      where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
-    })) === 1)
+    assert.equal(
+      await prisma.transactionRecord.count({
+        where: { reference: `errand:${failedReservedId}:CREDIT_RELEASE` },
+      }),
+      1,
+    )
+    await until(
+      async () =>
+        (await prisma.transactionRecord.count({
+          where: { reference: `errand:${failedUnreservedId}:CREDIT_RELEASE` },
+        })) === 1,
+    )
     const zeroReserve = await prisma.transactionRecord.findUniqueOrThrow({
       where: { reference: `errand:${failedUnreservedId}:CREDIT_RESERVE` },
     })
@@ -236,15 +242,21 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
       assert.ok(event.error.message)
     }
     await send(topics.errandEvents, confirmId, 'ErrandCancelled', {
-      errandId: confirmId, requesterSub: requester,
+      errandId: confirmId,
+      requesterSub: requester,
     })
     await send(topics.errandEvents, cancelId, 'ErrandCompleted', {
-      errandId: cancelId, requesterSub: requester, courierSub: courier,
+      errandId: cancelId,
+      requesterSub: requester,
+      courierSub: courier,
     })
     await until(async () => dlqEvents.length === 5)
     assert.deepEqual(
-      new Set(dlqEvents.filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
-        .map((item) => item.payload.errandId)),
+      new Set(
+        dlqEvents
+          .filter((item) => item.error.code === 'ERRAND_CREDIT_OUTCOME_CONFLICT')
+          .map((item) => item.payload.errandId),
+      ),
       new Set([confirmId, cancelId]),
     )
 
@@ -264,11 +276,7 @@ test('new users view, reserve, and transfer credit through HTTP and Kafka', asyn
     })
     await prisma.creditBalance.deleteMany({ where: { userId: { in: ids } } })
     api.closeAllConnections()
-    userService.closeAllConnections()
-    await Promise.all([
-      new Promise((resolve) => api.close(resolve)),
-      new Promise((resolve) => userService.close(resolve)),
-    ])
+    await Promise.all([new Promise((resolve) => api.close(resolve)), fixture.close()])
     await closeAppResources()
   }
 })

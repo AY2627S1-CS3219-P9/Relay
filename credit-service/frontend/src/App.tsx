@@ -1,12 +1,21 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './styles.css'
 import { useEffect, useRef, useState } from 'react'
 import type { RemoteAppProps, TransactionRecord, ViewCreditHistoryResponse } from '@relay/contracts'
 import { ErrorMessage, IconButton, RelayButton } from '@relay/ui'
-import { HISTORY_BATCH_SIZE, HISTORY_PAGE_SIZE, transactionDisplay, transactionTime } from './history'
+import {
+  HISTORY_BATCH_SIZE,
+  HISTORY_PAGE_SIZE,
+  transactionDisplay,
+  transactionTime,
+} from './history'
 
-async function fetchCreditHistory(offset: number, signal: AbortSignal): Promise<TransactionRecord[]> {
-  const response = await fetch(`/api/credit/history?offset=${offset}`, {
+async function fetchCreditHistory(
+  offset: number,
+  signal: AbortSignal,
+): Promise<TransactionRecord[]> {
+  const response = await authFetch(`/api/credit/history?offset=${offset}`, {
     credentials: 'include',
     cache: 'no-store',
     signal,
@@ -85,7 +94,9 @@ export default function App({
       if (nextRecords.length > 0) setPage(page + 1)
     } catch (cause) {
       if (!controller.signal.aborted) {
-        setLoadMoreError(cause instanceof Error ? cause.message : 'Unable to load more credit history.')
+        setLoadMoreError(
+          cause instanceof Error ? cause.message : 'Unable to load more credit history.',
+        )
       }
     } finally {
       if (!controller.signal.aborted) setLoadingMore(false)
@@ -95,15 +106,27 @@ export default function App({
 
   const pageCount = Math.max(1, Math.ceil(records.length / HISTORY_PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
-  const visibleRecords = records.slice((currentPage - 1) * HISTORY_PAGE_SIZE, currentPage * HISTORY_PAGE_SIZE)
+  const visibleRecords = records.slice(
+    (currentPage - 1) * HISTORY_PAGE_SIZE,
+    currentPage * HISTORY_PAGE_SIZE,
+  )
   const userId = creditBalance?.userId ?? authenticatedSubject ?? ''
 
   return (
-    <section className={`credit-profile-content relay-design-system${creditHistoryOpen ? ' credit-history-screen' : ''}`} aria-label="Credits">
-      <div className="credit-view credit-balance-view" aria-hidden={creditHistoryOpen} inert={creditHistoryOpen}>
+    <section
+      className={`credit-profile-content relay-design-system${creditHistoryOpen ? ' credit-history-screen' : ''}`}
+      aria-label="Credits"
+    >
+      <div
+        className="credit-view credit-balance-view"
+        aria-hidden={creditHistoryOpen}
+        inert={creditHistoryOpen}
+      >
         <header className="credit-profile-header">
           <h1>Credits</h1>
-          <IconButton label="Close credits" onClick={closeCredit}>&times;</IconButton>
+          <IconButton label="Close credits" onClick={closeCredit}>
+            &times;
+          </IconButton>
         </header>
         <div className="credit-balance-grid">
           <div className="relay-glass-soft">
@@ -115,28 +138,46 @@ export default function App({
             <strong>{creditBalance?.reserveCredit ?? '...'} cr</strong>
           </div>
         </div>
-        <RelayButton variant="secondary" className="credit-history-button" onClick={() => {
-          setPage(1)
-          showCreditHistory?.()
-        }}>
+        <RelayButton
+          variant="secondary"
+          className="credit-history-button"
+          onClick={() => {
+            setPage(1)
+            showCreditHistory?.()
+          }}
+        >
           View credit history
         </RelayButton>
       </div>
-      <div className="credit-view credit-history-view" aria-hidden={!creditHistoryOpen} inert={!creditHistoryOpen}>
+      <div
+        className="credit-view credit-history-view"
+        aria-hidden={!creditHistoryOpen}
+        inert={!creditHistoryOpen}
+      >
         <header className="credit-profile-header">
           <div className="credit-history-title">
-            <IconButton label="Go back" onClick={showCreditBalance}>&larr;</IconButton>
+            <IconButton label="Go back" onClick={showCreditBalance}>
+              &larr;
+            </IconButton>
             <h1>Credit history</h1>
           </div>
-          <IconButton label="Close credits" onClick={closeCredit}>&times;</IconButton>
+          <IconButton label="Close credits" onClick={closeCredit}>
+            &times;
+          </IconButton>
         </header>
         {creditHistoryOpen && (
           <>
-            {loading && <p className="credit-history-state" role="status">Loading transactions...</p>}
+            {loading && (
+              <p className="credit-history-state" role="status">
+                Loading transactions...
+              </p>
+            )}
             {!loading && error && (
               <div className="credit-history-state">
                 <ErrorMessage message={error} />
-                <RelayButton onClick={() => setRetryVersion((current) => current + 1)}>Try again</RelayButton>
+                <RelayButton onClick={() => setRetryVersion((current) => current + 1)}>
+                  Try again
+                </RelayButton>
               </div>
             )}
             {!loading && !error && records.length === 0 && (
@@ -144,37 +185,83 @@ export default function App({
             )}
             {!loading && !error && records.length > 0 && (
               <>
-                <div className="credit-history-table-scroll" role="region" aria-label="Credit transactions" tabIndex={0}>
+                <div
+                  className="credit-history-table-scroll"
+                  role="region"
+                  aria-label="Credit transactions"
+                  tabIndex={0}
+                >
                   <div className="credit-history-list" role="table" aria-label="Credit history">
                     <div className="credit-history-row credit-history-heading" role="row">
-                      <span className="credit-history-cell-time" role="columnheader">Time</span>
-                      <span className="credit-history-cell-type" role="columnheader">Transaction</span>
-                      <span className="credit-history-cell-amount" role="columnheader">Amount</span>
+                      <span className="credit-history-cell-time" role="columnheader">
+                        Time
+                      </span>
+                      <span className="credit-history-cell-type" role="columnheader">
+                        Transaction
+                      </span>
+                      <span className="credit-history-cell-amount" role="columnheader">
+                        Amount
+                      </span>
                     </div>
                     {visibleRecords.map((record) => {
                       const display = transactionDisplay(record, userId)
                       return (
-                        <div className="credit-history-row" role="row" key={`${record.reference.service}:${record.reference.id}:${record.type}`}>
-                          <span className="credit-history-cell-time" role="cell"><time dateTime={String(record.time)}>{transactionTime(record.time)}</time></span>
-                          <span className="credit-history-cell-type" role="cell">{display.type}</span>
-                          <span className={`credit-history-cell-amount credit-amount credit-amount-${display.tone}`} role="cell">{display.amount}</span>
+                        <div
+                          className="credit-history-row"
+                          role="row"
+                          key={`${record.reference.service}:${record.reference.id}:${record.type}`}
+                        >
+                          <span className="credit-history-cell-time" role="cell">
+                            <time dateTime={String(record.time)}>
+                              {transactionTime(record.time)}
+                            </time>
+                          </span>
+                          <span className="credit-history-cell-type" role="cell">
+                            {display.type}
+                          </span>
+                          <span
+                            className={`credit-history-cell-amount credit-amount credit-amount-${display.tone}`}
+                            role="cell"
+                          >
+                            {display.amount}
+                          </span>
                         </div>
                       )
                     })}
-                    {Array.from({ length: HISTORY_PAGE_SIZE - visibleRecords.length }, (_, index) => (
-                      <div className="credit-history-row" aria-hidden="true" key={`empty-${index}`}>
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-                    ))}
+                    {Array.from(
+                      { length: HISTORY_PAGE_SIZE - visibleRecords.length },
+                      (_, index) => (
+                        <div
+                          className="credit-history-row"
+                          aria-hidden="true"
+                          key={`empty-${index}`}
+                        >
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
                 {loadMoreError && <ErrorMessage message={loadMoreError} />}
                 <nav className="credit-history-pagination" aria-label="Credit history pages">
-                  <RelayButton disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</RelayButton>
-                  <span>Page {currentPage} of {pageCount}{hasMore ? '+' : ''}</span>
-                  <RelayButton disabled={loadingMore || (currentPage === pageCount && !hasMore)} onClick={() => void advancePage()}>{loadingMore ? 'Loading...' : 'Next'}</RelayButton>
+                  <RelayButton
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
+                  >
+                    Previous
+                  </RelayButton>
+                  <span>
+                    Page {currentPage} of {pageCount}
+                    {hasMore ? '+' : ''}
+                  </span>
+                  <RelayButton
+                    disabled={loadingMore || (currentPage === pageCount && !hasMore)}
+                    onClick={() => void advancePage()}
+                  >
+                    {loadingMore ? 'Loading...' : 'Next'}
+                  </RelayButton>
                 </nav>
               </>
             )}

@@ -9,13 +9,10 @@ export class UserClient {
 
     let response: Response
     try {
-      response = await fetch(
-        `${env.userApiUrl}/internal/user/profile/${encodeURIComponent(sub)}`,
-        {
-          headers: { 'x-user-service-token': env.userServiceInternalToken },
-          signal: AbortSignal.timeout(env.timeoutMs),
-        },
-      )
+      response = await fetch(`${env.userApiUrl}/internal/user/profile/${encodeURIComponent(sub)}`, {
+        headers: { 'x-user-service-token': env.userServiceInternalToken },
+        signal: AbortSignal.timeout(env.timeoutMs),
+      })
     } catch {
       throw new ErrandServiceError(
         ErrandErrors.INTERNAL_ERROR,

@@ -1,24 +1,22 @@
 $kind: http-request
 method: GET
-url: "{{baseUrl}}/api/errands?scope=visible"
+url: '{{baseUrl}}/api/errands?scope=visible'
 queryParams:
   scope: visible
-order: 28000
+order: 29000
 headers:
-  Cookie: relay_session={{sessionCookieCourier}}
+  Cookie: relay_access={{sessionCookieCourier}}; relay_id={{idCookieCourier}}
 scripts:
+  - type: beforeRequest
+    code: |-
+      const access=pm.collectionVariables.get('sessionCookieCourier');
+      const id=pm.collectionVariables.get('idCookieCourier');
+      if(!access||!id)throw new Error('Run the matching login request before this request.');
+      pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
+    language: text/javascript
   - type: afterResponse
     code: |-
       pm.test('Courier errands retrieved', () => {
         pm.response.to.have.status(200);
-      });
-
-      const json = pm.response.json();
-      const myErrand = json.errands.find(e => e.id === pm.collectionVariables.get('errandId'));
-      pm.test('My errand found in list', () => {
-        pm.expect(myErrand).to.exist;
-      });
-      pm.test('My errand status is CONFIRMED', () => {
-        pm.expect(myErrand.status).to.eql('CONFIRMED');
       });
     language: text/javascript

@@ -21,7 +21,11 @@ client_id=$(aws cognito-idp create-user-pool-client \
   --client-name "$COGNITO_CLIENT_ID" \
   --no-generate-secret \
   --enable-token-revocation \
-  --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+  --access-token-validity 15 \
+  --id-token-validity 15 \
+  --token-validity-units AccessToken=minutes,IdToken=minutes,RefreshToken=days \
+  --refresh-token-rotation Feature=ENABLED,RetryGracePeriodSeconds=10 \
+  --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH \
   --query UserPoolClient.ClientId --output text)
 test "$client_id" = "$COGNITO_CLIENT_ID"
 
