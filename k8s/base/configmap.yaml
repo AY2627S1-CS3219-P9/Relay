@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: relay-runtime
+  namespace: relay
+data:
+  PORT: "3000"
+  NODE_ENV: production
+  # Temporary HTTP deployment; enable secure cookies when HTTPS is configured.
+  COOKIE_SECURE: "false"
+  AUTH_MODE: cognito
+  KAFKA_TOPIC_USER_EVENTS: user-events
+  KAFKA_TOPIC_USER_DLQ: user-events-dlq
+  KAFKA_TOPIC_ERRAND_EVENTS: errand-events
+  KAFKA_TOPIC_ERRAND_DLQ: errand-events-dlq
+  KAFKA_AUTH_MODE: plain
+  USER_API_TIMEOUT: "5000"
+  USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+  INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
+  INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
+  CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+  SUPPLIER_TIMEZONE: Asia/Singapore
+  SUPPLIER_SERVICE_TIMEOUT_MS: "5000"
+  ERRAND_SERVICE_TIMEOUT_MS: "5000"

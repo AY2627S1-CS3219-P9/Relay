@@ -1,8 +1,10 @@
 import { Pool } from 'pg'
+import { readFileSync } from 'node:fs'
 import type { SupplierRow } from './types/supplier.types'
 import { SupplierErrors, type GetSuppliersFilterParams } from '@relay/contracts'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
+const dbSslCaPath = process.env.DB_SSL_CA_PATH
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -10,6 +12,7 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'relay',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
+  ssl: dbSslCaPath ? { ca: readFileSync(dbSslCaPath, 'utf8'), rejectUnauthorized: true } : undefined,
 })
 
 export async function query<T>(text: string, params?: any[]): Promise<T[]> {

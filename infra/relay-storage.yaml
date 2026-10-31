@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Relay private profile-image bucket.
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Globally unique S3 bucket name for user profile images.
+
+Resources:
+  UserImageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+Outputs:
+  BucketName:
+    Description: Profile image S3 bucket name
+    Value: !Ref UserImageBucket
+  BucketArn:
+    Description: Profile image S3 bucket ARN
+    Value: !GetAtt UserImageBucket.Arn
+  S3Endpoint:
+    Description: Regional S3 endpoint for SDK operations
+    Value: !Sub https://s3.${AWS::Region}.amazonaws.com
+  S3PublicEndpoint:
+    Description: Endpoint used in profile image URLs
+    Value: !Sub https://s3.${AWS::Region}.amazonaws.com

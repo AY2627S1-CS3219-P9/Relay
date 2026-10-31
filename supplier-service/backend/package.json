@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "tsc --noEmit && tsx --watch src/app.ts",
-    "build": "tsc --noEmit && esbuild ././src/app.ts --bundle --packages=external --platform=node --format=esm --outdir=./dist",
+    "build": "tsc --noEmit && esbuild ././src/app.ts --bundle --platform=node --format=cjs --outdir=./dist",
+    "build:local": "tsc --noEmit && esbuild ././src/app.ts --bundle --packages=external --platform=node --format=esm --outdir=./dist",
     "start": "node ./dist/app.js",
     "test": "node --import tsx tests/supplier-filter.test.ts && node --import tsx tests/supplier.service.test.ts && node --import tsx test/admin-access.test.ts"
   },

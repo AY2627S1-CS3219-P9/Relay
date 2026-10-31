@@ -1,0 +1,7 @@
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - kafka-demo.yaml
+  - workloads.yaml
+  - autoscaling.yaml
+  - ingress.yaml

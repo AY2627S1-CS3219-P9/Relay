@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata: { name: alb }
+spec:
+  controller: eks.amazonaws.com/alb
+  parameters:
+    apiGroup: eks.amazonaws.com
+    kind: IngressClassParams
+    name: relay-alb
+---
+apiVersion: eks.amazonaws.com/v1
+kind: IngressClassParams
+metadata: { name: relay-alb }
+spec:
+  scheme: internet-facing
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: relay
+  namespace: relay
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - { path: /remotes/supplier, pathType: Prefix, backend: { service: { name: supplier-frontend, port: { number: 80 } } } }
+          - { path: /remotes/user, pathType: Prefix, backend: { service: { name: user-frontend, port: { number: 80 } } } }
+          - { path: /remotes/errand, pathType: Prefix, backend: { service: { name: errand-frontend, port: { number: 80 } } } }
+          - { path: /remotes/credit, pathType: Prefix, backend: { service: { name: credit-frontend, port: { number: 80 } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: host, port: { number: 80 } } } }
