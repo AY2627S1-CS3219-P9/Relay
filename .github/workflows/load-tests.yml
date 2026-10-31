@@ -1,11 +1,29 @@
 name: Load tests
 
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'load-tests/**'
+      - '.github/workflows/load-tests.yml'
+
   push:
+    branches:
+      - main
     paths:
       - "load-tests/**"
       - ".github/workflows/load-tests.yml"
+
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Load-test suite to run'
+        required: true
+        type: choice
+        default: full
+        options:
+          - smoke
+          - full
+
   schedule:
     - cron: '0 18 * * *'
 
@@ -47,7 +65,7 @@ jobs:
           LOAD_TEST_ENV_FILE: load-tests/.env.generated
         run: node load-tests/provision-test-data.mjs
 
-      - name: Run k6 scenarios and stream metrics to Grafana Cloud
+      - name: Run browse smoke test
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
@@ -62,6 +80,14 @@ jobs:
             -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
             -v "${PWD}/load-tests:/scripts" \
             grafana/k6 cloud run --local-execution /scripts/errand-browse-smoke.js
+
+      - name: Run lifecycle test
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
           docker run --rm -i \
             --add-host host.docker.internal:host-gateway \
             --env-file load-tests/.env.generated \
@@ -71,6 +97,14 @@ jobs:
             -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json \
             -v "${PWD}/load-tests:/scripts" \
             grafana/k6 cloud run --local-execution /scripts/errand-lifecycle.js
+
+      - name: Run core scenarios
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
           docker run --rm -i \
             --add-host host.docker.internal:host-gateway \
             --env-file load-tests/.env.generated \
