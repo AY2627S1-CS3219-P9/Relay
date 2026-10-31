@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared authentication middleware
+        run: npm run build --workspace=@relay/user-auth-backend-middleware
+
       - name: Run lint
         run: npm run lint
 
