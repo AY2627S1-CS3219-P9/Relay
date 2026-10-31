@@ -1,0 +1,193 @@
+import { randomBytes } from 'node:crypto'
+import { mkdir, writeFile } from 'node:fs/promises'
+
+const baseUrl = (process.env.BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+const flociUrl = (process.env.FLOCI_URL ?? 'http://localhost:4566').replace(/\/$/, '')
+const outputPath = process.env.LOAD_TEST_ENV_FILE ?? 'load-tests/.env.generated'
+const k6BaseUrl = process.env.LOAD_TEST_K6_BASE_URL ?? 'http://host.docker.internal:8080'
+const supplierName = process.env.LOAD_TEST_SUPPLIER_NAME ?? 'Octobox'
+const password = process.env.LOAD_TEST_SEED_PASSWORD ?? randomPassword()
+const timeoutMs = Number(process.env.LOAD_TEST_PROVISION_TIMEOUT_MS ?? 30_000)
+
+function randomPassword() {
+  return `RelayK6-${randomBytes(8).toString('base64url')}aA1!`
+}
+
+function runId() {
+  return `${Date.now().toString(36)}${randomBytes(3).toString('hex')}`.toLowerCase()
+}
+
+async function request(url, init = {}) {
+  const response = await fetch(url, init)
+  const text = await response.text()
+  let body
+  try {
+    body = text ? JSON.parse(text) : undefined
+  } catch {
+    body = text
+  }
+  return { response, body, text }
+}
+
+function assertStatus(result, expected, description) {
+  if (result.response.status !== expected) {
+    const detail = typeof result.body === 'string' ? result.body : JSON.stringify(result.body)
+    throw new Error(`${description} failed with HTTP ${result.response.status}: ${detail}`)
+  }
+}
+
+function cookieHeader(response) {
+  const cookies = response.headers.getSetCookie?.() ?? []
+  const values = cookies
+    .map((cookie) => cookie.split(';', 1)[0])
+    .filter((cookie) => cookie.startsWith('relay_access=') || cookie.startsWith('relay_id='))
+  if (values.length !== 2) throw new Error('Authentication response did not return relay_access and relay_id cookies.')
+  return values.join('; ')
+}
+
+function uniqueIdentity(role, id) {
+  return {
+    email: `relay-k6-${role}-${id}@u.nus.edu`,
+    username: `relayk6${role.replace(/[^a-z0-9]/gi, '')}${id}`,
+  }
+}
+
+async function register(identity) {
+  const result = await request(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      email: identity.email,
+      password,
+      passwordConfirmation: password,
+    }),
+  })
+  assertStatus(result, 201, `Register ${identity.email}`)
+}
+
+async function readOtp(email) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const result = await request(`${flociUrl}/_aws/ses`)
+    assertStatus(result, 200, 'Read Floci SES messages')
+    const messages = result.body?.messages ?? []
+    const matching = messages.filter((message) =>
+      message?.Destination?.ToAddresses?.includes(email),
+    )
+    const text = matching.at(-1)?.Body?.text_part ?? ''
+    const code = text.match(/\b\d{6}\b/)?.[0]
+    if (code) return code
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error(`No verification code was received for ${email} within ${timeoutMs}ms.`)
+}
+
+async function verifyAndLogin(identity) {
+  const code = await readOtp(identity.email)
+  const result = await request(`${baseUrl}/api/auth/verification/confirm-and-login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: identity.email, password, code }),
+  })
+  // Cognito may confirm the user before the auth service finishes validating
+  // the returned tokens. If that final validation fails with a transient 500,
+  // recover by logging in the now-confirmed account.
+  const authenticated =
+    result.response.status === 500
+      ? await request(`${baseUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: identity.email, password }),
+        })
+      : result
+  assertStatus(authenticated, 200, `Verify ${identity.email}`)
+  const cookie = cookieHeader(authenticated.response)
+  const subject = authenticated.body?.data?.user?.subject
+  if (typeof subject !== 'string' || !subject) {
+    throw new Error(`Verification response for ${identity.email} did not contain a user subject.`)
+  }
+  return { ...identity, cookie, subject }
+}
+
+async function createProfile(user) {
+  const result = await request(`${baseUrl}/api/user/me`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', Cookie: user.cookie },
+    body: JSON.stringify({ username: user.username }),
+  })
+  assertStatus(result, 200, `Create profile for ${user.email}`)
+}
+
+async function waitForCredit(user) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const result = await request(`${baseUrl}/api/credit`, {
+      headers: { Cookie: user.cookie },
+    })
+    if (result.response.status === 200 && Number.isFinite(result.body?.availableCredit)) return
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  throw new Error(`Credit balance was not allocated for ${user.email} within ${timeoutMs}ms.`)
+}
+
+async function findSupplier(user) {
+  const result = await request(`${baseUrl}/api/supplier?status=operational`, {
+    headers: { Cookie: user.cookie },
+  })
+  assertStatus(result, 200, 'Find operational supplier')
+  const supplier = (result.body?.suppliers ?? []).find(
+    (candidate) => candidate?.name?.trim().toLowerCase() === supplierName.trim().toLowerCase(),
+  )
+  if (!supplier) throw new Error(`Supplier ${supplierName} was not found.`)
+  if (!supplier.isOperational || !supplier.serviceTypes?.length) {
+    throw new Error(`Supplier ${supplierName} is not operational or offers no service types.`)
+  }
+  return { id: supplier.id, serviceType: supplier.serviceTypes[0] }
+}
+
+function envLine(name, value) {
+  return `${name}=${String(value).replaceAll('\\n', '')}`
+}
+
+async function main() {
+  const id = runId()
+  const requester = uniqueIdentity('requester', id)
+  const courier = uniqueIdentity('courier-a', id)
+  const courierB = uniqueIdentity('courier-b', id)
+
+  for (const identity of [requester, courier, courierB]) await register(identity)
+  const users = []
+  for (const identity of [requester, courier, courierB]) {
+    users.push(await verifyAndLogin(identity))
+  }
+  for (const user of users) await createProfile(user)
+  await Promise.all(users.map(waitForCredit))
+  const supplier = await findSupplier(users[0])
+
+  await mkdir(outputPath.substring(0, outputPath.lastIndexOf('/')) || '.', { recursive: true })
+  const content = [
+    '# Generated for one disposable load-test run. Do not commit.',
+    envLine('BASE_URL', k6BaseUrl),
+    envLine('LOAD_TEST_USER_EMAIL', requester.email),
+    envLine('LOAD_TEST_USER_PASSWORD', password),
+    envLine('LOAD_TEST_REQUESTER_EMAIL', requester.email),
+    envLine('LOAD_TEST_REQUESTER_PASSWORD', password),
+    envLine('LOAD_TEST_COURIER_EMAIL', courier.email),
+    envLine('LOAD_TEST_COURIER_PASSWORD', password),
+    envLine('LOAD_TEST_COURIER_B_EMAIL', courierB.email),
+    envLine('LOAD_TEST_COURIER_B_PASSWORD', password),
+    envLine('LOAD_TEST_SUPPLIER_ID', supplier.id),
+    envLine('LOAD_TEST_SERVICE_TYPE', supplier.serviceType),
+    envLine('LOAD_TEST_CREDIT_AMOUNT', process.env.LOAD_TEST_CREDIT_AMOUNT ?? '1'),
+    envLine('LOAD_TEST_CLEANUP', process.env.LOAD_TEST_CLEANUP ?? 'true'),
+    '',
+  ].join('\n')
+  await writeFile(outputPath, content, 'utf8')
+  console.log(`Provisioned three users and selected supplier ${supplier.id}.`)
+  console.log(`Generated k6 environment: ${outputPath}`)
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error)
+  process.exitCode = 1
+})

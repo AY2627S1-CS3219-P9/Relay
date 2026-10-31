@@ -20,14 +20,14 @@ Start the Relay Docker Compose environment and ensure the selected load-test use
 docker compose up --build --wait
 ```
 
-Create an ignored local configuration file once. It is convenient for repeated local runs and is never committed.
+For disposable Compose runs, provision fresh test users and discover Octobox automatically. The provisioner uses the normal registration flow, reads OTPs from Floci SES, creates profiles, waits for asynchronous credit allocation, verifies that Octobox is operational, and writes an ignored environment file.
 
 ```powershell
-Copy-Item load-tests/.env.example load-tests/.env.local
-# Edit load-tests/.env.local with the test accounts and supplier values.
+docker compose up --build --wait
+node load-tests/provision-test-data.mjs
 ```
 
-`load-tests/.env.local` is ignored by both the repository and the `load-tests` directory. Do not put real credentials in `.env.example`, test scripts, result files, or committed documentation.
+For repeated local runs against a persistent Compose environment, `.env.local` remains available. `.env.generated` is intended for fresh runs and is ignored. Do not put real credentials in `.env.example`, test scripts, result files, or committed documentation.
 
 ### Run locally in Docker
 
@@ -37,7 +37,7 @@ The default `BASE_URL` is `http://host.docker.internal:8080`, which lets the k6 
 New-Item -ItemType Directory -Force load-tests/results | Out-Null
 
 docker run --rm -i `
-  --env-file load-tests/.env.local `
+  --env-file load-tests/.env.generated `
   -v "${PWD}/load-tests:/scripts" `
   grafana/k6 run `
   -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json `
@@ -92,7 +92,7 @@ The configured supplier must exist, be operational, be currently within operatin
 New-Item -ItemType Directory -Force load-tests/results | Out-Null
 
 docker run --rm -i `
-  --env-file load-tests/.env.local `
+  --env-file load-tests/.env.generated `
   -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json `
   -v "${PWD}/load-tests:/scripts" `
   grafana/k6 run /scripts/errand-lifecycle.js
@@ -100,10 +100,12 @@ docker run --rm -i `
 
 The default is one virtual user and one lifecycle iteration. Keep these defaults while validating test data. Increasing `LIFECYCLE_VUS` or `LIFECYCLE_ITERATIONS` creates additional errands and consumes the configured requester credit amount for each concurrent reservation.
 
-For Grafana Cloud local execution, configure these four lowercase Grafana Cloud k6 secrets: `loadtestrequesteremail`, `loadtestrequesterpassword`, `loadtestcourieremail`, and `loadtestcourierpassword`. Do not pass `--env-file load-tests/.env.local` in this Cloud command; otherwise the local credentials take precedence over Grafana secrets. Pass only non-secret configuration explicitly:
+For Grafana Cloud local execution, use the generated environment file. The load generator remains on your machine (or the GitHub Actions runner), while Grafana Cloud stores the metrics. Do not upload `.env.generated` or configure the generated credentials as permanent Grafana secrets.
 
 ```powershell
 docker run --rm -i `
+  --add-host host.docker.internal:host-gateway `
+  --env-file load-tests/.env.generated `
   -e K6_CLOUD_TOKEN `
   -e K6_CLOUD_STACK_ID `
   -e K6_CLOUD_PROJECT_ID `
@@ -111,24 +113,10 @@ docker run --rm -i `
   -v "${PWD}/load-tests:/scripts" `
   grafana/k6 cloud run `
   --local-execution `
-  -e BASE_URL=http://host.docker.internal:8080 `
-  -e LOAD_TEST_SUPPLIER_ID=your-supplier-id `
-  -e LOAD_TEST_SERVICE_TYPE=0 `
-  -e LOAD_TEST_CREDIT_AMOUNT=1 `
   /scripts/errand-lifecycle.js
 ```
 
-## One-time test-account setup
-
-The bootstrap admin cannot be both actors: the lifecycle test requires different requester and courier Cognito subjects. Create two ordinary test users once, for example `relay-load-requester@...` and `relay-load-courier@...`.
-
-1. In the checked-in Postman collection **Relay full errand lifecycle and credit integration**, run the requester registration/setup folder and then the courier registration/setup folder.
-2. For each account, register, obtain the Floci OTP, verify through `POST /api/auth/verification/confirm-and-login`, and create its profile through `PATCH /api/user/me`.
-3. Wait for the `UserRegistered` Kafka event to be consumed, then verify `GET /api/credit` returns a credit record for each account. The lifecycle script needs enough requester credit for the configured amount.
-4. Save their email/passwords only in `load-tests/.env.local` for local runs, and as Grafana Cloud k6/GitHub Actions secrets for Cloud or CI runs.
-5. Query Supplier Service for an active supplier currently within its operating hours, then copy its ID and a listed service type into `.env.local`.
-
-The script creates unique errands and deletes them after confirmation by default; it does not delete the two reusable test accounts.
+The script creates unique errands and deletes them after confirmation by default. The provisioner creates disposable accounts for the run, so this works after `docker compose down --volumes` and on a clean GitHub Actions runner.
 
 The acceptance-race scenario additionally requires the second courier credentials as `loadtestcourierbemail` and `loadtestcourierbpassword` in Grafana Cloud Secrets.
 
@@ -138,10 +126,20 @@ Run the remaining core scenarios together with `errand-core-scenarios.js`:
 
 ```powershell
 docker run --rm -i `
-  --env-file load-tests/.env.local `
+  --env-file load-tests/.env.generated `
   -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json `
   -v "${PWD}/load-tests:/scripts" `
   grafana/k6 run /scripts/errand-core-scenarios.js
 ```
 
 This requires a second courier account in `LOAD_TEST_COURIER_B_EMAIL` and `LOAD_TEST_COURIER_B_PASSWORD`. The acceptance race sends two parallel acceptance requests for the same errand and requires exactly one winner. The credit guard verifies non-negative balances, rejects an insufficient-credit creation, rejects duplicate confirmation, and waits up to 30 seconds for the single asynchronous transfer.
+
+## GitHub Actions load-test workflow
+
+The repository workflow `.github/workflows/load-tests.yml` starts a disposable Compose environment, runs `node load-tests/provision-test-data.mjs`, executes the three k6 scripts with Grafana Cloud local execution, uploads summaries and Compose diagnostics on failure, and removes all volumes afterward.
+
+Configure these repository secrets before using the workflow:
+
+- `K6_CLOUD_TOKEN`
+- `K6_CLOUD_STACK_ID`
+- `K6_CLOUD_PROJECT_ID`
