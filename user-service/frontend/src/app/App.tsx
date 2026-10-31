@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './App.css'
 import { useEffect, useState } from 'react'
@@ -112,7 +113,7 @@ export default function App({
   }
 
   async function finishLogout() {
-    await fetch('/api/user/auth/logout', { method: 'POST', credentials: 'include' })
+    await authFetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     await refreshUserProfile?.()
     setView('login')
     closeProfile?.()
@@ -150,7 +151,9 @@ export default function App({
           <LoginForm
             onLoggedIn={onLogin}
             switchToRegister={() => setView('register')}
-            onVerificationRequired={(email, password) => startVerification(email, password, 'login')}
+            onVerificationRequired={(email, password) =>
+              startVerification(email, password, 'login')
+            }
             notice={loginNotice}
           />
         )}

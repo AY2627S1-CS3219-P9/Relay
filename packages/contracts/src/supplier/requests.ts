@@ -1,8 +1,4 @@
-import type {
-  Location,
-  OperatingHours,
-  ServiceType,
-} from './models'
+import type { Location, OperatingHours, ServiceType } from './models'
 
 /** Request to create a new supplier (admin only) */
 export interface CreateSupplierRequest {

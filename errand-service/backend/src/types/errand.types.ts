@@ -5,7 +5,6 @@ export type AuthenticatedUser = {
   email: string
   emailVerified: boolean
   role: UserRole
-  profileCreated: boolean
 }
 
 export class ErrandServiceError extends Error {

@@ -133,7 +133,9 @@
   .map-top-menu .relay-button-with-image.relay-button-size-map-pill {
     padding-left: 1px;
   }
-  .map-top-menu .relay-button-with-image.relay-button-size-map-pill .relay-button-with-image-avatar {
+  .map-top-menu
+    .relay-button-with-image.relay-button-size-map-pill
+    .relay-button-with-image-avatar {
     width: 46px;
     height: 46px;
     flex-basis: 46px;

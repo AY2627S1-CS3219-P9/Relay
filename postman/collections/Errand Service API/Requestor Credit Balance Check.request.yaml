@@ -1,7 +1,15 @@
 $kind: http-request
-description: ""
+description: ''
 url: http://localhost:8080/api/credit
 method: GET
 headers:
-  Cookie: relay_session={{sessionCookie}}
+  Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
 order: 25000
+scripts:
+  - type: beforeRequest
+    code: |-
+      const access=pm.collectionVariables.get('sessionCookie');
+      const id=pm.collectionVariables.get('idCookie');
+      if(!access||!id)throw new Error('Run the matching login request before this request.');
+      pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
+    language: text/javascript

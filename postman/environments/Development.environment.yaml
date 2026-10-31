@@ -1,0 +1,7 @@
+name: Development
+values:
+  - key: target_env
+    value: development
+    enabled: true
+    type: default
+    description: Use Floci-specific auth expectations in local development.

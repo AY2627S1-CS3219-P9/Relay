@@ -18,27 +18,32 @@ const deliveryDetailsSchema = z.object({
   instructions: z.string().trim().min(1).optional(),
 })
 
-const createErrandSchema = z.object({
-  supplierDetails: z.object({
-    supplierId: z.string().trim().min(1),
-    supplierName: z.string().trim().min(1),
-    serviceType: z.number().int(),
-  }),
-  name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
-  pickupLocation: errandLocationSchema,
-  targetLocation: errandLocationSchema,
-  deliveryDetails: deliveryDetailsSchema,
-  creditAmount: z.number().int().nonnegative(),
-  startAt: z.string().datetime({ offset: true }).optional(),
-  expiresAt: z
-    .string()
-    .datetime({ offset: true })
-    .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
-    .optional(),
-}).refine(
-  (value) => !value.startAt || !value.expiresAt || new Date(value.startAt).getTime() <= new Date(value.expiresAt).getTime(),
-  { path: ['startAt'], message: 'Start time must be on or before the deadline' },
-)
+const createErrandSchema = z
+  .object({
+    supplierDetails: z.object({
+      supplierId: z.string().trim().min(1),
+      supplierName: z.string().trim().min(1),
+      serviceType: z.number().int(),
+    }),
+    name: z.string().trim().min(1).max(200, 'Name must be no more than 200 characters'),
+    pickupLocation: errandLocationSchema,
+    targetLocation: errandLocationSchema,
+    deliveryDetails: deliveryDetailsSchema,
+    creditAmount: z.number().int().nonnegative(),
+    startAt: z.string().datetime({ offset: true }).optional(),
+    expiresAt: z
+      .string()
+      .datetime({ offset: true })
+      .refine((value) => new Date(value).getTime() > Date.now(), 'Expiry must be in the future')
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      !value.startAt ||
+      !value.expiresAt ||
+      new Date(value.startAt).getTime() <= new Date(value.expiresAt).getTime(),
+    { path: ['startAt'], message: 'Start time must be on or before the deadline' },
+  )
 
 const supplierErrandViewSchema = z.object({
   scope: z.enum(['explore', 'mine']),

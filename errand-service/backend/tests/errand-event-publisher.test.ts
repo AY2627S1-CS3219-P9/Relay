@@ -5,10 +5,13 @@ import { ErrandEventPublisher } from '../src/workers/errand-event-publisher.js'
 
 function setup() {
   const repository = {
-    unpublishedEvents: vi.fn().mockResolvedValue([{
-      id: 'stable-event-id', eventType: 'ErrandCancelled',
-      payload: { errandId: 'errand-id', actorSub: 'requester' },
-    }]),
+    unpublishedEvents: vi.fn().mockResolvedValue([
+      {
+        id: 'stable-event-id',
+        eventType: 'ErrandCancelled',
+        payload: { errandId: 'errand-id', actorSub: 'requester' },
+      },
+    ]),
     markEventPublished: vi.fn().mockResolvedValue(undefined),
     deleteOldPublishedEvents: vi.fn().mockResolvedValue(0),
   }
@@ -18,7 +21,11 @@ function setup() {
     send: vi.fn().mockResolvedValue([]),
   }
   const kafka = { producer: () => producer } as unknown as Kafka
-  const worker = new ErrandEventPublisher(kafka, repository as unknown as ErrandRepository, 'errand-events')
+  const worker = new ErrandEventPublisher(
+    kafka,
+    repository as unknown as ErrandRepository,
+    'errand-events',
+  )
   return { repository, producer, worker }
 }
 
@@ -30,12 +37,14 @@ describe('errand outbox publisher', () => {
     const record = producer.send.mock.calls[0][0] as { messages: { key: string; value: string }[] }
     expect(record.messages[0].key).toBe('errand-id')
     expect(JSON.parse(record.messages[0].value)).toMatchObject({
-      eventId: 'stable-event-id', eventType: 'ErrandCancelled',
+      eventId: 'stable-event-id',
+      eventType: 'ErrandCancelled',
       payload: { errandId: 'errand-id', actorSub: 'requester' },
     })
     expect(repository.markEventPublished).toHaveBeenCalledWith('stable-event-id')
-    expect(producer.send.mock.invocationCallOrder[0])
-      .toBeLessThan(repository.markEventPublished.mock.invocationCallOrder[0])
+    expect(producer.send.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.markEventPublished.mock.invocationCallOrder[0],
+    )
     expect(repository.deleteOldPublishedEvents).toHaveBeenCalledOnce()
     expect(repository.deleteOldPublishedEvents.mock.calls[0][0]).toBeInstanceOf(Date)
   })
@@ -50,5 +59,3 @@ describe('errand outbox publisher', () => {
     expect(repository.markEventPublished).toHaveBeenCalledWith('stable-event-id')
   })
 })
-
-

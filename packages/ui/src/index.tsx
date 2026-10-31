@@ -34,7 +34,13 @@ export {
   TextButton,
   UpdatesCard,
 } from './components'
-export type { BubbleAnchor, RelayButtonSize, RelayButtonVariant, RelayCardPlacement, RelayCardSize } from './components'
+export type {
+  BubbleAnchor,
+  RelayButtonSize,
+  RelayButtonVariant,
+  RelayCardPlacement,
+  RelayCardSize,
+} from './components'
 
 export function ServiceCard({
   label,

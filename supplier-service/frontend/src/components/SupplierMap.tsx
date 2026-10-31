@@ -24,7 +24,15 @@ export function getSupplierAnchor(map: L.Map, supplier: Supplier): BubbleAnchor 
   return { top, left, right: left + markerSize, bottom: top + markerSize }
 }
 
-function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom: number; active: boolean }) {
+function MapCenterController({
+  center,
+  zoom,
+  active,
+}: {
+  center: MapPoint
+  zoom: number
+  active: boolean
+}) {
   const map = useMap()
   useLayoutEffect(() => {
     if (!active) return
@@ -37,7 +45,9 @@ function MapCenterController({ center, zoom, active }: { center: MapPoint; zoom:
   useEffect(() => {
     if (!active) return
     const currentCenter = map.getCenter()
-    const centerChanged = Math.abs(currentCenter.lat - center.lat) > 0.000001 || Math.abs(currentCenter.lng - center.lng) > 0.000001
+    const centerChanged =
+      Math.abs(currentCenter.lat - center.lat) > 0.000001 ||
+      Math.abs(currentCenter.lng - center.lng) > 0.000001
     const zoomChanged = map.getZoom() !== zoom
     if (centerChanged || zoomChanged) map.setView(center, zoom, { animate: false })
   }, [active, center, map, zoom])
@@ -77,7 +87,9 @@ function MapZoomController({ onChange }: { onChange?: (viewport: MapViewport) =>
     const center = map.getCenter()
     onChange?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() })
   }
-  useEffect(() => { reportViewport() }, [map, onChange])
+  useEffect(() => {
+    reportViewport()
+  }, [map, onChange])
   useMapEvents({ zoomend: reportViewport, moveend: reportViewport })
   return null
 }
@@ -108,10 +120,7 @@ function SupplierMarkers({
 
       for (let memberIndex = 0; memberIndex < group.length; memberIndex += 1) {
         const member = group[memberIndex]
-        const memberPoint = map.latLngToContainerPoint([
-          member.location.lat,
-          member.location.lng,
-        ])
+        const memberPoint = map.latLngToContainerPoint([member.location.lat, member.location.lng])
         for (const candidateId of [...remaining]) {
           const candidate = byId.get(candidateId)!
           const candidatePoint = map.latLngToContainerPoint([
@@ -146,10 +155,7 @@ function SupplierMarkers({
           .map((supplier) => supplier.id)
           .sort()
           .join('-')
-        const position: [number, number] = [
-          cluster[0].location.lat,
-          cluster[0].location.lng,
-        ]
+        const position: [number, number] = [cluster[0].location.lat, cluster[0].location.lng]
 
         if (cluster.length === 1) {
           return (

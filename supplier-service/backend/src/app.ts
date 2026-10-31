@@ -32,15 +32,17 @@ app.get('/health', (_req, res) => {
 app.use('/api/supplier', supplierRouter)
 app.use('/internal/suppliers', internalServiceAuth, internalSupplierRouter)
 
-app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (error instanceof SupplierServiceError) {
-    res.status(error.statusCode).json({ code: error.code, message: error.message })
-    return
-  }
+app.use(
+  (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (error instanceof SupplierServiceError) {
+      res.status(error.statusCode).json({ code: error.code, message: error.message })
+      return
+    }
 
-  console.error(error)
-  res.status(500).json({ code: SupplierErrors.INTERNAL_ERROR, message: 'Internal server error' })
-})
+    console.error(error)
+    res.status(500).json({ code: SupplierErrors.INTERNAL_ERROR, message: 'Internal server error' })
+  },
+)
 
 app.listen(env.port, () => {
   console.log(`Supplier API listening on port ${env.port}`)

@@ -1,3 +1,4 @@
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
@@ -5,7 +6,7 @@ import type {
   ApiResult,
   ResendVerificationRequest,
   SubmitOtpAndLoginResponse,
-} from '@relay/contracts'
+} from '@relay/contracts/user-auth'
 
 export function VerificationComponent({
   email,
@@ -38,7 +39,7 @@ export function VerificationComponent({
     setLoading(true)
     setErrorMessage('')
 
-    const response = (await fetch('/api/user/auth/verification/confirm-and-login', {
+    const response = (await authFetch('/api/auth/verification/confirm-and-login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +51,13 @@ export function VerificationComponent({
         setLoading(false)
         return
       }
-      await onVerified(response.data.user.profileCreated)
+      const profile = await authFetch('/api/user/me', { credentials: 'include' })
+      if (!profile.ok && profile.status !== 404) {
+        setErrorMessage('Unable to load your profile.')
+        setLoading(false)
+        return
+      }
+      await onVerified(profile.ok)
     } else {
       setErrorMessage(response.error.message)
     }
@@ -62,7 +69,7 @@ export function VerificationComponent({
     setErrorMessage('')
 
     try {
-      const response = (await fetch('/api/user/auth/verification/resend', {
+      const response = (await authFetch('/api/auth/verification/resend', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

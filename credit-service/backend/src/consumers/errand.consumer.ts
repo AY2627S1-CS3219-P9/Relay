@@ -2,8 +2,14 @@ import type { Kafka, Consumer, KafkaMessage, Producer } from 'kafkajs'
 import { ErrandEventTypes, type ErrandEvent } from '@relay/contracts'
 import { getEnv } from '../config/env.js'
 import { CreditService } from '../services/credit.service.js'
-import { parseErrandEvent, classifyErrandEventError, rejectedErrandEvent,
-  requireRequester, validateReservation, requireCourier } from '../validators/errand-event.validator.js'
+import {
+  parseErrandEvent,
+  classifyErrandEventError,
+  rejectedErrandEvent,
+  requireRequester,
+  validateReservation,
+  requireCourier,
+} from '../validators/errand-event.validator.js'
 
 export class ErrandEventConsumer {
   private readonly consumer: Consumer
@@ -12,7 +18,10 @@ export class ErrandEventConsumer {
   private readonly dlqTopic: string
   private stopping = false
 
-  constructor(private readonly creditService: CreditService, kafka: Kafka) {
+  constructor(
+    private readonly creditService: CreditService,
+    kafka: Kafka,
+  ) {
     const env = getEnv()
     this.topic = env.kafkaTopics.errandEvents
     this.dlqTopic = env.kafkaTopics.errandDlq
@@ -25,16 +34,24 @@ export class ErrandEventConsumer {
 
   private async process(event: ErrandEvent): Promise<void> {
     const { errandId, requesterSub, courierSub } = event.payload
-    const handled: readonly string[] = [ErrandEventTypes.ERRAND_CREATION_FAILED, ErrandEventTypes.ERRAND_COMPLETED,
-      ErrandEventTypes.ERRAND_CANCELLED, ErrandEventTypes.ERRAND_EXPIRED]
+    const handled: readonly string[] = [
+      ErrandEventTypes.ERRAND_CREATION_FAILED,
+      ErrandEventTypes.ERRAND_COMPLETED,
+      ErrandEventTypes.ERRAND_CANCELLED,
+      ErrandEventTypes.ERRAND_EXPIRED,
+    ]
     if (!handled.includes(event.eventType)) return
     if (event.eventType === ErrandEventTypes.ERRAND_CREATION_FAILED) {
       await this.creditService.closeUnreservedCredit(
-        { service: 'errand', id: errandId, type: 'CREDIT_RELEASE' }, requireRequester(requesterSub))
+        { service: 'errand', id: errandId, type: 'CREDIT_RELEASE' },
+        requireRequester(requesterSub),
+      )
       return
     }
     const reservation = validateReservation(
-      await this.creditService.findReservation({ service: 'errand', id: errandId }), requesterSub)
+      await this.creditService.findReservation({ service: 'errand', id: errandId }),
+      requesterSub,
+    )
     if (event.eventType === ErrandEventTypes.ERRAND_COMPLETED) {
       const courierId = requireCourier(courierSub, reservation.userId)
       await this.creditService.transferCredit({
@@ -72,7 +89,9 @@ export class ErrandEventConsumer {
         topic: this.dlqTopic,
         messages: [{ key: failed.payload.errandId, value: JSON.stringify(failed) }],
       })
-      console.warn('Rejected ' + failed.eventType + ' for ' + failed.payload.errandId + ': ' + rejection.code)
+      console.warn(
+        'Rejected ' + failed.eventType + ' for ' + failed.payload.errandId + ': ' + rejection.code,
+      )
     }
   }
 

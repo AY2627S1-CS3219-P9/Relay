@@ -1,5 +1,4 @@
 services:
-
   kafka:
     image: apache/kafka:latest
     ports:
@@ -22,7 +21,11 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1']
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -122,6 +125,8 @@ services:
       supplier-api:
         condition: service_healthy
       user-frontend:
+        condition: service_healthy
+      user-auth-api:
         condition: service_healthy
       errand-frontend:
         condition: service_healthy
@@ -237,6 +242,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       PORT: '3000'
       DB_HOST: supplier-db
       DB_PORT: '5432'
@@ -266,12 +277,15 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@user-postgres:5432/relay?schema=public
-      MOCK_JWT_SECRET: local-development-only-secret
-      MOCK_JWT_ISSUER: relay-user-service
-      MOCK_JWT_AUDIENCE: relay-user-frontend
       S3_ENDPOINT: http://host.docker.internal:4566
       S3_PUBLIC_ENDPOINT: http://localhost:4566
       S3_REGION: us-east-1
@@ -293,6 +307,21 @@ services:
       timeout: 3s
       retries: 5
   #
+  user-auth-api:
+    build:
+      context: .
+      dockerfile: user-service/auth/Dockerfile
+    expose:
+      - '3000'
+    environment:
+      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${FLOCI_INITIAL_ADMIN_EMAIL:-admin@example.com}
+      NODE_ENV: production
+      PORT: '3000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
   errand-api:
     build:
       context: .
@@ -300,6 +329,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
@@ -335,6 +370,12 @@ services:
     expose:
       - '3000'
     environment:
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public

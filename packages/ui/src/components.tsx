@@ -17,7 +17,11 @@ type CardViewportBounds = {
   left: number
 }
 
-function getDesktopCardViewportBounds(surface: HTMLElement, margin: number, gap: number): CardViewportBounds {
+function getDesktopCardViewportBounds(
+  surface: HTMLElement,
+  margin: number,
+  gap: number,
+): CardViewportBounds {
   const bounds: CardViewportBounds = {
     top: margin,
     right: window.innerWidth - margin,
@@ -151,7 +155,8 @@ export function BubblePopover({
     setReady(false)
     const popoverFrame = frameRef.current
     if (!open || !anchor || !popoverFrame) return
-    const cardSurface = popoverFrame.closest<HTMLElement>('.supplier-app, .errand-map-shell') ?? document.body
+    const cardSurface =
+      popoverFrame.closest<HTMLElement>('.supplier-app, .errand-map-shell') ?? document.body
 
     let animationFrame: number | undefined
     const schedulePosition = () => {
@@ -189,25 +194,33 @@ export function BubblePopover({
         const measuredWidth = popoverFrame.offsetWidth
         const measuredHeight = popoverFrame.offsetHeight
         const centeredLeft = (anchor.left + anchor.right - measuredWidth) / 2
-        const left = placement === 'above'
-          ? Math.min(Math.max(bounds.left, centeredLeft), Math.max(bounds.left, bounds.right - measuredWidth))
-          : (() => {
-              const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
-              const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
-              const preferredLeft = canPlaceRight
-                ? anchor.right + gap
-                : canPlaceLeft
-                  ? anchor.left - gap - measuredWidth
-                  : centeredLeft
-              return Math.min(
-                Math.max(bounds.left, preferredLeft),
+        const left =
+          placement === 'above'
+            ? Math.min(
+                Math.max(bounds.left, centeredLeft),
                 Math.max(bounds.left, bounds.right - measuredWidth),
               )
-            })()
-        const preferredTop = placement === 'above'
-          ? anchor.top - gap - measuredHeight
-          : (anchor.top + anchor.bottom - measuredHeight) / 2
-        const top = Math.min(Math.max(bounds.top, preferredTop), Math.max(bounds.top, bounds.bottom - measuredHeight))
+            : (() => {
+                const canPlaceRight = anchor.right + gap + measuredWidth <= bounds.right
+                const canPlaceLeft = anchor.left - gap - measuredWidth >= bounds.left
+                const preferredLeft = canPlaceRight
+                  ? anchor.right + gap
+                  : canPlaceLeft
+                    ? anchor.left - gap - measuredWidth
+                    : centeredLeft
+                return Math.min(
+                  Math.max(bounds.left, preferredLeft),
+                  Math.max(bounds.left, bounds.right - measuredWidth),
+                )
+              })()
+        const preferredTop =
+          placement === 'above'
+            ? anchor.top - gap - measuredHeight
+            : (anchor.top + anchor.bottom - measuredHeight) / 2
+        const top = Math.min(
+          Math.max(bounds.top, preferredTop),
+          Math.max(bounds.top, bounds.bottom - measuredHeight),
+        )
         popoverFrame.style.left = `${left}px`
         popoverFrame.style.top = `${top}px`
         const anchorX = (anchor.left + anchor.right) / 2
@@ -221,7 +234,10 @@ export function BubblePopover({
     const observer = new ResizeObserver(schedulePosition)
     observer.observe(popoverFrame)
     for (const child of popoverFrame.children) observer.observe(child)
-    for (const exclusion of cardSurface.querySelectorAll<HTMLElement>('[data-relay-card-exclusion]')) observer.observe(exclusion)
+    for (const exclusion of cardSurface.querySelectorAll<HTMLElement>(
+      '[data-relay-card-exclusion]',
+    ))
+      observer.observe(exclusion)
     const mutations = new MutationObserver(schedulePosition)
     mutations.observe(popoverFrame, { childList: true, subtree: true, characterData: true })
     window.addEventListener('resize', schedulePosition)
@@ -312,7 +328,14 @@ export function LocationIcon({ className = '' }: { className?: string }) {
 
 export function BoltIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path d="M13.2 2 5 13h5.7L9.8 22 19 10.5h-5.8L13.2 2Z" fill="currentColor" />
     </svg>
   )
@@ -320,16 +343,41 @@ export function BoltIcon({ className = '' }: { className?: string }) {
 
 export function BellIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 6 2.5 6.5 2.5 8H4c0-1.5 2.5-2 2.5-8ZM10 21h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M6.5 10a5.5 5.5 0 0 1 11 0c0 6 2.5 6.5 2.5 8H4c0-1.5 2.5-2 2.5-8ZM10 21h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
 
 export function ClipboardPlusIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <path d="M9 4h6m-5 0a2 2 0 0 1 4 0m-6 0H6.5A1.5 1.5 0 0 0 5 5.5v14A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M9 4h6m-5 0a2 2 0 0 1 4 0m-6 0H6.5A1.5 1.5 0 0 0 5 5.5v14A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
       <path d="M15 17h6m-3-3v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
@@ -337,16 +385,42 @@ export function ClipboardPlusIcon({ className = '' }: { className?: string }) {
 
 export function StorePlusIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <path d="M4 10v10h11M4 10l2-5h12l2 5M4 10c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2-2 0 1.1.9 2 2 2s2-.9 2-2M8 20v-5h4v5m7-5v6m-3-3h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M4 10v10h11M4 10l2-5h12l2 5M4 10c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2 2s2-.9 2-2c0 1.1.9 2 2-2 0 1.1.9 2 2 2s2-.9 2-2M8 20v-5h4v5m7-5v6m-3-3h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
 
 export function PencilIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <path d="m4 16.5-.7 3.7 3.7-.7L18.8 7.7a2.1 2.1 0 0 0-3-3L4 16.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="m4 16.5-.7 3.7 3.7-.7L18.8 7.7a2.1 2.1 0 0 0-3-3L4 16.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <path d="m14.5 6.5 3 3" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
@@ -354,7 +428,14 @@ export function PencilIcon({ className = '' }: { className?: string }) {
 
 export function PlusIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
@@ -423,7 +504,9 @@ export function UpdatesCard({
           <p className="relay-updates-eyebrow">REQUESTS</p>
           <h2>Updates</h2>
         </div>
-        <IconButton label="Close updates" onClick={onClose}>×</IconButton>
+        <IconButton label="Close updates" onClick={onClose}>
+          ×
+        </IconButton>
       </div>
       {loading && <LoadingState label="Loading updates" />}
       {!loading && error && <p className="relay-updates-message">{error}</p>}
@@ -456,7 +539,9 @@ export function UpdatesCard({
                 {content}
               </button>
             ) : (
-              <div className="relay-updates-item" key={errand.id}>{content}</div>
+              <div className="relay-updates-item" key={errand.id}>
+                {content}
+              </div>
             )
           })}
         </div>
@@ -566,13 +651,20 @@ export function RelayFormOverlay({
 }) {
   if (!open) return null
   return (
-    <div className={`relay-form-overlay${className ? ` ${className}` : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+    <div
+      className={`relay-form-overlay${className ? ` ${className}` : ''}`}
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.()
+      }}
+    >
       {children}
     </div>
   )
 }
 
-export type RelayCardPlacement = 'top-left' | 'top-right' | 'center-right' | 'bottom-left' | 'bottom-right' | 'anchored'
+export type RelayCardPlacement =
+  'top-left' | 'top-right' | 'center-right' | 'bottom-left' | 'bottom-right' | 'anchored'
 export type RelayCardSize = 'small' | 'medium' | 'large'
 
 const relayCardWidths: Record<RelayCardSize, number> = {
@@ -608,13 +700,20 @@ export function RelayCardAnchor({
   const anchoredStyle: CSSProperties = {}
   const cardWidth = relayCardWidths[size]
   const viewportWidth = viewport?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0)
-  const viewportHeight = viewport?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)
+  const viewportHeight =
+    viewport?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)
   if (placement === 'anchored' && anchor && viewportWidth > 0 && viewportHeight > 0) {
     const availableWidth = Math.max(0, viewportWidth - viewportPadding * 2)
     const anchoredCardWidth = Math.min(cardWidth, availableWidth)
     const left = preferredSide.endsWith('end')
-      ? Math.min(Math.max(viewportPadding, anchor.right - anchoredCardWidth), viewportWidth - anchoredCardWidth - viewportPadding)
-      : Math.min(Math.max(viewportPadding, anchor.left), viewportWidth - anchoredCardWidth - viewportPadding)
+      ? Math.min(
+          Math.max(viewportPadding, anchor.right - anchoredCardWidth),
+          viewportWidth - anchoredCardWidth - viewportPadding,
+        )
+      : Math.min(
+          Math.max(viewportPadding, anchor.left),
+          viewportWidth - anchoredCardWidth - viewportPadding,
+        )
     const estimatedHeight = Math.min(viewportHeight * 0.6, viewportHeight - viewportPadding * 2)
     const cardHeight = measuredHeight ?? estimatedHeight
     const belowTop = anchor.bottom + offset
@@ -632,7 +731,8 @@ export function RelayCardAnchor({
   }
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return
-    const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    const updateViewport = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight })
     updateViewport()
     window.addEventListener('resize', updateViewport)
     return () => window.removeEventListener('resize', updateViewport)
@@ -661,7 +761,15 @@ export function RelayCardAnchor({
       if (frame !== undefined) window.cancelAnimationFrame(frame)
     }
   }, [anchor, measuredHeight, placement, preferredSide, viewportPadding, viewport])
-  return <div ref={anchorRef} className={`relay-card-anchor relay-card-placement-${placement} relay-card-size-${size}${className ? ` ${className}` : ''}`} style={{ ...anchoredStyle, ...style }}>{children}</div>
+  return (
+    <div
+      ref={anchorRef}
+      className={`relay-card-anchor relay-card-placement-${placement} relay-card-size-${size}${className ? ` ${className}` : ''}`}
+      style={{ ...anchoredStyle, ...style }}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function RelayFormSurface({
@@ -685,13 +793,20 @@ export function RelayFormSurface({
 }) {
   const Element = as
   return (
-    <Element style={style} className={`relay-form-surface relay-glass-surface glass-card${className ? ` ${className}` : ''}`}>
+    <Element
+      style={style}
+      className={`relay-form-surface relay-glass-surface glass-card${className ? ` ${className}` : ''}`}
+    >
       <header className="relay-form-surface-header">
         <div>
           <h2>{title}</h2>
           {description && <p>{description}</p>}
         </div>
-        {onClose && <IconButton label="Close" onClick={onClose}>×</IconButton>}
+        {onClose && (
+          <IconButton label="Close" onClick={onClose}>
+            ×
+          </IconButton>
+        )}
       </header>
       <div className="relay-form-surface-body">{children}</div>
       {footer && <footer className="relay-form-surface-footer">{footer}</footer>}
@@ -715,8 +830,13 @@ export function RelayFormField({
   className?: string
 }) {
   return (
-    <label className={`relay-form-field${error ? ' relay-form-field-error' : ''}${className ? ` ${className}` : ''}`}>
-      <span className="relay-form-field-label">{label}{required && <b aria-hidden="true"> *</b>}</span>
+    <label
+      className={`relay-form-field${error ? ' relay-form-field-error' : ''}${className ? ` ${className}` : ''}`}
+    >
+      <span className="relay-form-field-label">
+        {label}
+        {required && <b aria-hidden="true"> *</b>}
+      </span>
       {children}
       {hint && !error && <small>{hint}</small>}
       {error && <small role="alert">{error}</small>}
@@ -729,7 +849,11 @@ export function RelayList({
   className = '',
   ...props
 }: HTMLAttributes<HTMLUListElement> & { children: ReactNode }) {
-  return <ul {...props} className={`relay-list${className ? ` ${className}` : ''}`}>{children}</ul>
+  return (
+    <ul {...props} className={`relay-list${className ? ` ${className}` : ''}`}>
+      {children}
+    </ul>
+  )
 }
 
 export function RelayListItem({
@@ -749,12 +873,28 @@ export function RelayListItem({
   onClick?: () => void
   className?: string
 }) {
-  const content = <>
-    {leading && <span className="relay-list-item-leading">{leading}</span>}
-    <span className="relay-list-item-content"><strong>{title}</strong>{subtitle && <span>{subtitle}</span>}{meta && <small>{meta}</small>}</span>
-    {trailing && <span className="relay-list-item-trailing">{trailing}</span>}
-  </>
-  return <li className={`relay-list-item${className ? ` ${className}` : ''}`}>{onClick ? <button type="button" onClick={onClick}>{content}</button> : <div>{content}</div>}</li>
+  const content = (
+    <>
+      {leading && <span className="relay-list-item-leading">{leading}</span>}
+      <span className="relay-list-item-content">
+        <strong>{title}</strong>
+        {subtitle && <span>{subtitle}</span>}
+        {meta && <small>{meta}</small>}
+      </span>
+      {trailing && <span className="relay-list-item-trailing">{trailing}</span>}
+    </>
+  )
+  return (
+    <li className={`relay-list-item${className ? ` ${className}` : ''}`}>
+      {onClick ? (
+        <button type="button" onClick={onClick}>
+          {content}
+        </button>
+      ) : (
+        <div>{content}</div>
+      )}
+    </li>
+  )
 }
 
 export function SlidingSegmentedControl<T extends string | number>({

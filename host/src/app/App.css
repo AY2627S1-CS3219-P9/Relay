@@ -33,7 +33,10 @@
 .remote-credit-anchor.relay-card-placement-anchored {
   max-height: calc(100dvh - 96px);
   overflow: hidden;
-  transition: width 190ms cubic-bezier(0.22, 1, 0.36, 1), height 190ms cubic-bezier(0.22, 1, 0.36, 1), left 190ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    width 190ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 190ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 190ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .remote-credit-anchor > .remote-profile-card {
   height: 100%;

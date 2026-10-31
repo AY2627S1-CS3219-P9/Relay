@@ -1,8 +1,5 @@
 {
   "name": "@relay/contracts",
-  "peerDependencies": {
-    "aws-amplify": "^6.22.0"
-  },
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +8,6 @@
     "./errand": "./src/errand/index.ts",
     "./supplier": "./src/supplier/index.ts",
     "./user": "./src/user/index.ts",
-    "./credit": "./src/credit/index.ts",
-    "./credit-estimation": "./src/credit-estimation/index.ts"
+    "./user-auth": "./src/user-auth/index.ts"
   }
 }
