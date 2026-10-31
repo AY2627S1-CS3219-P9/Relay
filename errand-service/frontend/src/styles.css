@@ -291,6 +291,14 @@
   font-weight: 500;
   font-style: normal;
 }
+/* For fields with input + button on same row (like Reward credits) */
+.errand-field.has-input-button {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.errand-field.has-input-button > span {
+  grid-column: 1 / -1;
+}
 .errand-field input,
 .errand-field select,
 .errand-field textarea {
@@ -335,10 +343,51 @@
   min-width: 0;
 }
 .errand-reward-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  display: grid;
+  gap: 12px;
 }
 .errand-reward-grid input {
   min-width: 0;
+}
+.errand-credit-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.errand-credit-input-wrapper input {
+  flex: 1;
+  min-width: 0;
+}
+.errand-estimate-button {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--relay-control-bg);
+  color: var(--relay-text);
+  font: inherit;
+  font-size: calc(var(--relay-control-font-size, 1.05rem) * 1);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+.errand-estimate-button:hover {
+  background: var(--relay-control-bg-hover);
+}
+.errand-estimate-button:active {
+  transform: scale(0.92);
+}
+.errand-estimate-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.errand-estimate-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
 }
 .errand-form-note {
   margin: -2px 0 0;

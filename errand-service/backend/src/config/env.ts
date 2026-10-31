@@ -12,10 +12,13 @@ export type ErrandEnv = {
   userApiUrl: string
   supplierApiUrl: string
   creditApiUrl: string
+  creditEstimationApiUrl: string
   creditServiceToken: string
+  creditEstimationServiceToken: string
   userServiceInternalToken: string
   supplierServiceToken: string
   supplierTimeoutMs: number
+  estimationTimeoutMs: number
   internalServiceToken: string
   timeoutMs: number
   kafkaBrokers: string
@@ -34,13 +37,18 @@ export function getEnv(): ErrandEnv {
     userApiUrl: process.env.USER_API_URL ?? 'http://user-api:3000',
     supplierApiUrl: process.env.SUPPLIER_API_URL ?? 'http://supplier-api:3000',
     creditApiUrl: process.env.CREDIT_API_URL ?? 'http://credit-api:3000',
+    creditEstimationApiUrl:
+      process.env.CREDIT_ESTIMATION_API_URL ?? 'http://credit-estimation-api:3005',
     creditServiceToken:
       process.env.CREDIT_SERVICE_INTERNAL_TOKEN ?? 'local-internal-credit-service-token',
+    creditEstimationServiceToken:
+      process.env.CREDIT_ESTIMATION_SERVICE_TOKEN ?? 'local-internal-estimation-service-token',
     userServiceInternalToken:
       process.env.USER_SERVICE_INTERNAL_TOKEN ?? 'local-internal-user-service-token',
     supplierServiceToken:
       process.env.INTERNAL_SUPPLIER_SERVICE_TOKEN ?? 'local-internal-supplier-service-token',
     supplierTimeoutMs: positiveInteger(process.env.SUPPLIER_SERVICE_TIMEOUT_MS, 5000),
+    estimationTimeoutMs: positiveInteger(process.env.ESTIMATION_SERVICE_TIMEOUT_MS, 5000),
     internalServiceToken:
       process.env.INTERNAL_ERRAND_SERVICE_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),

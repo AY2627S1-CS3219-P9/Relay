@@ -9,7 +9,8 @@ export type RemoteDefinition = {
 // IMPORTANT: ensure config of each service's
 // vite.config.ts has the same name, remoteEntry path
 // and exposes the same module.
-export const REMOTE_REGISTRY = {
+// Not all services have a frontend (e.g., credit-estimation is backend-only).
+export const REMOTE_REGISTRY: Partial<Record<ServiceId, RemoteDefinition>> = {
   supplier: {
     name: 'supplierFrontend',
     entry: '/remotes/supplier/remoteEntry.js',
@@ -30,4 +31,4 @@ export const REMOTE_REGISTRY = {
     entry: '/remotes/credit/remoteEntry.js',
     exposedModule: './App',
   },
-} satisfies Record<ServiceId, RemoteDefinition>
+}
