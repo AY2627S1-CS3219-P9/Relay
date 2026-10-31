@@ -1,0 +1,173 @@
+name: Load tests
+
+on:
+  pull_request:
+    paths:
+      - 'load-tests/**'
+      - '.github/workflows/load-tests.yml'
+
+  push:
+    branches:
+      - main
+    paths:
+      - "load-tests/**"
+      - ".github/workflows/load-tests.yml"
+
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Load-test suite to run'
+        required: true
+        type: choice
+        default: full
+        options:
+          - smoke
+          - full
+
+  schedule:
+    - cron: '0 18 * * *' # Every day at 18:00 UTC (2 AM SGT)  
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-tests
+  cancel-in-progress: true
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build and start the Compose environment
+        run: docker compose up --build --detach --wait
+
+      - name: Provision disposable load-test data
+        env:
+          BASE_URL: http://localhost:8080
+          LOAD_TEST_K6_BASE_URL: http://host.docker.internal:8080
+          LOAD_TEST_ENV_FILE: load-tests/.env.generated
+        run: node load-tests/provision-test-data.mjs
+
+      - name: Run browse smoke test locally for pull requests
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          docker run --rm -i \
+            --add-host host.docker.internal:host-gateway \
+            --env-file load-tests/.env.generated \
+            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
+            -v "${PWD}/load-tests:/scripts" \
+            grafana/k6 run /scripts/errand-browse-smoke.js
+
+      - name: Verify Grafana Cloud credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          test -n "$K6_CLOUD_TOKEN" || { echo "K6_CLOUD_TOKEN is not configured"; exit 1; }
+          test -n "$K6_CLOUD_STACK_ID" || { echo "K6_CLOUD_STACK_ID is not configured"; exit 1; }
+          test -n "$K6_CLOUD_PROJECT_ID" || { echo "K6_CLOUD_PROJECT_ID is not configured"; exit 1; }
+
+      - name: Run browse smoke test in Grafana Cloud
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          docker run --rm -i \
+            --add-host host.docker.internal:host-gateway \
+            --env-file load-tests/.env.generated \
+            -e K6_CLOUD_TOKEN \
+            -e K6_CLOUD_STACK_ID \
+            -e K6_CLOUD_PROJECT_ID \
+            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
+            -v "${PWD}/load-tests:/scripts" \
+            grafana/k6 cloud run --local-execution /scripts/errand-browse-smoke.js
+
+      - name: Run lifecycle test
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          docker run --rm -i \
+            --add-host host.docker.internal:host-gateway \
+            --env-file load-tests/.env.generated \
+            -e K6_CLOUD_TOKEN \
+            -e K6_CLOUD_STACK_ID \
+            -e K6_CLOUD_PROJECT_ID \
+            -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json \
+            -v "${PWD}/load-tests:/scripts" \
+            grafana/k6 cloud run --local-execution /scripts/errand-lifecycle.js
+
+      - name: Run core scenarios
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          docker run --rm -i \
+            --add-host host.docker.internal:host-gateway \
+            --env-file load-tests/.env.generated \
+            -e K6_CLOUD_TOKEN \
+            -e K6_CLOUD_STACK_ID \
+            -e K6_CLOUD_PROJECT_ID \
+            -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json \
+            -v "${PWD}/load-tests:/scripts" \
+            grafana/k6 cloud run --local-execution /scripts/errand-core-scenarios.js
+
+      - name: Clean up disposable load-test data
+        if: always()
+        env:
+          BASE_URL: http://localhost:8080
+          LOAD_TEST_ENV_FILE: load-tests/.env.generated
+          LOAD_TEST_CLEANUP: true
+        run: node load-tests/cleanup-test-data.mjs
+
+      - name: Upload k6 summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summaries
+          path: load-tests/results/*.json
+          if-no-files-found: ignore
+
+      - name: Collect Compose diagnostics
+        if: failure()
+        run: |
+          docker compose ps -a > compose-ps.txt
+          docker compose logs --no-color > compose-logs.txt
+
+      - name: Upload Compose diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-compose-diagnostics
+          path: |
+            compose-ps.txt
+            compose-logs.txt
+
+      - name: Stop the Compose environment
+        if: always()
+        run: docker compose down --volumes --remove-orphans
