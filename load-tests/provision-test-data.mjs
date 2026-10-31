@@ -145,6 +145,44 @@ async function findSupplier(user) {
   return { id: supplier.id, serviceType: supplier.serviceTypes[0] }
 }
 
+async function createReadFixture(requester, supplier) {
+  const result = await request(`${baseUrl}/api/errands`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Cookie: requester.cookie },
+    body: JSON.stringify({
+      supplierDetails: {
+        supplierId: supplier.id,
+        supplierName,
+        serviceType: supplier.serviceType,
+      },
+      name: `k6 read fixture ${runId()}`,
+      pickupLocation: {
+        lat: 1.2966,
+        lng: 103.7764,
+        buildingName: 'COM3',
+        floorNumber: 2,
+      },
+      targetLocation: {
+        lat: 1.2988,
+        lng: 103.7731,
+        buildingName: 'UTown',
+        floorNumber: 1,
+      },
+      deliveryDetails: {
+        description: 'Disposable fixture for read-only k6 testing.',
+        instructions: 'Do not accept this fixture errand.',
+      },
+      creditAmount: Number(process.env.LOAD_TEST_FIXTURE_CREDIT_AMOUNT ?? '1'),
+    }),
+  })
+  assertStatus(result, 201, 'Create read-test fixture errand')
+  const errandId = result.body?.errand?.id
+  if (typeof errandId !== 'string' || !errandId) {
+    throw new Error('Create read-test fixture errand did not return an errand ID.')
+  }
+  return errandId
+}
+
 function envLine(name, value) {
   return `${name}=${String(value).replaceAll('\\n', '')}`
 }
@@ -163,6 +201,7 @@ async function main() {
   for (const user of users) await createProfile(user)
   await Promise.all(users.map(waitForCredit))
   const supplier = await findSupplier(users[0])
+  const fixtureErrandId = await createReadFixture(users[0], supplier)
 
   await mkdir(outputPath.substring(0, outputPath.lastIndexOf('/')) || '.', { recursive: true })
   const content = [
@@ -179,11 +218,12 @@ async function main() {
     envLine('LOAD_TEST_SUPPLIER_ID', supplier.id),
     envLine('LOAD_TEST_SERVICE_TYPE', supplier.serviceType),
     envLine('LOAD_TEST_CREDIT_AMOUNT', process.env.LOAD_TEST_CREDIT_AMOUNT ?? '1'),
+    envLine('LOAD_TEST_ERRAND_ID', fixtureErrandId),
     envLine('LOAD_TEST_CLEANUP', process.env.LOAD_TEST_CLEANUP ?? 'true'),
     '',
   ].join('\n')
   await writeFile(outputPath, content, 'utf8')
-  console.log(`Provisioned three users and selected supplier ${supplier.id}.`)
+  console.log(`Provisioned three users, selected supplier ${supplier.id}, and created fixture errand ${fixtureErrandId}.`)
   console.log(`Generated k6 environment: ${outputPath}`)
 }
 

@@ -137,6 +137,14 @@ jobs:
             -v "${PWD}/load-tests:/scripts" \
             grafana/k6 cloud run --local-execution /scripts/errand-core-scenarios.js
 
+      - name: Clean up disposable load-test data
+        if: always()
+        env:
+          BASE_URL: http://localhost:8080
+          LOAD_TEST_ENV_FILE: load-tests/.env.generated
+          LOAD_TEST_CLEANUP: true
+        run: node load-tests/cleanup-test-data.mjs
+
       - name: Upload k6 summaries
         if: always()
         uses: actions/upload-artifact@v4
