@@ -2,6 +2,10 @@ name: Load tests
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "load-tests/**"
+      - ".github/workflows/load-tests.yml"
   schedule:
     - cron: '0 18 * * *'
 
