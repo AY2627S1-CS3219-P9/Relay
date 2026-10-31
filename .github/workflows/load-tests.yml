@@ -25,7 +25,7 @@ on:
           - full
 
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 18 * * *' # Every day at 18:00 UTC (2 AM SGT)  
 
 permissions:
   contents: read
@@ -65,7 +65,18 @@ jobs:
           LOAD_TEST_ENV_FILE: load-tests/.env.generated
         run: node load-tests/provision-test-data.mjs
 
+      - name: Run browse smoke test locally for pull requests
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          docker run --rm -i \
+            --add-host host.docker.internal:host-gateway \
+            --env-file load-tests/.env.generated \
+            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
+            -v "${PWD}/load-tests:/scripts" \
+            grafana/k6 run /scripts/errand-browse-smoke.js
+
       - name: Verify Grafana Cloud credentials
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
@@ -76,6 +87,7 @@ jobs:
           test -n "$K6_CLOUD_PROJECT_ID" || { echo "K6_CLOUD_PROJECT_ID is not configured"; exit 1; }
 
       - name: Run browse smoke test in Grafana Cloud
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
