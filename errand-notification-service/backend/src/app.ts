@@ -56,12 +56,10 @@ export async function processErrandEvent(
 ): Promise<void> {
   const { eventId, eventType, timestamp, payload } = event
 
-  // Map Kafka event type to SSE event type
   const sseEventType = mapKafkaToSseEvent(eventType)
 
   console.log(`Processing event ${eventId} of type ${eventType} for errand ${payload.errandId}`)
 
-  // Check for recipientSubs field (new events have this)
   const recipientSubs = (payload as any).recipientSubs
   if (!recipientSubs || !Array.isArray(recipientSubs) || recipientSubs.length === 0) {
     console.warn(`Event ${eventId} missing valid recipientSubs. Skipping notification.`, {
@@ -71,32 +69,22 @@ export async function processErrandEvent(
     return
   }
 
-  // ERRAND_CREATED and ERRAND_CREATION_FAILED don't have status fields
-  const isStatusEvent =
-    eventType === ErrandEventTypes.ERRAND_STATUS_CHANGED ||
-    eventType === ErrandEventTypes.ERRAND_COMPLETED ||
-    eventType === ErrandEventTypes.ERRAND_CANCELLED ||
-    eventType === ErrandEventTypes.ERRAND_EXPIRED ||
-    eventType === ErrandEventTypes.ERRAND_DELETED
+  const newStatus = payload.errandStatus
+  if (!newStatus) {
+    console.warn(`Event ${eventId} missing errandStatus. Skipping notification.`, {
+      eventType,
+      payload,
+    })
+    return
+  }
 
-  if (isStatusEvent) {
-    const newStatus = payload.errandStatus
-    if (!newStatus) {
-      console.warn(`Event ${eventId} missing errandStatus. Skipping notification.`, {
-        eventType,
-        payload,
-      })
-      return
-    }
-
-    const oldStatus = payload.previousStatus
-    if (!oldStatus) {
-      console.warn(`Event ${eventId} missing previousStatus. Skipping notification.`, {
-        eventType,
-        payload,
-      })
-      return
-    }
+  const oldStatus = payload.previousStatus
+  if (!oldStatus) {
+    console.warn(`Event ${eventId} missing previousStatus. Skipping notification.`, {
+      eventType,
+      payload,
+    })
+    return
   }
 
   const notification: ErrandNotification = {
@@ -104,7 +92,8 @@ export async function processErrandEvent(
     type: sseEventType,
     errandId: payload.errandId,
     timestamp,
-    ...(isStatusEvent ? { oldStatus: payload.previousStatus, newStatus: payload.errandStatus } : {}),
+    oldStatus,
+    newStatus,
   }
 
   eventStream.publish(recipientSubs, notification)

@@ -100,7 +100,7 @@ describe('processErrandEvent', () => {
     )
   })
 
-  it('should process ERRAND_CREATED event and map to ERRAND_CREATED SSE', async () => {
+  it('should skip ERRAND_CREATED event (no status fields)', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
 
     const event = {
@@ -119,24 +119,9 @@ describe('processErrandEvent', () => {
 
     await processErrandEvent(eventStream, event)
 
-    expect(notificationStreamWriteSpy).toHaveBeenCalledOnce()
-    expect(notificationStreamWriteSpy).toHaveBeenCalledWith(
-      ['requester-sub'],
-      expect.objectContaining({
-        type: ErrandNotificationTypes.ERRAND_CREATED,
-        errandId: 'errand-101',
-        // ERRAND_CREATED has no oldStatus/newStatus fields
-      }),
-    )
-
-    // Verify the notification has no status fields
-    const writtenData = JSON.parse(mockResponse.write.mock.calls[0][0].slice(5, -2))
-    expect(writtenData).toMatchObject({
-      type: ErrandNotificationTypes.ERRAND_CREATED,
-      errandId: 'errand-101',
-    })
-    expect(writtenData).not.toHaveProperty('oldStatus')
-    expect(writtenData).not.toHaveProperty('newStatus')
+    // ERRAND_CREATED events are skipped because they lack errandStatus
+    expect(notificationStreamWriteSpy).not.toHaveBeenCalled()
+    expect(mockResponse.write).not.toHaveBeenCalled()
   })
 
   it('should process ERRAND_DELETED event and map to ERRAND_DELETED SSE', async () => {
@@ -865,9 +850,9 @@ describe('processErrandEvent', () => {
     ])
   })
 
-  it('END-TO-END: Verify ERRAND_CREATED has no status fields in SSE', async () => {
+  it('END-TO-END: Verify ERRAND_CREATED is skipped (no status fields)', async () => {
     const eventStream = new ErrandNotificationEventStream()
-    const mockResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
+    const mockResponse = { write: vi.fn(), end: vi.fn() } as unknown as ServerResponse
 
     const kafkaEvent = {
       eventId: 'created-event-xyz',
@@ -881,22 +866,10 @@ describe('processErrandEvent', () => {
       },
     }
 
-    eventStream.subscribe('user-requester', mockResponse as ServerResponse)
+    eventStream.subscribe('user-requester', mockResponse)
     await processErrandEvent(eventStream, kafkaEvent)
 
-    const sseData = mockResponse.write.mock.calls[0][0]
-    const jsonPayload = JSON.parse(sseData.slice(5, -2))
-
-    // ERRAND_CREATED should NOT have oldStatus or newStatus
-    expect(jsonPayload.type).toBe('ERRAND_CREATED')
-    expect(jsonPayload.errandId).toBe('new-errand-123')
-    expect(jsonPayload).not.toHaveProperty('oldStatus')
-    expect(jsonPayload).not.toHaveProperty('newStatus')
-
-    // Verify the exact properties present (check all expected keys exist and no extras)
-    // Order is: eventId, type, errandId, timestamp (from notification object construction)
-    const actualKeys = Object.keys(jsonPayload)
-    expect(actualKeys).toEqual(['eventId', 'type', 'errandId', 'timestamp'])
-    expect(actualKeys.length).toBe(4)
+    // ERRAND_CREATED events are skipped because they lack errandStatus
+    expect(mockResponse.write).not.toHaveBeenCalled()
   })
 })
