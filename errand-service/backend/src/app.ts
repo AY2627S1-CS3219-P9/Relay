@@ -1,5 +1,7 @@
 import express, { type ErrorRequestHandler } from 'express'
 import { Kafka } from 'kafkajs'
+import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
+import { fromHttp } from '@aws-sdk/credential-provider-http'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
@@ -17,7 +19,7 @@ import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
 import { PendingErrandWorker } from './workers/pending-errand.worker.js'
 import { ErrandEventPublisher } from './workers/errand-event-publisher.js'
 
-export function createApp() {
+export function createApp(isReady: () => boolean = () => true) {
   const app = express()
 
   app.use(express.json())
@@ -27,7 +29,8 @@ export function createApp() {
   })
 
   app.get('/healthz', (_req, res) => {
-    res.status(200).send('ok\n')
+    const ready = isReady()
+    res.status(ready ? 200 : 503).send(ready ? 'ok\n' : 'Kafka unavailable\n')
   })
 
   const eventStream = new ErrandEventStream()
@@ -60,15 +63,44 @@ export function createApp() {
   return app
 }
 
-export const app = createApp()
+let kafkaReady = process.env.NODE_ENV === 'test'
+export const app = createApp(() => kafkaReady)
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
+  const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
+    ? {
+        ssl: true,
+        sasl: {
+          mechanism: 'oauthbearer' as const,
+          oauthBearerProvider: async () => {
+            const { token } = await generateAuthTokenFromCredentialsProvider({
+              region: process.env.AWS_REGION ?? 'us-east-1',
+              awsCredentialsProvider: fromHttp(),
+            })
+            return { value: token }
+          },
+        },
+      }
+    : process.env.KAFKA_AUTH_MODE === 'plain'
+      ? {
+          sasl: {
+            mechanism: 'plain' as const,
+            username: process.env.KAFKA_USERNAME ?? '',
+            password: process.env.KAFKA_PASSWORD ?? '',
+          },
+        }
+      : {}
+
+  if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+    throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
+  }
 
   const kafka = new Kafka({
     clientId: 'errand-service',
     brokers: env.kafkaBrokers.split(','),
     retry: { retries: 3, initialRetryTime: 100, maxRetryTime: 1000 },
+    ...kafkaAuth,
   })
   const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())
@@ -78,10 +110,21 @@ if (process.env.NODE_ENV !== 'test') {
     env.kafkaTopicErrandEvents,
   )
   worker.start()
-  publisher.start().catch((err) => {
-    console.error('Failed to connect Kafka producer:', err)
-    process.exit(1)
-  })
+  let stopping = false
+  const connectPublisher = async () => {
+    while (!stopping) {
+      try {
+        await publisher.start()
+        kafkaReady = true
+        return
+      } catch (err) {
+        console.error('Failed to connect Kafka producer; retrying:', err)
+        await publisher.stop().catch(() => undefined)
+        if (!stopping) await new Promise((resolve) => setTimeout(resolve, 5_000))
+      }
+    }
+  }
+  const publisherConnection = connectPublisher()
 
   const server = app.listen(env.port, () => {
     console.log(`Errand Service listening on port ${env.port}`)
@@ -89,8 +132,11 @@ if (process.env.NODE_ENV !== 'test') {
 
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
+    stopping = true
+    kafkaReady = false
     worker.stop()
     server.close(async () => {
+      await publisherConnection
       await publisher.stop()
       await consumer.stop()
       process.exit(0)

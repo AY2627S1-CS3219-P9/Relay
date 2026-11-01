@@ -15,5 +15,5 @@ export type StoredImage = {
 export interface ImageStorage {
   upload(input: ImageUpload, ownerSub: string): Promise<StoredImage>
   delete(key: string): Promise<void>
-  url(key: string): string
+  url(key: string): Promise<string>
 }
