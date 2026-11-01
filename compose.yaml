@@ -191,6 +191,8 @@ services:
     depends_on:
       errand-api:
         condition: service_healthy
+      errand-notification:
+        condition: service_healthy
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked errand-api dependency when its API exists.
 
@@ -393,6 +395,29 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  errand-notification:
+    build:
+      context: .
+      dockerfile: errand-notification-service/backend/Dockerfile
+    expose:
+      - '3010'
+    environment:
+      PORT: '3010'
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3010/health']
       interval: 10s
       timeout: 3s
       retries: 5

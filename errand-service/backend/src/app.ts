@@ -9,7 +9,6 @@ import { ErrandService } from './services/errand.service.js'
 import { CreditClient } from './clients/credit.client.js'
 import { SupplierClient } from './clients/supplier.client.js'
 import { ErrandController } from './controllers/errand.controller.js'
-import { ErrandEventStream } from './services/errandEventStream.js'
 import { createErrandRouter } from './routes/errand.routes.js'
 import { ErrandConsumer } from './consumers/consumer.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
@@ -30,12 +29,11 @@ export function createApp() {
     res.status(200).send('ok\n')
   })
 
-  const eventStream = new ErrandEventStream()
-  const repository = new ErrandRepository(undefined, eventStream)
+  const repository = new ErrandRepository()
   const creditClient = new CreditClient()
   const supplierClient = new SupplierClient()
   const service = new ErrandService(repository, creditClient, supplierClient)
-  const controller = new ErrandController(service, eventStream)
+  const controller = new ErrandController(service)
   const errandRouter = createErrandRouter(controller)
   const internalErrandRouter = createInternalErrandRouter(controller)
 

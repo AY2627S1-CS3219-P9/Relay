@@ -22,4 +22,26 @@ export default defineConfig({
   ],
   server: { port: 5003, strictPort: true },
   build: { target: 'esnext' },
+  server: {
+    port: 5003,
+    strictPort: true,
+    proxy: {
+      '/api/notifications/stream': {
+        target: 'http://localhost:3010',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // WebSocket/SSE support
+      },
+      '/api/errands': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/credit': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
