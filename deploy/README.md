@@ -5,7 +5,8 @@ repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, and their credentials. The sandbox demo
+  four private PostgreSQL databases, their credentials, and the Metrics Server
+  add-on required by CPU autoscalers. The sandbox demo
   runs its own single-node Kafka broker in EKS.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
