@@ -50,7 +50,7 @@ export function createNotificationApp(eventStream: ErrandNotificationEventStream
   return { app, consumer, startConsumer }
 }
 
-async function processErrandEvent(
+export async function processErrandEvent(
   eventStream: ErrandNotificationEventStream,
   event: ErrandEvent,
 ): Promise<void> {
@@ -71,22 +71,32 @@ async function processErrandEvent(
     return
   }
 
-  const newStatus = payload.errandStatus
-  if (!newStatus) {
-    console.warn(`Event ${eventId} missing errandStatus. Skipping notification.`, {
-      eventType,
-      payload,
-    })
-    return
-  }
+  // ERRAND_CREATED and ERRAND_CREATION_FAILED don't have status fields
+  const isStatusEvent =
+    eventType === ErrandEventTypes.ERRAND_STATUS_CHANGED ||
+    eventType === ErrandEventTypes.ERRAND_COMPLETED ||
+    eventType === ErrandEventTypes.ERRAND_CANCELLED ||
+    eventType === ErrandEventTypes.ERRAND_EXPIRED ||
+    eventType === ErrandEventTypes.ERRAND_DELETED
 
-  const oldStatus = payload.previousStatus
-  if (!oldStatus) {
-    console.warn(`Event ${eventId} missing previousStatus. Skipping notification.`, {
-      eventType,
-      payload,
-    })
-    return
+  if (isStatusEvent) {
+    const newStatus = payload.errandStatus
+    if (!newStatus) {
+      console.warn(`Event ${eventId} missing errandStatus. Skipping notification.`, {
+        eventType,
+        payload,
+      })
+      return
+    }
+
+    const oldStatus = payload.previousStatus
+    if (!oldStatus) {
+      console.warn(`Event ${eventId} missing previousStatus. Skipping notification.`, {
+        eventType,
+        payload,
+      })
+      return
+    }
   }
 
   const notification: ErrandNotification = {
@@ -94,8 +104,7 @@ async function processErrandEvent(
     type: sseEventType,
     errandId: payload.errandId,
     timestamp,
-    oldStatus,
-    newStatus,
+    ...(isStatusEvent ? { oldStatus: payload.previousStatus, newStatus: payload.errandStatus } : {}),
   }
 
   eventStream.publish(recipientSubs, notification)
