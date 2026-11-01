@@ -1,4 +1,5 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getEnv } from '../config/env.js'
 import type { ImageStorage, ImageUpload, StoredImage } from './image-storage.js'
 
@@ -22,10 +23,9 @@ export class FlociS3ImageStorage implements ImageStorage {
       endpoint: this.endpoint,
       region: env.s3Region,
       forcePathStyle: env.s3ForcePathStyle,
-      credentials: {
-        accessKeyId: env.s3AccessKeyId,
-        secretAccessKey: env.s3SecretAccessKey,
-      },
+      ...(env.s3AccessKeyId && env.s3SecretAccessKey
+        ? { credentials: { accessKeyId: env.s3AccessKeyId, secretAccessKey: env.s3SecretAccessKey } }
+        : {}),
     })
   }
 
@@ -41,7 +41,7 @@ export class FlociS3ImageStorage implements ImageStorage {
       }),
     )
 
-    return { key, url: this.url(key) }
+    return { key, url: await this.url(key) }
   }
 
   async delete(key: string): Promise<void> {
@@ -53,11 +53,19 @@ export class FlociS3ImageStorage implements ImageStorage {
     )
   }
 
-  url(key: string): string {
-    return `${this.publicEndpoint}/${encodeURIComponent(this.bucket)}/${key
-      .split('/')
-      .map(encodeURIComponent)
-      .join('/')}`
+  async url(key: string): Promise<string> {
+    if (this.endpoint.includes('localhost') || this.endpoint.includes('127.0.0.1')) {
+      return `${this.publicEndpoint}/${encodeURIComponent(this.bucket)}/${key
+        .split('/')
+        .map(encodeURIComponent)
+        .join('/')}`
+    }
+
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      { expiresIn: 900 },
+    )
   }
 }
 
