@@ -1,6 +1,8 @@
 services:
   floci:
-    build: ./floci/
+    build:
+      context: .
+      dockerfile: floci/docker/Dockerfile
     environment:
       FLOCI_INIT_HOOKS_TIMEOUT_SECONDS: '120'
     ports:

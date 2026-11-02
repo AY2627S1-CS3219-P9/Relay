@@ -1,0 +1,106 @@
+# Ephemeral databases for local EKS integration tests. AWS uses RDS instead.
+apiVersion: v1
+kind: Service
+metadata: { name: user-postgres, namespace: relay }
+spec: { selector: { app: user-postgres }, ports: [{ port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: user-postgres, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: user-postgres } }
+  template:
+    metadata: { labels: { app: user-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: relay-user-postgres:latest
+          imagePullPolicy: IfNotPresent
+          args: [postgres, -c, shared_preload_libraries=pg_cron, -c, cron.database_name=relay, -c, cron.timezone=Asia/Singapore, -c, cron.use_background_workers=on]
+          env:
+            - { name: POSTGRES_USER, value: relay }
+            - { name: POSTGRES_PASSWORD, value: relay }
+            - { name: POSTGRES_DB, value: relay }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe: { exec: { command: [pg_isready, -U, relay, -d, relay] }, periodSeconds: 5 }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: errand-postgres, namespace: relay }
+spec: { selector: { app: errand-postgres }, ports: [{ port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: errand-postgres, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: errand-postgres } }
+  template:
+    metadata: { labels: { app: errand-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: relay }
+            - { name: POSTGRES_PASSWORD, value: relay }
+            - { name: POSTGRES_DB, value: relayerrand }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe: { exec: { command: [pg_isready, -U, relay, -d, relayerrand] }, periodSeconds: 5 }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: credit-postgres, namespace: relay }
+spec: { selector: { app: credit-postgres }, ports: [{ port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: credit-postgres, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: credit-postgres } }
+  template:
+    metadata: { labels: { app: credit-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: relay }
+            - { name: POSTGRES_PASSWORD, value: relay }
+            - { name: POSTGRES_DB, value: relay }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe: { exec: { command: [pg_isready, -U, relay, -d, relay] }, periodSeconds: 5 }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: supplier-postgres, namespace: relay }
+spec: { selector: { app: supplier-postgres }, ports: [{ port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: supplier-postgres, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: supplier-postgres } }
+  template:
+    metadata: { labels: { app: supplier-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: relay }
+            - { name: POSTGRES_PASSWORD, value: relay }
+            - { name: POSTGRES_DB, value: relay }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe: { exec: { command: [pg_isready, -U, relay, -d, relay] }, periodSeconds: 5 }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes: [{ name: data, emptyDir: {} }]

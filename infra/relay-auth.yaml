@@ -14,12 +14,28 @@ Parameters:
   SuperAdminGroupName:
     Type: String
     Default: SuperAdminGroup
+  FlociPoolId:
+    Type: String
+    Default: ''
+    Description: Optional local Floci pool ID override; leave empty on AWS.
+  FlociClientId:
+    Type: String
+    Default: ''
+    Description: Optional local Floci client ID override; leave empty on AWS.
+
+Conditions:
+  UseFlociIds: !Not [!Equals [!Ref FlociPoolId, '']]
 
 Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Ref UserPoolName
+      UserPoolTags: !If
+        - UseFlociIds
+        - floci:override-id: !Ref FlociPoolId
+          floci:override-cognito-client-id: use-name
+        - !Ref AWS::NoValue
       UsernameAttributes:
         - email
       UsernameConfiguration:
@@ -45,7 +61,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref UserPool
-      ClientName: !Ref ClientName
+      ClientName: !If [UseFlociIds, !Ref FlociClientId, !Ref ClientName]
       GenerateSecret: false
       EnableTokenRevocation: true
       ExplicitAuthFlows:

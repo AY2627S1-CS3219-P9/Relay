@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: relay
+  namespace: relay
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - { path: /remotes/supplier, pathType: Prefix, backend: { service: { name: supplier-frontend, port: { number: 80 } } } }
+          - { path: /remotes/user, pathType: Prefix, backend: { service: { name: user-frontend, port: { number: 80 } } } }
+          - { path: /remotes/errand, pathType: Prefix, backend: { service: { name: errand-frontend, port: { number: 80 } } } }
+          - { path: /remotes/credit, pathType: Prefix, backend: { service: { name: credit-frontend, port: { number: 80 } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: host, port: { number: 80 } } } }

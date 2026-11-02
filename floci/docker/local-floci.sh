@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 image="${FLOCI_IMAGE:-floci-sa}"
 env_file="${FLOCI_ENV_FILE:-${repo_root}/.env.development}"
 container_name="${FLOCI_CONTAINER_NAME:-relay-floci}"
@@ -15,7 +15,7 @@ fi
 
 if ! docker image inspect "${image}" >/dev/null 2>&1; then
   echo "Docker image not found: ${image}" >&2
-  echo "Build it first, for example: docker build -t ${image} ${repo_root}/floci" >&2
+  echo "Build it first, for example: docker build -t ${image} -f ${repo_root}/floci/docker/Dockerfile ${repo_root}" >&2
   exit 1
 fi
 
