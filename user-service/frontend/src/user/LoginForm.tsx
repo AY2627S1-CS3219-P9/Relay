@@ -54,7 +54,7 @@ export function LoginForm({
     } else if (response.error.code === 'EMAIL_NOT_VERIFIED') {
       onVerificationRequired(email, password)
     } else {
-      setErrorMessage(response.error.message)
+      setErrorMessage(response.error.fieldErrors?.email ?? response.error.message)
     }
     setLoading(false)
   }

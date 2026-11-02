@@ -22,7 +22,8 @@ export function RegisterForm({
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
-    if (!isNusEmail(email)) return setErrorMessage('Use your NUS email address ending in @nus.edu.')
+    if (!isNusEmail(email))
+      return setErrorMessage('Use your NUS email address ending in @u.nus.edu or @nus.edu.sg.')
     if (errors.length) return setErrorMessage('Please meet all password requirements.')
     if (password !== confirmation) return setErrorMessage('Passwords must match exactly.')
     setLoading(true)
@@ -36,7 +37,12 @@ export function RegisterForm({
     if (response.ok) {
       onRegistered(email, password)
     } else {
-      setErrorMessage(response.error.message)
+      setErrorMessage(
+        response.error.fieldErrors?.email ??
+          response.error.fieldErrors?.password ??
+          response.error.fieldErrors?.passwordConfirmation ??
+          response.error.message,
+      )
     }
     setLoading(false)
   }
