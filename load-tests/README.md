@@ -29,6 +29,43 @@ node load-tests/provision-test-data.mjs
 
 For repeated local runs against a persistent Compose environment, `.env.local` remains available. `.env.generated` is intended for fresh runs and is ignored. Do not put real credentials in `.env.example`, test scripts, result files, or committed documentation.
 
+### Provision AWS test data
+
+For the deployed AWS environment, use `provision-aws-test-data.mjs` rather
+than the local Floci provisioner. It creates disposable Cognito users with
+verified email attributes and permanent passwords, creates their Relay
+profiles through the deployed ALB, waits for asynchronous credit allocation,
+discovers the operational Octobox supplier, and writes an ignored
+`.env.aws.generated` file. It creates one requester and two couriers so the
+full lifecycle and acceptance-race scenarios can run. It also creates one
+disposable open errand and writes its ID as `LOAD_TEST_ERRAND_ID` for browse,
+detail, and mixed NFR tests.
+
+Run it from Git Bash after the AWS deployment is ready:
+
+```bash
+export AWS_PROFILE=relay-sso
+export AWS_REGION=ap-southeast-1
+export ALB_HOST="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+export BASE_URL="http://$ALB_HOST"
+export COGNITO_USER_POOL_ID="$(aws cognito-idp list-user-pools --max-results 50 --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "UserPools[?Name=='relay-users'].Id | [0]" --output text)"
+
+node load-tests/provision-aws-test-data.mjs
+```
+
+If the pool name differs, set `COGNITO_USER_POOL_ID` directly from
+`deploy/relay.aws.env`. The AWS CLI profile must have permission to administer
+users in the deployed Cognito pool. The generated credentials are written only
+to `load-tests/.env.aws.generated`; never commit that file.
+
+Clean up the AWS fixture errand after the read tests:
+
+```powershell
+$env:BASE_URL = "http://$env:ALB_HOST"
+$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.aws.generated'
+node load-tests/cleanup-test-data.mjs
+```
+
 ### Run locally in Docker
 
 The default `BASE_URL` is `http://host.docker.internal:8080`, which lets the k6 container reach the Compose host gateway.
