@@ -5,10 +5,15 @@ cd "$(dirname "$0")/../.."
 # Compose remains available at localhost:8080; this is a separate Floci instance.
 docker compose -f compose.eks.yaml --project-name relay-eks up -d --build
 for i in $(seq 1 120); do
-  [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && break
+  [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-eks test -s /app/data/relay-auth.env && break
   sleep 3
 done
 [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}')" == healthy ]]
+# The auth stack chooses its own pool and app client IDs.
+auth_output="$(docker exec relay-floci-eks cat /app/data/relay-auth.env)"
+COGNITO_USER_POOL_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
+COGNITO_CLIENT_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
+[[ -n "$COGNITO_USER_POOL_ID" && -n "$COGNITO_CLIENT_ID" ]]
 node=floci-aws-eks-relay-local
 for i in $(seq 1 120); do
   docker exec "$node" test -f /etc/rancher/k3s/k3s.yaml >/dev/null 2>&1 && break
@@ -63,10 +68,10 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=AWS_ACCESS_KEY_ID=test \
   --from-literal=AWS_SECRET_ACCESS_KEY=test \
   --from-literal=AWS_ENDPOINT_URL=http://floci-local:4566 \
-  --from-literal=COGNITO_ISSUER=http://localhost:4567/us-east-1_test \
-  --from-literal=COGNITO_JWKS_URI=http://floci-local:4566/us-east-1_test/.well-known/jwks.json \
-  --from-literal=COGNITO_CLIENT_ID=test \
-  --from-literal=COGNITO_USER_POOL_ID=us-east-1_test \
+  --from-literal=COGNITO_ISSUER=http://localhost:4567/${COGNITO_USER_POOL_ID} \
+  --from-literal=COGNITO_JWKS_URI=http://floci-local:4566/${COGNITO_USER_POOL_ID}/.well-known/jwks.json \
+  --from-literal=COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} \
+  --from-literal=COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID} \
   --from-literal=AUTH_BOOTSTRAP_ADMIN_EMAIL=admin@example.com \
   --from-literal=S3_ENDPOINT=http://floci-local:4566 \
   --from-literal=S3_PUBLIC_ENDPOINT=http://localhost:4567 \

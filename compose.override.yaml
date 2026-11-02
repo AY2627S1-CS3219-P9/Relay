@@ -44,8 +44,8 @@ services:
       AWS_ENDPOINT_URL: http://floci:4566
       # Cognito tokens are issued using the browser-facing Floci URL.
       # The backend still uses the internal Floci hostname for JWKS retrieval.
-      COGNITO_ISSUER: http://localhost:4566/us-east-1_test
-      COGNITO_JWKS_URI: http://floci:4566/us-east-1_test/.well-known/jwks.json
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
     depends_on:
       floci:
         condition: service_healthy
@@ -54,9 +54,11 @@ services:
       - .env.development
     environment:
       AWS_ENDPOINT_URL: http://floci:4566
-      COGNITO_ISSUER: http://localhost:4566/us-east-1_test
-      COGNITO_JWKS_URI: http://floci:4566/us-east-1_test/.well-known/jwks.json
       COOKIE_SECURE: 'false'
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
     ports:
       - '127.0.0.1:3004:3000'
     depends_on:

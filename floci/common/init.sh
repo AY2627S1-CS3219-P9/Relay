@@ -8,20 +8,21 @@ export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_PAGER=''
 
+rm -f /app/data/ready /app/data/relay-auth.env
+
 aws cloudformation deploy --stack-name relay-local-auth \
   --template-file /opt/relay/infra/relay-auth.yaml \
   --parameter-overrides \
     "UserPoolName=${COGNITO_USER_POOL_NAME:-test}" \
-    "ClientName=${COGNITO_CLIENT_ID:-test}" \
+    "ClientName=${COGNITO_CLIENT_NAME:-relay-client}" \
     "AdminGroupName=${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}" \
-    "SuperAdminGroupName=${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}" \
-    "FlociPoolId=${COGNITO_USER_POOL_ID:-us-east-1_test}" \
-    "FlociClientId=${COGNITO_CLIENT_ID:-test}"
+    "SuperAdminGroupName=${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}"
 
 pool_id="$(aws cloudformation describe-stacks --stack-name relay-local-auth --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' --output text)"
 client_id="$(aws cloudformation describe-stacks --stack-name relay-local-auth --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' --output text)"
-test "$pool_id" = "${COGNITO_USER_POOL_ID:-us-east-1_test}"
-test "$client_id" = "${COGNITO_CLIENT_ID:-test}"
+test -n "$pool_id"
+test -n "$client_id"
+printf 'COGNITO_USER_POOL_ID=%s\nCOGNITO_CLIENT_ID=%s\n' "$pool_id" "$client_id" >/app/data/relay-auth.env
 
 aws cloudformation deploy --stack-name relay-local-storage \
   --template-file /opt/relay/infra/relay-storage.yaml \

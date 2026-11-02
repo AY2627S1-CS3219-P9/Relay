@@ -1,26 +1,44 @@
 # Local Floci environments
 
-The existing Docker Compose application stays at http://localhost:8080 and uses
-`floci/docker/Dockerfile`. Its init hook deploys `infra/relay-auth.yaml` and
-`infra/relay-storage.yaml` with the AWS CLI against Floci on port 4566.
+The Docker Compose application runs at http://localhost:8080. Start it with
+`bash floci/docker/up.sh` from WSL. The launcher builds the Floci image, waits
+for `infra/relay-auth.yaml` and `infra/relay-storage.yaml`, reads the generated
+Cognito pool and app client IDs from the auth stack, and starts Compose with
+`floci/docker/.generated.env`. This generated file is ignored by Git. Use the
+launcher after recreating Floci; plain `docker compose up` does not discover new
+Cognito IDs. `npm run dev` calls the launcher for its infrastructure services
+and loads the same generated IDs for local backend processes.
 
-The separate EKS-mode instance uses `floci/eks/Dockerfile` and publishes Floci
-on http://localhost:4567. It deploys the same Cognito and S3 CloudFormation
-templates plus `infra/relay-floci-eks.yaml`, which creates a real local k3s
-cluster through Floci's EKS API. The AWS `infra/relay-eks.yaml` remains the
-production EKS Auto Mode template; its ALB, IAM, and RDS resources are not
-needed for the local k3s cluster.
+The separate EKS-mode Floci instance runs at http://localhost:4567 and creates
+a local k3s cluster through `infra/relay-floci-eks.yaml`. Run
+`bash floci/eks/up.sh` from WSL to import images, deploy the app, apply local
+PostgreSQL and Kafka manifests, run migrations, and forward the ingress to
+http://localhost:9090. The script reads generated Cognito IDs from its own auth
+stack and writes its kubeconfig to `floci/eks/.kubeconfig`.
 
-Start Docker Compose with `docker compose up -d --build`. Start the local EKS
-application with `floci/eks/up.sh` from WSL. The script builds or reuses the
-Compose images, imports them into k3s, deploys the app and local PostgreSQL and
-Kafka workloads, runs migrations, and forwards the local ingress to
-http://localhost:9090. It writes its kubeconfig to `floci/eks/.kubeconfig`.
+`infra/relay-auth.yaml` and `infra/relay-storage.yaml` are the same templates
+used for AWS. The EKS template remains separate. A disposable deployment of the
+unchanged `infra/relay-eks.yaml` reached `CREATE_COMPLETE` in Floci, but it did
+not provide a working equivalent of the AWS environment:
 
-Local PostgreSQL and Kafka use `emptyDir` and lose data when their pods are
-replaced. This is a functional Kubernetes test, not a persistence or RDS/MSK
-test. The Floci EKS instance uses local-only test credentials and HTTP; AWS
-production uses IAM roles and should terminate HTTPS at the load balancer.
+- Both `AWS::EKS::PodIdentityAssociation` resources were reported as stubbed.
+  `aws eks create-pod-identity-association` can create them afterward, but the
+  current HTTP Floci container cannot inject credentials into pods. Floci
+  requires the Pod Identity add-on and an HTTPS admission webhook with a
+  certificate hostname reachable from the k3s API server.
+- The EKS cluster response omitted `computeConfig` and `storageConfig` even
+  though the shared template enabled EKS Auto Mode. Floci starts k3s instead.
+- Four RDS containers were created, but they ran stock PostgreSQL 16. The
+  user database parameter group listed no parameters, and `pg_cron` was not
+  installed. Floci does not apply PostgreSQL parameter group values to its
+  database containers. The user schema migration therefore cannot run against
+  those RDS instances as it does against the local PostgreSQL image.
+
+The disposable stack and its containers were deleted after the trial. The
+local PostgreSQL and Kafka pods use `emptyDir` and lose data on pod replacement;
+the AWS template provisions RDS instead. Keep the separate EKS template until
+the database and Pod Identity paths work end to end, not just until a shared
+CloudFormation stack reports `CREATE_COMPLETE`.
 
 Inspect the local cluster with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.

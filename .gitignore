@@ -35,3 +35,5 @@ floci/eks/.port-forward.pid
 floci/eks/.port-forward.err.log
 floci/eks/.backends.ta
 floci/eks/.host.ta
+
+floci/docker/.generated.env
