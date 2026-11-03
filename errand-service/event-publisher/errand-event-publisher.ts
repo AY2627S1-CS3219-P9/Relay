@@ -1,6 +1,6 @@
 import type { ErrandEvent, ErrandEventType, ErrandEventPayload } from '@relay/contracts'
 import type { Kafka, Producer } from 'kafkajs'
-import { ErrandRepository } from '../repositories/errand.repository.js'
+import { ErrandRepository } from '../backend/src/repositories/errand.repository.js'
 
 export class ErrandEventPublisher {
   private readonly producer: Producer

@@ -72,6 +72,8 @@ credit_frontend_image="$(build_and_push CreditFrontendRepositoryUri credit-servi
 supplier_api_image="$(build_and_push SupplierApiRepositoryUri supplier-service/backend/Dockerfile)"
 user_api_image="$(build_and_push UserApiRepositoryUri user-service/backend/Dockerfile)"
 user_auth_api_image="$(build_and_push UserAuthRepositoryUri user-service/auth/Dockerfile)"
+user_event_publisher_image="$(build_and_push UserEventPublisherRepositoryUri user-service/event-publisher/Dockerfile)"
+errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri errand-service/event-publisher/Dockerfile)"
 errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-service/backend/Dockerfile)"
 credit_api_image="$(build_and_push CreditApiRepositoryUri credit-service/backend/Dockerfile)"
 
@@ -141,6 +143,8 @@ sed \
   -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
+  -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
+  -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
   k8s/base/migrations.yaml > "$rendered"
 kubectl apply -f "$rendered"
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
@@ -156,6 +160,8 @@ sed \
   -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
+  -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
+  -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
   k8s/base/workloads.yaml | kubectl apply -f -
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api
 kubectl apply -f k8s/base/autoscaling.yaml

@@ -1,8 +1,7 @@
 import { Kafka, logLevel, type Producer } from 'kafkajs'
 import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
 import { fromHttp } from '@aws-sdk/credential-provider-http'
-import { prisma } from '../repositories/user.repository.js'
-import { getEnv } from '../config/env.js'
+import { PrismaClient } from '@relay/user-prisma'
 
 export class UserEventPublisher {
   private readonly producer: Producer
@@ -11,7 +10,7 @@ export class UserEventPublisher {
   private flushing = false
   private lastCleanup = 0
 
-  constructor() {
+  constructor(private readonly prisma = new PrismaClient()) {
     const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
       ? {
           ssl: true,
@@ -40,7 +39,7 @@ export class UserEventPublisher {
     }
     this.producer = new Kafka({
       clientId: 'user-service',
-      brokers: getEnv().kafkaBrokers,
+      brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
       logLevel: logLevel.ERROR,
       ...kafkaAuth,
     }).producer()
@@ -59,7 +58,7 @@ export class UserEventPublisher {
         await this.producer.connect()
         this.connected = true
       }
-      const pending = await prisma.userOutboxEvent.findMany({
+      const pending = await this.prisma.userOutboxEvent.findMany({
         where: { publishedAt: null },
         orderBy: { createdAt: 'asc' },
         take: 50,
@@ -69,7 +68,7 @@ export class UserEventPublisher {
           topic: event.topic,
           messages: [{ key: event.key, value: JSON.stringify(event.payload) }],
         })
-        await prisma.userOutboxEvent.update({
+        await this.prisma.userOutboxEvent.update({
           where: { id: event.id },
           data: { publishedAt: new Date() },
         })
@@ -80,7 +79,7 @@ export class UserEventPublisher {
     } finally {
       try {
         if (Date.now() - this.lastCleanup >= 60_000) {
-          await prisma.userOutboxEvent.deleteMany({
+          await this.prisma.userOutboxEvent.deleteMany({
             where: { publishedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
           })
           this.lastCleanup = Date.now()

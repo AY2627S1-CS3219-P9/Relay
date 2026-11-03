@@ -40,9 +40,9 @@ export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
 if [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
-  USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api
+  USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api user-event-publisher errand-event-publisher
 fi
-images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api)
+images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-user-event-publisher relay-errand-event-publisher)
 for i in "${!images[@]}"; do images[$i]="${images[$i]}:latest"; done
 if [[ "${SKIP_IMAGE_IMPORT:-0}" != 1 ]]; then
   docker save -o floci/eks/.images.tar "${images[@]}"
@@ -105,7 +105,9 @@ render() {
     -e 's|IMAGE_USER_AUTH_API|relay-user-auth-api:latest|g' \
     -e 's|IMAGE_USER_API|relay-user-api:latest|g' \
     -e 's|IMAGE_ERRAND_API|relay-errand-api:latest|g' \
-    -e 's|IMAGE_CREDIT_API|relay-credit-api:latest|g' "$1" |
+    -e 's|IMAGE_CREDIT_API|relay-credit-api:latest|g' \
+    -e 's|IMAGE_USER_EVENT_PUBLISHER|relay-user-event-publisher:latest|g' \
+    -e 's|IMAGE_ERRAND_EVENT_PUBLISHER|relay-errand-event-publisher:latest|g' "$1" |
     sed -E '/^[[:space:]]+image: relay-.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: IfNotPresent/; }'
 }
 
@@ -113,7 +115,7 @@ kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-m
 render k8s/base/migrations.yaml | sed '/DB_SSL_CA_PATH/d' | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
 render k8s/base/workloads.yaml | sed '/DB_SSL_CA_PATH/d' | kubectl apply -f -
-kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api
+kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher
 kubectl apply -f k8s/floci/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do kubectl -n relay rollout status "$deployment" --timeout=10m; done
 

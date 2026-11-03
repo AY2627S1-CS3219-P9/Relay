@@ -233,6 +233,35 @@ services:
       timeout: 3s
       retries: 5
   #
+  user-event-publisher:
+    build:
+      context: .
+      dockerfile: user-service/event-publisher/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${USER_DATABASE_URL:?Run floci/docker/up.sh}
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      floci:
+        condition: service_healthy
+    restart: unless-stopped
+  errand-event-publisher:
+    build:
+      context: .
+      dockerfile: errand-service/event-publisher/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Run floci/docker/up.sh}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      floci:
+        condition: service_healthy
+    restart: unless-stopped
   user-auth-api:
     build:
       context: .

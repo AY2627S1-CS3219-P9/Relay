@@ -174,9 +174,48 @@ spec:
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
-          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: user-event-publisher, namespace: relay }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: user-event-publisher } }
+  template:
+    metadata: { labels: { app: user-event-publisher } }
+    spec:
+      serviceAccountName: user-api
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: publisher
+          image: IMAGE_USER_EVENT_PUBLISHER
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: errand-event-publisher, namespace: relay }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: errand-event-publisher } }
+  template:
+    metadata: { labels: { app: errand-event-publisher } }
+    spec:
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: publisher
+          image: IMAGE_ERRAND_EVENT_PUBLISHER
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          env:
+            - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
           resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
 ---
 apiVersion: v1

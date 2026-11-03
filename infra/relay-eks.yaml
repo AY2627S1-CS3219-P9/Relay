@@ -363,6 +363,12 @@ Resources:
   ErrandApiRepository:
     Type: AWS::ECR::Repository
     Properties: { RepositoryName: !Sub '${ProjectName}/errand-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  UserEventPublisherRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/user-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
+  ErrandEventPublisherRepository:
+    Type: AWS::ECR::Repository
+    Properties: { RepositoryName: !Sub '${ProjectName}/errand-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
   CreditApiRepository:
     Type: AWS::ECR::Repository
     Properties: { RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
@@ -388,3 +394,5 @@ Outputs:
   UserApiRepositoryUri: { Value: !GetAtt UserApiRepository.RepositoryUri }
   ErrandApiRepositoryUri: { Value: !GetAtt ErrandApiRepository.RepositoryUri }
   CreditApiRepositoryUri: { Value: !GetAtt CreditApiRepository.RepositoryUri }
+  UserEventPublisherRepositoryUri: { Value: !GetAtt UserEventPublisherRepository.RepositoryUri }
+  ErrandEventPublisherRepositoryUri: { Value: !GetAtt ErrandEventPublisherRepository.RepositoryUri }
