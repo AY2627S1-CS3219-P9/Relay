@@ -20,11 +20,6 @@ Parameters:
   DatabaseAllocatedStorage:
     Type: Number
     Default: 20
-  DatabaseEngineFamily:
-    Type: String
-    Default: postgres17
-    Description: RDS PostgreSQL parameter group family for the database engine major version.
-    AllowedPattern: '^postgres[0-9]+$'
   CognitoUserPoolId:
     Type: String
     Description: Existing Cognito user pool in this account and Region.
@@ -191,15 +186,6 @@ Resources:
         GenerateStringKey: password
         PasswordLength: 32
         ExcludePunctuation: true
-  UserDatabaseParameterGroup:
-    Type: AWS::RDS::DBParameterGroup
-    Properties:
-      Description: Relay user database pg_cron configuration
-      Family: !Ref DatabaseEngineFamily
-      Parameters:
-        shared_preload_libraries: pg_cron,pg_stat_statements
-        cron.database_name: relay
-        cron.timezone: Asia/Singapore
   ErrandDatabaseSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -237,7 +223,6 @@ Resources:
       MasterUsername: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:password}}'
       DBSubnetGroupName: !Ref DbSubnetGroup
-      DBParameterGroupName: !Ref UserDatabaseParameterGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
       BackupRetentionPeriod: 7

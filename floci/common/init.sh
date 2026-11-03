@@ -8,7 +8,7 @@ export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_PAGER=''
 
-rm -f /app/data/ready /app/data/relay-auth.env
+rm -f /app/data/ready /app/data/relay-auth.env /app/data/relay-rds.env
 
 aws cloudformation deploy --stack-name relay-local-auth \
   --template-file /opt/relay/infra/relay-auth.yaml \
@@ -28,6 +28,52 @@ aws cloudformation deploy --stack-name relay-local-storage \
   --template-file /opt/relay/infra/relay-storage.yaml \
   --parameter-overrides "BucketName=${S3_USER_IMAGE_BUCKET:-relay-user-profile-images}"
 
+if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
+  infrastructure_stack=relay-local-eks
+  deploy_eks=true
+else
+  infrastructure_stack=relay-local-rds
+  deploy_eks=false
+fi
+
+aws cloudformation deploy --stack-name "$infrastructure_stack" \
+  --template-file /opt/relay/infra/relay-floci-eks.yaml \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides "DeployEks=$deploy_eks"
+
+output() {
+  aws cloudformation describe-stacks --stack-name "$infrastructure_stack" \
+    --query "Stacks[0].Outputs[?OutputKey==\`$1\`].OutputValue" --output text
+}
+# Floci's CloudFormation RDS provider currently ignores these DBInstance
+# properties. Reconcile its RDS metadata through the supported RDS API.
+database_security_group="$(aws cloudformation describe-stack-resource \
+  --stack-name "$infrastructure_stack" --logical-resource-id DatabaseSecurityGroup \
+  --query StackResourceDetail.PhysicalResourceId --output text)"
+for database in UserDatabase ErrandDatabase CreditDatabase SupplierDatabase; do
+  database_id="$(aws cloudformation describe-stack-resource \
+    --stack-name "$infrastructure_stack" --logical-resource-id "$database" \
+    --query StackResourceDetail.PhysicalResourceId --output text)"
+  aws rds modify-db-instance --db-instance-identifier "$database_id" \
+    --storage-type gp3 --backup-retention-period 7 \
+    --vpc-security-group-ids "$database_security_group" --apply-immediately >/dev/null
+  actual="$(aws rds describe-db-instances --db-instance-identifier "$database_id" \
+    --query 'DBInstances[0].[StorageType,BackupRetentionPeriod,VpcSecurityGroups[0].VpcSecurityGroupId]' \
+    --output text)"
+  test "$actual" = "$(printf 'gp3\t7\t%s' "$database_security_group")"
+done
+
+password_for() {
+  aws secretsmanager get-secret-value --secret-id "$(output "$1")" \
+    --query SecretString --output text |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])'
+}
+printf 'USER_DATABASE_HOST=%s\nUSER_DATABASE_PORT=%s\nUSER_DATABASE_PASSWORD=%s\nERRAND_DATABASE_HOST=%s\nERRAND_DATABASE_PORT=%s\nERRAND_DATABASE_PASSWORD=%s\nCREDIT_DATABASE_HOST=%s\nCREDIT_DATABASE_PORT=%s\nCREDIT_DATABASE_PASSWORD=%s\nSUPPLIER_DATABASE_HOST=%s\nSUPPLIER_DATABASE_PORT=%s\nSUPPLIER_DATABASE_PASSWORD=%s\n' \
+  "$(output UserDatabaseEndpoint)" "$(output UserDatabasePort)" "$(password_for UserDatabaseSecretArn)" \
+  "$(output ErrandDatabaseEndpoint)" "$(output ErrandDatabasePort)" "$(password_for ErrandDatabaseSecretArn)" \
+  "$(output CreditDatabaseEndpoint)" "$(output CreditDatabasePort)" "$(password_for CreditDatabaseSecretArn)" \
+  "$(output SupplierDatabaseEndpoint)" "$(output SupplierDatabasePort)" "$(password_for SupplierDatabaseSecretArn)" >/app/data/relay-rds.env
+
 aws cognito-idp admin-create-user \
   --user-pool-id "$pool_id" \
   --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
@@ -42,11 +88,5 @@ aws cognito-idp admin-add-user-to-group \
   --user-pool-id "$pool_id" \
   --username "$FLOCI_INITIAL_ADMIN_EMAIL" \
   --group-name "${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}"
-
-if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
-  aws cloudformation deploy --stack-name relay-local-eks \
-    --template-file /opt/relay/infra/relay-floci-eks.yaml \
-    --capabilities CAPABILITY_IAM
-fi
 
 touch /app/data/ready

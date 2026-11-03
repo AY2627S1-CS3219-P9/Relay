@@ -41,73 +41,6 @@ services:
       kafka:
         condition: service_healthy
 
-  user-postgres:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM postgres:16-alpine
-        RUN apk add --no-cache --virtual .pgcron-build-deps build-base curl \
-            && curl -fsSL https://github.com/citusdata/pg_cron/archive/refs/tags/v1.6.7.tar.gz \
-              | tar -xz -C /tmp \
-            && make -C /tmp/pg_cron-1.6.7 with_llvm=no \
-            && make -C /tmp/pg_cron-1.6.7 with_llvm=no install \
-            && rm -rf /tmp/pg_cron-1.6.7 \
-            && apk del .pgcron-build-deps
-    command:
-      - postgres
-      - -c
-      - shared_preload_libraries=pg_cron
-      - -c
-      - cron.database_name=relay
-      - -c
-      - cron.timezone=Asia/Singapore
-      - -c
-      - cron.use_background_workers=on
-    environment:
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-      POSTGRES_DB: relay
-    ports:
-      - '5432:5432'
-    volumes:
-      - user-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  errand-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: relay_errand
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-    ports:
-      - '5434:5432'
-    volumes:
-      - errand-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay_errand']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  credit-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-      POSTGRES_DB: relay
-    ports:
-      - '5435:5432'
-    volumes:
-      - credit-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
-      interval: 5s
-      timeout: 5s
-      retries: 10
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
   # publishing its port. The host is the browser-facing API boundary.
@@ -208,23 +141,6 @@ services:
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked credit-api dependency when its API exists.
 
-  # Database services
-  supplier-db:
-    image: postgres:16-alpine
-    ports:
-      - '5433:5432'
-    environment:
-      POSTGRES_DB: relay
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - ./supplier-service/backend/src/schema.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
   # Backend service templates
   #
   # Copy and adapt one of these stanzas when implementing a service API.
@@ -233,6 +149,18 @@ services:
   # Add the corresponding /api/<service>/ proxy route to host/nginx.conf so
   # browser code can use a relative URL such as /api/supplier/shops.
   #
+  supplier-schema:
+    build:
+      context: .
+      dockerfile: supplier-service/backend/Dockerfile
+    environment:
+      SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Run floci/docker/up.sh}
+    command: ['node', 'migrate.cjs']
+    depends_on:
+      floci:
+        condition: service_healthy
+    restart: 'no'
+
   supplier-api:
     build:
       context: .
@@ -247,19 +175,19 @@ services:
       COGNITO_ISSUER: ${COGNITO_ISSUER}
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       PORT: '3000'
-      DB_HOST: supplier-db
-      DB_PORT: '5432'
+      DB_HOST: floci
+      DB_PORT: ${SUPPLIER_DATABASE_PORT:?Run floci/docker/up.sh}
       DB_NAME: relay
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_USER: relay
+      DB_PASSWORD: ${SUPPLIER_DATABASE_PASSWORD:?Run floci/docker/up.sh}
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       SUPPLIER_TIMEZONE: Asia/Singapore
     depends_on:
-      supplier-db:
-        condition: service_healthy
+      supplier-schema:
+        condition: service_completed_successfully
       user-api:
         condition: service_healthy
     healthcheck:
@@ -283,7 +211,7 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@user-postgres:5432/relay?schema=public
+      DATABASE_URL: ${USER_DATABASE_URL:?Run floci/docker/up.sh}
       S3_ENDPOINT: http://host.docker.internal:4566
       S3_PUBLIC_ENDPOINT: http://localhost:4566
       S3_REGION: us-east-1
@@ -297,7 +225,7 @@ services:
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-      user-postgres:
+      floci:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
@@ -335,7 +263,7 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Run floci/docker/up.sh}
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       SUPPLIER_API_URL: http://supplier-api:3000
@@ -349,7 +277,7 @@ services:
     depends_on:
       credit-api:
         condition: service_healthy
-      errand-postgres:
+      floci:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
@@ -376,7 +304,7 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
+      DATABASE_URL: ${CREDIT_DATABASE_URL:?Run floci/docker/up.sh}
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
@@ -387,7 +315,7 @@ services:
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
-      credit-postgres:
+      floci:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
@@ -398,7 +326,4 @@ services:
       retries: 5
 
 volumes:
-  user-postgres-data:
-  errand-postgres-data:
-  credit-postgres-data:
   kafka-data:

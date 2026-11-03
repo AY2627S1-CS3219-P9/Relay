@@ -141,7 +141,7 @@ spec:
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: DB_HOST, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_HOST } } }
-            - { name: DB_PORT, value: "5432" }
+            - { name: DB_PORT, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PORT } } }
             - { name: DB_NAME, value: relay }
             - { name: DB_USER, value: relay }
             - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PASSWORD } } }

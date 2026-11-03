@@ -33,8 +33,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
-    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
-    "DatabaseEngineFamily=${DATABASE_ENGINE_FAMILY:-postgres17}"
+    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}"
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
@@ -105,15 +104,13 @@ kubectl -n relay delete job kafka-init --ignore-not-found
 kubectl apply -f k8s/base/kafka-demo.yaml
 kubectl -n relay rollout status deployment/kafka --timeout=10m
 kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
-kubectl -n relay create configmap supplier-schema \
-  --from-file=schema.sql=supplier-service/backend/src/schema.sql \
-  --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n relay create secret generic relay-runtime \
   --from-literal=USER_DATABASE_URL="postgresql://relay:${user_password}@$(output UserDatabaseEndpoint):5432/relay?schema=public" \
   --from-literal=ERRAND_DATABASE_URL="postgresql://relay:${errand_password}@$(output ErrandDatabaseEndpoint):5432/relayerrand?schema=public" \
   --from-literal=CREDIT_DATABASE_URL="postgresql://relay:${credit_password}@$(output CreditDatabaseEndpoint):5432/relay?schema=public" \
   --from-literal=SUPPLIER_DATABASE_URL="postgresql://relay:${supplier_password}@$(output SupplierDatabaseEndpoint):5432/relay" \
   --from-literal=SUPPLIER_DB_HOST="$(output SupplierDatabaseEndpoint)" \
+  --from-literal=SUPPLIER_DB_PORT=5432 \
   --from-literal=SUPPLIER_DB_PASSWORD="$supplier_password" \
   --from-literal=KAFKA_BROKERS=kafka:9092 \
   --from-literal=AWS_REGION="$aws_region" \
@@ -160,6 +157,7 @@ sed \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   k8s/base/workloads.yaml | kubectl apply -f -
+kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api
 kubectl apply -f k8s/base/autoscaling.yaml
 kubectl apply -f k8s/base/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do

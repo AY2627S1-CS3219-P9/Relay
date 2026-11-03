@@ -10,12 +10,11 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: schema
-          image: postgres:16-alpine
-          command: [sh, -c, 'psql "$SUPPLIER_DATABASE_URL" -f /schema/schema.sql']
+          image: IMAGE_SUPPLIER_API
+          command: [node, migrate.cjs]
           env:
             - { name: SUPPLIER_DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DATABASE_URL } } }
-          volumeMounts: [{ name: schema, mountPath: /schema, readOnly: true }]
-      volumes: [{ name: schema, configMap: { name: supplier-schema } }]
+            - { name: DB_SSL_CA_PATH, value: /etc/ssl/certs/rds-global-bundle.pem }
 ---
 apiVersion: batch/v1
 kind: Job
