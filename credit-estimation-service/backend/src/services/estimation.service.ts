@@ -30,7 +30,12 @@ export async function estimateCredit(
       }
     }
   } catch (error) {
-    console.warn('AI estimation failed, using keyword analysis fallback:', error)
+    // RATE_LIMITED errors should silently fall back to keyword analysis
+    if (error instanceof Error && error.message === 'RATE_LIMITED') {
+      console.log('Rate limit exceeded, using keyword analysis fallback')
+    } else {
+      console.warn('AI estimation failed, using keyword analysis fallback:', error)
+    }
   }
 
   const analysis = analyzeKeywords(name, description)

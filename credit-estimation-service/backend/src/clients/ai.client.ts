@@ -1,3 +1,5 @@
+import { SlidingWindowRateLimiter } from './rateLimiter.js'
+
 export interface AIConfig {
   provider: string
   endpoint: string
@@ -6,6 +8,7 @@ export interface AIConfig {
   temperature?: number
   maxTokens?: number
   timeoutMs: number
+  rateLimitRequestsPerMinute: number
 }
 
 export interface AIClient {
@@ -23,9 +26,14 @@ export interface AIClient {
 
 export class OpenAIClient implements AIClient {
   private config: AIConfig
+  private rateLimiter: SlidingWindowRateLimiter
 
   constructor(config: AIConfig) {
     this.config = config
+    this.rateLimiter = new SlidingWindowRateLimiter({
+      windowMs: 60 * 1000,
+      maxRequests: config.rateLimitRequestsPerMinute,
+    })
   }
 
   async estimateCredit(
@@ -36,6 +44,11 @@ export class OpenAIClient implements AIClient {
     const prompt = this.buildPrompt(name, description, baseline)
 
     try {
+      // Fail fast rate limit check
+      if (!this.rateLimiter.tryAcquire()) {
+        throw new Error('RATE_LIMITED')
+      }
+
       const response = await this.callOpenAI(prompt)
 
       return this.parseResponse(response, baseline)
@@ -72,7 +85,7 @@ export class OpenAIClient implements AIClient {
       Never use the baseline as a fallback for invalid input.
 
       PRICE ONLY VALID REQUESTS:
-      - Read both title and description for pricing factors.
+      - Read both name and description for pricing factors.
       - Recognize ordinary language, synonyms, and minor spelling mistakes;
         do not require exact keywords.
       - Apply stated urgency, distance, stops, size, weight, fragility,
@@ -119,10 +132,22 @@ export class OpenAIClient implements AIClient {
 
       if (!response.ok) {
         const errorData = await response.text()
+        console.error(
+          `OpenAI API error response (${response.status}):`,
+          errorData.substring(0, 500),
+        )
         throw new Error(`OpenAI API error: ${response.status} ${errorData}`)
       }
 
+      const contentType = response.headers.get('content-type')
+      if (contentType && !contentType.includes('application/json')) {
+        const bodyText = await response.text()
+        console.error(`Non-JSON response (${contentType}):`, bodyText.substring(0, 500))
+        throw new Error(`Expected JSON, got ${contentType}`)
+      }
+
       const data = await response.json()
+      console.log('OpenAI API response:', JSON.stringify(data, null, 2))
       return data.choices[0].message.content.trim()
     } catch (error) {
       clearTimeout(timeoutId)

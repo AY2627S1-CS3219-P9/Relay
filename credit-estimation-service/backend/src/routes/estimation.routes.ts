@@ -23,6 +23,7 @@ export function initializeAIClient(env: EstimationEnv): void {
         temperature: env.aiTemperature,
         maxTokens: env.aiMaxTokens,
         timeoutMs: env.aiEstimationTimeoutMs,
+        rateLimitRequestsPerMinute: env.aiRateLimitRequestsPerMinute,
       })
       setAIClient(aiClient)
       console.log('AI client initialized successfully')
