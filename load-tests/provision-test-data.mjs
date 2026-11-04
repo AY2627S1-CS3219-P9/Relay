@@ -187,6 +187,10 @@ function envLine(name, value) {
   return `${name}=${String(value).replaceAll('\\n', '')}`
 }
 
+function configured(name, fallback) {
+  return process.env[name] ?? fallback
+}
+
 async function main() {
   const id = runId()
   const requester = uniqueIdentity('requester', id)
@@ -220,6 +224,41 @@ async function main() {
     envLine('LOAD_TEST_CREDIT_AMOUNT', process.env.LOAD_TEST_CREDIT_AMOUNT ?? '1'),
     envLine('LOAD_TEST_ERRAND_ID', fixtureErrandId),
     envLine('LOAD_TEST_CLEANUP', process.env.LOAD_TEST_CLEANUP ?? 'true'),
+    envLine('SMOKE_VUS', configured('SMOKE_VUS', '1')),
+    envLine('SMOKE_DURATION', configured('SMOKE_DURATION', '30s')),
+    envLine('LIFECYCLE_VUS', configured('LIFECYCLE_VUS', '1')),
+    envLine('LIFECYCLE_ITERATIONS', configured('LIFECYCLE_ITERATIONS', '1')),
+    envLine('LIFECYCLE_MAX_DURATION', configured('LIFECYCLE_MAX_DURATION', '2m')),
+    envLine('SETTLEMENT_TIMEOUT_SECONDS', configured('SETTLEMENT_TIMEOUT_SECONDS', '30')),
+    envLine('SETTLEMENT_POLL_SECONDS', configured('SETTLEMENT_POLL_SECONDS', '1')),
+    envLine('NFR_START_VUS', configured('NFR_START_VUS', '10')),
+    envLine('NFR_TARGET_VUS', configured('NFR_TARGET_VUS', '100')),
+    envLine('NFR_RAMP_DURATION', configured('NFR_RAMP_DURATION', '1m')),
+    envLine('NFR_HOLD_DURATION', configured('NFR_HOLD_DURATION', '5m')),
+    envLine('NFR_RAMP_DOWN_DURATION', configured('NFR_RAMP_DOWN_DURATION', '1m')),
+    envLine('NFR_THINK_TIME', configured('NFR_THINK_TIME', '1')),
+    envLine('NFR_P95_LIMIT_MS', configured('NFR_P95_LIMIT_MS', '200')),
+    envLine('NFR_AUTH_RATE_PER_MIN', configured('NFR_AUTH_RATE_PER_MIN', '500')),
+    envLine('NFR_AUTH_DURATION', configured('NFR_AUTH_DURATION', '5m')),
+    envLine('NFR_AUTH_PREALLOCATED_VUS', configured('NFR_AUTH_PREALLOCATED_VUS', '50')),
+    envLine('NFR_AUTH_MAX_VUS', configured('NFR_AUTH_MAX_VUS', '100')),
+    envLine('NFR_AUTH_P95_LIMIT_MS', configured('NFR_AUTH_P95_LIMIT_MS', '500')),
+    envLine('NFR_SUPPLIER_RATE_PER_SEC', configured('NFR_SUPPLIER_RATE_PER_SEC', '50')),
+    envLine('NFR_SUPPLIER_DURATION', configured('NFR_SUPPLIER_DURATION', '5m')),
+    envLine('NFR_SUPPLIER_PREALLOCATED_VUS', configured('NFR_SUPPLIER_PREALLOCATED_VUS', '50')),
+    envLine('NFR_SUPPLIER_MAX_VUS', configured('NFR_SUPPLIER_MAX_VUS', '100')),
+    envLine('NFR_SUPPLIER_P95_LIMIT_MS', configured('NFR_SUPPLIER_P95_LIMIT_MS', '200')),
+    envLine('NFR_CREDIT_RATE_PER_SEC', configured('NFR_CREDIT_RATE_PER_SEC', '10')),
+    envLine('NFR_CREDIT_DURATION', configured('NFR_CREDIT_DURATION', '1m')),
+    envLine('NFR_CREDIT_PREALLOCATED_VUS', configured('NFR_CREDIT_PREALLOCATED_VUS', '20')),
+    envLine('NFR_CREDIT_MAX_VUS', configured('NFR_CREDIT_MAX_VUS', '100')),
+    envLine('NFR_CREDIT_P95_LIMIT_MS', configured('NFR_CREDIT_P95_LIMIT_MS', '200')),
+    envLine('NFR_MIXED_READ_TARGET_VUS', configured('NFR_MIXED_READ_TARGET_VUS', '90')),
+    envLine('NFR_MIXED_READ_HOLD_DURATION', configured('NFR_MIXED_READ_HOLD_DURATION', '2m')),
+    envLine('NFR_MIXED_WRITE_RATE_PER_MIN', configured('NFR_MIXED_WRITE_RATE_PER_MIN', '5')),
+    envLine('NFR_MIXED_WRITE_DURATION', configured('NFR_MIXED_WRITE_DURATION', '2m')),
+    envLine('NFR_MIXED_THINK_TIME', configured('NFR_MIXED_THINK_TIME', '1')),
+    envLine('NFR_MIXED_P95_LIMIT_MS', configured('NFR_MIXED_P95_LIMIT_MS', '200')),
     '',
   ].join('\n')
   await writeFile(outputPath, content, 'utf8')
