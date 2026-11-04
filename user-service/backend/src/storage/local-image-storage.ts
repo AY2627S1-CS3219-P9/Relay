@@ -54,7 +54,14 @@ export class FlociS3ImageStorage implements ImageStorage {
   }
 
   async url(key: string): Promise<string> {
-    if (this.endpoint.includes('localhost') || this.endpoint.includes('127.0.0.1')) {
+    // Local Floci exposes a browser endpoint separately from the in-cluster S3 endpoint.
+    const publicHost = new URL(this.publicEndpoint).hostname
+    if (
+      publicHost === 'localhost' ||
+      publicHost === '127.0.0.1' ||
+      publicHost.endsWith('.localhost') ||
+      publicHost.endsWith('.localhost.floci.io')
+    ) {
       return `${this.publicEndpoint}/${encodeURIComponent(this.bucket)}/${key
         .split('/')
         .map(encodeURIComponent)
