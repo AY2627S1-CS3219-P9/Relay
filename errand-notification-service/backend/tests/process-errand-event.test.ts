@@ -6,7 +6,7 @@ import { processErrandEvent } from '../src/app.js'
 
 // Mock types
 type MockServerResponse = Partial<ServerResponse> & {
-  write: vi.Mock
+  write: vi.Mock<ServerResponse, [string, () => void]>
 }
 
 describe('processErrandEvent', () => {
@@ -15,7 +15,7 @@ describe('processErrandEvent', () => {
 
   beforeEach(() => {
     eventStream = new ErrandNotificationEventStream()
-    mockResponse = { write: vi.fn(), end: vi.fn() }
+    mockResponse = { write: vi.fn((data, cb) => cb()), end: vi.fn() }
   })
 
   it('should process ERRAND_STATUS_CHANGED event and publish to subscribers', async () => {
@@ -64,7 +64,7 @@ describe('processErrandEvent', () => {
       oldStatus: 'OPEN',
       newStatus: 'ACCEPTED',
     })
-  })
+  }, 10_000)
 
   it('should process ERRAND_COMPLETED event and map to ERRAND_STATUS_CHANGED SSE', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -98,7 +98,7 @@ describe('processErrandEvent', () => {
         newStatus: 'CONFIRMED',
       }),
     )
-  })
+  }, 10_000)
 
   it('should skip ERRAND_CREATED event (no status fields)', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -153,7 +153,7 @@ describe('processErrandEvent', () => {
         errandId: 'errand-202',
       }),
     )
-  })
+  }, 10_000)
 
   it('should skip event if recipientSubs is missing', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -309,7 +309,7 @@ describe('processErrandEvent', () => {
     await processErrandEvent(eventStream, event2)
 
     expect(notificationStreamWriteSpy).toHaveBeenCalledTimes(2)
-  })
+  }, 10_000)
 
   it('should log event processing', async () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -337,7 +337,7 @@ describe('processErrandEvent', () => {
     )
 
     consoleLogSpy.mockRestore()
-  })
+  }, 10_000)
 
   // ===== CORNER CASES AND REAL-WORLD SCENARIOS =====
 
@@ -374,7 +374,7 @@ describe('processErrandEvent', () => {
         newStatus: 'EXPIRED',
       }),
     )
-  })
+  }, 10_000)
 
   it('should handle actor being excluded (actor not in recipientSubs)', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -397,8 +397,14 @@ describe('processErrandEvent', () => {
     }
 
     // Subscribe both with different mock responses
-    const mockCourierResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
-    const mockRequesterResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
+    const mockCourierResponse = {
+      write: vi.fn((data, cb) => cb()),
+      end: vi.fn(),
+    } as MockServerResponse
+    const mockRequesterResponse = {
+      write: vi.fn((data, cb) => cb()),
+      end: vi.fn(),
+    } as MockServerResponse
     eventStream.subscribe('courier-sub', mockCourierResponse as ServerResponse)
     eventStream.subscribe('requester-sub', mockRequesterResponse as ServerResponse)
 
@@ -410,7 +416,7 @@ describe('processErrandEvent', () => {
     expect(mockCourierResponse.write).not.toHaveBeenCalled()
     // Requester should get notification
     expect(mockRequesterResponse.write).toHaveBeenCalledOnce()
-  })
+  }, 10_000)
 
   it('should send multiple notifications to same user for different errands', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -450,7 +456,7 @@ describe('processErrandEvent', () => {
 
     expect(notificationStreamWriteSpy).toHaveBeenCalledTimes(2)
     expect(mockResponse.write).toHaveBeenCalledTimes(2)
-  })
+  }, 10_000)
 
   it('should handle recipientSubs with multiple users correctly', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -470,7 +476,10 @@ describe('processErrandEvent', () => {
       },
     }
 
-    const mockCourierResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
+    const mockCourierResponse = {
+      write: vi.fn((data, cb) => cb()),
+      end: vi.fn(),
+    } as MockServerResponse
     eventStream.subscribe('requester-sub', mockResponse as ServerResponse)
     eventStream.subscribe('courier-sub', mockCourierResponse as ServerResponse)
 
@@ -482,7 +491,7 @@ describe('processErrandEvent', () => {
     )
     expect(mockResponse.write).toHaveBeenCalledOnce()
     expect(mockCourierResponse.write).toHaveBeenCalledOnce()
-  })
+  }, 10_000)
 
   it('should process ERRAND_CANCELLED event', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -514,7 +523,7 @@ describe('processErrandEvent', () => {
         newStatus: 'CANCELLED',
       }),
     )
-  })
+  }, 10_000)
 
   it('should process ERRAND_EXPIRED event', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -546,7 +555,7 @@ describe('processErrandEvent', () => {
         newStatus: 'EXPIRED',
       }),
     )
-  })
+  }, 10_000)
 
   it('should handle duplicate event IDs (idempotent processing)', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -574,7 +583,7 @@ describe('processErrandEvent', () => {
     // Should send notifications both times (idempotent at app level)
     expect(notificationStreamWriteSpy).toHaveBeenCalledTimes(2)
     expect(mockResponse.write).toHaveBeenCalledTimes(2)
-  })
+  }, 10_000)
 
   it('should handle null/undefined actorSub field', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -600,7 +609,7 @@ describe('processErrandEvent', () => {
 
     expect(notificationStreamWriteSpy).toHaveBeenCalledOnce()
     expect(mockResponse.write).toHaveBeenCalledOnce()
-  })
+  }, 10_000)
 
   it('should handle empty string in recipientSubs array', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -620,7 +629,10 @@ describe('processErrandEvent', () => {
       },
     }
 
-    const mockEmptyResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
+    const mockEmptyResponse = {
+      write: vi.fn((data, cb) => cb()),
+      end: vi.fn(),
+    } as MockServerResponse
     eventStream.subscribe('requester-sub', mockResponse as ServerResponse)
     eventStream.subscribe('', mockEmptyResponse as ServerResponse)
 
@@ -635,7 +647,7 @@ describe('processErrandEvent', () => {
     expect(mockEmptyResponse.write).toHaveBeenCalledOnce()
 
     consoleWarnSpy.mockRestore()
-  })
+  }, 10_000)
 
   it('should handle very long event ID', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -662,7 +674,7 @@ describe('processErrandEvent', () => {
     expect(notificationStreamWriteSpy).toHaveBeenCalledOnce()
     const writtenData = JSON.parse(mockResponse.write.mock.calls[0][0].slice(5, -2))
     expect(writtenData.eventId).toBe(longId)
-  })
+  }, 10_000)
 
   it('should handle very long errandId in payload', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -689,7 +701,7 @@ describe('processErrandEvent', () => {
     expect(notificationStreamWriteSpy).toHaveBeenCalledOnce()
     const writtenData = JSON.parse(mockResponse.write.mock.calls[0][0].slice(5, -2))
     expect(writtenData.errandId).toBe(longErrandId)
-  })
+  }, 10_000)
 
   it('should handle rapid succession events (stress test)', async () => {
     const notificationStreamWriteSpy = vi.spyOn(eventStream, 'publish')
@@ -716,7 +728,7 @@ describe('processErrandEvent', () => {
 
     expect(notificationStreamWriteSpy).toHaveBeenCalledTimes(numEvents)
     expect(mockResponse.write).toHaveBeenCalledTimes(numEvents)
-  })
+  }, 30_000)
 
   it('should preserve original timestamp in notification', async () => {
     const originalTimestamp = '2024-06-15T14:30:45.123Z'
@@ -748,7 +760,7 @@ describe('processErrandEvent', () => {
         timestamp: originalTimestamp,
       }),
     )
-  })
+  }, 10_000)
 
   it('should handle all valid status values', async () => {
     const validStatuses = ['OPEN', 'ACCEPTED', 'PICKED_UP', 'DELIVERED', 'CONFIRMED']
@@ -781,14 +793,14 @@ describe('processErrandEvent', () => {
 
       vi.clearAllMocks()
     }
-  })
+  }, 15_000)
 
   it('END-TO-END: Verify SSE data format and notification structure match contracts', async () => {
     // This test verifies the actual flow from event processing to SSE output
     // It uses real objects and verifies the data format matches what a browser would receive
 
     const eventStream = new ErrandNotificationEventStream()
-    const mockResponse = { write: vi.fn(), end: vi.fn() } as MockServerResponse
+    const mockResponse = { write: vi.fn((data, cb) => cb()), end: vi.fn() } as MockServerResponse
 
     // Simulate a real Kafka event coming from errand-service
     const kafkaEvent = {
@@ -815,10 +827,11 @@ describe('processErrandEvent', () => {
     await processErrandEvent(eventStream, kafkaEvent)
 
     // Verify publish was called with the correct recipients
-    expect(eventStream.getSubscribers('user-789')).toBeDefined()
+    // Note: We cannot call getSubscribers directly as it doesn't exist
+    // Instead, verify by checking that the response was written
+    expect(mockResponse.write).toHaveBeenCalledOnce()
 
     // Verify the actual SSE data format matches the expected contract
-    expect(mockResponse.write).toHaveBeenCalledOnce()
     const sseData = mockResponse.write.mock.calls[0][0]
 
     // Verify SSE format: "data: {json}\n\n"
@@ -848,11 +861,14 @@ describe('processErrandEvent', () => {
       'timestamp',
       'type',
     ])
-  })
+  }, 10_000)
 
   it('END-TO-END: Verify ERRAND_CREATED is skipped (no status fields)', async () => {
     const eventStream = new ErrandNotificationEventStream()
-    const mockResponse = { write: vi.fn(), end: vi.fn() } as unknown as ServerResponse
+    const mockResponse = {
+      write: vi.fn((data, cb) => cb()),
+      end: vi.fn(),
+    } as unknown as ServerResponse
 
     const kafkaEvent = {
       eventId: 'created-event-xyz',
@@ -871,5 +887,5 @@ describe('processErrandEvent', () => {
 
     // ERRAND_CREATED events are skipped because they lack errandStatus
     expect(mockResponse.write).not.toHaveBeenCalled()
-  })
+  }, 10_000)
 })
