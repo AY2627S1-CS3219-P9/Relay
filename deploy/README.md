@@ -5,7 +5,9 @@ repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, and their credentials. A separate CloudFront stack supplies a trusted HTTPS hostname without a custom domain. The sandbox demo
+  four private PostgreSQL databases, their credentials, and the Metrics Server
+  add-on required by CPU autoscalers. A separate CloudFront stack supplies a
+  trusted HTTPS hostname without a custom domain. The sandbox demo
   runs its own single-node Kafka broker in EKS.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
@@ -334,7 +336,36 @@ repository and a dedicated Pod Identity role for `user-auth-api`, restricted to
 admin operations on the configured Cognito pool in the same account and Region.
 The script builds/pushes the auth image and deploys its Service and workload.
 
+### Login HTTP 400 and authentication proxy errors
+
+Check the response body before treating every 400 as a routing failure. A JSON
+`VALIDATION_FAILED` response with `fieldErrors.email` means the authentication
+service rejected the email: it accepts `@u.nus.edu`, `@nus.edu.sg`, and an explicitly
+configured bootstrap-admin exception. Login and registration show field-specific
+validation errors. An `OTP_INVALID` or `OTP_EXPIRED` response requires a valid verification
+code, not an ingress change.
+
+An HTML `400 Request Header Or Cookie Too Large`, or an Nginx
+`upstream sent too big header` error accompanied by HTTP 502 during login or
+verification, indicates proxy header limits. Cognito returns access, ID, and
+refresh cookies together. `host/config/nginx.conf` allows 16 KiB request-header
+fields and a 16 KiB upstream response-header buffer, with matching proxy buffer
+settings. Rebuild and roll out the host image when changing that configuration;
+increasing the JSON body limit does not fix oversized headers. See the
+[Nginx request-header](https://nginx.org/en/docs/http/ngx_http_core_module.html#large_client_header_buffers)
+and [response-header buffer](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffer_size)
+documentation.
+
 ### Backend readiness and Supplier database TLS
+
+Supplier verifies the `relay_access` and `relay_id` Cognito cookies directly.
+Its Deployment explicitly reads `COGNITO_ISSUER`, `COGNITO_JWKS_URI`,
+`COGNITO_CLIENT_ID`, `COGNITO_USER_POOL_ID`, and `AWS_DEFAULT_REGION` from the
+runtime Secret. Missing settings cause it to fall back to local test defaults
+and reject valid AWS login cookies with HTTP 401. If login succeeds but Supplier
+returns 401, confirm these settings match the authentication service and that
+the browser sends both cookies. Reapply the configuration and restart Supplier
+after changing environment settings.
 
 Supplier `/healthz` runs `SELECT 1` and returns 503 if its database is unavailable;
 `/health` checks process liveness. The Supplier image includes the Amazon RDS

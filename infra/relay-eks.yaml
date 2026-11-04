@@ -275,6 +275,11 @@ Resources:
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
       BackupRetentionPeriod: 7
+  MetricsServerAddon:
+    Type: AWS::EKS::Addon
+    Properties:
+      ClusterName: !Ref EksCluster
+      AddonName: metrics-server
   UserApiMskRole:
     Type: AWS::IAM::Role
     Properties:
