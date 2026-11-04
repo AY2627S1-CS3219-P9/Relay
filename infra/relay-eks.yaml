@@ -20,6 +20,18 @@ Parameters:
   DatabaseAllocatedStorage:
     Type: Number
     Default: 20
+  UserDatabaseSnapshotId:
+    Type: String
+    Default: ''
+  ErrandDatabaseSnapshotId:
+    Type: String
+    Default: ''
+  CreditDatabaseSnapshotId:
+    Type: String
+    Default: ''
+  SupplierDatabaseSnapshotId:
+    Type: String
+    Default: ''
   CognitoUserPoolId:
     Type: String
     Description: Existing Cognito user pool in this account and Region.
@@ -27,6 +39,12 @@ Parameters:
     Type: String
     Description: Existing private S3 bucket used for user profile images.
     AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+
+Conditions:
+  RestoreUserDatabase: !Not [!Equals [!Ref UserDatabaseSnapshotId, '']]
+  RestoreErrandDatabase: !Not [!Equals [!Ref ErrandDatabaseSnapshotId, '']]
+  RestoreCreditDatabase: !Not [!Equals [!Ref CreditDatabaseSnapshotId, '']]
+  RestoreSupplierDatabase: !Not [!Equals [!Ref SupplierDatabaseSnapshotId, '']]
 
 Resources:
   Vpc:
@@ -217,11 +235,12 @@ Resources:
     Properties:
       Engine: postgres
       DBInstanceClass: !Ref DatabaseInstanceClass
-      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AllocatedStorage: !If [RestoreUserDatabase, !Ref 'AWS::NoValue', !Ref DatabaseAllocatedStorage]
       StorageType: gp3
-      DBName: relay
-      MasterUsername: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:username}}'
-      MasterUserPassword: !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:password}}'
+      DBSnapshotIdentifier: !If [RestoreUserDatabase, !Ref UserDatabaseSnapshotId, !Ref 'AWS::NoValue']
+      DBName: !If [RestoreUserDatabase, !Ref 'AWS::NoValue', relay]
+      MasterUsername: !If [RestoreUserDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:username}}']
+      MasterUserPassword: !If [RestoreUserDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${UserDatabaseSecret}:SecretString:password}}']
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
@@ -234,11 +253,12 @@ Resources:
     Properties:
       Engine: postgres
       DBInstanceClass: !Ref DatabaseInstanceClass
-      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AllocatedStorage: !If [RestoreErrandDatabase, !Ref 'AWS::NoValue', !Ref DatabaseAllocatedStorage]
       StorageType: gp3
-      DBName: relayerrand
-      MasterUsername: !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:username}}'
-      MasterUserPassword: !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:password}}'
+      DBSnapshotIdentifier: !If [RestoreErrandDatabase, !Ref ErrandDatabaseSnapshotId, !Ref 'AWS::NoValue']
+      DBName: !If [RestoreErrandDatabase, !Ref 'AWS::NoValue', relayerrand]
+      MasterUsername: !If [RestoreErrandDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:username}}']
+      MasterUserPassword: !If [RestoreErrandDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${ErrandDatabaseSecret}:SecretString:password}}']
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
@@ -250,11 +270,12 @@ Resources:
     Properties:
       Engine: postgres
       DBInstanceClass: !Ref DatabaseInstanceClass
-      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AllocatedStorage: !If [RestoreCreditDatabase, !Ref 'AWS::NoValue', !Ref DatabaseAllocatedStorage]
       StorageType: gp3
-      DBName: relay
-      MasterUsername: !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:username}}'
-      MasterUserPassword: !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:password}}'
+      DBSnapshotIdentifier: !If [RestoreCreditDatabase, !Ref CreditDatabaseSnapshotId, !Ref 'AWS::NoValue']
+      DBName: !If [RestoreCreditDatabase, !Ref 'AWS::NoValue', relay]
+      MasterUsername: !If [RestoreCreditDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:username}}']
+      MasterUserPassword: !If [RestoreCreditDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${CreditDatabaseSecret}:SecretString:password}}']
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
@@ -266,11 +287,12 @@ Resources:
     Properties:
       Engine: postgres
       DBInstanceClass: !Ref DatabaseInstanceClass
-      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AllocatedStorage: !If [RestoreSupplierDatabase, !Ref 'AWS::NoValue', !Ref DatabaseAllocatedStorage]
       StorageType: gp3
-      DBName: relay
-      MasterUsername: !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:username}}'
-      MasterUserPassword: !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:password}}'
+      DBSnapshotIdentifier: !If [RestoreSupplierDatabase, !Ref SupplierDatabaseSnapshotId, !Ref 'AWS::NoValue']
+      DBName: !If [RestoreSupplierDatabase, !Ref 'AWS::NoValue', relay]
+      MasterUsername: !If [RestoreSupplierDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:username}}']
+      MasterUserPassword: !If [RestoreSupplierDatabase, !Ref 'AWS::NoValue', !Sub '{{resolve:secretsmanager:${SupplierDatabaseSecret}:SecretString:password}}']
       DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups: [!GetAtt DatabaseSecurityGroup.GroupId]
       PubliclyAccessible: false
@@ -343,40 +365,40 @@ Resources:
       RoleArn: !GetAtt UserAuthRole.Arn
   UserAuthRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/user-auth-api', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/user-auth-api', ImageScanningConfiguration: { ScanOnPush: true } }
   HostRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/host', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/host', ImageScanningConfiguration: { ScanOnPush: true } }
   SupplierFrontendRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/supplier-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/supplier-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
   UserFrontendRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/user-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/user-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
   ErrandFrontendRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/errand-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
   CreditFrontendRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/credit-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/credit-frontend', ImageScanningConfiguration: { ScanOnPush: true } }
   SupplierApiRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/supplier-api', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/supplier-api', ImageScanningConfiguration: { ScanOnPush: true } }
   UserApiRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/user-api', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/user-api', ImageScanningConfiguration: { ScanOnPush: true } }
   ErrandApiRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/errand-api', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-api', ImageScanningConfiguration: { ScanOnPush: true } }
   UserEventPublisherRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/user-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/user-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
   ErrandEventPublisherRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/errand-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-event-publisher', ImageScanningConfiguration: { ScanOnPush: true } }
   CreditApiRepository:
     Type: AWS::ECR::Repository
-    Properties: { RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
   ClusterName: { Value: !Ref EksCluster }

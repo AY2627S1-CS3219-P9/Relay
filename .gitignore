@@ -40,3 +40,6 @@ floci/docker/.generated.env
 
 floci/eks/.view-*.pid
 floci/eks/.view-*.log
+
+# AWS pause state
+deploy/.*-pause.env

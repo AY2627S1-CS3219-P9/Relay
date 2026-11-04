@@ -25,6 +25,27 @@ for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { echo "Missing $name in $env_file" >&2; exit 2; }
 done
 
+# A pause deletes the EKS stack; the manifest identifies the four DB snapshots.
+snapshot_args=()
+resuming=0
+state_file="deploy/.${stack_name}-pause.env"
+if [[ -s "$state_file" ]]; then
+  # shellcheck disable=SC1090
+  source "$state_file"
+  current_account="$(aws sts get-caller-identity --query Account --output text)"
+  [[ "$PAUSE_ACCOUNT_ID" == "$current_account" && "$PAUSE_REGION" == "$aws_region" && "$PAUSE_STACK" == "$stack_name" ]] || {
+    echo "Pause manifest belongs to another account, region, or stack." >&2; exit 1;
+  }
+  for name in User Errand Credit Supplier; do
+    key="${name^^}_DATABASE_SNAPSHOT_ID"
+    [[ -n "${!key:-}" ]] || { echo "Missing $key in $state_file" >&2; exit 1; }
+    snapshot_args+=("${name}DatabaseSnapshotId=${!key}")
+  done
+  if ! aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" >/dev/null 2>&1; then
+    resuming=1
+  fi
+fi
+
 aws cloudformation deploy \
   --region "$aws_region" \
   --stack-name "$stack_name" \
@@ -33,7 +54,8 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
-    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}"
+    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
+    "${snapshot_args[@]}"
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
@@ -105,6 +127,19 @@ user_password="$(password_from_secret "$(secret_value UserDatabaseSecretArn)")"
 errand_password="$(password_from_secret "$(secret_value ErrandDatabaseSecretArn)")"
 credit_password="$(password_from_secret "$(secret_value CreditDatabaseSecretArn)")"
 supplier_password="$(password_from_secret "$(secret_value SupplierDatabaseSecretArn)")"
+# Restored snapshots retain their old master password; new CFN secrets do not.
+# Synchronize the master passwords before migration jobs connect.
+if [[ "$resuming" == 1 ]]; then
+  for name in User Errand Credit Supplier; do
+    password_var="${name,,}_password"
+    db_id="$(aws cloudformation describe-stack-resource --region "$aws_region" \
+      --stack-name "$stack_name" --logical-resource-id "${name}Database" \
+      --query StackResourceDetail.PhysicalResourceId --output text)"
+    aws rds modify-db-instance --region "$aws_region" --db-instance-identifier "$db_id" \
+      --master-user-password "${!password_var}" --apply-immediately >/dev/null
+    aws rds wait db-instance-available --region "$aws_region" --db-instance-identifier "$db_id"
+  done
+fi
 kubectl apply -f k8s/base/namespace.yaml -f k8s/base/configmap.yaml
 if ! kubectl -n relay get secret kafka-auth >/dev/null 2>&1; then
   kubectl -n relay create secret generic kafka-auth \

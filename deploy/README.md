@@ -522,3 +522,51 @@ The authentication and storage stacks have separate lifecycles. Deleting the
 auth stack removes its Cognito resources. The private S3 bucket is retained even
 when the storage stack is deleted. Inventory retained database snapshots, image
 repositories, and S3 objects afterward because retained storage incurs charges.
+
+
+## AWS lifecycle
+
+Run these commands from the repository root with the same AWS account and region
+used for deployment. Install and configure AWS CLI and `kubectl` first. The
+scripts only act on the named Relay stacks and their recorded resources.
+
+```bash
+export AWS_REGION=ap-southeast-1
+bash scripts/pause-aws.sh relay
+bash scripts/deploy-eks.sh relay
+```
+
+Pause deletes the CloudFront edge stack and the EKS stack, including its EKS
+control plane, auto mode nodes, ALB, NAT gateway, ECR repositories, and RDS
+instances. CloudFormation creates four final RDS snapshots. The script records
+their IDs and the retained S3 bucket in `deploy/.relay-pause.env`; **keep this
+file** for redeployment and full cleanup. Redeploy restores the four RDS
+instances from those snapshots, resets their passwords to the new stack
+secrets, recreates images and Kubernetes workloads, and runs migrations.
+Cognito users and profile images remain in the auth and storage stacks.
+The app is unavailable while paused. Snapshot and S3 storage, Secrets Manager
+and any other retained service usage can still incur charges; "pause" removes
+running infrastructure charges, not every possible AWS charge.
+
+To delete all stacks and their data, including Cognito users, the recorded
+RDS snapshots, and profile images:
+
+```bash
+AWS_REGION=ap-southeast-1 bash scripts/teardown-aws.sh relay --confirm-delete-all-data
+```
+
+The S3 bucket must be unversioned as in the current template. AWS may hold
+deleted Secrets Manager secrets in a recovery window. Review the AWS account
+for resources outside these CloudFormation stacks.
+
+Do not run teardown after a successful redeploy unless you first pause again,
+so the manifest refers to snapshots of the latest data.
+
+### Retrying an ECR deletion failure
+
+If CloudFormation reports `DELETE_FAILED` for an ECR repository, rerun the
+same pause or teardown command. The recovery path uses the pending pause
+manifest to identify the databases and force deletes only ECR repositories
+marked `DELETE_FAILED` in the Relay stack before retrying stack deletion.
+The template now sets `EmptyOnDelete: true` on all 12 ECR repositories for
+future deployments.
