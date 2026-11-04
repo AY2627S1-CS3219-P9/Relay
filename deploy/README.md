@@ -5,7 +5,7 @@ repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, and their credentials. The sandbox demo
+  four private PostgreSQL databases, and their credentials. A separate CloudFront stack supplies a trusted HTTPS hostname without a custom domain. The sandbox demo
   runs its own single-node Kafka broker in EKS.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
@@ -21,7 +21,7 @@ billable AWS resources.
 
 Install AWS CLI v2, Docker with a running daemon, a compatible `kubectl`,
 Node.js, and OpenSSL. The script builds `linux/amd64` images, including on Apple
-Silicon. The deployment identity needs the CloudFormation, IAM, EKS, networking,
+Silicon. The deployment identity needs the CloudFormation, CloudFront, IAM, EKS, networking,
 ECR, RDS, Secrets Manager, Cognito, and S3 permissions used by the templates and
 commands, plus access to the generated Kubernetes cluster.
 
@@ -63,33 +63,15 @@ cp deploy/relay.aws.env.example deploy/relay.aws.env
 so its values override exported variables with the same names. Replace every
 placeholder before deploying.
 
-### Kubernetes and PostgreSQL versions
+### Kubernetes version
 
-The example versions are starting points, not a guarantee of regional support.
-Query available EKS versions and set `KUBERNETES_VERSION` in the local file:
+Query available EKS versions in the target Region and set a supported
+`KUBERNETES_VERSION` in `deploy/relay.aws.env`:
 
 ```bash
 aws eks describe-cluster-versions --region "$AWS_REGION" \
   --query 'clusterVersions[].{Version:clusterVersion,Status:status}' --output table
 ```
-
-For a new stack, query the regional PostgreSQL default and parameter-group
-family, then set `DATABASE_ENGINE_FAMILY` accordingly:
-
-```bash
-aws rds describe-db-engine-versions --region "$AWS_REGION" \
-  --engine postgres --default-only \
-  --query 'DBEngineVersions[].{Version:EngineVersion,Family:DBParameterGroupFamily}' \
-  --output table
-```
-
-The template does not pin `EngineVersion`. `DATABASE_ENGINE_FAMILY` configures
-the User database parameter group; it does not select the engine version. The
-template/script fallback is `postgres17`, while the example file currently uses
-`postgres18`. Confirm the matching family before deploying. See the
-[EKS version guide](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)
-and [RDS version command reference](https://docs.aws.amazon.com/cli/latest/reference/rds/describe-db-engine-versions.html).
-
 ## Provision AWS resources
 
 The deployment script creates or updates the EKS stack only. Provision Cognito
@@ -277,14 +259,29 @@ kubectl apply -f k8s/base/kafka-demo.yaml
 kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
 ```
 
-The first deployment can take several minutes while AWS creates the cluster,
-databases, and load balancer. The script prints the command for
-finding the public ALB hostname at the end:
+The first deployment can take several minutes. The script creates a separate
+`relay-edge` CloudFormation stack after the Kubernetes Ingress reports its ALB
+hostname, waits for CloudFront, then prints the public URL:
 
-```bash
-kubectl -n relay get ingress relay
+```text
+Deployment complete: https://d123example.cloudfront.net
 ```
 
+Retrieve it later with:
+
+```bash
+aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" \
+  --output text
+```
+
+The CloudFront distribution uses its default trusted certificate. It forwards
+all viewer headers, cookies, and query strings plus `CloudFront-Forwarded-Proto`
+to the ALB; caching is disabled for all routes. CloudFront redirects browser
+HTTP requests to HTTPS. The ALB receives HTTP on port 80, so the browser-to-edge
+connection is encrypted but the edge-to-ALB hop is not. The ALB also remains
+publicly reachable; this is a sandbox test configuration, not an end-to-end TLS
+or origin-restricted production setup.
 ### Verify workloads and application behavior
 
 ```bash
@@ -297,20 +294,20 @@ kubectl -n relay logs job/errand-migrate
 kubectl -n relay logs job/credit-migrate
 ```
 
-Wait for a nonempty ingress hostname, then check the public host:
+Check the CloudFront URL printed by the deployment script:
 
 ```bash
-ALB_HOST="$(kubectl -n relay get ingress relay \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-curl --fail --show-error "http://$ALB_HOST/healthz"
+PUBLIC_HOST="$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+  --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" \
+  --output text)"
+curl --fail --show-error "https://$PUBLIC_HOST/healthz"
 ```
 
-This public health endpoint checks the host only. In the browser, check that
-remote assets load, sign in, complete the profile, and exercise each API with a
-valid session. Verify profile-image loading through presigned S3 URLs. A 401
-response from an unauthenticated API does not prove its database operation works.
-
-### Routing and temporary HTTP access
+This health endpoint checks the host only. In a browser, verify all four remote
+frontends, sign-in, refresh and logout with secure cookies, authenticated APIs,
+and presigned profile-image URLs.
+### Routing and HTTPS access
 
 | Public path | Destination |
 | --- | --- |
@@ -326,14 +323,12 @@ The ingress preserves remote prefixes; frontend Nginx configurations rewrite
 their prefixes before serving assets. The host also proxies remote routes using
 Kubernetes Service names, without workstation or Docker-host addresses.
 
-The deployment provisions an ACM certificate for `APPLICATION_DOMAIN_NAME` using
-DNS validation in `HOSTED_ZONE_ID`. The domain must belong to that public Route 53
-hosted zone. EKS Auto Mode creates an ALB with HTTPS port 443 and redirects HTTP
-port 80 to HTTPS. The deploy script creates or updates a Route 53 alias to the
-ALB and prints `https://<APPLICATION_DOMAIN_NAME>` after the ingress is ready.
-ACM validation and DNS propagation can take several minutes. Kubernetes uses
-`COOKIE_SECURE=true`; Host Nginx forwards the ALB's HTTPS protocol to User Auth.
-Local Compose retains its HTTP cookie setting.
+CloudFront supplies the public `*.cloudfront.net` HTTPS URL. Its distribution
+is created after the ALB because the ALB hostname is generated by the EKS
+Ingress. The script updates `AUTH_PUBLIC_ORIGIN` to this URL and restarts
+`user-auth-api` before reporting completion. Kubernetes uses
+`COOKIE_SECURE=true`; Host Nginx forwards CloudFront's viewer protocol to User
+Auth. Local Compose retains its HTTP cookie setting.
 CloudFormation creates an ECR
 repository and a dedicated Pod Identity role for `user-auth-api`, restricted to
 admin operations on the configured Cognito pool in the same account and Region.
@@ -485,7 +480,7 @@ rollback states before starting another deployment.
 
 ## Safe cleanup
 
-Delete the Kubernetes ingress while the cluster still exists. Wait for its ALB
+Delete the `relay-edge` CloudFormation stack first and wait for CloudFront deletion. Then delete the Kubernetes ingress while the cluster still exists. Wait for its ALB
 and associated controller-managed resources to be removed before deleting the
 EKS stack. CloudFormation creates database snapshots on deletion/replacement.
 ECR repositories do not enable force-empty deletion; nonempty repositories can

@@ -56,10 +56,12 @@ environment.
 | Target | Start | Application | Floci API | Stop |
 | --- | --- | --- | --- | --- |
 | Docker Compose | `npm run up:compose` | http://localhost:8080 | http://localhost:4566 | `npm run down:compose` |
-| Local Floci EKS | `npm run up:eks` | https://localhost:9090 | https://localhost:4567 | `npm run down:eks` |
+| Local Floci EKS | `npm run up:eks` | CloudFront URL printed by startup (`https://<id>.cloudfront.localhost.floci.io`) | https://localhost:4567 | `npm run down:eks` |
 | Local source processes | `npm run dev` | http://localhost:8080 | http://localhost:4566 | Ctrl+C, then `npm run down:compose` |
 
-The startup commands provision local Cognito, S3, and four RDS instances. Compose
+The startup commands provision local Cognito, S3, and four RDS instances.
+Local EKS also pushes application images to Floci ECR and deploys the shared
+CloudFront template in front of an internal HTTP ALB. Compose
 runs the application as Docker services; EKS runs it as Kubernetes workloads in
 Floci's local k3s cluster. The two full deployments can run together, but require
 substantial Docker memory. `docker compose up` alone cannot discover the
@@ -77,8 +79,8 @@ The host serves all four microfrontends on the application origin through
 `npm run up:eks` writes the current local CA certificate to
 `floci/eks/.floci-ca.pem`. Import that file into your operating system or
 browser's **Trusted Root Certification Authorities** store, then restart the
-browser. This trusts requests to both `https://localhost:9090` and
-`https://localhost:4567`; accepting a one-page browser exception does not
+browser. This trusts requests to the Floci CloudFront hostname printed by
+`npm run up:eks` and to `https://localhost:4567`; accepting a one-page browser exception does not
 cover all application requests. The first run needs this import once. The
 `relay-floci-eks-ca` Docker volume preserves **only Floci's CA and server
 certificate** across `npm run down:eks` and later `npm run up:eks`; application,

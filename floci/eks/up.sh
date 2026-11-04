@@ -44,14 +44,25 @@ if [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
   USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api user-event-publisher errand-event-publisher
 fi
 images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-user-event-publisher relay-errand-event-publisher)
-for i in "${!images[@]}"; do images[$i]="${images[$i]}:latest"; done
-if [[ "${SKIP_IMAGE_IMPORT:-0}" != 1 ]]; then
-  docker save -o floci/eks/.images.tar "${images[@]}"
-  docker cp floci/eks/.images.tar "$node:/tmp/relay-images.tar"
-  docker exec "$node" ctr -n k8s.io images import /tmp/relay-images.tar
-  docker exec "$node" rm -f /tmp/relay-images.tar
-  rm -f floci/eks/.images.tar
+floci_aws() {
+  docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 -e AWS_REGION=us-east-1 \
+    -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
+    -e AWS_SECRET_ACCESS_KEY=test relay-floci-eks aws "$@"
+}
+if [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
+  floci_aws ecr get-login-password | docker login --username AWS --password-stdin localhost:4567
 fi
+for image in "${images[@]}"; do
+  repository="${image#relay-}"
+  floci_aws ecr describe-repositories --repository-names "$repository" >/dev/null 2>&1 || floci_aws ecr create-repository --repository-name "$repository" >/dev/null
+  uri="$(floci_aws ecr describe-repositories --repository-names "$repository" --query 'repositories[0].repositoryUri' --output text)"
+  [[ "$uri" == localhost:4567/* ]]
+  if [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
+    docker tag "$image:latest" "$uri:latest"
+    docker push "$uri:latest"
+  fi
+  printf -v "IMAGE_${repository//-/_}" '%s' "$uri:latest"
+done
 
 kubectl apply -f k8s/base/namespace.yaml -f k8s/base/configmap.yaml -f k8s/floci/traefik.yaml
 kubectl -n relay delete deployment user-postgres errand-postgres credit-postgres supplier-postgres --ignore-not-found
@@ -69,6 +80,63 @@ kubectl apply -f k8s/base/kafka-demo.yaml
 kubectl -n relay rollout status deployment/kafka --timeout=5m
 kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
 
+# CloudFront reaches the internal ALB through Floci's HTTP listener.
+node_ip="$(docker inspect "$node" --format '{{with index .NetworkSettings.Networks "relay-eks_default"}}{{.IPAddress}}{{end}}')"
+[[ -n "$node_ip" ]]
+stack=relay-local-rds
+subnet_a="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id SubnetA --query StackResourceDetail.PhysicalResourceId --output text)"
+subnet_b="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id SubnetB --query StackResourceDetail.PhysicalResourceId --output text)"
+vpc_id="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id Vpc --query StackResourceDetail.PhysicalResourceId --output text)"
+load_balancer_arn="$(floci_aws elbv2 describe-load-balancers --names relay-local-http --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
+if [[ -z "$load_balancer_arn" || "$load_balancer_arn" == None ]]; then
+  load_balancer_arn="$(floci_aws elbv2 create-load-balancer --name relay-local-http --type application --scheme internal --subnets "$subnet_a" "$subnet_b" --query 'LoadBalancers[0].LoadBalancerArn' --output text)"
+fi
+floci_aws elbv2 modify-load-balancer-attributes --load-balancer-arn "$load_balancer_arn" --attributes Key=routing.http.preserve_host_header.enabled,Value=true >/dev/null
+target_group_arn="$(floci_aws elbv2 describe-target-groups --names relay-local-traefik --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+if [[ -z "$target_group_arn" || "$target_group_arn" == None ]]; then
+  target_group_arn="$(floci_aws elbv2 create-target-group --name relay-local-traefik --protocol HTTP --port 30080 --target-type ip --vpc-id "$vpc_id" --health-check-path /healthz --query 'TargetGroups[0].TargetGroupArn' --output text)"
+fi
+floci_aws elbv2 register-targets --target-group-arn "$target_group_arn" --targets "Id=$node_ip,Port=30080" >/dev/null
+http_listener="$(floci_aws elbv2 describe-listeners --load-balancer-arn "$load_balancer_arn" --query 'Listeners[?Port==`18080`].ListenerArn | [0]' --output text)"
+if [[ -z "$http_listener" || "$http_listener" == None ]]; then
+  floci_aws elbv2 create-listener --load-balancer-arn "$load_balancer_arn" --protocol HTTP --port 18080 --default-actions "Type=forward,TargetGroupArn=$target_group_arn" >/dev/null
+fi
+floci_aws cloudformation deploy --stack-name relay-local-edge \
+  --template-file /opt/relay/infra/relay-cloudfront.yaml \
+  --parameter-overrides LoadBalancerDnsName=localhost OriginHttpPort=18080
+cloudfront_domain="$(floci_aws cloudformation describe-stacks --stack-name relay-local-edge --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' --output text)"
+# Floci CloudFormation currently drops cache behavior methods and policy IDs.
+# Reconcile the generated distribution through the supported CloudFront API.
+distribution_id="$(floci_aws cloudformation describe-stacks --stack-name relay-local-edge --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' --output text)"
+origin_policy_id="$(floci_aws cloudformation describe-stack-resource --stack-name relay-local-edge --logical-resource-id RelayOriginRequestPolicy --query StackResourceDetail.PhysicalResourceId --output text)"
+config_file="$(mktemp)"
+etag="$(floci_aws cloudfront get-distribution-config --id "$distribution_id" --query ETag --output text)"
+floci_aws cloudfront get-distribution-config --id "$distribution_id" --query DistributionConfig --output json > "$config_file"
+python3 - "$config_file" "$origin_policy_id" <<'PY'
+import json, sys
+path, origin_policy_id = sys.argv[1:]
+with open(path) as source:
+    config = json.load(source)
+behavior = config['DefaultCacheBehavior']
+behavior['AllowedMethods'] = {
+    'Quantity': 7,
+    'Items': ['GET', 'HEAD', 'OPTIONS', 'PUT', 'POST', 'PATCH', 'DELETE'],
+    'CachedMethods': {'Quantity': 2, 'Items': ['GET', 'HEAD']},
+}
+behavior['CachePolicyId'] = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+behavior['OriginRequestPolicyId'] = origin_policy_id
+behavior.pop('ForwardedValues', None)
+with open(path, 'w') as target:
+    json.dump(config, target)
+PY
+docker cp "$config_file" relay-floci-eks:/tmp/relay-cloudfront-config.json
+floci_aws cloudfront update-distribution --id "$distribution_id" --if-match "$etag" \
+  --distribution-config file:///tmp/relay-cloudfront-config.json >/dev/null
+docker exec relay-floci-eks rm -f /tmp/relay-cloudfront-config.json
+rm -f "$config_file"
+[[ "$cloudfront_domain" == *.cloudfront.localhost.floci.io ]]
+public_origin="https://${cloudfront_domain}"
+
 kubectl -n relay create secret generic relay-runtime \
   --from-literal=USER_DATABASE_URL=postgresql://relay:${USER_DATABASE_PASSWORD}@${USER_DATABASE_HOST}:${USER_DATABASE_PORT}/relay?schema=public \
   --from-literal=ERRAND_DATABASE_URL=postgresql://relay:${ERRAND_DATABASE_PASSWORD}@${ERRAND_DATABASE_HOST}:${ERRAND_DATABASE_PORT}/relayerrand?schema=public \
@@ -83,7 +151,7 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=AWS_ACCESS_KEY_ID=test \
   --from-literal=AWS_SECRET_ACCESS_KEY=test \
   --from-literal=AWS_ENDPOINT_URL=http://floci-local:4566 \
-  --from-literal=AUTH_PUBLIC_ORIGIN=https://localhost:9090 \
+  --from-literal=AUTH_PUBLIC_ORIGIN="$public_origin" \
   --from-literal=COGNITO_ISSUER=https://localhost:4567/${COGNITO_USER_POOL_ID} \
   --from-literal=COGNITO_JWKS_URI=http://floci-local:4566/${COGNITO_USER_POOL_ID}/.well-known/jwks.json \
   --from-literal=COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID} \
@@ -98,21 +166,20 @@ kubectl -n relay create secret generic relay-runtime \
 
 render() {
   sed \
-    -e 's|IMAGE_HOST|relay-host:latest|g' \
-    -e 's|IMAGE_SUPPLIER_FRONTEND|relay-supplier-frontend:latest|g' \
-    -e 's|IMAGE_USER_FRONTEND|relay-user-frontend:latest|g' \
-    -e 's|IMAGE_ERRAND_FRONTEND|relay-errand-frontend:latest|g' \
-    -e 's|IMAGE_CREDIT_FRONTEND|relay-credit-frontend:latest|g' \
-    -e 's|IMAGE_SUPPLIER_API|relay-supplier-api:latest|g' \
-    -e 's|IMAGE_USER_AUTH_API|relay-user-auth-api:latest|g' \
-    -e 's|IMAGE_USER_API|relay-user-api:latest|g' \
-    -e 's|IMAGE_ERRAND_API|relay-errand-api:latest|g' \
-    -e 's|IMAGE_CREDIT_API|relay-credit-api:latest|g' \
-    -e 's|IMAGE_USER_EVENT_PUBLISHER|relay-user-event-publisher:latest|g' \
-    -e 's|IMAGE_ERRAND_EVENT_PUBLISHER|relay-errand-event-publisher:latest|g' "$1" |
-    sed -E '/^[[:space:]]+image: relay-.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: IfNotPresent/; }'
+    -e "s|IMAGE_HOST|${IMAGE_host}|g" \
+    -e "s|IMAGE_SUPPLIER_FRONTEND|${IMAGE_supplier_frontend}|g" \
+    -e "s|IMAGE_USER_FRONTEND|${IMAGE_user_frontend}|g" \
+    -e "s|IMAGE_ERRAND_FRONTEND|${IMAGE_errand_frontend}|g" \
+    -e "s|IMAGE_CREDIT_FRONTEND|${IMAGE_credit_frontend}|g" \
+    -e "s|IMAGE_SUPPLIER_API|${IMAGE_supplier_api}|g" \
+    -e "s|IMAGE_USER_AUTH_API|${IMAGE_user_auth_api}|g" \
+    -e "s|IMAGE_USER_API|${IMAGE_user_api}|g" \
+    -e "s|IMAGE_ERRAND_API|${IMAGE_errand_api}|g" \
+    -e "s|IMAGE_CREDIT_API|${IMAGE_credit_api}|g" \
+    -e "s|IMAGE_USER_EVENT_PUBLISHER|${IMAGE_user_event_publisher}|g" \
+    -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|${IMAGE_errand_event_publisher}|g" "$1" |
+    sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }'
 }
-
 kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-migrate --ignore-not-found
 render k8s/base/migrations.yaml | sed '/DB_SSL_CA_PATH/d' | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
@@ -121,47 +188,8 @@ kubectl -n relay rollout restart deployment/user-api deployment/errand-api deplo
 kubectl apply -f k8s/floci/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do kubectl -n relay rollout status "$deployment" --timeout=10m; done
 
-# The local ALB terminates TLS and forwards to Traefik's NodePort on the
-# EKS node, which shares a Docker network with Floci.
-node_ip="$(docker inspect "$node" --format '{{with index .NetworkSettings.Networks "relay-eks_default"}}{{.IPAddress}}{{end}}')"
-[[ -n "$node_ip" ]]
-for i in $(seq 1 60); do
-  docker exec relay-floci-eks curl -fsS "http://$node_ip:30080/healthz" >/dev/null 2>&1 && break
-  sleep 2
-done
-docker exec relay-floci-eks curl -fsS "http://$node_ip:30080/healthz" >/dev/null
-floci_aws() {
-  docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 -e AWS_REGION=us-east-1 \
-    -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
-    -e AWS_SECRET_ACCESS_KEY=test relay-floci-eks aws "$@"
-}
-stack=relay-local-rds
-subnet_a="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id SubnetA --query StackResourceDetail.PhysicalResourceId --output text)"
-subnet_b="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id SubnetB --query StackResourceDetail.PhysicalResourceId --output text)"
-vpc_id="$(floci_aws cloudformation describe-stack-resource --stack-name "$stack" --logical-resource-id Vpc --query StackResourceDetail.PhysicalResourceId --output text)"
-certificate_arn="$(floci_aws acm list-certificates --query "CertificateSummaryList[?DomainName=='localhost'].CertificateArn | [0]" --output text)"
-if [[ -z "$certificate_arn" || "$certificate_arn" == None ]]; then
-  certificate_arn="$(floci_aws acm request-certificate --domain-name localhost --validation-method DNS --query CertificateArn --output text)"
-fi
-load_balancer_arn="$(floci_aws elbv2 describe-load-balancers --names relay-local-https --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
-if [[ -z "$load_balancer_arn" || "$load_balancer_arn" == None ]]; then
-  load_balancer_arn="$(floci_aws elbv2 create-load-balancer --name relay-local-https --type application --scheme internet-facing --subnets "$subnet_a" "$subnet_b" --query 'LoadBalancers[0].LoadBalancerArn' --output text)"
-fi
-floci_aws elbv2 modify-load-balancer-attributes --load-balancer-arn "$load_balancer_arn" --attributes Key=routing.http.preserve_host_header.enabled,Value=true >/dev/null
-target_group_arn="$(floci_aws elbv2 describe-target-groups --names relay-local-traefik --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
-if [[ -z "$target_group_arn" || "$target_group_arn" == None ]]; then
-  target_group_arn="$(floci_aws elbv2 create-target-group --name relay-local-traefik --protocol HTTP --port 30080 --target-type ip --vpc-id "$vpc_id" --health-check-path /healthz --query 'TargetGroups[0].TargetGroupArn' --output text)"
-fi
-# Remove a target left by the earlier host port-forward setup, if present.
-gateway_ip="$(docker inspect relay-floci-eks --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')"
-floci_aws elbv2 deregister-targets --target-group-arn "$target_group_arn" --targets "Id=$gateway_ip,Port=19090" >/dev/null 2>&1 || true
-floci_aws elbv2 register-targets --target-group-arn "$target_group_arn" --targets "Id=$node_ip,Port=30080" >/dev/null
-https_listener="$(floci_aws elbv2 describe-listeners --load-balancer-arn "$load_balancer_arn" --query 'Listeners[?Port==`9090`].ListenerArn | [0]' --output text)"
-if [[ -z "$https_listener" || "$https_listener" == None ]]; then
-  floci_aws elbv2 create-listener --load-balancer-arn "$load_balancer_arn" --protocol HTTPS --port 9090 --certificates "CertificateArn=$certificate_arn" --default-actions "Type=forward,TargetGroupArn=$target_group_arn" >/dev/null
-fi
 curl -fsS http://localhost:4567/_floci/ca.pem > floci/eks/.floci-ca.pem
-for i in $(seq 1 20); do curl --cacert floci/eks/.floci-ca.pem -fsS https://localhost:9090/healthz >/dev/null && break; sleep 2; done
-curl --cacert floci/eks/.floci-ca.pem -fsS https://localhost:9090/healthz
-printf 'Local EKS application: https://localhost:9090\n'
+for i in $(seq 1 20); do curl --cacert floci/eks/.floci-ca.pem -fsS "$public_origin/healthz" >/dev/null && break; sleep 2; done
+curl --cacert floci/eks/.floci-ca.pem -fsS "$public_origin/healthz"
+printf 'Local EKS application: %s\n' "$public_origin"
 printf 'Trust floci/eks/.floci-ca.pem in your browser to use the local certificate.\n'

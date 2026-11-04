@@ -20,7 +20,7 @@ fi
 # shellcheck disable=SC1090
 source "$env_file"
 
-required=(APPLICATION_DOMAIN_NAME HOSTED_ZONE_ID COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
+required=(COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { echo "Missing $name in $env_file" >&2; exit 2; }
 done
@@ -33,9 +33,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
-    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
-    "ApplicationDomainName=${APPLICATION_DOMAIN_NAME}" \
-    "HostedZoneId=${HOSTED_ZONE_ID}"
+    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}"
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
@@ -127,7 +125,7 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=AWS_REGION="$aws_region" \
   --from-literal=AWS_DEFAULT_REGION="$aws_region" \
   --from-literal=AWS_ENDPOINT_URL="${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
-  --from-literal=AUTH_PUBLIC_ORIGIN="https://${APPLICATION_DOMAIN_NAME}" \
+  --from-literal=AUTH_PUBLIC_ORIGIN=https://pending.invalid \
   --from-literal=COGNITO_ISSUER="$COGNITO_ISSUER" \
   --from-literal=COGNITO_JWKS_URI="$COGNITO_JWKS_URI" \
   --from-literal=COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
@@ -175,11 +173,11 @@ sed \
   k8s/base/workloads.yaml | kubectl apply -f -
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api
 kubectl apply -f k8s/base/autoscaling.yaml
-sed "s|CERTIFICATE_ARN|$(output ApplicationCertificateArn)|g" k8s/base/ingress.yaml | kubectl apply -f -
+kubectl apply -f k8s/base/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do
   kubectl -n relay rollout status "$deployment" --timeout=10m
 done
-# Publish the ALB address as the configured application domain.
+# Wait for the ALB hostname, then create the CloudFront entry point.
 alb_dns=""
 for attempt in $(seq 1 60); do
   alb_dns="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
@@ -187,8 +185,28 @@ for attempt in $(seq 1 60); do
   sleep 10
 done
 [[ -n "$alb_dns" ]] || { echo "ALB ingress has no hostname after ten minutes" >&2; exit 1; }
-alb_zone="$(aws elbv2 describe-load-balancers --region "$aws_region" --query "LoadBalancers[?DNSName=='$alb_dns'].CanonicalHostedZoneId | [0]" --output text)"
-[[ -n "$alb_zone" && "$alb_zone" != None ]] || { echo "Could not find the ALB hosted zone" >&2; exit 1; }
-change_batch="$(node -e 'const [domain,dns,zone]=process.argv.slice(1); process.stdout.write(JSON.stringify({Changes:[{Action:"UPSERT",ResourceRecordSet:{Name:domain,Type:"A",AliasTarget:{HostedZoneId:zone,DNSName:dns,EvaluateTargetHealth:false}}}]}))' "$APPLICATION_DOMAIN_NAME" "$alb_dns" "$alb_zone")"
-aws route53 change-resource-record-sets --region "$aws_region" --hosted-zone-id "$HOSTED_ZONE_ID" --change-batch "$change_batch" >/dev/null
-echo "Deployment complete: https://$APPLICATION_DOMAIN_NAME"
+# CloudFront provides the trusted HTTPS hostname without Route 53 or ACM.
+edge_stack="${stack_name}-edge"
+aws cloudformation deploy \
+  --region "$aws_region" \
+  --stack-name "$edge_stack" \
+  --template-file infra/relay-cloudfront.yaml \
+  --parameter-overrides "LoadBalancerDnsName=$alb_dns"
+edge_output() {
+  aws cloudformation describe-stacks --region "$aws_region" --stack-name "$edge_stack" \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+}
+distribution_id="$(edge_output DistributionId)"
+public_origin="https://$(edge_output DistributionDomainName)"
+aws cloudfront wait distribution-deployed --id "$distribution_id"
+# The auth pod starts with a fail-closed origin until CloudFront has a hostname.
+origin_patch="$(node -e 'const data=Buffer.from(process.argv[1]).toString("base64"); process.stdout.write(JSON.stringify({data:{AUTH_PUBLIC_ORIGIN:data}}))' "$public_origin")"
+kubectl -n relay patch secret relay-runtime --type merge -p "$origin_patch" >/dev/null
+kubectl -n relay rollout restart deployment/user-auth-api
+kubectl -n relay rollout status deployment/user-auth-api --timeout=10m
+for attempt in $(seq 1 30); do
+  curl --fail --silent --show-error --max-time 10 "$public_origin/healthz" >/dev/null 2>&1 && break
+  sleep 10
+done
+curl --fail --show-error --max-time 10 "$public_origin/healthz"
+echo "Deployment complete: $public_origin"

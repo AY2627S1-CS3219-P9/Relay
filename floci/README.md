@@ -10,11 +10,12 @@ logic.
   `floci/docker/.generated.env` file. Run it after recreating Floci;
   `docker compose up` alone cannot discover the generated settings.
 - `npm run up:eks` starts the separate Floci EKS application at
-  https://localhost:9090. Its Floci API is at https://localhost:4567. The
-  launcher provisions four RDS instances and a k3s cluster, imports application
-  images, runs migrations, and configures the local HTTPS ALB. It writes
+  the HTTPS CloudFront URL printed by startup, on standard port 443. Its Floci API is
+  at https://localhost:4567. The launcher provisions four RDS instances and a
+  k3s cluster, pushes application images to Floci ECR, runs migrations, and
+  creates a CloudFront distribution pointing to an internal HTTP ALB. It writes
   `floci/eks/.kubeconfig`. For a rerun with unchanged images, use
-  `SKIP_IMAGE_BUILD=1 SKIP_IMAGE_IMPORT=1 npm run up:eks`.
+  `SKIP_IMAGE_BUILD=1 SKIP_IMAGE_PUSH=1 npm run up:eks`.
 
 Run `npm run down:compose` or `npm run down:eks` to remove the corresponding
 application, optional views, Floci-managed RDS containers, and database
@@ -22,7 +23,7 @@ volumes. EKS teardown also removes k3s and local port forwards. The one
 exception is the `relay-floci-eks-ca` Docker volume, which stores only Floci's
 root CA and server certificate under `/app/data/tls`; the public CA copy at
 `floci/eks/.floci-ca.pem` is retained too. Trust that CA in the browser or OS
-root certificate store once to validate both `https://localhost:9090` and
+root certificate store once to validate both the generated CloudFront URL and
 `https://localhost:4567`. To rotate it intentionally, run
 `docker volume rm relay-floci-eks-ca` after EKS teardown, then start EKS and
 trust the newly generated CA. `npm run dev` still runs the local source

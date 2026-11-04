@@ -10,14 +10,16 @@ services:
       FLOCI_LOCAL_EKS: 'true'
       FLOCI_BASE_URL: https://localhost:4567
       FLOCI_TLS_ENABLED: 'true'
+      FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost.floci.io
+      FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+      FLOCI_SERVICES_ECR_URI_STYLE: path
       FLOCI_STORAGE_PERSISTENT_PATH: /app/data
-      FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS: https://localhost:9090
       FLOCI_SERVICES_EKS_MOCK: 'false'
       FLOCI_INIT_HOOKS_TIMEOUT_SECONDS: '600'
     user: root
     ports:
       - '4567:4566'
-      - '9090:9090'
+      - '443:443'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - floci-eks-ca:/app/data/tls
