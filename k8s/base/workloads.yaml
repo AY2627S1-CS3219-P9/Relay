@@ -147,6 +147,11 @@ spec:
             - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PASSWORD } } }
             - { name: DB_SSL_CA_PATH, value: /etc/ssl/certs/rds-global-bundle.pem }
             - { name: USER_API_URL, value: "http://user-api:3000" }
+            - { name: COGNITO_ISSUER, valueFrom: { secretKeyRef: { name: relay-runtime, key: COGNITO_ISSUER } } }
+            - { name: COGNITO_JWKS_URI, valueFrom: { secretKeyRef: { name: relay-runtime, key: COGNITO_JWKS_URI } } }
+            - { name: COGNITO_CLIENT_ID, valueFrom: { secretKeyRef: { name: relay-runtime, key: COGNITO_CLIENT_ID } } }
+            - { name: COGNITO_USER_POOL_ID, valueFrom: { secretKeyRef: { name: relay-runtime, key: COGNITO_USER_POOL_ID } } }
+            - { name: AWS_DEFAULT_REGION, valueFrom: { secretKeyRef: { name: relay-runtime, key: AWS_DEFAULT_REGION } } }
           envFrom: [{ configMapRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
