@@ -50,8 +50,6 @@ services:
       dockerfile: host/Dockerfile
     ports:
       - '8080:80'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
     depends_on:
       supplier-frontend:
         condition: service_healthy
@@ -154,11 +152,8 @@ services:
       context: .
       dockerfile: supplier-service/backend/Dockerfile
     environment:
-      SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Run floci/docker/up.sh}
+      SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Set SUPPLIER_DATABASE_URL}
     command: ['node', 'migrate.cjs']
-    depends_on:
-      floci:
-        condition: service_healthy
     restart: 'no'
 
   supplier-api:
@@ -175,11 +170,10 @@ services:
       COGNITO_ISSUER: ${COGNITO_ISSUER}
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       PORT: '3000'
-      DB_HOST: floci
-      DB_PORT: ${SUPPLIER_DATABASE_PORT:?Run floci/docker/up.sh}
+      DB_PORT: ${SUPPLIER_DATABASE_PORT:?Set SUPPLIER_DATABASE_PORT}
       DB_NAME: relay
       DB_USER: relay
-      DB_PASSWORD: ${SUPPLIER_DATABASE_PASSWORD:?Run floci/docker/up.sh}
+      DB_PASSWORD: ${SUPPLIER_DATABASE_PASSWORD:?Set SUPPLIER_DATABASE_PASSWORD}
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
@@ -211,22 +205,13 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: ${USER_DATABASE_URL:?Run floci/docker/up.sh}
-      S3_ENDPOINT: http://host.docker.internal:4566
-      S3_PUBLIC_ENDPOINT: http://localhost:4566
-      S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: test
-      S3_SECRET_ACCESS_KEY: test
-      S3_BUCKET: relay-user-profile-images
-      S3_FORCE_PATH_STYLE: 'true'
+      DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
       INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-      floci:
-        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 10s
@@ -239,13 +224,11 @@ services:
       dockerfile: user-service/event-publisher/Dockerfile
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${USER_DATABASE_URL:?Run floci/docker/up.sh}
+      DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
       KAFKA_BROKERS: kafka:9092
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-      floci:
-        condition: service_healthy
     restart: unless-stopped
   errand-event-publisher:
     build:
@@ -253,14 +236,12 @@ services:
       dockerfile: errand-service/event-publisher/Dockerfile
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${ERRAND_DATABASE_URL:?Run floci/docker/up.sh}
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-      floci:
-        condition: service_healthy
     restart: unless-stopped
   user-auth-api:
     build:
@@ -269,7 +250,6 @@ services:
     expose:
       - '3000'
     environment:
-      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${FLOCI_INITIAL_ADMIN_EMAIL:-admin@example.com}
       NODE_ENV: production
       PORT: '3000'
     healthcheck:
@@ -292,7 +272,7 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: ${ERRAND_DATABASE_URL:?Run floci/docker/up.sh}
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       SUPPLIER_API_URL: http://supplier-api:3000
@@ -305,8 +285,6 @@ services:
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
       credit-api:
-        condition: service_healthy
-      floci:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
@@ -333,7 +311,7 @@ services:
       COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: ${CREDIT_DATABASE_URL:?Run floci/docker/up.sh}
+      DATABASE_URL: ${CREDIT_DATABASE_URL:?Set CREDIT_DATABASE_URL}
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
@@ -344,8 +322,6 @@ services:
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
-      floci:
-        condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
     healthcheck:

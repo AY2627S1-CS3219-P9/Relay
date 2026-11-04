@@ -28,23 +28,25 @@ aws cloudformation deploy --stack-name relay-local-storage \
   --template-file /opt/relay/infra/relay-storage.yaml \
   --parameter-overrides "BucketName=${S3_USER_IMAGE_BUCKET:-relay-user-profile-images}"
 
-if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
-  infrastructure_stack=relay-local-eks
-  deploy_eks=true
-else
-  infrastructure_stack=relay-local-rds
-  deploy_eks=false
-fi
-
+infrastructure_stack=relay-local-rds
 aws cloudformation deploy --stack-name "$infrastructure_stack" \
-  --template-file /opt/relay/infra/relay-floci-eks.yaml \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides "DeployEks=$deploy_eks"
+  --template-file /opt/relay/infra/relay-floci-db.yaml
 
 output() {
   aws cloudformation describe-stacks --stack-name "$infrastructure_stack" \
     --query "Stacks[0].Outputs[?OutputKey==\`$1\`].OutputValue" --output text
 }
+
+if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
+  aws cloudformation deploy --stack-name relay-local-eks \
+    --template-file /opt/relay/infra/relay-floci-eks.yaml \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      "VpcId=$(output VpcId)" \
+      "SubnetAId=$(output SubnetAId)" \
+      "SubnetBId=$(output SubnetBId)"
+fi
+
 # Floci's CloudFormation RDS provider currently ignores these DBInstance
 # properties. Reconcile its RDS metadata through the supported RDS API.
 database_security_group="$(aws cloudformation describe-stack-resource \

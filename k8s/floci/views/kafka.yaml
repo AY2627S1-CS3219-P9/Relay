@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata: { name: relay-kafka-ui, namespace: relay }
+spec: { selector: { app: relay-kafka-ui }, ports: [{ port: 8080, targetPort: web }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: relay-kafka-ui, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: relay-kafka-ui } }
+  template:
+    metadata: { labels: { app: relay-kafka-ui } }
+    spec:
+      containers:
+        - name: ui
+          image: ghcr.io/kafbat/kafka-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: web, containerPort: 8080 }]
+          env:
+            - { name: KAFKA_CLUSTERS_0_NAME, value: relay-local-eks }
+            - { name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS, value: 'kafka:9092' }
+            - { name: KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL, value: SASL_PLAINTEXT }
+            - { name: KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM, value: PLAIN }
+            - name: KAFKA_USERNAME
+              valueFrom: { secretKeyRef: { name: kafka-auth, key: KAFKA_USERNAME } }
+            - name: KAFKA_PASSWORD
+              valueFrom: { secretKeyRef: { name: kafka-auth, key: KAFKA_PASSWORD } }
+            - name: KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG
+              value: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="$(KAFKA_USERNAME)" password="$(KAFKA_PASSWORD)";'
+          readinessProbe: { tcpSocket: { port: web }, periodSeconds: 5 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: '1', memory: 768Mi } }

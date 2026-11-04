@@ -300,7 +300,7 @@ spec:
           image: IMAGE_USER_AUTH_API
           ports: [{ name: http, containerPort: 3000 }]
           env:
-            - { name: COOKIE_SECURE, value: "false" }
+            - { name: COOKIE_SECURE, value: "true" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }

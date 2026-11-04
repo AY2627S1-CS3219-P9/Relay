@@ -12,7 +12,7 @@ billable AWS resources.
 - `infra/relay-storage.yaml` provisions the private profile-image bucket.
   The user API accesses it through an EKS Pod Identity role, without static
   S3 credentials.
-- `scripts/deploy-eks.sh` builds the existing Dockerfiles, pushes the images,
+- `scripts/deploy-eks.sh` builds images from the Floci-neutral `compose.yaml` definitions, pushes them,
   creates the in-cluster runtime and Kafka Secrets, starts the demo broker,
   applies one-off database migrations,
   and applies the workloads, HPA policies, and ALB Ingress.
@@ -223,7 +223,7 @@ bash scripts/deploy-eks.sh "$STACK_NAME"
 
 Use `NO_CACHE=1 bash scripts/deploy-eks.sh "$STACK_NAME"` to rebuild without
 Docker's build cache. The script uses the selected profile and region, refreshes
-kubeconfig, builds and pushes ten images to ECR, prepares runtime configuration,
+kubeconfig, builds and pushes the application images to ECR, prepares runtime configuration,
 starts Kafka, and waits for topic initialization. It then runs separate Supplier
 SQL and User/Errand/Credit Prisma migration Jobs before applying application
 Deployments, autoscalers, and ingress. Rollout and migration waits use ten-minute
@@ -326,17 +326,15 @@ The ingress preserves remote prefixes; frontend Nginx configurations rewrite
 their prefixes before serving assets. The host also proxies remote routes using
 Kubernetes Service names, without workstation or Docker-host addresses.
 
-The deployment currently serves HTTP on port 80 using the ALB hostname. No
-application domain or ACM certificate is required. The ingress has no hostname
-restriction, HTTPS listener, or HTTPS redirect. Open `http://<ALB_HOST>` after
-the deployment completes.
-
-The runtime ConfigMap and User Auth Deployment set `COOKIE_SECURE="false"` so
-login cookies work over HTTP. Use test accounts only: passwords and session
-cookies are unencrypted. When enabling HTTPS later, configure an ACM certificate
-and HTTPS listener/redirect, then set `COOKIE_SECURE="true"` in both places.
-Host Nginx preserves forwarded HTTPS headers for that future configuration.
-Local Compose continues to use its own cookie setting. CloudFormation creates an ECR
+The deployment provisions an ACM certificate for `APPLICATION_DOMAIN_NAME` using
+DNS validation in `HOSTED_ZONE_ID`. The domain must belong to that public Route 53
+hosted zone. EKS Auto Mode creates an ALB with HTTPS port 443 and redirects HTTP
+port 80 to HTTPS. The deploy script creates or updates a Route 53 alias to the
+ALB and prints `https://<APPLICATION_DOMAIN_NAME>` after the ingress is ready.
+ACM validation and DNS propagation can take several minutes. Kubernetes uses
+`COOKIE_SECURE=true`; Host Nginx forwards the ALB's HTTPS protocol to User Auth.
+Local Compose retains its HTTP cookie setting.
+CloudFormation creates an ECR
 repository and a dedicated Pod Identity role for `user-auth-api`, restricted to
 admin operations on the configured Cognito pool in the same account and Region.
 The script builds/pushes the auth image and deploys its Service and workload.

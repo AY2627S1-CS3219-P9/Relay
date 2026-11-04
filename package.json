@@ -15,6 +15,14 @@
     "packages/*"
   ],
   "scripts": {
+    "up:compose": "bash floci/docker/up.sh",
+    "up:eks": "bash floci/eks/up.sh",
+    "down:compose": "bash floci/docker/down.sh",
+    "down:eks": "bash floci/eks/down.sh",
+    "views:compose": "bash floci/docker/views.sh start",
+    "views:compose:stop": "bash floci/docker/views.sh stop",
+    "views:eks": "bash floci/eks/views.sh start",
+    "views:eks:stop": "bash floci/eks/views.sh stop",
     "dev": "npm run dev-infra && concurrently --kill-others-on-fail --names frontend,backend \"npm run dev-fe\" \"npm run dev-be\"",
     "dev-infra": "bash floci/docker/up.sh --wait kafka kafka-init floci user-auth-api && docker compose --env-file .env.development --env-file floci/docker/.generated.env run --rm --build --no-deps supplier-schema",
     "dev-fe": "concurrently --kill-others-on-fail --names host,supplier,user,errand,credit \"npm run dev --workspace=@relay/host\" \"npm run dev --workspace=@relay/supplier-frontend\" \"npm run dev --workspace=@relay/user-frontend\" \"npm run dev --workspace=@relay/errand-frontend\" \"npm run dev --workspace=@relay/credit-frontend\"",

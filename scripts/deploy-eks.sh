@@ -20,7 +20,7 @@ fi
 # shellcheck disable=SC1090
 source "$env_file"
 
-required=(COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
+required=(APPLICATION_DOMAIN_NAME HOSTED_ZONE_ID COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { echo "Missing $name in $env_file" >&2; exit 2; }
 done
@@ -33,7 +33,9 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
-    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}"
+    "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
+    "ApplicationDomainName=${APPLICATION_DOMAIN_NAME}" \
+    "HostedZoneId=${HOSTED_ZONE_ID}"
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
@@ -48,34 +50,41 @@ registry="${registry%%/*}"
 aws ecr get-login-password --region "$aws_region" | docker login --username AWS --password-stdin "$registry"
 
 build_and_push() {
-  local output_name="$1" dockerfile="$2"
+  local output_name="$1" service="$2"
   shift 2
   local image_uri
   image_uri="$(output "$output_name"):${IMAGE_TAG:-latest}"
-  local build_args=(--platform linux/amd64 -f "$dockerfile" -t "$image_uri" "$@")
+  local build_args=("$@")
   if [[ "${NO_CACHE:-0}" == "1" ]]; then
     build_args+=(--no-cache)
   fi
-  docker build "${build_args[@]}" . >&2
+  # Use the neutral base Compose build definitions without the local Floci
+  # override. Keep ECR tags separate from local Compose image tags.
+  USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap \
+    SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=5432 SUPPLIER_DATABASE_PASSWORD=bootstrap \
+    DOCKER_DEFAULT_PLATFORM=linux/amd64 \
+    docker compose -f compose.yaml --env-file "$env_file" --project-name relay-aws-build \
+      build "${build_args[@]}" "$service" >&2
+  docker tag "relay-aws-build-$service:latest" "$image_uri"
   docker push "$image_uri" >&2
   printf '%s' "$image_uri"
 }
 
-host_image="$(build_and_push HostRepositoryUri host/Dockerfile \
+host_image="$(build_and_push HostRepositoryUri host \
   --build-arg "AWS_ENDPOINT_URL=${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
   --build-arg "COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID" \
   --build-arg "COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID")"
-supplier_frontend_image="$(build_and_push SupplierFrontendRepositoryUri supplier-service/frontend/Dockerfile)"
-user_frontend_image="$(build_and_push UserFrontendRepositoryUri user-service/frontend/Dockerfile)"
-errand_frontend_image="$(build_and_push ErrandFrontendRepositoryUri errand-service/frontend/Dockerfile)"
-credit_frontend_image="$(build_and_push CreditFrontendRepositoryUri credit-service/frontend/Dockerfile)"
-supplier_api_image="$(build_and_push SupplierApiRepositoryUri supplier-service/backend/Dockerfile)"
-user_api_image="$(build_and_push UserApiRepositoryUri user-service/backend/Dockerfile)"
-user_auth_api_image="$(build_and_push UserAuthRepositoryUri user-service/auth/Dockerfile)"
-user_event_publisher_image="$(build_and_push UserEventPublisherRepositoryUri user-service/event-publisher/Dockerfile)"
-errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri errand-service/event-publisher/Dockerfile)"
-errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-service/backend/Dockerfile)"
-credit_api_image="$(build_and_push CreditApiRepositoryUri credit-service/backend/Dockerfile)"
+supplier_frontend_image="$(build_and_push SupplierFrontendRepositoryUri supplier-frontend)"
+user_frontend_image="$(build_and_push UserFrontendRepositoryUri user-frontend)"
+errand_frontend_image="$(build_and_push ErrandFrontendRepositoryUri errand-frontend)"
+credit_frontend_image="$(build_and_push CreditFrontendRepositoryUri credit-frontend)"
+supplier_api_image="$(build_and_push SupplierApiRepositoryUri supplier-api)"
+user_api_image="$(build_and_push UserApiRepositoryUri user-api)"
+user_auth_api_image="$(build_and_push UserAuthRepositoryUri user-auth-api)"
+user_event_publisher_image="$(build_and_push UserEventPublisherRepositoryUri user-event-publisher)"
+errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri errand-event-publisher)"
+errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-api)"
+credit_api_image="$(build_and_push CreditApiRepositoryUri credit-api)"
 
 secret_value() {
   aws secretsmanager get-secret-value --region "$aws_region" --secret-id "$(output "$1")" --query SecretString --output text
@@ -118,6 +127,7 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=AWS_REGION="$aws_region" \
   --from-literal=AWS_DEFAULT_REGION="$aws_region" \
   --from-literal=AWS_ENDPOINT_URL="${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
+  --from-literal=AUTH_PUBLIC_ORIGIN="https://${APPLICATION_DOMAIN_NAME}" \
   --from-literal=COGNITO_ISSUER="$COGNITO_ISSUER" \
   --from-literal=COGNITO_JWKS_URI="$COGNITO_JWKS_URI" \
   --from-literal=COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
@@ -165,8 +175,20 @@ sed \
   k8s/base/workloads.yaml | kubectl apply -f -
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api
 kubectl apply -f k8s/base/autoscaling.yaml
-kubectl apply -f k8s/base/ingress.yaml
+sed "s|CERTIFICATE_ARN|$(output ApplicationCertificateArn)|g" k8s/base/ingress.yaml | kubectl apply -f -
 kubectl -n relay get deployment -o name | while read -r deployment; do
   kubectl -n relay rollout status "$deployment" --timeout=10m
 done
-echo "Deployment complete. Run: kubectl -n relay get ingress relay"
+# Publish the ALB address as the configured application domain.
+alb_dns=""
+for attempt in $(seq 1 60); do
+  alb_dns="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+  [[ -n "$alb_dns" ]] && break
+  sleep 10
+done
+[[ -n "$alb_dns" ]] || { echo "ALB ingress has no hostname after ten minutes" >&2; exit 1; }
+alb_zone="$(aws elbv2 describe-load-balancers --region "$aws_region" --query "LoadBalancers[?DNSName=='$alb_dns'].CanonicalHostedZoneId | [0]" --output text)"
+[[ -n "$alb_zone" && "$alb_zone" != None ]] || { echo "Could not find the ALB hosted zone" >&2; exit 1; }
+change_batch="$(node -e 'const [domain,dns,zone]=process.argv.slice(1); process.stdout.write(JSON.stringify({Changes:[{Action:"UPSERT",ResourceRecordSet:{Name:domain,Type:"A",AliasTarget:{HostedZoneId:zone,DNSName:dns,EvaluateTargetHealth:false}}}]}))' "$APPLICATION_DOMAIN_NAME" "$alb_dns" "$alb_zone")"
+aws route53 change-resource-record-sets --region "$aws_region" --hosted-zone-id "$HOSTED_ZONE_ID" --change-batch "$change_batch" >/dev/null
+echo "Deployment complete: https://$APPLICATION_DOMAIN_NAME"

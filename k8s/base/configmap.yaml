@@ -7,7 +7,7 @@ data:
   PORT: "3000"
   NODE_ENV: production
   # Temporary HTTP deployment; enable secure cookies when HTTPS is configured.
-  COOKIE_SECURE: "false"
+  COOKIE_SECURE: "true"
   AUTH_MODE: cognito
   KAFKA_TOPIC_USER_EVENTS: user-events
   KAFKA_TOPIC_USER_DLQ: user-events-dlq

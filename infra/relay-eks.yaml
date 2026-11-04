@@ -20,6 +20,12 @@ Parameters:
   DatabaseAllocatedStorage:
     Type: Number
     Default: 20
+  ApplicationDomainName:
+    Type: String
+    Description: Public DNS name served by the application ALB.
+  HostedZoneId:
+    Type: String
+    Description: Route 53 public hosted zone ID used for ACM DNS validation.
   CognitoUserPoolId:
     Type: String
     Description: Existing Cognito user pool in this account and Region.
@@ -29,6 +35,15 @@ Parameters:
     AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
 
 Resources:
+  ApplicationCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref ApplicationDomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref ApplicationDomainName
+          HostedZoneId: !Ref HostedZoneId
+
   Vpc:
     Type: AWS::EC2::VPC
     Properties:
@@ -374,6 +389,7 @@ Resources:
     Properties: { RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
+  ApplicationCertificateArn: { Value: !Ref ApplicationCertificate }
   ClusterName: { Value: !Ref EksCluster }
   ClusterEndpoint: { Value: !GetAtt EksCluster.Endpoint }
   UserDatabaseEndpoint: { Value: !GetAtt UserDatabase.Endpoint.Address }
