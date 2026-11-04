@@ -147,7 +147,7 @@ export class OpenAIClient implements AIClient {
       }
 
       const data = await response.json()
-      console.log('OpenAI API response:', JSON.stringify(data, null, 2))
+
       return data.choices[0].message.content.trim()
     } catch (error) {
       clearTimeout(timeoutId)

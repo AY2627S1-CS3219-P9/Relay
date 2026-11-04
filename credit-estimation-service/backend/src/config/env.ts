@@ -38,8 +38,11 @@ export function getEnv(): EstimationEnv {
     aiModel: process.env.AI_MODEL || '',
     aiEndpoint: process.env.AI_ENDPOINT || '',
     aiTemperature: positiveIntegerOptional(process.env.AI_TEMPERATURE, 0),
-    aiMaxTokens: positiveIntegerOptional(process.env.AI_MAX_TOKENS, 500),
-    aiEstimationTimeoutMs: positiveInteger(process.env.AI_ESTIMATION_TIMEOUT_MS, 1500),
-    aiRateLimitRequestsPerMinute: positiveInteger(process.env.AI_RATE_LIMIT_REQUESTS_PER_MINUTE, 20),
+    aiMaxTokens: positiveIntegerOptional(process.env.AI_MAX_TOKENS, 1000),
+    aiEstimationTimeoutMs: positiveInteger(process.env.AI_ESTIMATION_TIMEOUT_MS, 3000),
+    aiRateLimitRequestsPerMinute: positiveInteger(
+      process.env.AI_RATE_LIMIT_REQUESTS_PER_MINUTE,
+      20,
+    ),
   }
 }
