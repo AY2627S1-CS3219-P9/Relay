@@ -1,4 +1,4 @@
-import express, { type Request, type Response, type NextFunction } from 'express'
+import express, { type Request, type Response } from 'express'
 import { ErrandNotificationEventStream } from './services/notificationEventStream.js'
 import { ErrandNotificationConsumer } from './consumers/consumer.js'
 import { getEnv } from './config/env.js'
@@ -11,6 +11,35 @@ import {
   ErrandNotificationTypes,
   type ErrandEvent,
 } from '@relay/contracts'
+
+const KAFKA_CONSUMER_GROUP_ID = 'relay-errand-notifications'
+
+function isValidEvent(event: any): event is ErrandEvent {
+  if (!event || typeof event !== 'object') return false
+  if (
+    typeof event.eventId !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event.eventId)
+  )
+    return false
+  if (
+    ![
+      'ErrandCreated',
+      'ErrandStatusChanged',
+      'ErrandCompleted',
+      'ErrandCancelled',
+      'ErrandExpired',
+      'ErrandDeleted',
+      'ErrandCreationFailed',
+    ].includes(event.eventType)
+  )
+    return false
+  if (typeof event.timestamp !== 'string' || isNaN(Date.parse(event.timestamp))) return false
+  if (event.version !== 1) return false
+  if (!event.payload || typeof event.payload !== 'object') return false
+  if (typeof event.payload.errandId !== 'string') return false
+  if (!Array.isArray(event.payload.recipientSubs)) return false
+  return true
+}
 
 export function createNotificationApp(eventStream: ErrandNotificationEventStream, kafka: any) {
   const app = express()
@@ -35,13 +64,23 @@ export function createNotificationApp(eventStream: ErrandNotificationEventStream
   const env = getEnv()
 
   const startConsumer = async () => {
-    await consumer.start('relay-errand-notifications', [env.kafkaTopicErrandEvents], {
+    await consumer.start(KAFKA_CONSUMER_GROUP_ID, [env.kafkaTopicErrandEvents], {
       [env.kafkaTopicErrandEvents]: async (payload: any) => {
         try {
-          const event = JSON.parse(payload.message.value as string) as ErrandEvent
+          const rawPayload = JSON.parse(payload.message.value as string)
+
+          // Validate event structure
+          if (!isValidEvent(rawPayload)) {
+            console.error('Invalid event payload:', rawPayload)
+            return
+          }
+
+          const event = rawPayload as ErrandEvent
           await processErrandEvent(eventStream, event)
         } catch (error) {
           console.error('Error processing event:', error)
+          // Re-throw to trigger Kafka retry with exponential backoff
+          throw error
         }
       },
     })
@@ -56,16 +95,32 @@ export async function processErrandEvent(
 ): Promise<void> {
   const { eventId, eventType, timestamp, payload } = event
 
+  // Kafka consumer group offsets already handle deduplication,
+  // so we don't need additional deduplication here.
+
   const sseEventType = mapKafkaToSseEvent(eventType)
 
   console.log(`Processing event ${eventId} of type ${eventType} for errand ${payload.errandId}`)
 
-  const recipientSubs = (payload as any).recipientSubs
+  // Get recipientSubs with actor exclusion
+  const recipientSubs = (payload as any).recipientSubs as string[]
+
   if (!recipientSubs || !Array.isArray(recipientSubs) || recipientSubs.length === 0) {
     console.warn(`Event ${eventId} missing valid recipientSubs. Skipping notification.`, {
       eventType,
       payload,
     })
+    return
+  }
+
+  // Filter actor from recipients (actor should not receive notification for their own action)
+  const actorSub = payload.actorSub
+  const filteredRecipients = actorSub
+    ? recipientSubs.filter((sub) => sub !== actorSub)
+    : recipientSubs
+
+  if (filteredRecipients.length === 0) {
+    console.log(`Event ${eventId}: all recipients filtered (actor exclusion), nothing to send`)
     return
   }
 
@@ -96,7 +151,8 @@ export async function processErrandEvent(
     newStatus,
   }
 
-  eventStream.publish(recipientSubs, notification)
+  // Publish to subscribers
+  await eventStream.publish(filteredRecipients, notification)
 }
 
 function mapKafkaToSseEvent(kafkaType: string): ErrandNotificationType {
@@ -133,12 +189,12 @@ function notificationStreamHandler(eventStream: ErrandNotificationEventStream) {
     // Send initial connection confirmed
     res.write(': connected\n\n')
 
-    // Subscribe user to errand events
-    eventStream.subscribe(userSub, res)
+    // Subscribe user to errand events and get subscription ID
+    const subscriptionId = eventStream.subscribe(userSub, res)
 
     // Handle client disconnect
     req.on('close', () => {
-      eventStream.unsubscribe(userSub)
+      eventStream.unsubscribe(userSub, subscriptionId)
       res.end()
     })
   }

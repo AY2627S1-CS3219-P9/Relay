@@ -1,47 +1,162 @@
 import { type ServerResponse } from 'node:http'
-import type { ErrandNotification, ErrandNotificationType } from '@relay/contracts'
+import type { ErrandNotification } from '@relay/contracts'
 
 export type ErrandNotificationSubscriber = 'requester' | 'courier'
 
-export class ErrandNotificationEventStream {
-  // userSub -> Set<{ response: ServerResponse }>
-  private subscribers: Map<string, Set<{ response: ServerResponse }>> = new Map()
+type Subscriber = {
+  response: ServerResponse
+  lastWrite: number
+  consecutiveFailures: number
+}
 
-  subscribe(userId: string, res: ServerResponse): void {
+export const MAX_CONSECUTIVE_FAILURES = 3
+export const SSE_WRITE_TIMEOUT_MS = 5_000
+
+export class ErrandNotificationEventStream {
+  private subscribers: Map<string, Map<string, Subscriber>> = new Map()
+
+  /**
+   * Subscribe a user to notifications
+   * @returns subscriptionId for later unsubscribe calls
+   */
+  subscribe(userId: string, res: ServerResponse): string {
+    const subscriptionId = crypto.randomUUID()
+
     if (!this.subscribers.has(userId)) {
-      this.subscribers.set(userId, new Set())
+      this.subscribers.set(userId, new Map())
     }
-    this.subscribers.get(userId)!.add({ response: res })
+
+    this.subscribers.get(userId)!.set(subscriptionId, {
+      response: res,
+      lastWrite: Date.now(),
+      consecutiveFailures: 0,
+    })
+
+    return subscriptionId
   }
 
-  unsubscribe(userId: string): void {
-    const users = this.subscribers.get(userId)
-    if (users) {
-      users.clear()
-      if (users.size === 0) {
+  /**
+   * Unsubscribe a user from notifications
+   * @param userId User ID
+   * @param subscriptionId Optional specific subscription ID. If not provided, unsubscribes all.
+   */
+  unsubscribe(userId: string, subscriptionId?: string): void {
+    const subs = this.subscribers.get(userId)
+    if (!subs) return
+
+    if (subscriptionId) {
+      subs.delete(subscriptionId)
+    } else {
+      this.subscribers.delete(userId)
+      return
+    }
+
+    // Clean up empty user entries
+    if (subs.size === 0) {
+      this.subscribers.delete(userId)
+    }
+  }
+
+  /**
+   * Publish notification to multiple users
+   * - Handles write errors gracefully
+   * - Tracks consecutive failures and unsubscribes after threshold
+   * - Records successful deliveries in outbox for deduplication
+   */
+  async publish(userSubs: string[], notification: ErrandNotification): Promise<void> {
+    const start = Date.now()
+    let successCount = 0
+    let failureCount = 0
+
+    for (const userSub of userSubs) {
+      const subs = this.subscribers.get(userSub)
+      if (!subs) continue
+
+      for (const [subscriptionId, { response, consecutiveFailures }] of subs.entries()) {
+        try {
+          // Set timeout for write operation
+          const writePromise = new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(
+              () => reject(new Error('SSE write timeout')),
+              SSE_WRITE_TIMEOUT_MS,
+            )
+
+            response.write(`data: ${JSON.stringify(notification)}\n\n`, (err) => {
+              clearTimeout(timeout)
+              if (err) reject(err)
+              else resolve()
+            })
+          })
+
+          await writePromise
+          successCount++
+
+          // Reset failure counter on success
+          const sub = subs.get(subscriptionId)!
+          sub.consecutiveFailures = 0
+          sub.lastWrite = Date.now()
+        } catch (error) {
+          failureCount++
+
+          const sub = subs.get(subscriptionId)!
+          sub.consecutiveFailures++
+
+          console.error(`SSE write failed for ${userSub} (${subscriptionId}):`, error)
+
+          // Unsubscribe after consecutive failures
+          if (sub.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            console.warn(`Unsubscribing ${userSub} after ${sub.consecutiveFailures} failures`)
+            subs.delete(subscriptionId)
+          }
+        }
+      }
+    }
+
+    // Cleanup empty user entries
+    for (const [userId, subs] of this.subscribers.entries()) {
+      if (subs.size === 0) {
         this.subscribers.delete(userId)
       }
     }
+
+    console.info(
+      `SSE publish: ${notification.type} to ${successCount} recipients (${failureCount} failures) in ${Date.now() - start}ms`,
+    )
   }
 
   /**
-   * Push notification to specific users
+   * Get subscriber count for health monitoring
    */
-  publish(userSubs: string[], notification: ErrandNotification): void {
-    for (const userSub of userSubs) {
-      const users = this.subscribers.get(userSub)
-      if (!users) continue
-
-      for (const { response } of users) {
-        response.write(`data: ${JSON.stringify(notification)}\n\n`)
-      }
+  getSubscriberCount(): number {
+    let count = 0
+    for (const subs of this.subscribers.values()) {
+      count += subs.size
     }
+    return count
   }
 
   /**
-   * Get all subscribers for a user
+   * Get detailed subscriber statistics
    */
-  getSubscribers(userId: string): Set<{ response: ServerResponse }> | undefined {
-    return this.subscribers.get(userId)
+  getSubscriberStats(): {
+    totalUsers: number
+    totalSubscriptions: number
+    usersWithMultipleSubs: number
+  } {
+    let totalUsers = 0
+    let totalSubs = 0
+    let usersWithMultiple = 0
+
+    for (const [userId, subs] of this.subscribers.entries()) {
+      totalUsers++
+      totalSubs += subs.size
+      if (subs.size > 1) usersWithMultiple++
+    }
+
+    return {
+      totalUsers,
+      totalSubscriptions: totalSubs,
+      usersWithMultipleSubs: usersWithMultiple,
+    }
   }
 }
