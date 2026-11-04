@@ -71,6 +71,23 @@ export function RemotePage({
 }: RemotePageProps) {
   const RemoteApp = remoteApps[service]
 
+  // If the service doesn't have a frontend, show an error state
+  if (!RemoteApp) {
+    return (
+      <section
+        className={`remote-page${overlay ? ' remote-page-overlay' : ''}${overlayClassName ? ` ${overlayClassName}` : ''}`}
+        aria-label={serviceLabel}
+        style={{ display: visible ? undefined : 'none' }}
+      >
+        <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
+          <GlassCard variant="plain">
+            <p>{serviceLabel} is not available.</p>
+          </GlassCard>
+        </RemoteFailureBoundary>
+      </section>
+    )
+  }
+
   return (
     <section
       className={`remote-page${overlay ? ' remote-page-overlay' : ''}${overlayClassName ? ` ${overlayClassName}` : ''}`}

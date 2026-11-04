@@ -1,4 +1,4 @@
-export type ServiceId = 'supplier' | 'user' | 'errand' | 'credit'
+export type ServiceId = 'supplier' | 'user' | 'errand' | 'credit' | 'credit-estimation'
 
 export type ServiceMetadata = {
   id: ServiceId
@@ -131,9 +131,16 @@ export const SERVICE_METADATA: Record<ServiceId, ServiceMetadata> = {
     description: 'View your balance and closed-economy transactions.',
     path: '/credits',
   },
+  'credit-estimation': {
+    id: 'credit-estimation',
+    label: 'Credit Estimation service',
+    description: 'AI-powered credit estimation for errands.',
+    path: '/estimation',
+  },
 }
 
 export * from './user'
 export * from './supplier'
 export * from './errand'
 export * from './credit'
+export * from './credit-estimation'

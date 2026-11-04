@@ -136,6 +136,8 @@ services:
         condition: service_healthy
       credit-api:
         condition: service_healthy
+      credit-estimation-api:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
@@ -393,6 +395,35 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  #
+  credit-estimation-api:
+    build:
+      context: .
+      dockerfile: credit-estimation-service/backend/Dockerfile
+    ports:
+      - '3005:3005'
+    environment:
+      NODE_ENV: production
+      PORT: '3005'
+      USER_API_URL: http://user-api:3000
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
+      ESTIMATION_SERVICE_TIMEOUT_MS: '5000'
+      AI_PROVIDER: '${AI_PROVIDER:-}'
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: '${AI_MODEL:-}'
+      AI_ENDPOINT: '${AI_ENDPOINT:-}'
+      AI_TEMPERATURE: '${AI_TEMPERATURE:-}'
+      AI_MAX_TOKENS: '${AI_MAX_TOKENS:-}'
+      AI_ESTIMATION_TIMEOUT_MS: '${AI_ESTIMATION_TIMEOUT_MS:-}'
+    depends_on:
+      user-api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3005/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
