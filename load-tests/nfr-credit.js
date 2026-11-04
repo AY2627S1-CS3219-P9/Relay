@@ -8,7 +8,7 @@ const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 const ratePerSecond = Number(__ENV.NFR_CREDIT_RATE_PER_SEC ?? 10)
 const duration = __ENV.NFR_CREDIT_DURATION ?? '1m'
 const preAllocatedVUs = Number(__ENV.NFR_CREDIT_PREALLOCATED_VUS ?? 20)
-const maxVUs = Number(__ENV.NFR_CREDIT_MAX_VUS ?? 300)
+const maxVUs = Number(__ENV.NFR_CREDIT_MAX_VUS ?? 100)
 const p95Limit = Number(__ENV.NFR_CREDIT_P95_LIMIT_MS ?? 200)
 
 export const options = {

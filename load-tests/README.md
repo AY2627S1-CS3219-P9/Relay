@@ -10,7 +10,7 @@ This directory contains version-controlled k6 scripts. The Grafana Cloud editor 
 - `GET /api/errands?scope=mine`
 - Optionally, `GET /api/errands/:id` when `LOAD_TEST_ERRAND_ID` is set.
 
-It is intentionally read-only. The forthcoming lifecycle and concurrency tests will use isolated, run-specific errands and separate requester/courier credentials.
+It is intentionally read-only. The lifecycle and core scenario tests use isolated, run-specific errands and separate requester/courier credentials.
 
 ### Prerequisites
 
@@ -41,14 +41,14 @@ full lifecycle and acceptance-race scenarios can run. It also creates one
 disposable open errand and writes its ID as `LOAD_TEST_ERRAND_ID` for browse,
 detail, and mixed NFR tests.
 
-Run it from Git Bash after the AWS deployment is ready:
+On Windows PowerShell, run it after the AWS deployment is ready:
 
-```bash
-export AWS_PROFILE=relay-sso
-export AWS_REGION=ap-southeast-1
-export ALB_HOST="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-export BASE_URL="http://$ALB_HOST"
-export COGNITO_USER_POOL_ID="$(aws cognito-idp list-user-pools --max-results 50 --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "UserPools[?Name=='relay-users'].Id | [0]" --output text)"
+```powershell
+$env:AWS_PROFILE = 'relay-sso'
+$env:AWS_REGION = 'ap-southeast-1'
+$albHost = kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+$env:BASE_URL = "http://$albHost"
+$env:COGNITO_USER_POOL_ID = aws cognito-idp list-user-pools --max-results 50 --region $env:AWS_REGION --profile $env:AWS_PROFILE --query "UserPools[?Name=='relay-users'].Id | [0]" --output text
 
 node load-tests/provision-aws-test-data.mjs
 ```
@@ -108,10 +108,10 @@ docker run --rm -i `
   grafana/k6 run /scripts/nfr-errand-read.js
 ```
 
-For example, after the baseline passes, increase the target without editing the script:
+For example, keep the target within the current 100-VU Grafana project limit:
 
 ```powershell
-$env:NFR_TARGET_VUS = '500'
+$env:NFR_TARGET_VUS = '100'
 $env:NFR_HOLD_DURATION = '5m'
 ```
 
@@ -201,25 +201,41 @@ docker run --rm -i `
 
 ### Grafana Cloud
 
-After the local script passes, execute the same repository script with Grafana Cloud local execution. The load generator remains local (or on a GitHub Actions runner), while Grafana Cloud stores the run and displays its metrics.
+The recommended Windows workflow uses `Invoke-K6Cloud.ps1`. k6 executes on
+your local Docker engine while Grafana Cloud stores and displays the results.
+The same helper can be used with local Compose or the AWS-generated
+environment file.
 
 ```powershell
+. .\load-tests\Invoke-K6Cloud.ps1
+
 $env:K6_CLOUD_TOKEN = 'your-grafana-cloud-k6-token'
 $env:K6_CLOUD_STACK_ID = 'your-grafana-cloud-stack-id'
 $env:K6_CLOUD_PROJECT_ID = 'your-grafana-k6-project-id'
 
-docker run --rm -i `
-  -e K6_CLOUD_TOKEN `
-  -e K6_CLOUD_STACK_ID `
-  -e K6_CLOUD_PROJECT_ID `
-  -e BASE_URL=http://host.docker.internal:8080 `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 cloud run --local-execution /scripts/errand-browse-smoke.js
+Invoke-K6Cloud `
+  -Script 'errand-browse-smoke.js' `
+  -Summary 'errand-browse-summary.json'
 ```
 
 Before this command, create the Grafana Cloud secrets `loadtestuseremail` and `loadtestuserpassword` in **Testing & synthetics → Performance → Settings → Secrets**. k6 v2 retrieves them at run time and redacts their values in logs. This deliberately avoids `--include-system-env-vars`, which could otherwise upload unrelated local environment values.
 
-Use GitHub repository secrets for the corresponding values when this is added to CI.
+For AWS, provision `load-tests/.env.aws.generated` first and pass it to the
+helper:
+
+```powershell
+Invoke-K6Cloud `
+  -Script 'errand-browse-smoke.js' `
+  -Summary 'errand-browse-aws-summary.json' `
+  -EnvFile 'load-tests/.env.aws.generated'
+```
+
+Do not commit the Grafana token, generated environment files, or test
+credentials. Use GitHub repository secrets for Grafana values in CI.
+
+The Grafana k6 secrets mentioned above are optional when the generated
+environment file contains the test credentials; the PowerShell helper passes
+those credentials explicitly to k6.
 
 ## Errand lifecycle and credit settlement
 
@@ -245,46 +261,87 @@ docker run --rm -i `
 
 The default is one virtual user and one lifecycle iteration. Keep these defaults while validating test data. Increasing `LIFECYCLE_VUS` or `LIFECYCLE_ITERATIONS` creates additional errands and consumes the configured requester credit amount for each concurrent reservation.
 
-For Grafana Cloud local execution, use the generated environment file. The load generator remains on your machine (or the GitHub Actions runner), while Grafana Cloud stores the metrics. Do not upload `.env.generated` or configure the generated credentials as permanent Grafana secrets.
+For Grafana Cloud local execution, use the reusable PowerShell helper. The
+load generator remains on your machine (or the GitHub Actions runner), while
+Grafana Cloud stores the metrics. Do not upload `.env.generated` or configure
+the generated credentials as permanent Grafana secrets.
 
 ```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e K6_CLOUD_TOKEN `
-  -e K6_CLOUD_STACK_ID `
-  -e K6_CLOUD_PROJECT_ID `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 cloud run `
-  --local-execution `
-  /scripts/errand-lifecycle.js
+. .\load-tests\Invoke-K6Cloud.ps1
+Invoke-K6Cloud `
+  -Script 'errand-lifecycle.js' `
+  -Summary 'errand-lifecycle-summary.json'
 ```
 
 The script creates unique errands and deletes them after confirmation by default. The provisioner creates disposable accounts for the run, so this works after `docker compose down --volumes` and on a clean GitHub Actions runner.
 
-The acceptance-race scenario additionally requires the second courier credentials as `loadtestcourierbemail` and `loadtestcourierbpassword` in Grafana Cloud Secrets.
+The acceptance-race scenario additionally requires the second courier
+credentials in the generated environment as `LOAD_TEST_COURIER_B_EMAIL` and
+`LOAD_TEST_COURIER_B_PASSWORD`.
 
 ## Core create, race, and credit-guard scenarios
 
 Run the remaining core scenarios together with `errand-core-scenarios.js`:
 
 ```powershell
-docker run --rm -i `
-  --env-file load-tests/.env.generated `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/errand-core-scenarios.js
+. .\load-tests\Invoke-K6Cloud.ps1
+Invoke-K6Cloud `
+  -Script 'errand-core-scenarios.js' `
+  -Summary 'errand-core-summary.json'
 ```
 
 This requires a second courier account in `LOAD_TEST_COURIER_B_EMAIL` and `LOAD_TEST_COURIER_B_PASSWORD`. The acceptance race sends two parallel acceptance requests for the same errand and requires exactly one winner. The credit guard verifies non-negative balances, rejects an insufficient-credit creation, rejects duplicate confirmation, and waits up to 30 seconds for the single asynchronous transfer.
 
 ## GitHub Actions load-test workflow
 
-The repository workflow `.github/workflows/load-tests.yml` starts a disposable Compose environment, runs `node load-tests/provision-test-data.mjs`, executes the three k6 scripts with Grafana Cloud local execution, uploads summaries and Compose diagnostics on failure, and removes all volumes afterward.
+The repository workflow `.github/workflows/load-tests.yml` starts a disposable
+Compose environment, provisions test data, and runs the selected suite with
+Grafana Cloud local execution. Pull requests run only the local browse smoke
+test. Manual runs can select `smoke`, `lifecycle`, `core`, `nfr`, or `full`.
+The workflow uploads summaries and diagnostics and removes all Compose volumes
+afterward.
 
 Configure these repository secrets before using the workflow:
 
 - `K6_CLOUD_TOKEN`
 - `K6_CLOUD_STACK_ID`
 - `K6_CLOUD_PROJECT_ID`
+
+### Windows Grafana Cloud NFR runner
+
+PowerShell users can load the reusable runner instead of maintaining long
+Docker commands in each terminal session:
+
+```powershell
+. .\load-tests\Invoke-K6Cloud.ps1
+```
+
+Set the Grafana Cloud credentials securely in the current terminal. Do not
+commit them:
+
+```powershell
+$env:K6_CLOUD_TOKEN = 'your-grafana-cloud-k6-token'
+$env:K6_CLOUD_STACK_ID = 'your-grafana-cloud-stack-id'
+$env:K6_CLOUD_PROJECT_ID = 'your-grafana-k6-project-id'
+```
+
+Run the NFR suites locally while streaming results to Grafana Cloud:
+
+```powershell
+Invoke-K6Cloud -Script 'nfr-auth.js' -Summary 'nfr-auth-summary.json'
+Invoke-K6Cloud -Script 'nfr-errand-read.js' -Summary 'nfr-errand-read-summary.json'
+Invoke-K6Cloud -Script 'nfr-errand-mixed.js' -Summary 'nfr-errand-mixed-summary.json'
+Invoke-K6Cloud -Script 'nfr-credit.js' -Summary 'nfr-credit-summary.json'
+Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'nfr-supplier-summary.json'
+```
+
+For AWS, use the generated AWS environment instead:
+
+```powershell
+Invoke-K6Cloud -Script 'nfr-errand-read.js' `
+  -Summary 'nfr-errand-read-aws-summary.json' `
+  -EnvFile 'load-tests/.env.aws.generated'
+```
+
+The runner executes k6 locally in Docker and streams the results to Grafana
+Cloud. Its defaults stay within the current 100-VU Grafana project limit.
