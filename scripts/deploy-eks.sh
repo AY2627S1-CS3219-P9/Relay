@@ -45,7 +45,18 @@ aws eks update-kubeconfig --region "$aws_region" --name "$cluster_name"
 
 registry="$(output HostRepositoryUri)"
 registry="${registry%%/*}"
-aws ecr get-login-password --region "$aws_region" | docker login --username AWS --password-stdin "$registry"
+# Docker Desktop's WSL credential helper can fail while saving ECR tokens.
+# Keep ECR credentials in a private temporary config for login/push only.
+ecr_docker_config="$(mktemp -d)"
+chmod 700 "$ecr_docker_config"
+rendered=""
+cleanup() {
+  [[ -z "$rendered" ]] || rm -f -- "$rendered"
+  rm -rf -- "$ecr_docker_config"
+}
+trap cleanup EXIT
+aws ecr get-login-password --region "$aws_region" |
+  docker --config "$ecr_docker_config" login --username AWS --password-stdin "$registry"
 
 build_and_push() {
   local output_name="$1" service="$2"
@@ -64,7 +75,7 @@ build_and_push() {
     docker compose -f compose.yaml --env-file "$env_file" --project-name relay-aws-build \
       build "${build_args[@]}" "$service" >&2
   docker tag "relay-aws-build-$service:latest" "$image_uri"
-  docker push "$image_uri" >&2
+  docker --config "$ecr_docker_config" push "$image_uri" >&2
   printf '%s' "$image_uri"
 }
 
@@ -138,7 +149,6 @@ kubectl -n relay create secret generic relay-runtime \
   --dry-run=client -o yaml | kubectl apply -f -
 
 rendered="$(mktemp)"
-trap 'rm -f "$rendered"' EXIT
 kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-migrate --ignore-not-found
 sed \
   -e "s|IMAGE_HOST|$host_image|g" \

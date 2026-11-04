@@ -88,15 +88,13 @@ aws cloudformation deploy \
   --template-file infra/relay-auth.yaml
 ```
 
-Create the storage stack. The bucket name must be globally unique:
+Create the storage stack:
 
 ```bash
-export PROFILE_IMAGE_BUCKET=replace-with-a-globally-unique-bucket-name
 aws cloudformation deploy \
   --region "$AWS_REGION" \
   --stack-name "$STORAGE_STACK" \
-  --template-file infra/relay-storage.yaml \
-  --parameter-overrides "BucketName=$PROFILE_IMAGE_BUCKET"
+  --template-file infra/relay-storage.yaml
 ```
 
 Read the generated values:
@@ -204,7 +202,9 @@ bash scripts/deploy-eks.sh "$STACK_NAME"
 ```
 
 Use `NO_CACHE=1 bash scripts/deploy-eks.sh "$STACK_NAME"` to rebuild without
-Docker's build cache. The script uses the selected profile and region, refreshes
+Docker's build cache. The script uses a private temporary Docker config for the ECR login and image pushes. This avoids Docker Desktop credential-helper failures in WSL and removes the temporary ECR token when the script exits. Normal Docker builds still use your existing Docker configuration.
+
+The script uses the selected profile and region, refreshes
 kubeconfig, builds and pushes the application images to ECR, prepares runtime configuration,
 starts Kafka, and waits for topic initialization. It then runs separate Supplier
 SQL and User/Errand/Credit Prisma migration Jobs before applying application
