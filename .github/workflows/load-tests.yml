@@ -22,6 +22,9 @@ on:
         default: full
         options:
           - smoke
+          - lifecycle
+          - core
+          - nfr
           - full
 
   schedule:
@@ -67,13 +70,16 @@ jobs:
 
       - name: Run browse smoke test locally for pull requests
         if: ${{ github.event_name == 'pull_request' }}
+        shell: pwsh
         run: |
-          docker run --rm -i \
-            --add-host host.docker.internal:host-gateway \
-            --env-file load-tests/.env.generated \
-            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
-            -v "${PWD}/load-tests:/scripts" \
-            grafana/k6 run /scripts/errand-browse-smoke.js
+          docker run --rm -i `
+            --add-host host.docker.internal:host-gateway `
+            --env-file load-tests/.env.generated `
+            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json `
+            -v "${PWD}/load-tests:/scripts" `
+            --entrypoint sh `
+            grafana/k6 `
+            -c 'k6 run --env BASE_URL="$BASE_URL" --env LOAD_TEST_USER_EMAIL="$LOAD_TEST_USER_EMAIL" --env LOAD_TEST_USER_PASSWORD="$LOAD_TEST_USER_PASSWORD" --env LOAD_TEST_ERRAND_ID="$LOAD_TEST_ERRAND_ID" --env K6_SUMMARY_PATH="$K6_SUMMARY_PATH" /scripts/errand-browse-smoke.js'
 
       - name: Verify Grafana Cloud credentials
         if: ${{ github.event_name != 'pull_request' }}
@@ -87,55 +93,116 @@ jobs:
           test -n "$K6_CLOUD_PROJECT_ID" || { echo "K6_CLOUD_PROJECT_ID is not configured"; exit 1; }
 
       - name: Run browse smoke test in Grafana Cloud
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke' || inputs.suite == 'full') }}
+        shell: pwsh
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
           K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
         run: |
-          docker run --rm -i \
-            --add-host host.docker.internal:host-gateway \
-            --env-file load-tests/.env.generated \
-            -e K6_CLOUD_TOKEN \
-            -e K6_CLOUD_STACK_ID \
-            -e K6_CLOUD_PROJECT_ID \
-            -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json \
-            -v "${PWD}/load-tests:/scripts" \
-            grafana/k6 cloud run --local-execution /scripts/errand-browse-smoke.js
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "errand-browse-smoke.js" `
+            -Summary "errand-browse-summary.json" `
+            -EnvFile "load-tests/.env.generated"
 
       - name: Run lifecycle test
-        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'lifecycle' || inputs.suite == 'full') }}
+        shell: pwsh
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
           K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
         run: |
-          docker run --rm -i \
-            --add-host host.docker.internal:host-gateway \
-            --env-file load-tests/.env.generated \
-            -e K6_CLOUD_TOKEN \
-            -e K6_CLOUD_STACK_ID \
-            -e K6_CLOUD_PROJECT_ID \
-            -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json \
-            -v "${PWD}/load-tests:/scripts" \
-            grafana/k6 cloud run --local-execution /scripts/errand-lifecycle.js
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "errand-lifecycle.js" `
+            -Summary "errand-lifecycle-summary.json" `
+            -EnvFile "load-tests/.env.generated"
 
       - name: Run core scenarios
-        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'full') }}
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'core' || inputs.suite == 'full') }}
+        shell: pwsh
         env:
           K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
           K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
           K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
         run: |
-          docker run --rm -i \
-            --add-host host.docker.internal:host-gateway \
-            --env-file load-tests/.env.generated \
-            -e K6_CLOUD_TOKEN \
-            -e K6_CLOUD_STACK_ID \
-            -e K6_CLOUD_PROJECT_ID \
-            -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json \
-            -v "${PWD}/load-tests:/scripts" \
-            grafana/k6 cloud run --local-execution /scripts/errand-core-scenarios.js
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "errand-core-scenarios.js" `
+            -Summary "errand-core-summary.json" `
+            -EnvFile "load-tests/.env.generated"
+
+      - name: Run authentication NFR
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'nfr' || inputs.suite == 'full') }}
+        shell: pwsh
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "nfr-auth.js" `
+            -Summary "nfr-auth-summary.json" `
+            -EnvFile "load-tests/.env.generated"
+
+      - name: Run errand read NFR
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'nfr' || inputs.suite == 'full') }}
+        shell: pwsh
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "nfr-errand-read.js" `
+            -Summary "nfr-errand-read-summary.json" `
+            -EnvFile "load-tests/.env.generated"
+
+      - name: Run mixed errand NFR
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'nfr' || inputs.suite == 'full') }}
+        shell: pwsh
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "nfr-errand-mixed.js" `
+            -Summary "nfr-errand-mixed-summary.json" `
+            -EnvFile "load-tests/.env.generated"
+
+      - name: Run credit NFR
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'nfr' || inputs.suite == 'full') }}
+        shell: pwsh
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "nfr-credit.js" `
+            -Summary "nfr-credit-summary.json" `
+            -EnvFile "load-tests/.env.generated"
+
+      - name: Run supplier NFR
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.suite == 'nfr' || inputs.suite == 'full') }}
+        shell: pwsh
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_STACK_ID: ${{ secrets.K6_CLOUD_STACK_ID }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: |
+          . ./load-tests/Invoke-K6Cloud.ps1
+          Invoke-K6Cloud `
+            -Script "nfr-supplier.js" `
+            -Summary "nfr-supplier-summary.json" `
+            -EnvFile "load-tests/.env.generated"
 
       - name: Clean up disposable load-test data
         if: always()
