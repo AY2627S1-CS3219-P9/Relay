@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY credit-estimation-service/backend/package.json ./credit-estimation-service/backend/
-RUN npm install
+RUN npm ci
 COPY packages/contracts ./packages/contracts
 COPY credit-estimation-service/backend ./credit-estimation-service/backend
 RUN npm run build --workspace @relay/credit-estimation-backend
