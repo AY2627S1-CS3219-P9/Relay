@@ -20,6 +20,8 @@ packages/*/generated/
 .env.*.local
 *.pem
 *.key
+k8s/base/runtime-secret.yaml
+deploy/relay.aws.env
 
 # OS
 .DS_Store

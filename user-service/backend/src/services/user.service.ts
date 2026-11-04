@@ -72,7 +72,7 @@ export class UserService {
     return {
       username: profile.username,
       profilePictureUrl: profile.profilePictureKey
-        ? this.imageStorage.url(profile.profilePictureKey)
+        ? await this.imageStorage.url(profile.profilePictureKey)
         : null,
     }
   }
@@ -159,14 +159,14 @@ export class UserService {
     }
   }
 
-  private toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): User {
+  private async toPublicProfile(user: AuthenticatedUser, profile: UserProfileRecord): Promise<User> {
     return {
       id: profile.id as UserId,
       profileCreated: true,
       email: user.email,
       username: profile.username,
       profilePictureUrl: profile.profilePictureKey
-        ? this.imageStorage.url(profile.profilePictureKey)
+        ? await this.imageStorage.url(profile.profilePictureKey)
         : null,
       emailVerified: user.emailVerified,
       role: user.role,
