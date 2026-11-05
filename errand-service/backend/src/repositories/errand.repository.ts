@@ -240,7 +240,10 @@ export class ErrandRepository {
   async accept(errandId: string, actorSub: string): Promise<Errand> {
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
-        SELECT pg_advisory_xact_lock(hashtext(${actorSub})::bigint)
+        SELECT pg_advisory_xact_lock(hashtext(${`courier:${actorSub}`})::bigint)
+      `
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${`errand:${errandId}`})::bigint)
       `
 
       const errand = await tx.errand.findFirst({
@@ -280,13 +283,21 @@ export class ErrandRepository {
         throw new Error('MAX ERRANDS REACHED')
       }
 
-      const updated = await tx.errand.update({
-        where: { id: errandId, status: ErrandStatus.Open, courierSub: null },
-        data: {
-          courierSub: actorSub,
-          status: ErrandStatus.Accepted,
-        },
-      })
+      let updated: PrismaErrand
+      try {
+        updated = await tx.errand.update({
+          where: { id: errandId, status: ErrandStatus.Open, courierSub: null },
+          data: {
+            courierSub: actorSub,
+            status: ErrandStatus.Accepted,
+          },
+        })
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          throw new Error('ERRAND ALREADY ACCEPTED')
+        }
+        throw error
+      }
 
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
