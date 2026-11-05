@@ -47,6 +47,7 @@ export class ErrandEventPublisher {
         }
         await this.producer.send({
           topic: this.topic,
+          acks: -1,
           messages: [{ key: payload.errandId, value: JSON.stringify(event) }],
         })
         await this.repository.markEventPublished(stored.id)

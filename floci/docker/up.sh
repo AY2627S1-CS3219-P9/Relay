@@ -2,19 +2,26 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development up -d --build floci
+if [[ "${SKIP_FLOCI_START:-0}" != 1 ]]; then
+  KAFKA_BROKERS=bootstrap COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development up -d --build floci
+fi
 for i in $(seq 1 120); do
-  [[ "$(docker inspect relay-floci-1 --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-1 test -s /app/data/relay-auth.env && docker exec relay-floci-1 test -s /app/data/relay-rds.env && break
+  [[ "$(docker inspect relay-floci-1 --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-1 test -s /app/data/relay-auth.env && docker exec relay-floci-1 test -s /app/data/relay-rds.env && docker exec relay-floci-1 test -s /app/data/relay-msk.env && break
   sleep 3
 done
 [[ "$(docker inspect relay-floci-1 --format '{{.State.Health.Status}}')" == healthy ]]
 docker exec relay-floci-1 test -s /app/data/relay-auth.env
 docker exec relay-floci-1 test -s /app/data/relay-rds.env
+docker exec relay-floci-1 test -s /app/data/relay-msk.env
 
 auth_output="$(docker exec relay-floci-1 cat /app/data/relay-auth.env)"
 pool_id="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
 client_id="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
 [[ -n "$pool_id" && -n "$client_id" ]]
+msk_output="$(docker exec relay-floci-1 cat /app/data/relay-msk.env)"
+msk_brokers="$(printf '%s\n' "$msk_output" | sed -n 's/^MSK_BROKERS=//p')"
+[[ -n "$msk_brokers" ]]
+msk_brokers="${msk_brokers//localhost:/host.docker.internal:}"
 rds_output="$(docker exec relay-floci-1 cat /app/data/relay-rds.env)"
 rds_value() { printf '%s\n' "$rds_output" | sed -n "s/^$1=//p"; }
 user_port="$(rds_value USER_DATABASE_PORT)"
@@ -38,12 +45,14 @@ printf 'COGNITO_USER_POOL_ID=%s\nCOGNITO_CLIENT_ID=%s\nCOGNITO_ISSUER=http://loc
   "$supplier_port" "$supplier_password" \
   "$user_password" "$user_port" "$errand_password" "$errand_port" \
   "$credit_password" "$credit_port" "$supplier_password" "$supplier_port" >floci/docker/.generated.env
+printf 'KAFKA_BROKERS=%s\n' "$msk_brokers" >>floci/docker/.generated.env
 
 compose_env=(--env-file .env.development)
 if [[ -f .env ]]; then
   compose_env=(--env-file .env "${compose_env[@]}")
 fi
 compose_env+=(--env-file floci/docker/.generated.env)
+docker compose "${compose_env[@]}" build kafka-init
 docker compose "${compose_env[@]}" up -d "$@"
 if (( $# == 0 )); then
   docker compose "${compose_env[@]}" up -d --no-deps --force-recreate host

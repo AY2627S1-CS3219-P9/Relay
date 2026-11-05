@@ -4,13 +4,21 @@ cd "$(dirname "$0")/../.."
 
 # Compose remains available at localhost:8080; this is a separate Floci instance.
 docker volume create relay-floci-eks-ca >/dev/null
-docker compose -f compose.eks.yaml --project-name relay-eks up -d --build
+if [[ "${REUSE_FLOCI:-0}" != 1 ]]; then
+  docker compose -f compose.eks.yaml --project-name relay-eks up -d --build
+else
+  [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] || {
+    echo 'REUSE_FLOCI=1 requires an already healthy local Floci EKS container.' >&2
+    exit 1
+  }
+fi
 for i in $(seq 1 300); do
-  [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-eks test -s /app/data/relay-auth.env && docker exec relay-floci-eks test -s /app/data/relay-rds.env && break
+  [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-eks test -s /app/data/relay-auth.env && docker exec relay-floci-eks test -s /app/data/relay-rds.env && docker exec relay-floci-eks test -s /app/data/relay-aws-access.env && break
   sleep 3
 done
 [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}')" == healthy ]]
 docker exec relay-floci-eks test -s /app/data/relay-rds.env
+docker exec relay-floci-eks test -s /app/data/relay-aws-access.env
 # The auth stack chooses its own pool and app client IDs.
 auth_output="$(docker exec relay-floci-eks cat /app/data/relay-auth.env)"
 COGNITO_USER_POOL_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
@@ -41,7 +49,7 @@ export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
 if [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
-  USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api user-event-publisher errand-event-publisher
+  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api user-event-publisher errand-event-publisher
 fi
 images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-user-event-publisher relay-errand-event-publisher)
 floci_aws() {
@@ -69,16 +77,24 @@ kubectl -n relay delete deployment user-postgres errand-postgres credit-postgres
 kubectl -n relay delete service user-postgres errand-postgres credit-postgres supplier-postgres --ignore-not-found
 floci_ip="$(docker inspect relay-floci-eks --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 sed "s/FLOCI_DOCKER_IP/$floci_ip/g" k8s/floci/floci-service.yaml | kubectl apply -f -
-kubectl -n relay create secret generic kafka-auth --from-literal=KAFKA_USERNAME=relaydemo --from-literal=KAFKA_PASSWORD=relay-local-password --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n relay create secret generic kafka-broker-config \
-  --from-literal='broker_jaas.conf=KafkaServer { org.apache.kafka.common.security.plain.PlainLoginModule required username="relaydemo" password="relay-local-password" user_relaydemo="relay-local-password"; };' \
-  --from-literal='client.properties=security.protocol=SASL_PLAINTEXT
-sasl.mechanism=PLAIN
-sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="relaydemo" password="relay-local-password";' \
-  --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f k8s/base/kafka-demo.yaml
-kubectl -n relay rollout status deployment/kafka --timeout=5m
-kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
+msk_output="$(docker exec relay-floci-eks cat /app/data/relay-msk.env)"
+msk_brokers="$(printf '%s\n' "$msk_output" | sed -n 's/^MSK_BROKERS=//p')"
+[[ -n "$msk_brokers" ]]
+broker_host=""
+broker_ip="${msk_brokers%%:*}"
+for candidate in $(docker ps --filter name=floci-aws-msk --format '{{.Names}}'); do
+  candidate_ip="$(docker inspect "$candidate" --format '{{with index .NetworkSettings.Networks "relay-eks_default"}}{{.IPAddress}}{{end}}')"
+  if [[ "$candidate_ip" == "$broker_ip" ]]; then broker_host="$candidate"; break; fi
+done
+[[ -n "$broker_host" ]]
+node_hosts="$(kubectl -n kube-system get configmap coredns -o jsonpath='{.data.NodeHosts}')"
+dns_patch="$(printf '%s' "$node_hosts" | docker exec -i relay-floci-eks jq -Rs --arg host "$broker_host" --arg ip "$broker_ip" '{data:{NodeHosts: ((split("\n") | map(select(. != "" and (endswith(" " + $host) | not))) | join("\n")) + "\n" + $ip + " " + $host + "\n")}}')"
+kubectl -n kube-system patch configmap coredns --type merge -p "$dns_patch"
+kubectl -n kube-system rollout restart deployment/coredns
+kubectl -n kube-system rollout status deployment/coredns --timeout=2m
+kubectl -n relay delete deployment kafka --ignore-not-found
+kubectl -n relay delete service kafka --ignore-not-found
+kubectl -n relay delete job kafka-init --ignore-not-found
 
 # CloudFront reaches the internal ALB through Floci's HTTP listener.
 node_ip="$(docker inspect "$node" --format '{{with index .NetworkSettings.Networks "relay-eks_default"}}{{.IPAddress}}{{end}}')"
@@ -112,23 +128,10 @@ origin_policy_id="$(floci_aws cloudformation describe-stack-resource --stack-nam
 config_file="$(mktemp)"
 etag="$(floci_aws cloudfront get-distribution-config --id "$distribution_id" --query ETag --output text)"
 floci_aws cloudfront get-distribution-config --id "$distribution_id" --query DistributionConfig --output json > "$config_file"
-python3 - "$config_file" "$origin_policy_id" <<'PY'
-import json, sys
-path, origin_policy_id = sys.argv[1:]
-with open(path) as source:
-    config = json.load(source)
-behavior = config['DefaultCacheBehavior']
-behavior['AllowedMethods'] = {
-    'Quantity': 7,
-    'Items': ['GET', 'HEAD', 'OPTIONS', 'PUT', 'POST', 'PATCH', 'DELETE'],
-    'CachedMethods': {'Quantity': 2, 'Items': ['GET', 'HEAD']},
-}
-behavior['CachePolicyId'] = '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
-behavior['OriginRequestPolicyId'] = origin_policy_id
-behavior.pop('ForwardedValues', None)
-with open(path, 'w') as target:
-    json.dump(config, target)
-PY
+docker cp "$config_file" relay-floci-eks:/tmp/relay-cloudfront-config.json
+docker exec relay-floci-eks jq --arg policy "$origin_policy_id" \
+  '.DefaultCacheBehavior.AllowedMethods = {Quantity: 7, Items: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"], CachedMethods: {Quantity: 2, Items: ["GET", "HEAD"]}} | .DefaultCacheBehavior.CachePolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" | .DefaultCacheBehavior.OriginRequestPolicyId = $policy | del(.DefaultCacheBehavior.ForwardedValues)' \
+  /tmp/relay-cloudfront-config.json > "$config_file"
 docker cp "$config_file" relay-floci-eks:/tmp/relay-cloudfront-config.json
 floci_aws cloudfront update-distribution --id "$distribution_id" --if-match "$etag" \
   --distribution-config file:///tmp/relay-cloudfront-config.json >/dev/null
@@ -145,12 +148,12 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=SUPPLIER_DB_HOST=${SUPPLIER_DATABASE_HOST} \
   --from-literal=SUPPLIER_DB_PORT=${SUPPLIER_DATABASE_PORT} \
   --from-literal=SUPPLIER_DB_PASSWORD=${SUPPLIER_DATABASE_PASSWORD} \
-  --from-literal=KAFKA_BROKERS=kafka:9092 \
+  --from-literal=KAFKA_BROKERS="$msk_brokers" \
   --from-literal=AWS_REGION=us-east-1 \
   --from-literal=AWS_DEFAULT_REGION=us-east-1 \
-  --from-literal=AWS_ACCESS_KEY_ID=test \
-  --from-literal=AWS_SECRET_ACCESS_KEY=test \
   --from-literal=AWS_ENDPOINT_URL=http://floci-local:4566 \
+  --from-literal=AWS_ENDPOINT_URL_STS=http://floci-local:4566 \
+  --from-literal=COGNITO_ENDPOINT_URL=http://floci-local:4566 \
   --from-literal=AUTH_PUBLIC_ORIGIN="$public_origin" \
   --from-literal=COGNITO_ISSUER=https://localhost:4567/${COGNITO_USER_POOL_ID} \
   --from-literal=COGNITO_JWKS_URI=http://floci-local:4566/${COGNITO_USER_POOL_ID}/.well-known/jwks.json \
@@ -164,6 +167,17 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=S3_FORCE_PATH_STYLE=true \
   --dry-run=client -o yaml | kubectl apply -f -
 
+kubectl -n relay patch configmap relay-runtime --type merge -p '{"data":{"KAFKA_AUTH_MODE":"none","KAFKA_REPLICATION_FACTOR":"1","KAFKA_MIN_IN_SYNC_REPLICAS":"1"}}'
+access_output="$(docker exec relay-floci-eks cat /app/data/relay-aws-access.env)"
+access_value() { printf '%s\n' "$access_output" | sed -n "s/^$1=//p"; }
+service_accounts="$(mktemp)"
+trap 'rm -f "$service_accounts"' EXIT
+sed \
+  -e "s|ROLE_USER_API|$(access_value USER_API_ROLE_ARN)|g" \
+  -e "s|ROLE_USER_AUTH_API|$(access_value USER_AUTH_API_ROLE_ARN)|g" \
+  k8s/base/serviceaccounts.yaml > "$service_accounts"
+if grep -q ROLE_ "$service_accounts"; then echo 'AWS access role output missing' >&2; exit 1; fi
+kubectl apply -f "$service_accounts"
 render() {
   sed \
     -e "s|IMAGE_HOST|${IMAGE_host}|g" \
@@ -178,12 +192,16 @@ render() {
     -e "s|IMAGE_CREDIT_API|${IMAGE_credit_api}|g" \
     -e "s|IMAGE_USER_EVENT_PUBLISHER|${IMAGE_user_event_publisher}|g" \
     -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|${IMAGE_errand_event_publisher}|g" "$1" |
-    sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }'
+    sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
+    sed '/name: DB_SSL_CA_PATH/d'
 }
+render k8s/base/kafka-topics.yaml | kubectl apply -f -
+kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
 kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-migrate --ignore-not-found
-render k8s/base/migrations.yaml | sed '/DB_SSL_CA_PATH/d' | kubectl apply -f -
+render k8s/base/migrations.yaml | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
-render k8s/base/workloads.yaml | sed '/DB_SSL_CA_PATH/d' | kubectl apply -f -
+render k8s/base/workloads.yaml | kubectl apply -f -
+AWS_ACCESS_SERVICE_ACCOUNTS_FILE="$service_accounts" bash floci/eks/inject-aws-access.sh
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher
 kubectl apply -f k8s/floci/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do kubectl -n relay rollout status "$deployment" --timeout=10m; done

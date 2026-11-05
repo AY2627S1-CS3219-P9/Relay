@@ -9,11 +9,14 @@ data:
   # Temporary HTTP deployment; enable secure cookies when HTTPS is configured.
   COOKIE_SECURE: "true"
   AUTH_MODE: cognito
+  KAFKA_REPLICATION_FACTOR: "2"
+  KAFKA_PARTITION_COUNT: "12"
+  KAFKA_MIN_IN_SYNC_REPLICAS: "2"
   KAFKA_TOPIC_USER_EVENTS: user-events
   KAFKA_TOPIC_USER_DLQ: user-events-dlq
   KAFKA_TOPIC_ERRAND_EVENTS: errand-events
   KAFKA_TOPIC_ERRAND_DLQ: errand-events-dlq
-  KAFKA_AUTH_MODE: plain
+  KAFKA_AUTH_MODE: scram
   USER_API_TIMEOUT: "5000"
   USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
   INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token

@@ -26,7 +26,7 @@ Resources:
         Comment: Relay local-domain-free HTTPS entry point
         Enabled: true
         HttpVersion: http2
-        PriceClass: PriceClass_100
+        PriceClass: PriceClass_200
         Origins:
           - Id: relay-alb
             DomainName: !Ref LoadBalancerDnsName
@@ -40,6 +40,23 @@ Resources:
           CachedMethods: [GET, HEAD]
           CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
           OriginRequestPolicyId: !Ref RelayOriginRequestPolicy
+        # Only Vite's fingerprinted build assets are immutable. HTML, API
+        # responses, and module federation entry files use the uncached default.
+        CacheBehaviors:
+          - PathPattern: assets/*
+            TargetOriginId: relay-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          - PathPattern: remotes/*/assets/*
+            TargetOriginId: relay-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 Outputs:

@@ -46,6 +46,12 @@ if [[ -s "$state_file" ]]; then
   fi
 fi
 
+# Fail before provisioning billable resources when Docker is unavailable.
+if ! docker info >/dev/null 2>&1; then
+  echo 'Docker API unavailable. Start Docker Desktop or the Docker daemon and verify docker info from this shell.' >&2
+  exit 1
+fi
+
 aws cloudformation deploy \
   --region "$aws_region" \
   --stack-name "$stack_name" \
@@ -64,6 +70,30 @@ output() {
 
 cluster_name="$(output ClusterName)"
 aws eks update-kubeconfig --region "$aws_region" --name "$cluster_name"
+
+access_stack="${stack_name}-aws-access"
+issuer_url="$(aws eks describe-cluster --region "$aws_region" --name "$cluster_name" --query cluster.identity.oidc.issuer --output text)"
+issuer_host="${issuer_url#https://}"
+[[ "$issuer_url" == https://* && -n "$issuer_host" ]] || { echo 'EKS OIDC issuer unavailable' >&2; exit 1; }
+account_id="$(aws sts get-caller-identity --query Account --output text)"
+oidc_arn="arn:aws:iam::${account_id}:oidc-provider/${issuer_host}"
+existing_oidc_arn=""
+if ! aws cloudformation describe-stack-resource --region "$aws_region" --stack-name "$access_stack" --logical-resource-id ClusterOidcProvider >/dev/null 2>&1; then
+  if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$oidc_arn" >/dev/null 2>&1; then
+    existing_oidc_arn="$oidc_arn"
+  fi
+fi
+msk_arn="$(output MskClusterArn)"
+aws cloudformation deploy --region "$aws_region" --stack-name "$access_stack" \
+  --template-file infra/relay-aws-access.yaml --capabilities CAPABILITY_IAM \
+  --parameter-overrides \
+    "ClusterIssuerUrl=$issuer_url" "ClusterIssuerHost=$issuer_host" \
+    "ExistingOidcProviderArn=$existing_oidc_arn" \
+    "ProfileImageBucketName=$S3_BUCKET" "CognitoUserPoolId=$COGNITO_USER_POOL_ID"
+access_output() {
+  aws cloudformation describe-stacks --region "$aws_region" --stack-name "$access_stack" \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+}
 
 registry="$(output HostRepositoryUri)"
 registry="${registry%%/*}"
@@ -91,13 +121,13 @@ build_and_push() {
   fi
   # Use the neutral base Compose build definitions without the local Floci
   # override. Keep ECR tags separate from local Compose image tags.
-  USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap \
+  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap \
     SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=5432 SUPPLIER_DATABASE_PASSWORD=bootstrap \
     DOCKER_DEFAULT_PLATFORM=linux/amd64 \
     docker compose -f compose.yaml --env-file "$env_file" --project-name relay-aws-build \
-      build "${build_args[@]}" "$service" >&2
-  docker tag "relay-aws-build-$service:latest" "$image_uri"
-  docker --config "$ecr_docker_config" push "$image_uri" >&2
+      build "${build_args[@]}" "$service" >&2 || return 1
+  docker tag "relay-aws-build-$service:latest" "$image_uri" || return 1
+  docker --config "$ecr_docker_config" push "$image_uri" >&2 || return 1
   printf '%s' "$image_uri"
 }
 
@@ -116,6 +146,12 @@ user_event_publisher_image="$(build_and_push UserEventPublisherRepositoryUri use
 errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri errand-event-publisher)"
 errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-api)"
 credit_api_image="$(build_and_push CreditApiRepositoryUri credit-api)"
+# The topic Job uses this image; do not create it until ECR confirms the tag.
+credit_api_repository="${credit_api_image#"$registry"/}"
+credit_api_repository="${credit_api_repository%:*}"
+credit_api_tag="${credit_api_image##*:}"
+aws ecr describe-images --region "$aws_region" --repository-name "$credit_api_repository" \
+  --image-ids "imageTag=$credit_api_tag" >/dev/null
 
 secret_value() {
   aws secretsmanager get-secret-value --region "$aws_region" --secret-id "$(output "$1")" --query SecretString --output text
@@ -127,6 +163,9 @@ user_password="$(password_from_secret "$(secret_value UserDatabaseSecretArn)")"
 errand_password="$(password_from_secret "$(secret_value ErrandDatabaseSecretArn)")"
 credit_password="$(password_from_secret "$(secret_value CreditDatabaseSecretArn)")"
 supplier_password="$(password_from_secret "$(secret_value SupplierDatabaseSecretArn)")"
+msk_scram_secret="$(secret_value MskScramSecretArn)"
+msk_username="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).username)' "$msk_scram_secret")"
+msk_password="$(password_from_secret "$msk_scram_secret")"
 # Restored snapshots retain their old master password; new CFN secrets do not.
 # Synchronize the master passwords before migration jobs connect.
 if [[ "$resuming" == 1 ]]; then
@@ -141,24 +180,24 @@ if [[ "$resuming" == 1 ]]; then
   done
 fi
 kubectl apply -f k8s/base/namespace.yaml -f k8s/base/configmap.yaml
-if ! kubectl -n relay get secret kafka-auth >/dev/null 2>&1; then
-  kubectl -n relay create secret generic kafka-auth \
-    --from-literal=KAFKA_USERNAME=relaydemo \
-    --from-literal=KAFKA_PASSWORD="$(openssl rand -hex 24)"
-fi
-kafka_password="$(kubectl -n relay get secret kafka-auth -o json | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => process.stdout.write(Buffer.from(JSON.parse(input).data.KAFKA_PASSWORD, "base64").toString()))')"
-if ! kubectl -n relay get secret kafka-broker-config >/dev/null 2>&1; then
-  broker_jaas="KafkaServer { org.apache.kafka.common.security.plain.PlainLoginModule required username=\"relaydemo\" password=\"${kafka_password}\" user_relaydemo=\"${kafka_password}\"; };"
-  client_properties="$(printf 'security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="relaydemo" password="%s";\n' "$kafka_password")"
-  kubectl -n relay create secret generic kafka-broker-config \
-    --from-literal=broker_jaas.conf="$broker_jaas" \
-    --from-literal=client.properties="$client_properties"
-fi
-unset kafka_password broker_jaas client_properties
+rendered="$(mktemp)"
+sed \
+  -e "s|ROLE_USER_API|$(access_output UserApiRoleArn)|g" \
+  -e "s|ROLE_USER_AUTH_API|$(access_output UserAuthRoleArn)|g" \
+  k8s/base/serviceaccounts.yaml > "$rendered"
+kubectl apply -f "$rendered"
+
+for attempt in $(seq 1 60); do
+  msk_state="$(aws kafka describe-cluster-v2 --region "$aws_region" --cluster-arn "$msk_arn" --query ClusterInfo.State --output text)"
+  [[ "$msk_state" == ACTIVE ]] && break
+  sleep 10
+done
+[[ "$msk_state" == ACTIVE ]] || { echo "MSK cluster did not become ACTIVE (state: $msk_state)" >&2; exit 1; }
+msk_brokers="$(aws kafka get-bootstrap-brokers --region "$aws_region" --cluster-arn "$msk_arn" --query BootstrapBrokerStringSaslScram --output text)"
+[[ -n "$msk_brokers" && "$msk_brokers" != None ]] || { echo 'MSK SCRAM bootstrap brokers unavailable' >&2; exit 1; }
 kubectl -n relay delete job kafka-init --ignore-not-found
-kubectl apply -f k8s/base/kafka-demo.yaml
-kubectl -n relay rollout status deployment/kafka --timeout=10m
-kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
+kubectl -n relay delete deployment kafka --ignore-not-found
+kubectl -n relay delete service kafka --ignore-not-found
 kubectl -n relay create secret generic relay-runtime \
   --from-literal=USER_DATABASE_URL="postgresql://relay:${user_password}@$(output UserDatabaseEndpoint):5432/relay?schema=public" \
   --from-literal=ERRAND_DATABASE_URL="postgresql://relay:${errand_password}@$(output ErrandDatabaseEndpoint):5432/relayerrand?schema=public" \
@@ -167,10 +206,12 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=SUPPLIER_DB_HOST="$(output SupplierDatabaseEndpoint)" \
   --from-literal=SUPPLIER_DB_PORT=5432 \
   --from-literal=SUPPLIER_DB_PASSWORD="$supplier_password" \
-  --from-literal=KAFKA_BROKERS=kafka:9092 \
+  --from-literal=KAFKA_BROKERS="$msk_brokers" \
+  --from-literal=KAFKA_USERNAME="$msk_username" \
+  --from-literal=KAFKA_PASSWORD="$msk_password" \
   --from-literal=AWS_REGION="$aws_region" \
   --from-literal=AWS_DEFAULT_REGION="$aws_region" \
-  --from-literal=AWS_ENDPOINT_URL="${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
+  --from-literal=COGNITO_ENDPOINT_URL="${COGNITO_AWS_ENDPOINT:-https://cognito-idp.${aws_region}.amazonaws.com}" \
   --from-literal=AUTH_PUBLIC_ORIGIN=https://pending.invalid \
   --from-literal=COGNITO_ISSUER="$COGNITO_ISSUER" \
   --from-literal=COGNITO_JWKS_URI="$COGNITO_JWKS_URI" \
@@ -183,7 +224,15 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=S3_FORCE_PATH_STYLE=false \
   --dry-run=client -o yaml | kubectl apply -f -
 
-rendered="$(mktemp)"
+sed "s|IMAGE_CREDIT_API|$credit_api_image|g" k8s/base/kafka-topics.yaml > "$rendered"
+kubectl apply -f "$rendered"
+if ! kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=15m; then
+  echo 'Kafka topic initialization failed. Job and pod diagnostics:' >&2
+  kubectl -n relay describe job/kafka-init >&2 || true
+  kubectl -n relay get pods -l job-name=kafka-init -o wide >&2 || true
+  kubectl -n relay logs job/kafka-init --all-containers=true --tail=100 >&2 || true
+  exit 1
+fi
 kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-migrate --ignore-not-found
 sed \
   -e "s|IMAGE_HOST|$host_image|g" \

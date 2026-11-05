@@ -115,15 +115,7 @@ spec: { selector: { app: supplier-api }, ports: [{ port: 3000, targetPort: http 
 ---
 apiVersion: v1
 kind: ServiceAccount
-metadata: { name: user-api, namespace: relay }
----
-apiVersion: v1
-kind: ServiceAccount
 metadata: { name: errand-api, namespace: relay }
----
-apiVersion: v1
-kind: ServiceAccount
-metadata: { name: credit-api, namespace: relay }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -200,7 +192,7 @@ spec:
       containers:
         - name: publisher
           image: IMAGE_USER_EVENT_PUBLISHER
-          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
           resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
@@ -219,7 +211,7 @@ spec:
       containers:
         - name: publisher
           image: IMAGE_ERRAND_EVENT_PUBLISHER
-          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
           resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
@@ -249,7 +241,7 @@ spec:
             - { name: USER_API_URL, value: "http://user-api:3000" }
             - { name: SUPPLIER_API_URL, value: "http://supplier-api:3000" }
             - { name: CREDIT_API_URL, value: "http://credit-api:3000" }
-          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
           resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
@@ -268,7 +260,6 @@ spec:
   template:
     metadata: { labels: { app: credit-api } }
     spec:
-      serviceAccountName: credit-api
       containers:
         - name: api
           image: IMAGE_CREDIT_API
@@ -277,14 +268,10 @@ spec:
           env:
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } } }
             - { name: USER_API_URL, value: "http://user-api:3000" }
-          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }, { secretRef: { name: kafka-auth } }]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
           resources: { requests: { cpu: 150m, memory: 256Mi }, limits: { cpu: 750m, memory: 768Mi } }
----
-apiVersion: v1
-kind: ServiceAccount
-metadata: { name: user-auth-api, namespace: relay }
 ---
 apiVersion: v1
 kind: Service

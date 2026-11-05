@@ -1,6 +1,4 @@
 import { Kafka, logLevel, type Producer } from 'kafkajs'
-import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
-import { fromHttp } from '@aws-sdk/credential-provider-http'
 import { PrismaClient } from '@relay/user-prisma'
 
 export class UserEventPublisher {
@@ -11,32 +9,13 @@ export class UserEventPublisher {
   private lastCleanup = 0
 
   constructor(private readonly prisma = new PrismaClient()) {
-    const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
-      ? {
-          ssl: true,
-          sasl: {
-            mechanism: 'oauthbearer' as const,
-            oauthBearerProvider: async () => {
-            const { token } = await generateAuthTokenFromCredentialsProvider({
-              region: process.env.AWS_REGION ?? 'us-east-1',
-              awsCredentialsProvider: fromHttp(),
-            })
-              return { value: token }
-            },
-          },
-        }
-      : process.env.KAFKA_AUTH_MODE === 'plain'
-        ? {
-            sasl: {
-              mechanism: 'plain' as const,
-              username: process.env.KAFKA_USERNAME ?? '',
-              password: process.env.KAFKA_PASSWORD ?? '',
-            },
-          }
-        : {}
-    if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
-      throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
+    const mode = process.env.KAFKA_AUTH_MODE ?? 'none'
+    if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+      throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for SCRAM')
     }
+    const kafkaAuth = mode === 'scram'
+      ? { ssl: true, sasl: { mechanism: 'scram-sha-512' as const, username: process.env.KAFKA_USERNAME!, password: process.env.KAFKA_PASSWORD! } }
+      : {}
     this.producer = new Kafka({
       clientId: 'user-service',
       brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
@@ -66,6 +45,7 @@ export class UserEventPublisher {
       for (const event of pending) {
         await this.producer.send({
           topic: event.topic,
+          acks: -1,
           messages: [{ key: event.key, value: JSON.stringify(event.payload) }],
         })
         await this.prisma.userOutboxEvent.update({

@@ -27,12 +27,13 @@ services:
       - '8081:8080'
     environment:
       KAFKA_CLUSTERS_0_NAME: relay-local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       DYNAMIC_CONFIG_ENABLED: 'true'
-    depends_on:
-      kafka:
-        condition: service_healthy
 
+  kafka-init:
+    extra_hosts: ['host.docker.internal:host-gateway']
+    depends_on:
+      floci: { condition: service_healthy }
   host:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
@@ -46,10 +47,12 @@ services:
     environment:
       DB_HOST: floci
   user-event-publisher:
+    extra_hosts: ['host.docker.internal:host-gateway']
     depends_on:
       floci:
         condition: service_healthy
   errand-event-publisher:
+    extra_hosts: ['host.docker.internal:host-gateway']
     depends_on:
       floci:
         condition: service_healthy
@@ -97,6 +100,7 @@ services:
       floci:
         condition: service_healthy
   credit-api:
+    extra_hosts: ['host.docker.internal:host-gateway']
     depends_on:
       floci:
         condition: service_healthy

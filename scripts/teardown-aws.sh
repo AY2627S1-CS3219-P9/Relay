@@ -5,7 +5,7 @@ if [[ "${2:-}" != --confirm-delete-all-data ]]; then
   exit 2
 fi
 source "$(dirname "$0")/aws-lifecycle-lib.sh" "${1:-relay}"
-# Capture the bucket before deleting its stack; DeletionPolicy retains it.
+# pause_compute deletes the EKS stack and its MSK cluster immediately. Capture the retained S3 bucket before deleting its stack.
 pause_compute
 read_pause_state
 bucket="${S3_BUCKET:-}"
@@ -29,4 +29,4 @@ if [[ -n "$bucket" && "$bucket" != None ]]; then
   aws s3 rb "s3://$bucket" --force
 fi
 rm -f -- "$state_file"
-printf 'Relay stacks, recorded RDS snapshots, and the stack-owned S3 bucket were removed.\n'
+printf 'Relay stacks, MSK cluster and topics, recorded RDS snapshots, and the stack-owned S3 bucket were removed.\n'

@@ -37,7 +37,7 @@ export function getEnv(): UserServiceEnv {
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port,
-    awsEndpointUrl: process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
+    awsEndpointUrl: process.env.COGNITO_ENDPOINT_URL ?? process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
     awsRegion: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
     authMode,
     cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),

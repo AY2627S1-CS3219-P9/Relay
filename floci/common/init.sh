@@ -8,7 +8,7 @@ export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_PAGER=''
 
-rm -f /app/data/ready /app/data/relay-auth.env /app/data/relay-rds.env
+rm -f /app/data/ready /app/data/relay-auth.env /app/data/relay-rds.env /app/data/relay-msk.env /app/data/relay-aws-access.env
 
 aws cloudformation deploy --stack-name relay-local-auth \
   --template-file /opt/relay/infra/relay-auth.yaml \
@@ -68,13 +68,56 @@ done
 password_for() {
   aws secretsmanager get-secret-value --secret-id "$(output "$1")" \
     --query SecretString --output text |
-    python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])'
+    jq -r '.password'
 }
 printf 'USER_DATABASE_HOST=%s\nUSER_DATABASE_PORT=%s\nUSER_DATABASE_PASSWORD=%s\nERRAND_DATABASE_HOST=%s\nERRAND_DATABASE_PORT=%s\nERRAND_DATABASE_PASSWORD=%s\nCREDIT_DATABASE_HOST=%s\nCREDIT_DATABASE_PORT=%s\nCREDIT_DATABASE_PASSWORD=%s\nSUPPLIER_DATABASE_HOST=%s\nSUPPLIER_DATABASE_PORT=%s\nSUPPLIER_DATABASE_PASSWORD=%s\n' \
   "$(output UserDatabaseEndpoint)" "$(output UserDatabasePort)" "$(password_for UserDatabaseSecretArn)" \
   "$(output ErrandDatabaseEndpoint)" "$(output ErrandDatabasePort)" "$(password_for ErrandDatabaseSecretArn)" \
   "$(output CreditDatabaseEndpoint)" "$(output CreditDatabasePort)" "$(password_for CreditDatabaseSecretArn)" \
   "$(output SupplierDatabaseEndpoint)" "$(output SupplierDatabasePort)" "$(password_for SupplierDatabaseSecretArn)" >/app/data/relay-rds.env
+
+# Floci records a two-broker Provisioned cluster but runs one plaintext Redpanda
+# broker. See floci/README.md for the local fidelity limits.
+msk_arn="$(aws kafka create-cluster-v2 --cluster-name relay-local-events \
+  --provisioned "BrokerNodeGroupInfo={ClientSubnets=[$(output SubnetAId),$(output SubnetBId)],InstanceType=kafka.t3.small,SecurityGroups=[$database_security_group]},KafkaVersion=3.8.x,NumberOfBrokerNodes=2,ClientAuthentication={Sasl={Scram={Enabled=true}}},EncryptionInfo={EncryptionInTransit={ClientBroker=TLS,InCluster=true}}" \
+  --query ClusterArn --output text)"
+test -n "$msk_arn"
+# Mirror the AWS KMS-backed SCRAM secret and association as metadata. The
+# Redpanda sidecar does not enforce the credential or TLS on its listener.
+msk_key_arn="$(aws kms create-key --description 'Local Relay MSK SCRAM credential' --query KeyMetadata.Arn --output text)"
+msk_password="$(head -c 32 /dev/urandom | base64 | tr -d '\n')"
+msk_secret_arn="$(aws secretsmanager create-secret   --name AmazonMSK_relay-local-events --kms-key-id "$msk_key_arn"   --secret-string "$(printf '{"username":"relay","password":"%s"}' "$msk_password")"   --query ARN --output text)"
+aws kafka batch-associate-scram-secret --cluster-arn "$msk_arn"   --secret-arn-list "$msk_secret_arn" >/dev/null
+for attempt in $(seq 1 60); do
+  msk_brokers="$(aws kafka get-bootstrap-brokers --cluster-arn "$msk_arn" --query BootstrapBrokerString --output text 2>/dev/null || true)"
+  if [ -n "$msk_brokers" ] && [ "$msk_brokers" != None ]; then break; fi
+  sleep 2
+done
+test -n "$msk_brokers" && test "$msk_brokers" != None
+printf 'MSK_CLUSTER_ARN=%s\nMSK_BROKERS=%s\n' "$msk_arn" "$msk_brokers" >/app/data/relay-msk.env
+
+if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
+  issuer_url="$(aws eks describe-cluster --name relay-local --query cluster.identity.oidc.issuer --output text)"
+  issuer_host="${issuer_url#https://}"
+  test "$issuer_host" != "$issuer_url"
+  bucket_name="$(aws cloudformation describe-stacks --stack-name relay-local-storage --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' --output text)"
+  # Floci CloudFormation stubs AWS::IAM::OIDCProvider; its IAM API supports it.
+  provider_arn="$(aws iam create-open-id-connect-provider --url "$issuer_url" --client-id-list sts.amazonaws.com --query OpenIDConnectProviderArn --output text)"
+  test -n "$provider_arn"
+  aws cloudformation deploy --stack-name relay-local-aws-access \
+    --template-file /opt/relay/infra/relay-aws-access.yaml \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      "ClusterIssuerUrl=$issuer_url" "ClusterIssuerHost=$issuer_host" \
+      "ExistingOidcProviderArn=$provider_arn" \
+      "ProfileImageBucketName=$bucket_name" "CognitoUserPoolId=$pool_id"
+  access_output() {
+    aws cloudformation describe-stacks --stack-name relay-local-aws-access \
+      --query "Stacks[0].Outputs[?OutputKey==\`$1\`].OutputValue" --output text
+  }
+  printf 'USER_API_ROLE_ARN=%s\nUSER_AUTH_API_ROLE_ARN=%s\n' \
+    "$(access_output UserApiRoleArn)" "$(access_output UserAuthRoleArn)" >/app/data/relay-aws-access.env
+fi
 
 aws cognito-idp admin-create-user \
   --user-pool-id "$pool_id" \

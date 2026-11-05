@@ -116,7 +116,7 @@ See [floci/README.md](floci/README.md) for infrastructure details.
 ---
 ## Local credit-allocation flow
 
-Docker Compose includes a single-node Kafka broker (host port `9092`).
+Docker Compose provisions Floci MSK emulation, backed by a Redpanda sidecar.
 Start Kafbat UI on demand with `npm run views:compose -- kafka` at
 http://localhost:8081. In the development override, User API is
 available to Postman at http://localhost:3001. Creating a verified user's
@@ -129,3 +129,8 @@ using the Postman collection in `tests/integration/new-user-allocation.postman_c
 with Newman: `npx newman run tests/integration/new-user-allocation.postman_collection.json`.
 Start credit Prisma Studio with `npm run views:compose -- credit` and open
 http://localhost:5557 to inspect the new balance.
+
+
+AWS uses two-broker MSK Provisioned with TLS and SCRAM for user and errand events. The local Compose and
+Floci EKS environments use Floci's MSK emulation (a Redpanda sidecar).
+See [deployment event broker differences](deploy/README.md#event-broker-targets).

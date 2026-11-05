@@ -8,6 +8,7 @@ aws_region="${AWS_REGION:-}"
 auth_stack="${AUTH_STACK:-relay-auth}"
 storage_stack="${STORAGE_STACK:-relay-storage}"
 edge_stack="${stack_name}-edge"
+access_stack="${stack_name}-aws-access"
 state_file="deploy/.${stack_name}-pause.env"
 account_id="$(aws sts get-caller-identity --query Account --output text)"
 aws_call() { aws --region "$aws_region" "$@"; }
@@ -162,6 +163,7 @@ pause_compute() {
   delete_stack "$edge_stack"
   if stack_exists "$stack_name" && [[ "$(stack_status "$stack_name")" == DELETE_FAILED ]]; then
     read_pending_state
+    delete_stack "$access_stack"
     delete_stack "$stack_name"
     write_pause_state
   elif stack_exists "$stack_name"; then
@@ -176,9 +178,11 @@ pause_compute() {
     write_pending_state
     delete_ingress_and_wait
     empty_stack_ecr
+    delete_stack "$access_stack"
     delete_stack "$stack_name"
     write_pause_state
   else
+    delete_stack "$access_stack"
     read_pause_state
   fi
 }

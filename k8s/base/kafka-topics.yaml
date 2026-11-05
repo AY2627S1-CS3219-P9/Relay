@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata: { name: kafka-init, namespace: relay }
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: IMAGE_CREDIT_API
+          command: [node, scripts/kafka-topics.mjs]
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]

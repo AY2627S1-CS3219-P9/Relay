@@ -1,45 +1,12 @@
 services:
-  kafka:
-    image: apache/kafka:latest
-    ports:
-      - '9092:9092'
-      - '29092:29092'
-    environment:
-      KAFKA_NODE_ID: '1'
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:29092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-      KAFKA_NUM_PARTITIONS: '1'
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
   kafka-init:
-    build: ./kafka
+    build:
+      context: .
+      dockerfile: credit-service/backend/Dockerfile
+    command: [node, scripts/kafka-topics.mjs]
     environment:
-      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
-      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
-      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
-      KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
-    depends_on:
-      kafka:
-        condition: service_healthy
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_AUTH_MODE: none
 
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
@@ -207,7 +174,7 @@ services:
       PORT: '3000'
       DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
       INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
     depends_on:
       kafka-init:
@@ -225,7 +192,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
@@ -237,7 +204,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
     depends_on:
       kafka-init:
@@ -279,7 +246,7 @@ services:
       SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
       INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       CREDIT_API_URL: http://credit-api:3000
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
@@ -315,7 +282,7 @@ services:
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
@@ -329,6 +296,3 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-
-volumes:
-  kafka-data:

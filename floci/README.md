@@ -6,16 +6,19 @@ logic.
 
 - `npm run up:compose` starts the Compose application at http://localhost:8080.
   Its launcher provisions Cognito, S3, and four RDS instances through
-  CloudFormation and writes discovered settings to the ignored
+  CloudFormation, creates Floci MSK through its API, and writes settings to the ignored
   `floci/docker/.generated.env` file. Run it after recreating Floci;
   `docker compose up` alone cannot discover the generated settings.
 - `npm run up:eks` starts the separate Floci EKS application at
   the HTTPS CloudFront URL printed by startup, on standard port 443. Its Floci API is
-  at https://localhost:4567. The launcher provisions four RDS instances and a
-  k3s cluster, pushes application images to Floci ECR, runs migrations, and
-  creates a CloudFront distribution pointing to an internal HTTP ALB. It writes
+  at https://localhost:4567. The launcher provisions four RDS instances, a
+  k3s cluster, and Floci MSK; pushes application images to Floci ECR; runs
+  migrations; and creates a CloudFront distribution pointing to an internal
+  HTTP ALB. It writes
   `floci/eks/.kubeconfig`. For a rerun with unchanged images, use
-  `SKIP_IMAGE_BUILD=1 SKIP_IMAGE_PUSH=1 npm run up:eks`.
+  `SKIP_IMAGE_BUILD=1 SKIP_IMAGE_PUSH=1 npm run up:eks`. If the emulator
+  is already healthy and you only need to retry Kubernetes deployment, add
+  `REUSE_FLOCI=1` to avoid recreating its infrastructure.
 
 Run `npm run down:compose` or `npm run down:eks` to remove the corresponding
 application, optional views, Floci-managed RDS containers, and database
@@ -58,11 +61,37 @@ the database stack's VPC and subnet outputs. The Compose Floci image does not
 include the EKS template. The RDS definitions match `infra/relay-eks.yaml`
 for instance class, storage, backup retention, and database names. The local
 network and security group rules differ from AWS.
+Local EKS also deploys the same `infra/relay-aws-access.yaml` used by AWS. Its two service-account roles for S3 and Cognito are emulated. Floci CloudFormation currently
+stubs `AWS::IAM::OIDCProvider`, so the local init script creates that one
+resource with the supported IAM API and passes its ARN to the shared template. The Floci script
+passes the local cluster issuer, bucket, and pool IDs as parameters.
+AWS can reuse a manually created OIDC provider; Floci creates one in its
+local stack. Workload pods have no static AWS access keys. Floci does not inject OIDC role
+settings from service-account annotations, so `floci/eks/inject-aws-access.sh`
+patches the projected STS-audience token and AWS role environment variables
+into local S3 and Cognito Deployments. AWS EKS injects those automatically.
+Floci uses a local STS endpoint override for the token exchange.
+
 Floci's CloudFormation emulator currently ignores the DB instance's gp3 storage,
 seven-day backup retention, and security group properties. The initialization
 script applies those values through the Floci RDS API after the stack deploys
 and verifies the reported configuration. Floci still uses local PostgreSQL
 containers; it does not provide AWS gp3 volumes or RDS backups.
+
+## Floci EKS and AWS event infrastructure
+
+| Area | Local Floci EKS | AWS deployment |
+| --- | --- | --- |
+| Broker provisioning | Floci's MSK API records a Provisioned cluster with two broker nodes and a KMS-backed SCRAM secret association, but launches one Redpanda sidecar. | `infra/relay-eks.yaml` creates two `kafka.t3.small` brokers in separate private subnets. |
+| Client connection | Floci advertises a plaintext Kafka endpoint, so the local override sets `KAFKA_AUTH_MODE=none` and adds its hostname to CoreDNS. | The deploy script discovers the SASL/SCRAM bootstrap endpoint on port 9096. Clients authenticate with a Secrets Manager credential over TLS. |
+| Replication | Floci's one broker can host only one copy. The local override creates topics with replication factor 1 and minimum in-sync replicas 1. | Each topic has replication factor 2 and minimum in-sync replicas 2. Outbox publishers request `acks=-1`, so an unavailable broker stops acknowledgements and leaves events in the outbox for retry. |
+| AWS access | The local OIDC token injection remains for S3 and Cognito emulation. | User API and Auth API retain service account roles for S3 and Cognito. Kafka clients use SCRAM, not IAM. |
+| Teardown | `npm run down:eks` removes the local cluster and Floci sidecars. | `scripts/pause-aws.sh` deletes EKS and MSK directly; RDS snapshots and separate Cognito and S3 stacks remain. |
+
+Local tests verify topic creation and application event flow. Floci does not
+verify TLS, SCRAM enforcement, two-broker storage, two-copy acknowledgements,
+or broker failure behavior. Verify those against AWS MSK Provisioned before
+relying on the replication guarantee.
 
 Inspect the local cluster with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.

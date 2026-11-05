@@ -27,5 +27,6 @@ COPY --from=build /app/credit-service/backend/dist ./credit-service/backend/dist
 
 
 COPY --from=build /app/credit-service/backend/prisma ./credit-service/backend/prisma
+COPY scripts/kafka-topics.mjs ./scripts/kafka-topics.mjs
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy --schema=credit-service/backend/prisma/schema.prisma && npx tsx credit-service/backend/dist/server.js"]
