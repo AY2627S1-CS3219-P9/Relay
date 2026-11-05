@@ -1,290 +1,218 @@
 # Relay load tests
 
-This directory contains version-controlled k6 scripts. The Grafana Cloud editor may be used to experiment, but these files are the source of truth for local runs and GitHub Actions.
+The JavaScript files in this directory are the source of truth for Relay load tests. Tests execute locally in Docker and can stream metrics to Grafana Cloud with `Invoke-K6Cloud.ps1`.
 
-## Errand browse smoke test
+There are two supported targets:
 
-`errand-browse-smoke.js` logs in one seeded, verified user and repeatedly checks the authenticated Errand browse endpoints:
+- Local Docker Compose: the provisioner uses `localhost`, while k6 uses `host.docker.internal`.
+- AWS: the provisioner and k6 use the deployed ALB hostname.
 
-- `GET /api/errands?scope=visible`
-- `GET /api/errands?scope=mine`
-- Optionally, `GET /api/errands/:id` when `LOAD_TEST_ERRAND_ID` is set.
+Grafana Cloud runs use `--local-execution`: Grafana stores and displays metrics, but the requests still come from the local Docker engine.
 
-It is intentionally read-only. The forthcoming lifecycle and concurrency tests will use isolated, run-specific errands and separate requester/courier credentials.
+## Prerequisites
 
-### Prerequisites
+- Docker Desktop running
+- Node.js installed
+- AWS CLI and `kubectl` for AWS testing
+- Grafana Cloud k6 token, stack ID, and project ID for streaming
 
-Start the Relay Docker Compose environment and ensure the selected load-test user has a verified Cognito account and completed profile.
+## Local Compose setup and provisioning
+
+Start the local environment:
 
 ```powershell
 docker compose up --build --wait
 ```
 
-For disposable Compose runs, provision fresh test users and discover Octobox automatically. The provisioner uses the normal registration flow, reads OTPs from Floci SES, creates profiles, waits for asynchronous credit allocation, verifies that Octobox is operational, creates one disposable open errand for read-detail testing, and writes an ignored environment file.
+Use `--build` after application or Dockerfile changes. For changes only under `load-tests/`, `docker compose up --wait` is sufficient when the services are already built.
+
+The local provisioner creates three disposable users, verifies them through Floci SES, creates profiles, waits for credit allocation, selects the operational `Octobox` supplier, and creates one open fixture errand.
+
+The provisioner runs directly on Windows, so it must use `localhost`:
 
 ```powershell
-docker compose up --build --wait
+$env:BASE_URL = 'http://localhost:8080'
+$env:FLOCI_URL = 'http://localhost:4566'
+$env:LOAD_TEST_K6_BASE_URL = 'http://host.docker.internal:8080'
+$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.generated'
+
 node load-tests/provision-test-data.mjs
 ```
 
-For repeated local runs against a persistent Compose environment, `.env.local` remains available. `.env.generated` is intended for fresh runs and is ignored. Do not put real credentials in `.env.example`, test scripts, result files, or committed documentation.
+The provisioner writes `load-tests/.env.generated` with fresh credentials,
+supplier details, fixture errand ID, Docker-facing `BASE_URL`, and all smoke,
+lifecycle, and NFR settings. It is ignored by Git.
 
-### Provision AWS test data
+The tracked `.env.example` documents available fields and defaults; Node does
+not load it automatically. Do not commit generated files, credentials, or
+results.
 
-For the deployed AWS environment, use `provision-aws-test-data.mjs` rather
-than the local Floci provisioner. It creates disposable Cognito users with
-verified email attributes and permanent passwords, creates their Relay
-profiles through the deployed ALB, waits for asynchronous credit allocation,
-discovers the operational Octobox supplier, and writes an ignored
-`.env.aws.generated` file. It creates one requester and two couriers so the
-full lifecycle and acceptance-race scenarios can run. It also creates one
-disposable open errand and writes its ID as `LOAD_TEST_ERRAND_ID` for browse,
-detail, and mixed NFR tests.
+Verify the local services before provisioning:
 
-Run it from Git Bash after the AWS deployment is ready:
+```powershell
+curl.exe -i http://localhost:8080/healthz
+curl.exe -i http://localhost:4566/_aws/ses
+```
 
-```bash
-export AWS_PROFILE=relay-sso
-export AWS_REGION=ap-southeast-1
-export ALB_HOST="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-export BASE_URL="http://$ALB_HOST"
-export COGNITO_USER_POOL_ID="$(aws cognito-idp list-user-pools --max-results 50 --region "$AWS_REGION" --profile "$AWS_PROFILE" --query "UserPools[?Name=='relay-users'].Id | [0]" --output text)"
+If provisioning reports `fetch failed`, ensure `$env:BASE_URL` is
+`http://localhost:8080`, not `http://host.docker.internal:8080`.
+
+## AWS provisioning
+
+The AWS provisioner is separate from the local Floci provisioner. It creates
+three disposable Cognito users with verified email attributes and permanent
+passwords, creates Relay profiles through the deployed ALB, waits for credit
+allocation, selects operational `Octobox`, and creates one fixture errand.
+
+The AWS deployment must already be running. In PowerShell:
+
+```powershell
+$env:AWS_PROFILE = 'relay-sso'
+$env:AWS_REGION = 'ap-southeast-1'
+$env:AWS_DEFAULT_REGION = $env:AWS_REGION
+
+$albHost = kubectl -n relay get ingress relay `
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+$env:BASE_URL = "http://$albHost"
+$env:COGNITO_USER_POOL_ID = aws cloudformation describe-stacks `
+  --stack-name relay-auth `
+  --region $env:AWS_REGION `
+  --profile $env:AWS_PROFILE `
+  --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" `
+  --output text
+
+$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.aws.generated'
+$env:LOAD_TEST_SUPPLIER_NAME = 'Octobox'
+$env:LOAD_TEST_CLEANUP = 'true'
 
 node load-tests/provision-aws-test-data.mjs
 ```
 
-If the pool name differs, set `COGNITO_USER_POOL_ID` directly from
-`deploy/relay.aws.env`. The AWS CLI profile must have permission to administer
-users in the deployed Cognito pool. The generated credentials are written only
-to `load-tests/.env.aws.generated`; never commit that file.
+The generated `load-tests/.env.aws.generated` contains the ALB URL, credentials,
+supplier ID, service type, fixture errand ID, and test configuration. The AWS
+CLI profile must be allowed to administer users in the Cognito pool.
 
-Clean up the AWS fixture errand after the read tests:
+The AWS provisioner does not delete Cognito users. Remove disposable users
+separately if the AWS pool must be cleaned completely.
 
-```powershell
-$env:BASE_URL = "http://$env:ALB_HOST"
-$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.aws.generated'
-node load-tests/cleanup-test-data.mjs
-```
+## Grafana Cloud setup
 
-### Run locally in Docker
-
-The default `BASE_URL` is `http://host.docker.internal:8080`, which lets the k6 container reach the Compose host gateway.
-
-```powershell
-New-Item -ItemType Directory -Force load-tests/results | Out-Null
-
-docker run --rm -i `
-  --env-file load-tests/.env.generated `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-browse-summary.json `
-  /scripts/errand-browse-smoke.js
-```
-
-Optional parameters:
-
-```powershell
-$env:SMOKE_VUS = '2'
-$env:SMOKE_DURATION = '1m'
-$env:LOAD_TEST_ERRAND_ID = 'an-errand-visible-to-the-test-user'
-```
-
-`results/*.json` is ignored by Git and authentication data is removed from the generated summary. k6 thresholds cause a non-zero exit code when the smoke test fails, so the same script can later gate GitHub Actions.
-
-## Errand read NFR baseline
-
-`nfr-errand-read.js` measures read scalability without changing errand state. It ramps from `NFR_START_VUS` to `NFR_TARGET_VUS`, holds that load, and then ramps down. Each iteration requests visible errands and, when an errand is available, retrieves its details.
-
-The default baseline is 10 to 100 VUs, with a 5-minute hold. Configure the load gradually through the environment file rather than changing the script. The default p95 threshold is 200 ms and the failure-rate threshold is below 1%.
-
-```powershell
-New-Item -ItemType Directory -Force load-tests/results | Out-Null
-
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-errand-read-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-errand-read.js
-```
-
-For example, after the baseline passes, increase the target without editing the script:
-
-```powershell
-$env:NFR_TARGET_VUS = '500'
-$env:NFR_HOLD_DURATION = '5m'
-```
-
-The NFR test is intentionally separate from pull-request smoke tests. Run it manually or nightly after confirming that the local Compose environment and load generator can sustain the lower levels.
-
-The provisioner creates one fixture errand and reserves only `LOAD_TEST_FIXTURE_CREDIT_AMOUNT` credits for it. After testing, cancel and delete it to release the reservation:
-
-```powershell
-node load-tests/cleanup-test-data.mjs
-```
-
-The GitHub Actions workflow runs this cleanup step with `if: always()` so the fixture is cleaned up even when a k6 test fails.
-
-## Remaining NFR scenarios
-
-`nfr-supplier.js` measures authenticated supplier queries at a configurable constant rate. The default is 50 requests per second with a 200 ms p95 threshold:
-
-```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e NFR_SUPPLIER_RATE_PER_SEC=50 `
-  -e NFR_SUPPLIER_DURATION=1m `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-supplier-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-supplier.js
-```
-
-`nfr-credit.js` safely measures authenticated credit-balance reads and verifies that available and reserved balances never become negative. The public Credit API does not expose reservation or transfer as user-facing HTTP operations; those transactions are initiated by Errand Service and completed through Kafka. A true 300-transactions-per-second benchmark therefore requires a disposable credit-account pool and controlled reservation/settlement harness, rather than blindly calling the internal reserve endpoint.
-
-```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e NFR_CREDIT_RATE_PER_SEC=10 `
-  -e NFR_CREDIT_DURATION=1m `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-credit-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-credit.js
-```
-
-`nfr-errand-mixed.js` runs read traffic alongside a small create/cancel workload. Writes default to five per minute because each creation temporarily reserves requester credits:
-
-```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e NFR_MIXED_READ_TARGET_VUS=100 `
-  -e NFR_MIXED_WRITE_RATE_PER_MIN=5 `
-  -e NFR_MIXED_WRITE_DURATION=1m `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-errand-mixed-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-errand-mixed.js
-```
-
-## User authentication NFR
-
-`nfr-auth.js` measures login throughput using a constant arrival rate. The default configuration sends 500 login requests per minute for five minutes and enforces a p95 response time below 500 ms, an HTTP failure rate below 1%, and a check success rate above 99%.
-
-The test uses the provisioned load-test user credentials. It does not register new users, because registration would permanently create accounts on every performance run. For a registration-specific test, provision a disposable account pool separately.
-
-```powershell
-New-Item -ItemType Directory -Force load-tests/results | Out-Null
-
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e NFR_AUTH_RATE_PER_MIN=500 `
-  -e NFR_AUTH_DURATION=5m `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-auth-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-auth.js
-```
-
-Use a short validation run before the full NFR run:
-
-```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e NFR_AUTH_RATE_PER_MIN=30 `
-  -e NFR_AUTH_DURATION=30s `
-  -e K6_SUMMARY_PATH=/scripts/results/nfr-auth-smoke-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/nfr-auth.js
-```
-
-### Grafana Cloud
-
-After the local script passes, execute the same repository script with Grafana Cloud local execution. The load generator remains local (or on a GitHub Actions runner), while Grafana Cloud stores the run and displays its metrics.
+Set Grafana credentials in the current PowerShell session; never commit the
+token:
 
 ```powershell
 $env:K6_CLOUD_TOKEN = 'your-grafana-cloud-k6-token'
 $env:K6_CLOUD_STACK_ID = 'your-grafana-cloud-stack-id'
 $env:K6_CLOUD_PROJECT_ID = 'your-grafana-k6-project-id'
-
-docker run --rm -i `
-  -e K6_CLOUD_TOKEN `
-  -e K6_CLOUD_STACK_ID `
-  -e K6_CLOUD_PROJECT_ID `
-  -e BASE_URL=http://host.docker.internal:8080 `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 cloud run --local-execution /scripts/errand-browse-smoke.js
 ```
 
-Before this command, create the Grafana Cloud secrets `loadtestuseremail` and `loadtestuserpassword` in **Testing & synthetics → Performance → Settings → Secrets**. k6 v2 retrieves them at run time and redacts their values in logs. This deliberately avoids `--include-system-env-vars`, which could otherwise upload unrelated local environment values.
-
-Use GitHub repository secrets for the corresponding values when this is added to CI.
-
-## Errand lifecycle and credit settlement
-
-`errand-lifecycle.js` verifies the end-to-end business workflow using separate seeded requester and courier accounts:
-
-```text
-OPEN → ACCEPTED → PICKED_UP → DELIVERED → CONFIRMED
-```
-
-It verifies that a `CREDIT_TRANSFER` record appears in both users' credit histories, then deletes the confirmed errand. Deleting a confirmed errand is permitted and does not reverse the completed credit transfer.
-
-The configured supplier must exist, be operational, be currently within operating hours, and offer the configured service type. The script reads its live name and location from Supplier Service before creating an errand.
+Load the reusable runner:
 
 ```powershell
-New-Item -ItemType Directory -Force load-tests/results | Out-Null
-
-docker run --rm -i `
-  --env-file load-tests/.env.generated `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/errand-lifecycle.js
+Set-ExecutionPolicy -Scope Process Bypass
+. .\load-tests\Invoke-K6Cloud.ps1
 ```
 
-The default is one virtual user and one lifecycle iteration. Keep these defaults while validating test data. Increasing `LIFECYCLE_VUS` or `LIFECYCLE_ITERATIONS` creates additional errands and consumes the configured requester credit amount for each concurrent reservation.
+The helper reads test configuration from the file passed through `-EnvFile`,
+adds the Docker host gateway, runs k6 with `--local-execution`, and streams
+metrics to Grafana Cloud.
 
-For Grafana Cloud local execution, use the generated environment file. The load generator remains on your machine (or the GitHub Actions runner), while Grafana Cloud stores the metrics. Do not upload `.env.generated` or configure the generated credentials as permanent Grafana secrets.
+## Run local tests and stream to Grafana Cloud
+
+After local provisioning, use `.env.generated`:
 
 ```powershell
-docker run --rm -i `
-  --add-host host.docker.internal:host-gateway `
-  --env-file load-tests/.env.generated `
-  -e K6_CLOUD_TOKEN `
-  -e K6_CLOUD_STACK_ID `
-  -e K6_CLOUD_PROJECT_ID `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-lifecycle-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 cloud run `
-  --local-execution `
-  /scripts/errand-lifecycle.js
+Invoke-K6Cloud -Script 'errand-browse-smoke.js' -Summary 'local-browse-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'errand-lifecycle.js' -Summary 'local-lifecycle-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'errand-core-scenarios.js' -Summary 'local-core-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'nfr-auth.js' -Summary 'local-nfr-auth-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'nfr-errand-read.js' -Summary 'local-nfr-errand-read-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'nfr-errand-mixed.js' -Summary 'local-nfr-errand-mixed-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'nfr-credit.js' -Summary 'local-nfr-credit-summary.json' -EnvFile 'load-tests/.env.generated'
+Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'local-nfr-supplier-summary.json' -EnvFile 'load-tests/.env.generated'
 ```
 
-The script creates unique errands and deletes them after confirmation by default. The provisioner creates disposable accounts for the run, so this works after `docker compose down --volumes` and on a clean GitHub Actions runner.
+The local app must remain running throughout the tests. Rerun the provisioner
+after `docker compose down --volumes` or when generated credentials change.
 
-The acceptance-race scenario additionally requires the second courier credentials as `loadtestcourierbemail` and `loadtestcourierbpassword` in Grafana Cloud Secrets.
+## Run AWS tests and stream to Grafana Cloud
 
-## Core create, race, and credit-guard scenarios
-
-Run the remaining core scenarios together with `errand-core-scenarios.js`:
+After AWS provisioning, use `.env.aws.generated`. It already contains the ALB
+`BASE_URL`, so no supplier ID or credential needs to be typed into the command:
 
 ```powershell
-docker run --rm -i `
-  --env-file load-tests/.env.generated `
-  -e K6_SUMMARY_PATH=/scripts/results/errand-core-summary.json `
-  -v "${PWD}/load-tests:/scripts" `
-  grafana/k6 run /scripts/errand-core-scenarios.js
+Invoke-K6Cloud -Script 'errand-browse-smoke.js' -Summary 'aws-browse-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'errand-lifecycle.js' -Summary 'aws-lifecycle-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'errand-core-scenarios.js' -Summary 'aws-core-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'nfr-auth.js' -Summary 'aws-nfr-auth-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'nfr-errand-read.js' -Summary 'aws-nfr-errand-read-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'nfr-errand-mixed.js' -Summary 'aws-nfr-errand-mixed-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'nfr-credit.js' -Summary 'aws-nfr-credit-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'aws-nfr-supplier-summary.json' -EnvFile 'load-tests/.env.aws.generated'
 ```
 
-This requires a second courier account in `LOAD_TEST_COURIER_B_EMAIL` and `LOAD_TEST_COURIER_B_PASSWORD`. The acceptance race sends two parallel acceptance requests for the same errand and requires exactly one winner. The credit guard verifies non-negative balances, rejects an insufficient-credit creation, rejects duplicate confirmation, and waits up to 30 seconds for the single asynchronous transfer.
+The AWS deployment must stay available for the entire run. Tear it down when
+finished to avoid unnecessary AWS charges.
 
-## GitHub Actions load-test workflow
+## Test coverage
 
-The repository workflow `.github/workflows/load-tests.yml` starts a disposable Compose environment, runs `node load-tests/provision-test-data.mjs`, executes the three k6 scripts with Grafana Cloud local execution, uploads summaries and Compose diagnostics on failure, and removes all volumes afterward.
+- `errand-browse-smoke.js`: authenticated visible and owned errand reads.
+- `errand-lifecycle.js`: create, accept, pickup, delivery, confirmation, and asynchronous credit settlement.
+- `errand-core-scenarios.js`: create verification, concurrent acceptance, and credit guards.
+- `nfr-auth.js`: authentication arrival-rate workload.
+- `nfr-errand-read.js`: ramping authenticated errand reads.
+- `nfr-errand-mixed.js`: concurrent errand reads and low-rate create/cancel writes.
+- `nfr-credit.js`: authenticated credit-balance reads and non-negative balance checks.
+- `nfr-supplier.js`: authenticated supplier-query workload.
 
-Configure these repository secrets before using the workflow:
+NFR defaults are bounded by the current Grafana Cloud project limit. Increase
+them gradually and record VUs, throughput, p95 latency, failure rate, threshold
+status, and the Grafana run link.
+
+## Cleanup
+
+For local Compose:
+
+```powershell
+$env:BASE_URL = 'http://localhost:8080'
+$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.generated'
+node load-tests/cleanup-test-data.mjs
+docker compose down --volumes --remove-orphans
+```
+
+For AWS, use the ALB URL and AWS-generated environment:
+
+```powershell
+$env:BASE_URL = "http://$albHost"
+$env:LOAD_TEST_ENV_FILE = 'load-tests/.env.aws.generated'
+node load-tests/cleanup-test-data.mjs
+```
+
+This removes the fixture errand only. It does not delete Cognito users, RDS
+snapshots, S3 objects, or AWS stacks.
+
+## GitHub Actions
+
+`.github/workflows/load-tests.yml` supports two manual targets:
+
+- `local`: starts disposable local Compose services and uses
+  `provision-test-data.mjs`.
+- `aws`: assumes the configured AWS OIDC role, retrieves the current EKS ALB
+  hostname, uses `provision-aws-test-data.mjs`, and runs against that ALB.
+
+For both targets, k6 executes locally on the GitHub runner and streams metrics
+to Grafana Cloud. Pull requests always run only the local browse smoke test.
+Manual runs can select `smoke`, `lifecycle`, `core`, `nfr`, or `full`. Summaries
+and diagnostics are uploaded, and local Compose is cleaned up after failures.
+
+Configure these repository secrets for non-PR cloud runs:
 
 - `K6_CLOUD_TOKEN`
 - `K6_CLOUD_STACK_ID`
 - `K6_CLOUD_PROJECT_ID`
+- `AWS_LOAD_TEST_ROLE_ARN` (required for the manual `aws` target)
+
+The AWS target assumes an already-deployed `relay` EKS cluster and
+`relay-auth` CloudFormation stack. It does not deploy or tear down AWS
+resources automatically.

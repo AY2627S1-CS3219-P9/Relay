@@ -1,0 +1,100 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { SlidingWindowRateLimiter } from '../src/clients/rateLimiter.js'
+
+function mockDateNow(time: number) {
+  vi.useFakeTimers()
+  vi.setSystemTime(time)
+}
+
+function restoreDateNow() {
+  vi.useRealTimers()
+}
+
+describe('SlidingWindowRateLimiter', () => {
+  beforeEach(() => {
+    restoreDateNow()
+  })
+
+  it('allows up to maxRequests within window', () => {
+    const limiter = new SlidingWindowRateLimiter({ maxRequests: 5 })
+
+    // First 5 requests should succeed
+    for (let i = 0; i < 5; i++) {
+      expect(limiter.tryAcquire()).toBe(true)
+    }
+
+    // 6th request should fail
+    expect(limiter.tryAcquire()).toBe(false)
+  })
+
+  it('resets after window expires', () => {
+    mockDateNow(0)
+    const limiter = new SlidingWindowRateLimiter({ maxRequests: 3, windowMs: 1000 })
+
+    // Exhaust the limit
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(false)
+
+    // Move time forward by window + 1ms
+    vi.setSystemTime(1001)
+
+    // Should be able to make requests again
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+  })
+
+  it('sliding window removes old requests', () => {
+    mockDateNow(0)
+    const limiter = new SlidingWindowRateLimiter({ maxRequests: 3, windowMs: 1000 })
+
+    // Make 3 requests at t=0
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(true)
+    expect(limiter.tryAcquire()).toBe(false)
+
+    // Move time forward by 500ms
+    vi.setSystemTime(500)
+    expect(limiter.tryAcquire()).toBe(false)
+
+    // Move time forward by 600ms (total 1100ms), all 3 old requests should have expired
+    // (window starts at 100, all requests at t=0 are before 100)
+    vi.setSystemTime(1100)
+    expect(limiter.tryAcquire()).toBe(true) // Should succeed now (1st)
+    expect(limiter.tryAcquire()).toBe(true) // 2nd
+    expect(limiter.tryAcquire()).toBe(true) // 3rd
+    expect(limiter.tryAcquire()).toBe(false) // 4th should fail
+  })
+
+  it('getRemaining returns correct count', () => {
+    const limiter = new SlidingWindowRateLimiter({ maxRequests: 5 })
+
+    expect(limiter.getRemaining()).toBe(5)
+
+    limiter.tryAcquire()
+    limiter.tryAcquire()
+    limiter.tryAcquire()
+
+    expect(limiter.getRemaining()).toBe(2)
+  })
+
+  it('getNextReset returns 0 when no requests made', () => {
+    const limiter = new SlidingWindowRateLimiter({ maxRequests: 10 })
+    expect(limiter.getNextReset()).toBe(0)
+  })
+
+  it('default config (20 requests per 60 seconds)', () => {
+    const limiter = new SlidingWindowRateLimiter()
+
+    // Should allow 20 requests
+    for (let i = 0; i < 20; i++) {
+      expect(limiter.tryAcquire()).toBe(true)
+    }
+
+    // 21st should fail
+    expect(limiter.tryAcquire()).toBe(false)
+  })
+})
