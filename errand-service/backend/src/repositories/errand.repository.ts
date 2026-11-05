@@ -12,7 +12,6 @@ import {
   SupplierErrandSummary,
   SupplierErrandViewRequest,
 } from '@relay/contracts'
-import { ErrandEventStream } from '../services/errandEventStream.js'
 
 export const MAX_ERRANDS_PER_COURIER = 5
 import { endOfSingaporeDay } from '../utils/deadline.js'
@@ -31,10 +30,7 @@ async function appendEvent(
 }
 
 export class ErrandRepository {
-  constructor(
-    private readonly prisma: PrismaClient = new PrismaClient(),
-    private readonly eventStream?: ErrandEventStream,
-  ) {}
+  constructor(private readonly prisma: PrismaClient = new PrismaClient()) {}
 
   // ============================================================================
   // Outbox/Event methods
@@ -56,7 +52,7 @@ export class ErrandRepository {
     await this.prisma.$transaction(async (tx) => {
       await appendEvent(tx, {
         eventType: ErrandEventTypes.ERRAND_CREATION_FAILED,
-        payload: { errandId: id, requesterSub },
+        payload: { errandId: id, actorType: 'system', requesterSub },
       })
     })
   }
@@ -103,6 +99,7 @@ export class ErrandRepository {
           supplierId: row.supplierId,
           creditAmount: row.creditAmount,
           expiresAt: row.expiresAt.toISOString(),
+          recipientSubs: [row.requesterSub],
         },
       })
       return toContract(row)
@@ -124,7 +121,11 @@ export class ErrandRepository {
         if (!removed.count) return
         await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_CREATION_FAILED,
-          payload: { errandId: row.id, requesterSub: row.requesterSub },
+          payload: {
+            errandId: row.id,
+            actorType: 'system',
+            requesterSub: row.requesterSub,
+          },
         })
         count++
       })
@@ -306,23 +307,15 @@ export class ErrandRepository {
           errandStatus: ErrandStatus.Accepted,
           previousStatus: ErrandStatus.Open,
           actorSub: actorSub,
-          actorType: 'courier',
+          actorType: 'user',
           requesterSub: updated.requesterSub,
+          courierSub: updated.courierSub!,
+          recipientSubs: [updated.requesterSub],
         },
       })
 
       return updated
     })
-
-    this.eventStream?.publish(
-      errandId,
-      {
-        newStatus: ErrandStatus.Accepted,
-        previousStatus: ErrandStatus.Open,
-        timestamp: new Date().toISOString(),
-      },
-      ['requester'],
-    )
 
     return toContract(result)
   }
@@ -359,18 +352,16 @@ export class ErrandRepository {
 
         await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_CANCELLED,
-          payload: { errandId, actorSub, requesterSub: updated.requesterSub },
-        })
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: ErrandStatus.Cancelled,
+          payload: {
+            errandId,
+            errandStatus: ErrandStatus.Cancelled,
             previousStatus: ErrandStatus.Open,
-            timestamp: new Date().toISOString(),
+            actorSub,
+            actorType: 'user',
+            requesterSub: updated.requesterSub,
+            recipientSubs: [updated.requesterSub],
           },
-          ['requester'],
-        )
+        })
 
         return toContract(updated)
       } catch (error) {
@@ -419,20 +410,12 @@ export class ErrandRepository {
             errandStatus: ErrandStatus.PickedUp,
             previousStatus: ErrandStatus.Accepted,
             actorSub,
-            actorType: 'courier',
+            actorType: 'user',
             requesterSub: updated.requesterSub,
+            courierSub: updated.courierSub!,
+            recipientSubs: [updated.requesterSub],
           },
         })
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: ErrandStatus.PickedUp,
-            previousStatus: ErrandStatus.Accepted,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester'],
-        )
 
         return toContract(updated)
       } catch (error) {
@@ -486,20 +469,12 @@ export class ErrandRepository {
             errandStatus: ErrandStatus.Delivered,
             previousStatus: ErrandStatus.PickedUp,
             actorSub,
-            actorType: 'courier',
+            actorType: 'user',
             requesterSub: updated.requesterSub,
+            courierSub: updated.courierSub!,
+            recipientSubs: [updated.requesterSub],
           },
         })
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: ErrandStatus.Delivered,
-            previousStatus: ErrandStatus.PickedUp,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester'],
-        )
 
         return toContract(updated)
       } catch (error) {
@@ -545,20 +520,15 @@ export class ErrandRepository {
           eventType: ErrandEventTypes.ERRAND_COMPLETED,
           payload: {
             errandId,
+            errandStatus: ErrandStatus.Confirmed,
+            previousStatus: ErrandStatus.Delivered,
+            actorSub,
+            actorType: 'user',
             requesterSub: updated.requesterSub,
             courierSub: updated.courierSub!,
+            recipientSubs: [updated.courierSub!],
           },
         })
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: ErrandStatus.Confirmed,
-            previousStatus: ErrandStatus.Delivered,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester', 'courier'],
-        )
 
         return toContract(updated)
       } catch (error) {
@@ -605,30 +575,30 @@ export class ErrandRepository {
           eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
           payload: {
             errandId,
-            errandStatus: newStatus,
+            errandStatus: ErrandStatus.Open,
             previousStatus: ErrandStatus.Accepted,
             actorSub,
-            actorType: 'courier',
+            actorType: 'user',
             requesterSub: updated.requesterSub,
+            courierSub: updated.courierSub!,
+            recipientSubs: [updated.requesterSub],
           },
         })
 
         if (newStatus === ErrandStatus.Expired) {
           await appendEvent(tx, {
             eventType: ErrandEventTypes.ERRAND_EXPIRED,
-            payload: { errandId },
+            payload: {
+              errandId,
+              errandStatus: ErrandStatus.Expired,
+              previousStatus: ErrandStatus.Accepted,
+              actorType: 'system',
+              requesterSub: updated.requesterSub,
+              courierSub: updated.courierSub!,
+              recipientSubs: [updated.requesterSub],
+            },
           })
         }
-
-        this.eventStream?.publish(
-          errandId,
-          {
-            newStatus: newStatus,
-            previousStatus: ErrandStatus.Accepted,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester'],
-        )
 
         return toContract(updated)
       } catch (error) {
@@ -669,7 +639,7 @@ export class ErrandRepository {
       }
 
       try {
-        await tx.errand.update({
+        const updated = await tx.errand.update({
           where: {
             id: errandId,
             status: { in: [ErrandStatus.Cancelled, ErrandStatus.Expired, ErrandStatus.Confirmed] },
@@ -678,7 +648,16 @@ export class ErrandRepository {
         })
         await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_DELETED,
-          payload: { errandId, requesterSub: actorSub },
+          payload: {
+            errandId,
+            errandStatus: ErrandStatus.Deleted,
+            previousStatus: errand.status,
+            actorSub,
+            actorType: 'user',
+            requesterSub: updated.requesterSub,
+            courierSub: updated.courierSub!,
+            recipientSubs: [updated.courierSub!],
+          },
         })
       } catch (error) {
         if (isUpdateUnsuccessful(error)) {
@@ -723,7 +702,15 @@ export class ErrandRepository {
         if (errand) {
           await appendEvent(tx, {
             eventType: ErrandEventTypes.ERRAND_DELETED,
-            payload: { errandId: errand.id, requesterSub: errand.requesterSub },
+            payload: {
+              errandId: errand.id,
+              errandStatus: ErrandStatus.Deleted,
+              previousStatus: errand.status,
+              actorType: 'system',
+              requesterSub: errand.requesterSub,
+              courierSub: errand.courierSub!,
+              recipientSubs: [errand.requesterSub, errand.courierSub!],
+            },
           })
         }
       }
@@ -806,18 +793,15 @@ export class ErrandRepository {
         if (!changed.count) return
         await appendEvent(tx, {
           eventType: ErrandEventTypes.ERRAND_EXPIRED,
-          payload: { errandId: row.id },
-        })
-
-        this.eventStream?.publish(
-          row.id,
-          {
-            newStatus: ErrandStatus.Expired,
+          payload: {
+            errandId: row.id,
+            errandStatus: ErrandStatus.Expired,
             previousStatus: ErrandStatus.Open,
-            timestamp: new Date().toISOString(),
+            actorType: 'system',
+            requesterSub: row.requesterSub,
+            recipientSubs: [row.requesterSub],
           },
-          ['requester'],
-        )
+        })
 
         count++
       })
@@ -851,34 +835,18 @@ export class ErrandRepository {
 
         const confirmed = await tx.errand.findUniqueOrThrow({ where: { id: row.id } })
         await appendEvent(tx, {
-          eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+          eventType: ErrandEventTypes.ERRAND_COMPLETED,
           payload: {
             errandId: confirmed.id,
             errandStatus: ErrandStatus.Confirmed,
             previousStatus: ErrandStatus.Delivered,
             actorType: 'system',
             requesterSub: confirmed.requesterSub,
-            courierSub: confirmed.courierSub ?? undefined,
-          },
-        })
-        await appendEvent(tx, {
-          eventType: ErrandEventTypes.ERRAND_COMPLETED,
-          payload: {
-            errandId: confirmed.id,
-            requesterSub: confirmed.requesterSub,
-            courierSub: confirmed.courierSub ?? undefined,
+            courierSub: confirmed.courierSub!,
+            recipientSubs: [confirmed.courierSub!],
           },
         })
 
-        this.eventStream?.publish(
-          confirmed.id,
-          {
-            newStatus: ErrandStatus.Confirmed,
-            previousStatus: ErrandStatus.Delivered,
-            timestamp: new Date().toISOString(),
-          },
-          ['requester', 'courier'],
-        )
         count++
       })
     }

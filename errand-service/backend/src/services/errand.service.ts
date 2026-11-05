@@ -15,7 +15,6 @@ import { ErrandServiceError, type AuthenticatedUser } from '../types/errand.type
 import { CreditClient } from '../clients/credit.client.js'
 import { UserClient } from '../clients/user.client.js'
 import { SupplierClient } from '../clients/supplier.client.js'
-import { ErrandEventStream } from './errandEventStream.js'
 import { translateError } from '../utils/translate-error.js'
 
 export class ErrandService {
@@ -25,10 +24,6 @@ export class ErrandService {
     private readonly supplierClient: SupplierClient,
     private readonly userClient: UserClient = new UserClient(),
   ) {}
-
-  getEventStream(): ErrandEventStream | undefined {
-    return this.repository['eventStream'] as ErrandEventStream | undefined
-  }
 
   async createErrand(user: AuthenticatedUser, request: CreateErrandRequest): Promise<Errand> {
     if (!user.emailVerified) {

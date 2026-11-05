@@ -4,8 +4,10 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type {
+import {
   Errand,
+  ErrandNotificationType,
+  ErrandNotificationTypes,
   ErrandStatus,
   ProfileAnchor,
   RemoteAppProps,
@@ -77,8 +79,21 @@ export default function App({
   const [map, setMap] = useState<LeafletMap>()
   const [createAnchor, setCreateAnchor] = useState<BubbleAnchor>()
   const [filters, setFilters] = useState<ErrandFilters>({
-    statuses: ['OPEN', 'ACCEPTED', 'PICKED_UP', 'DELIVERED', 'CONFIRMED', 'EXPIRED'],
-    serviceTypes: [0, 1, 2, 3, 4],
+    statuses: [
+      ErrandStatus.Open,
+      ErrandStatus.Accepted,
+      ErrandStatus.PickedUp,
+      ErrandStatus.Delivered,
+      ErrandStatus.Confirmed,
+      ErrandStatus.Expired,
+    ],
+    serviceTypes: [
+      ServiceType.Food,
+      ServiceType.Drink,
+      ServiceType.Shopping,
+      ServiceType.Parcel,
+      ServiceType.Printing,
+    ],
     sort: 'lifecycle',
   })
   const view = errandViewContext?.view ?? 'requests'
@@ -221,7 +236,10 @@ export default function App({
           ),
         )
         // Drop errand may result in OPEN (new errand in pool) or EXPIRED (credit release)
-        if (response.errand.status === 'EXPIRED' || response.errand.status === 'OPEN') {
+        if (
+          response.errand.status === ErrandStatus.Expired ||
+          response.errand.status === ErrandStatus.Open
+        ) {
           invalidateCreditBalance?.()
         }
         // Close the errand detail window when courier drops the errand
@@ -245,12 +263,12 @@ export default function App({
       return
     }
     const nextStatus: Partial<Record<typeof action, ErrandStatus>> = {
-      accept: 'ACCEPTED',
-      pickup: 'PICKED_UP',
-      deliver: 'DELIVERED',
-      confirm: 'CONFIRMED',
-      cancel: 'CANCELLED',
-      drop: 'OPEN',
+      accept: ErrandStatus.Accepted,
+      pickup: ErrandStatus.PickedUp,
+      deliver: ErrandStatus.Delivered,
+      confirm: ErrandStatus.Confirmed,
+      cancel: ErrandStatus.Cancelled,
+      drop: ErrandStatus.Open,
     }
     const next = nextStatus[action]
     if (next)
@@ -271,24 +289,75 @@ export default function App({
     }
   }
 
+  // Refetch errands from API
+  const refetchErrands = useCallback(async () => {
+    if (!errandApi || view === 'create' || view === 'supplier') return
+    const load =
+      view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
+    void load
+      .then(({ errands: loaded }) => {
+        const accepted =
+          view === 'my-errands'
+            ? loaded.filter((errand) => errand.courierSub === authenticatedSubject)
+            : loaded
+        setErrands(accepted)
+      })
+      .catch(() => undefined)
+  }, [errandApi, authenticatedSubject, view])
+
+  // Refetch errand details from API
+  const refetchErrandDetails = useCallback(
+    async (errandId: string) => {
+      if (!errandApi) return
+      void errandApi
+        .getErrand(errandId)
+        .then(({ errand }) => {
+          setErrands((current) => current.map((e) => (e.id === errandId ? errand : e)))
+        })
+        .catch(() => undefined)
+    },
+    [errandApi],
+  )
+
   // SSE notifications for other users' changes
   const handleErrandUpdate = useCallback(
-    (errandId: string, newStatus: string) => {
+    (event: {
+      errandId: string
+      type: ErrandNotificationType
+      oldStatus?: string
+      newStatus: string
+    }) => {
+      // Update errand status locally without refetching
       const updateStatus = (current: Errand[]) =>
         current.map((errand) =>
-          errand.id === errandId ? { ...errand, status: newStatus as ErrandStatus } : errand,
+          errand.id === event.errandId
+            ? { ...errand, status: event.newStatus as ErrandStatus }
+            : errand,
         )
       setErrands(updateStatus)
       setUpdates(updateStatus)
+
       // Invalidate credit balance when errand status changes affect credits
-      if (newStatus === 'CANCELLED' || newStatus === 'CONFIRMED' || newStatus === 'EXPIRED') {
-        invalidateCreditBalance?.()
+      if (event.type === ErrandNotificationTypes.ERRAND_STATUS_CHANGED) {
+        if (
+          event.newStatus === ErrandStatus.Cancelled ||
+          event.newStatus === ErrandStatus.Confirmed ||
+          event.newStatus === ErrandStatus.Expired
+        ) {
+          invalidateCreditBalance?.()
+        }
       }
     },
     [invalidateCreditBalance],
   )
 
-  useErrandNotifications(errands, handleErrandUpdate)
+  useErrandNotifications(
+    authenticatedSubject,
+    errands,
+    handleErrandUpdate,
+    refetchErrands,
+    refetchErrandDetails,
+  )
 
   async function locateMe() {
     const next = await requestUserLocation?.()
