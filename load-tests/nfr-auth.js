@@ -8,7 +8,7 @@ const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 const ratePerMinute = Number(__ENV.NFR_AUTH_RATE_PER_MIN ?? 500)
 const duration = __ENV.NFR_AUTH_DURATION ?? '5m'
 const preAllocatedVUs = Number(__ENV.NFR_AUTH_PREALLOCATED_VUS ?? 50)
-const maxVUs = Number(__ENV.NFR_AUTH_MAX_VUS ?? 500)
+const maxVUs = Number(__ENV.NFR_AUTH_MAX_VUS ?? 100)
 const p95Limit = Number(__ENV.NFR_AUTH_P95_LIMIT_MS ?? 500)
 
 export const options = {

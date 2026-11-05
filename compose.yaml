@@ -34,6 +34,8 @@ services:
         condition: service_healthy
       credit-api:
         condition: service_healthy
+      credit-estimation-api:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 10s
@@ -88,6 +90,8 @@ services:
       retries: 5
     depends_on:
       errand-api:
+        condition: service_healthy
+      errand-notification:
         condition: service_healthy
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked errand-api dependency when its API exists.
@@ -293,6 +297,58 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  #
+  credit-estimation-api:
+    build:
+      context: .
+      dockerfile: credit-estimation-service/backend/Dockerfile
+    ports:
+      - '3005:3005'
+    environment:
+      NODE_ENV: production
+      PORT: '3005'
+      USER_API_URL: http://user-api:3000
+      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
+      ESTIMATION_SERVICE_TIMEOUT_MS: '5000'
+      AI_PROVIDER: '${AI_PROVIDER:-}'
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: '${AI_MODEL:-}'
+      AI_ENDPOINT: '${AI_ENDPOINT:-}'
+      AI_TEMPERATURE: '${AI_TEMPERATURE:-}'
+      AI_MAX_TOKENS: '${AI_MAX_TOKENS:-}'
+      AI_ESTIMATION_TIMEOUT_MS: '${AI_ESTIMATION_TIMEOUT_MS:-}'
+    depends_on:
+      user-api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3005/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  errand-notification:
+    build:
+      context: .
+      dockerfile: errand-notification-service/backend/Dockerfile
+    expose:
+      - '3010'
+    environment:
+      PORT: '3010'
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3010/health']
       interval: 10s
       timeout: 3s
       retries: 5

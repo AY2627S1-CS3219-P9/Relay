@@ -39,7 +39,7 @@ function json(response) {
 function expect(response, name, predicate) {
   const passed = check(response, { [name]: predicate })
   if (!passed) {
-    const body = responseJson(response)
+    const body = json(response)
     fail(`${name} failed with HTTP ${response.status}: ${body ? JSON.stringify(body) : response.body}`)
   }
   return response

@@ -7,6 +7,7 @@ export {
   BoltIcon,
   ButtonWithImage,
   CardView,
+  ClockIcon,
   BubblePopover,
   ClipboardPlusIcon,
   FilterIcon,

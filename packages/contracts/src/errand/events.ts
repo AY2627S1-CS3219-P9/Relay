@@ -34,14 +34,15 @@ export interface ErrandEventPayload {
   errandStatus?: ErrandStatus
   previousStatus?: ErrandStatus
   actorSub?: string // Who triggered the change (user/courier/system)
-  actorType?: 'user' | 'courier' | 'system'
-  requesterSub?: string // Optional for some events (e.g., status change, expiry)
+  actorType?: 'user' | 'system'
+  requesterSub?: string
   courierSub?: string
   supplierId?: string
   creditAmount?: number
   expiresAt?: string
-  reason?: string // Optional reason for cancellation
   metadata?: Record<string, string>
+  // Recipients for this notification
+  recipientSubs?: string[]
 }
 
 /** Kafka topic names for errand events. */
@@ -51,3 +52,23 @@ export const ErrandTopics = {
 } as const
 
 export type ErrandTopic = (typeof ErrandTopics)[keyof typeof ErrandTopics]
+
+/** SSE event types for frontend notifications. */
+export const ErrandNotificationTypes = {
+  ERRAND_CREATED: 'ERRAND_CREATED',
+  ERRAND_STATUS_CHANGED: 'ERRAND_STATUS_CHANGED',
+  ERRAND_DELETED: 'ERRAND_DELETED',
+} as const
+
+export type ErrandNotificationType =
+  (typeof ErrandNotificationTypes)[keyof typeof ErrandNotificationTypes]
+
+/** SSE event payload sent to frontend clients. */
+export interface ErrandNotification {
+  eventId: string
+  type: ErrandNotificationType
+  errandId: string
+  timestamp: string
+  oldStatus: ErrandStatus
+  newStatus: ErrandStatus
+}

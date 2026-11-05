@@ -36,6 +36,11 @@ export default defineConfig(() => {
           target: 'http://localhost:3003',
           changeOrigin: true,
         },
+        '/api/notifications/stream': {
+          target: 'http://localhost:3010',
+          changeOrigin: true,
+          ws: true,
+        },
         '/remotes/supplier': {
           target: 'http://localhost:5001',
           changeOrigin: true,
