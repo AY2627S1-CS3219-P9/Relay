@@ -46,26 +46,28 @@ const shutdown = async (signal: string) => {
   console.log(`${signal} received, shutting down gracefully...`)
   console.log(`Active subscribers: ${eventStream.getSubscriberCount()}`)
 
-  // Close server to stop accepting new connections
-  server.close(async () => {
-    console.log('HTTP server closed')
-
-    // Stop Kafka consumer
-    await consumer.stop()
-    console.log('Kafka consumer stopped')
-
-    // Log final stats
-    const stats = eventStream.getSubscriberStats()
-    console.log(`Final subscriber stats: ${JSON.stringify(stats)}`)
-
-    process.exit(0)
-  })
-
-  // Force exit after timeout
-  setTimeout(() => {
+  // Stop accepting new requests, then finish open SSE responses so EventSource
+  // can reconnect to a ready pod instead of waiting for the force-exit timer.
+  const forceExit = setTimeout(() => {
     console.error('Graceful shutdown timed out, forcing exit')
     process.exit(1)
-  }, 30_000).unref()
+  }, 30_000)
+  forceExit.unref()
+
+  server.close(async (error) => {
+    if (error) console.error('HTTP server close failed:', error)
+    else console.log('HTTP server closed')
+    try {
+      await consumer.stop()
+      console.log('Kafka consumer stopped')
+      clearTimeout(forceExit)
+      process.exit(error ? 1 : 0)
+    } catch (stopError) {
+      console.error('Kafka consumer shutdown failed:', stopError)
+      process.exit(1)
+    }
+  })
+  eventStream.closeAll()
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))

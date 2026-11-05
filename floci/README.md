@@ -33,14 +33,19 @@ trust the newly generated CA. `npm run dev` still runs the local source
 processes and Compose dependencies.
 The optional views start one at a time to avoid memory pressure. After the
 corresponding application is running, choose `kafka`, `user`, `errand`,
-`credit`, or explicitly `all`:
+`credit`, `headlamp`, or explicitly `all`:
 
-| Environment | Start | Stop | Kafka UI | User Studio | Errand Studio | Credit Studio |
-| --- | --- | --- | --- | --- | --- | --- |
-| Compose | `npm run views:compose -- user` | `npm run views:compose:stop -- user` | http://localhost:8081 | http://localhost:5555 | http://localhost:5556 | http://localhost:5557 |
-| Floci EKS | `npm run views:eks -- user` | `npm run views:eks:stop -- user` | http://localhost:9081 | http://localhost:6555 | http://localhost:6556 | http://localhost:6557 |
+| Environment | Start | Stop | Kafka UI | User Studio | Errand Studio | Credit Studio | Headlamp |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Compose | `npm run views:compose -- user` | `npm run views:compose:stop -- user` | http://localhost:8081 | http://localhost:5555 | http://localhost:5556 | http://localhost:5557 | - |
+| Floci EKS | `npm run views:eks -- user` | `npm run views:eks:stop -- user` | http://localhost:9081 | http://localhost:6555 | http://localhost:6556 | http://localhost:6557 | http://localhost:9082 |
 
-Replace `user` with the view to open. Compose views are in the `ui` profile of
+Replace `user` with the view to open. `npm run views:eks -- headlamp`
+installs Headlamp in the local cluster, forwards it only to localhost, and prints
+an eight-hour login token. Use that token on the Headlamp login screen to
+inspect or restart pods. The token has cluster-admin access to this local
+cluster. `npm run views:eks -- all` also installs Headlamp.
+Stop it with `npm run views:eks:stop -- headlamp`. Compose views are in the `ui` profile of
 `compose.override.yaml`; local EKS and AWS image builds read only the neutral
 `compose.yaml` definitions. EKS views are optional pods in `k8s/floci/views/` and
 are forwarded to localhost by `floci/eks/views.sh`. The supplier service has no
@@ -82,22 +87,23 @@ containers; it does not provide AWS gp3 volumes or RDS backups.
 
 | Area | Local Floci EKS | AWS deployment |
 | --- | --- | --- |
-| Broker provisioning | Floci's MSK API records a Provisioned cluster with two broker nodes and a KMS-backed SCRAM secret association, but launches one Redpanda sidecar. | `infra/relay-eks.yaml` creates two `kafka.t3.small` brokers in separate private subnets. |
+| Broker provisioning | Floci's MSK API records a Provisioned cluster with three broker nodes and a KMS-backed SCRAM secret association, but launches one Redpanda sidecar. | `infra/relay-eks.yaml` creates three `kafka.t3.small` brokers in separate private subnets. |
 | Client connection | Floci advertises a plaintext Kafka endpoint, so the local override sets `KAFKA_AUTH_MODE=none` and adds its hostname to CoreDNS. | The deploy script discovers the SASL/SCRAM bootstrap endpoint on port 9096. Clients authenticate with a Secrets Manager credential over TLS. |
-| Replication | Floci's one broker can host only one copy. The local override creates topics with replication factor 1 and minimum in-sync replicas 1. | Each topic has replication factor 2 and minimum in-sync replicas 2. Outbox publishers request `acks=-1`, so an unavailable broker stops acknowledgements and leaves events in the outbox for retry. |
+| Replication | Floci's one broker can host only one copy. The local override creates topics with replication factor 1 and minimum in-sync replicas 1. | Each topic has replication factor 3 and minimum in-sync replicas 2. Outbox publishers request `acks=-1`; one broker may be unavailable while two in-sync replicas continue acknowledging writes. |
 | AWS access | The local OIDC token injection remains for S3 and Cognito emulation. | User API and Auth API retain service account roles for S3 and Cognito. Kafka clients use SCRAM, not IAM. |
 | Teardown | `npm run down:eks` removes the local cluster and Floci sidecars. | `deploy/scripts/pause-aws.sh` deletes EKS and MSK directly; RDS snapshots and separate Cognito and S3 stacks remain. |
 
 Local tests verify topic creation and application event flow. Floci does not
-verify TLS, SCRAM enforcement, two-broker storage, two-copy acknowledgements,
+verify TLS, SCRAM enforcement, three-broker storage, the two-replica acknowledgement minimum,
 or broker failure behavior. Verify those against AWS MSK Provisioned before
 relying on the replication guarantee.
 
 Inspect the local cluster with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
 
-The local EKS workload set includes credit estimation and two errand notification
-pods. The notification service uses a separate Kafka consumer group per pod so
+The local EKS workload set includes credit estimation and an errand notification
+Deployment that starts with one pod and can autoscale to four. The notification
+service uses a separate Kafka consumer group per pod so
 SSE subscribers on either pod receive events. For manual validation, open two
 browser sessions, create an errand status change, and replace a notification
 pod to check reconnection. Local Floci still does not validate MSK SCRAM/TLS.

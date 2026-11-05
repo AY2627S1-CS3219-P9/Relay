@@ -1,5 +1,5 @@
 import { authFetch } from '@relay/user-auth-frontend-fetch'
-import { useEffect, useState, type SubmitEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
 import type {

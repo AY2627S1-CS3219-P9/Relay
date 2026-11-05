@@ -26,6 +26,12 @@ Resources:
       VpcId: !Ref Vpc
       CidrBlock: 10.60.16.0/20
       AvailabilityZone: !Select [1, !GetAZs '']
+  SubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.60.32.0/20
+      AvailabilityZone: !Select [2, !GetAZs '']
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -142,6 +148,7 @@ Outputs:
   VpcId: { Value: !Ref Vpc }
   SubnetAId: { Value: !Ref SubnetA }
   SubnetBId: { Value: !Ref SubnetB }
+  SubnetCId: { Value: !Ref SubnetC }
   UserDatabaseEndpoint: { Value: !GetAtt UserDatabase.Endpoint.Address }
   ErrandDatabaseEndpoint: { Value: !GetAtt ErrandDatabase.Endpoint.Address }
   CreditDatabaseEndpoint: { Value: !GetAtt CreditDatabase.Endpoint.Address }

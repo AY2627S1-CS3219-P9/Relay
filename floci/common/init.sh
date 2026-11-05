@@ -76,10 +76,10 @@ printf 'USER_DATABASE_HOST=%s\nUSER_DATABASE_PORT=%s\nUSER_DATABASE_PASSWORD=%s\
   "$(output CreditDatabaseEndpoint)" "$(output CreditDatabasePort)" "$(password_for CreditDatabaseSecretArn)" \
   "$(output SupplierDatabaseEndpoint)" "$(output SupplierDatabasePort)" "$(password_for SupplierDatabaseSecretArn)" >/app/data/relay-rds.env
 
-# Floci records a two-broker Provisioned cluster but runs one plaintext Redpanda
+# Floci records a three-broker Provisioned cluster but runs one plaintext Redpanda
 # broker. See floci/README.md for the local fidelity limits.
 msk_arn="$(aws kafka create-cluster-v2 --cluster-name relay-local-events \
-  --provisioned "BrokerNodeGroupInfo={ClientSubnets=[$(output SubnetAId),$(output SubnetBId)],InstanceType=kafka.t3.small,SecurityGroups=[$database_security_group]},KafkaVersion=3.8.x,NumberOfBrokerNodes=2,ClientAuthentication={Sasl={Scram={Enabled=true}}},EncryptionInfo={EncryptionInTransit={ClientBroker=TLS,InCluster=true}}" \
+  --provisioned "BrokerNodeGroupInfo={ClientSubnets=[$(output SubnetAId),$(output SubnetBId),$(output SubnetCId)],InstanceType=kafka.t3.small,SecurityGroups=[$database_security_group]},KafkaVersion=3.8.x,NumberOfBrokerNodes=3,ClientAuthentication={Sasl={Scram={Enabled=true}}},EncryptionInfo={EncryptionInTransit={ClientBroker=TLS,InCluster=true}}" \
   --query ClusterArn --output text)"
 test -n "$msk_arn"
 # Mirror the AWS KMS-backed SCRAM secret and association as metadata. The

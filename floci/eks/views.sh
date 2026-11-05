@@ -3,19 +3,20 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 action="${1:-}"
 view="${2:-}"
-if [[ "$action" != start && "$action" != stop ]] || [[ ! "$view" =~ ^(kafka|user|errand|credit|all)$ ]]; then
-  echo "Usage: $0 start|stop kafka|user|errand|credit|all" >&2
+if [[ "$action" != start && "$action" != stop ]] || [[ ! "$view" =~ ^(kafka|user|errand|credit|headlamp|all)$ ]]; then
+  echo "Usage: $0 start|stop kafka|user|errand|credit|headlamp|all" >&2
   exit 2
 fi
 [[ -s floci/eks/.kubeconfig ]] || { echo "Run npm run up:eks first." >&2; exit 2; }
 export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
-if [[ "$view" == all ]]; then views=(kafka user errand credit); else views=("$view"); fi
+if [[ "$view" == all ]]; then views=(kafka user errand credit headlamp); else views=("$view"); fi
 for item in "${views[@]}"; do
   case "$item" in
     kafka) service=relay-kafka-ui; local_port=9081; service_port=8080 ;;
     user) service=relay-user-prisma-studio; local_port=6555; service_port=5555 ;;
     errand) service=relay-errand-prisma-studio; local_port=6556; service_port=5555 ;;
     credit) service=relay-credit-prisma-studio; local_port=6557; service_port=5555 ;;
+    headlamp) service=relay-headlamp; local_port=9082; service_port=4466 ;;
   esac
   pid_file="floci/eks/.view-$item.pid"
   if [[ -s "$pid_file" ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
@@ -36,4 +37,8 @@ for item in "${views[@]}"; do
   done
   curl --max-time 5 -fsS "http://127.0.0.1:$local_port/" -o /dev/null
   echo "$item view: http://localhost:$local_port"
+  if [[ "$item" == headlamp ]]; then
+    echo "Headlamp login token (valid for 8 hours):"
+    kubectl -n relay create token relay-headlamp-admin --duration=8h
+  fi
 done

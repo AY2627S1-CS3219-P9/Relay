@@ -54,6 +54,22 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
+# A third MSK AZ changes ClientSubnets, which replaces an existing two-AZ
+# cluster. Do not let an ordinary redeploy discard its Kafka data implicitly.
+existing_msk_arn="$(aws cloudformation describe-stack-resource --region "$aws_region" \
+  --stack-name "$stack_name" --logical-resource-id MskCluster \
+  --query 'StackResourceDetail.PhysicalResourceId' --output text 2>/dev/null || true)"
+if [[ "$existing_msk_arn" == arn:* ]]; then
+  existing_brokers="$(aws kafka describe-cluster-v2 --region "$aws_region" \
+    --cluster-arn "$existing_msk_arn" \
+    --query 'ClusterInfo.Provisioned.NumberOfBrokerNodes' --output text)"
+  if [[ "$existing_brokers" != 3 ]]; then
+    echo "Existing MSK cluster has $existing_brokers brokers. Changing from two AZs to three replaces it and loses its Kafka data." >&2
+    echo 'Migrate Kafka data first, or explicitly pause the deployment and accept a fresh MSK cluster before rerunning deploy.sh.' >&2
+    exit 1
+  fi
+fi
+
 step "Create or update Relay foundation: VPC, EKS, RDS, MSK, and ECR"
 aws cloudformation deploy \
   --region "$aws_region" \

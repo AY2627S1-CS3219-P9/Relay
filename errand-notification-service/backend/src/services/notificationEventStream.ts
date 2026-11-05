@@ -57,6 +57,18 @@ export class ErrandNotificationEventStream {
     }
   }
 
+  /** End active SSE responses so clients can reconnect during pod shutdown. */
+  closeAll(): void {
+    for (const subs of this.subscribers.values()) {
+      for (const { response } of subs.values()) {
+        if (!response.writableEnded && !response.destroyed) {
+          response.end()
+        }
+      }
+    }
+    this.subscribers.clear()
+  }
+
   /**
    * Publish notification to multiple users
    * - Handles write errors gracefully

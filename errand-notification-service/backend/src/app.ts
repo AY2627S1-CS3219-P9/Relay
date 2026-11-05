@@ -187,7 +187,6 @@ function notificationStreamHandler(eventStream: ErrandNotificationEventStream) {
 
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
-    res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no')
 
     // Send initial connection confirmed
@@ -198,10 +197,9 @@ function notificationStreamHandler(eventStream: ErrandNotificationEventStream) {
     const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 15_000)
 
     // Handle client disconnect
-    req.on('close', () => {
+    res.on('close', () => {
       clearInterval(heartbeat)
       eventStream.unsubscribe(userSub, subscriptionId)
-      res.end()
     })
   }
 }

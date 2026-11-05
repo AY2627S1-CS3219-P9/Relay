@@ -130,12 +130,24 @@ Resources:
       Tags:
         - { Key: Name, Value: !Sub '${ProjectName}-private-b' }
         - { Key: kubernetes.io/role/internal-elb, Value: '1' }
+  PrivateSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: 10.40.64.0/20
+      Tags:
+        - { Key: Name, Value: !Sub '${ProjectName}-private-c' }
   PrivateSubnetARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties: { SubnetId: !Ref PrivateSubnetA, RouteTableId: !Ref PrivateRouteTable }
   PrivateSubnetBRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties: { SubnetId: !Ref PrivateSubnetB, RouteTableId: !Ref PrivateRouteTable }
+
+  PrivateSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateSubnetC, RouteTableId: !Ref PrivateRouteTable }
 
   EksClusterRole:
     Type: AWS::IAM::Role
@@ -336,9 +348,9 @@ Resources:
     Properties:
       ClusterName: !Sub '${ProjectName}-events'
       KafkaVersion: 3.8.x
-      NumberOfBrokerNodes: 2
+      NumberOfBrokerNodes: 3
       BrokerNodeGroupInfo:
-        ClientSubnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+        ClientSubnets: [!Ref PrivateSubnetA, !Ref PrivateSubnetB, !Ref PrivateSubnetC]
         InstanceType: kafka.t3.small
         SecurityGroups: [!Ref MskSecurityGroup]
         StorageInfo: { EBSStorageInfo: { VolumeSize: 10 } }

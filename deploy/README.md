@@ -404,7 +404,7 @@ future deployments.
 
 ## Event broker targets
 
-AWS EKS provisions a two-broker MSK Provisioned cluster through
+AWS EKS provisions a three-broker MSK Provisioned cluster through
 `infra/relay-eks.yaml`. The brokers are in separate private subnets and
 expose TLS with SASL/SCRAM on port 9096. The stack creates a customer-managed
 KMS key, a Secrets Manager username/password secret, and associates that
@@ -414,11 +414,18 @@ for Kafka clients. Keep that Kubernetes Secret restricted to the Relay
 namespace and rotate the SCRAM credential through Secrets Manager when needed.
 
 The topic Job creates the four event and dead-letter topics with replication
-factor 2, 12 partitions each, and `min.insync.replicas=2`. Both outbox publishers use `acks=-1`
+factor 3, 12 partitions each, and `min.insync.replicas=2`. Both outbox publishers use `acks=-1`
 (acknowledge from all in-sync replicas), so they mark rows published only after
-both replicas commit. A broker outage blocks writes and leaves unpublished
-outbox rows to retry. This is deliberate: lowering the minimum in-sync count
-would permit acknowledged writes with one copy.
+at least two in-sync replicas commit. One broker can fail while writes remain
+available; with fewer than two in-sync replicas, publishers keep outbox rows
+pending for retry.
+
+Changing an existing two-AZ, two-broker MSK cluster to three AZs replaces the
+cluster because its subnet list changes. The deployment script stops before
+that update to avoid silently deleting Kafka records and consumer offsets.
+For a fresh three-broker cluster, explicitly pause the AWS deployment and
+redeploy, accepting the Kafka data loss described below. If those records or
+offsets must survive, migrate them to a new cluster before changing this stack.
 
 Pause deletes the MSK cluster without waiting for outboxes or consumer lag.
 Kafka records and offsets are lost at pause; RDS snapshots preserve the
@@ -535,7 +542,7 @@ writes these to a dedicated relay-estimation-config Secret mounted only by the
 estimation workload. The internal service token still follows the other demo
 tokens in the runtime ConfigMap.
 
-Two notification pods start by default and can scale to four. Each pod uses
+One notification pod starts by default and can scale to four. Each pod uses
 its own Kafka consumer group so each sees every errand event and can deliver
 it to its own SSE subscribers. A browser EventSource reconnects after pod
 replacement. The stream is best effort: events emitted while disconnected

@@ -335,7 +335,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: errand-notification, namespace: relay }
 spec:
-  replicas: 2
+  replicas: 1
   selector: { matchLabels: { app: errand-notification } }
   template:
     metadata: { labels: { app: errand-notification } }
