@@ -86,7 +86,7 @@ containers; it does not provide AWS gp3 volumes or RDS backups.
 | Client connection | Floci advertises a plaintext Kafka endpoint, so the local override sets `KAFKA_AUTH_MODE=none` and adds its hostname to CoreDNS. | The deploy script discovers the SASL/SCRAM bootstrap endpoint on port 9096. Clients authenticate with a Secrets Manager credential over TLS. |
 | Replication | Floci's one broker can host only one copy. The local override creates topics with replication factor 1 and minimum in-sync replicas 1. | Each topic has replication factor 2 and minimum in-sync replicas 2. Outbox publishers request `acks=-1`, so an unavailable broker stops acknowledgements and leaves events in the outbox for retry. |
 | AWS access | The local OIDC token injection remains for S3 and Cognito emulation. | User API and Auth API retain service account roles for S3 and Cognito. Kafka clients use SCRAM, not IAM. |
-| Teardown | `npm run down:eks` removes the local cluster and Floci sidecars. | `scripts/pause-aws.sh` deletes EKS and MSK directly; RDS snapshots and separate Cognito and S3 stacks remain. |
+| Teardown | `npm run down:eks` removes the local cluster and Floci sidecars. | `deploy/scripts/pause-aws.sh` deletes EKS and MSK directly; RDS snapshots and separate Cognito and S3 stacks remain. |
 
 Local tests verify topic creation and application event flow. Floci does not
 verify TLS, SCRAM enforcement, two-broker storage, two-copy acknowledgements,

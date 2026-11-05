@@ -46,6 +46,12 @@ microservice (`user-service/`, `supplier-service/`, `errand-service/`,
 
 ---
 
+## AWS deployment
+
+From the repository root, run `AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash deploy/deploy.sh relay`. The script guides SSO login, provisions the stacks, deploys the application, and prints its HTTPS URL. See [the deployment guide](deploy/README.md) for prerequisites, redeployment, pause, and teardown.
+
+---
+
 ## Local development
 
 Run these commands from the repository root using Linux Node/npm in WSL. If
