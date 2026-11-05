@@ -15,7 +15,7 @@ export AWS_DEFAULT_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
 export S3_ENDPOINT=http://localhost:4566 S3_PUBLIC_ENDPOINT=http://localhost:4566
 export S3_REGION=us-east-1 S3_ACCESS_KEY_ID=test S3_SECRET_ACCESS_KEY=test
-export S3_BUCKET=relay-user-profile-images S3_FORCE_PATH_STYLE=true
+export S3_FORCE_PATH_STYLE=true
 export USER_SERVICE_INTERNAL_TOKEN=local-internal-user-service-token
 export INTERNAL_USER_SERVICE_TOKEN=local-internal-user-service-token
 export INTERNAL_SUPPLIER_SERVICE_TOKEN=local-internal-supplier-service-token

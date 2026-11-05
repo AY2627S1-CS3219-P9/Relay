@@ -31,6 +31,11 @@ docker exec relay-floci-1 test -s /app/data/relay-auth.env
 docker exec relay-floci-1 test -s /app/data/relay-rds.env
 docker exec relay-floci-1 test -s /app/data/relay-msk.env
 
+s3_bucket="$(docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 \
+  -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+  relay-floci-1 aws cloudformation describe-stacks --stack-name relay-local-storage \
+  --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' --output text)"
+[[ -n "$s3_bucket" && "$s3_bucket" != None ]]
 auth_output="$(docker exec relay-floci-1 cat /app/data/relay-auth.env)"
 pool_id="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
 client_id="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
@@ -76,6 +81,7 @@ printf 'COGNITO_USER_POOL_ID=%s\nCOGNITO_CLIENT_ID=%s\nCOGNITO_ISSUER=http://loc
   "$user_password" "$user_port" "$errand_password" "$errand_port" \
   "$credit_password" "$credit_port" "$supplier_password" "$supplier_port" >floci/docker/.generated.env
 printf 'KAFKA_BROKERS=%s\nKAFKA_BROKERS_HOST=%s\n' "$msk_brokers" "$msk_brokers_host" >>floci/docker/.generated.env
+printf 'S3_BUCKET=%s\n' "$s3_bucket" >>floci/docker/.generated.env
 
 compose_env=(--env-file .env.development)
 if [[ -f .env ]]; then

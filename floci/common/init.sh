@@ -25,8 +25,10 @@ test -n "$client_id"
 printf 'COGNITO_USER_POOL_ID=%s\nCOGNITO_CLIENT_ID=%s\n' "$pool_id" "$client_id" >/app/data/relay-auth.env
 
 aws cloudformation deploy --stack-name relay-local-storage \
-  --template-file /opt/relay/infra/relay-storage.yaml \
-  --parameter-overrides "BucketName=${S3_USER_IMAGE_BUCKET:-relay-user-profile-images}"
+  --template-file /opt/relay/infra/relay-storage.yaml
+bucket_name="$(aws cloudformation describe-stacks --stack-name relay-local-storage \
+  --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' --output text)"
+test -n "$bucket_name" && test "$bucket_name" != None
 
 infrastructure_stack=relay-local-rds
 aws cloudformation deploy --stack-name "$infrastructure_stack" \
@@ -100,7 +102,6 @@ if [ "${FLOCI_LOCAL_EKS:-false}" = true ]; then
   issuer_url="$(aws eks describe-cluster --name relay-local --query cluster.identity.oidc.issuer --output text)"
   issuer_host="${issuer_url#https://}"
   test "$issuer_host" != "$issuer_url"
-  bucket_name="$(aws cloudformation describe-stacks --stack-name relay-local-storage --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' --output text)"
   # Floci CloudFormation stubs AWS::IAM::OIDCProvider; its IAM API supports it.
   provider_arn="$(aws iam create-open-id-connect-provider --url "$issuer_url" --client-id-list sts.amazonaws.com --query OpenIDConnectProviderArn --output text)"
   test -n "$provider_arn"

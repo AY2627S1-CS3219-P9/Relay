@@ -35,6 +35,11 @@ done
 [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}')" == healthy ]]
 docker exec relay-floci-eks test -s /app/data/relay-rds.env
 docker exec relay-floci-eks test -s /app/data/relay-aws-access.env
+s3_bucket="$(docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 \
+  -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+  relay-floci-eks aws cloudformation describe-stacks --stack-name relay-local-storage \
+  --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' --output text)"
+[[ -n "$s3_bucket" && "$s3_bucket" != None ]]
 # The auth stack chooses its own pool and app client IDs.
 auth_output="$(docker exec relay-floci-eks cat /app/data/relay-auth.env)"
 COGNITO_USER_POOL_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
@@ -181,7 +186,7 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=S3_ENDPOINT=http://floci-local:4566 \
   --from-literal=S3_PUBLIC_ENDPOINT=https://localhost:4567 \
   --from-literal=S3_REGION=us-east-1 \
-  --from-literal=S3_BUCKET=relay-user-profile-images \
+  --from-literal=S3_BUCKET="$s3_bucket" \
   --from-literal=S3_FORCE_PATH_STYLE=true \
   --dry-run=client -o yaml | kubectl apply -f -
 

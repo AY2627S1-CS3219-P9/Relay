@@ -9,6 +9,8 @@ logic.
   CloudFormation, creates Floci MSK through its API, and writes settings to the ignored
   `floci/docker/.generated.env` file. Run it after recreating Floci;
   `docker compose up` alone cannot discover the generated settings.
+  The profile-image bucket name is read from the local storage stack output
+  and passed to the user API; Floci may generate a different name each run.
 - `npm run up:eks` starts the separate Floci EKS application at
   the HTTPS CloudFront URL printed by startup, on standard port 443. Its Floci API is
   at https://localhost:4567. The launcher provisions four RDS instances, a
