@@ -1,9 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+no_cache=0
+services=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-cache) no_cache=1 ;;
+    *) services+=("$arg") ;;
+  esac
+done
+if (( no_cache )) && [[ "${SKIP_FLOCI_START:-0}" == 1 ]]; then
+  echo '--no-cache requires starting Floci; unset SKIP_FLOCI_START.' >&2
+  exit 2
+fi
 
 if [[ "${SKIP_FLOCI_START:-0}" != 1 ]]; then
-  KAFKA_BROKERS=bootstrap COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development up -d --build floci
+  if (( no_cache )); then
+    KAFKA_BROKERS=bootstrap COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development build --no-cache floci
+    KAFKA_BROKERS=bootstrap COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development up -d --no-build floci
+  else
+    KAFKA_BROKERS=bootstrap COGNITO_USER_POOL_ID= COGNITO_CLIENT_ID= COGNITO_ISSUER= COGNITO_JWKS_URI= USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose --env-file .env.development up -d --build floci
+  fi
 fi
 for i in $(seq 1 120); do
   [[ "$(docker inspect relay-floci-1 --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] && docker exec relay-floci-1 test -s /app/data/relay-auth.env && docker exec relay-floci-1 test -s /app/data/relay-rds.env && docker exec relay-floci-1 test -s /app/data/relay-msk.env && break
@@ -65,8 +82,16 @@ if [[ -f .env ]]; then
   compose_env=(--env-file .env "${compose_env[@]}")
 fi
 compose_env+=(--env-file floci/docker/.generated.env)
-docker compose "${compose_env[@]}" build kafka-init
-docker compose "${compose_env[@]}" up -d "$@"
-if (( $# == 0 )); then
+if (( no_cache )); then
+  # Floci was built before generating these endpoints. Rebuild application
+  # images separately so Compose does not recreate Floci with stale endpoints.
+  app_build_services=(kafka-init host supplier-frontend user-frontend errand-frontend credit-frontend supplier-schema supplier-api user-api user-event-publisher errand-event-publisher user-auth-api errand-api credit-api credit-estimation-api errand-notification)
+  docker compose "${compose_env[@]}" build --no-cache "${app_build_services[@]}"
+  docker compose "${compose_env[@]}" up -d --no-build "${services[@]}"
+else
+  docker compose "${compose_env[@]}" build kafka-init
+  docker compose "${compose_env[@]}" up -d "${services[@]}"
+fi
+if (( ${#services[@]} == 0 )); then
   docker compose "${compose_env[@]}" up -d --no-deps --force-recreate host
 fi

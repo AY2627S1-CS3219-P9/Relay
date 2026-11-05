@@ -19,6 +19,10 @@ logic.
   `SKIP_IMAGE_BUILD=1 SKIP_IMAGE_PUSH=1 npm run up:eks`. If the emulator
   is already healthy and you only need to retry Kubernetes deployment, add
   `REUSE_FLOCI=1` to avoid recreating its infrastructure.
+  For a full uncached rebuild, run `npm run up:compose -- --no-cache` or
+  `npm run up:eks -- --no-cache`. The EKS command rebuilds and pushes all
+  application images even when `SKIP_IMAGE_BUILD` or `SKIP_IMAGE_PUSH` is set;
+  it cannot be combined with `REUSE_FLOCI=1`.
 
 Run `npm run down:compose` or `npm run down:eks` to remove the corresponding
 application, optional views, Floci-managed RDS containers, and database

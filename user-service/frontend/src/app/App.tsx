@@ -40,7 +40,7 @@ export default function App({
     void fetchSession()
       .then((session) => {
         if (cancelled) return
-        if (session.userData.profileCreated) goToSupplier()
+        if (session.userData.profileCreated) completeAuth()
         else setView('profile')
       })
       .catch(() => {
@@ -122,11 +122,7 @@ export default function App({
   }
 
   function completeAuth() {
-    goToSupplier()
-  }
-
-  function goToSupplier() {
-    navigateTo?.('supplier')
+    if (presentation != 'card') navigateTo?.('supplier')
   }
 
   const userContent = (
@@ -162,7 +158,7 @@ export default function App({
           <ProfileSetupForm
             onComplete={async () => {
               await refreshUserProfile?.()
-              goToSupplier()
+              completeAuth()
             }}
           />
         )}
@@ -170,11 +166,11 @@ export default function App({
           <GlassCard className="account-glass-card">
             <AccountPage
               onLoggedOut={finishLogout}
-              onUpdated={() => void refreshUserProfile?.()}
+              onUpdated={() => refreshUserProfile?.()}
               onDeleted={() => {
                 setLoginNotice('Your account was deleted successfully.')
                 setView('login')
-                void refreshUserProfile?.()
+                refreshUserProfile?.()
                 closeProfile?.()
                 navigateTo?.('user')
               }}
@@ -196,11 +192,11 @@ export default function App({
         </div>
         <AccountPage
           onLoggedOut={finishLogout}
-          onUpdated={() => void refreshUserProfile?.()}
+          onUpdated={() => refreshUserProfile?.()}
           onDeleted={() => {
             setLoginNotice('Your account was deleted successfully.')
             setView('login')
-            void refreshUserProfile?.()
+            refreshUserProfile?.()
             closeProfile?.()
             navigateTo?.('user')
           }}

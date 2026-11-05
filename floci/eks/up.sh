@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+no_cache=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-cache) no_cache=1 ;;
+    *) echo "Unknown option: $arg (supported: --no-cache)" >&2; exit 2 ;;
+  esac
+done
+if (( no_cache )) && [[ "${REUSE_FLOCI:-0}" == 1 ]]; then
+  echo '--no-cache requires restarting Floci EKS; unset REUSE_FLOCI.' >&2
+  exit 2
+fi
 
 # Compose remains available at localhost:8080; this is a separate Floci instance.
 docker volume create relay-floci-eks-ca >/dev/null
 if [[ "${REUSE_FLOCI:-0}" != 1 ]]; then
-  docker compose -f compose.eks.yaml --project-name relay-eks up -d --build
+  if (( no_cache )); then
+    docker compose -f compose.eks.yaml --project-name relay-eks build --no-cache floci-eks
+    docker compose -f compose.eks.yaml --project-name relay-eks up -d --no-build
+  else
+    docker compose -f compose.eks.yaml --project-name relay-eks up -d --build
+  fi
 else
   [[ "$(docker inspect relay-floci-eks --format '{{.State.Health.Status}}' 2>/dev/null || true)" == healthy ]] || {
     echo 'REUSE_FLOCI=1 requires an already healthy local Floci EKS container.' >&2
@@ -48,8 +64,10 @@ sed -i "s|https://127.0.0.1:6443|https://127.0.0.1:$port|" floci/eks/.kubeconfig
 export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
-if [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
-  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api credit-estimation-api errand-notification user-event-publisher errand-event-publisher
+if (( no_cache )) || [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
+  build_options=()
+  if (( no_cache )); then build_options+=(--no-cache); fi
+  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build "${build_options[@]}" host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api credit-estimation-api errand-notification user-event-publisher errand-event-publisher
 fi
 images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-credit-estimation-api relay-errand-notification relay-user-event-publisher relay-errand-event-publisher)
 floci_aws() {
@@ -57,7 +75,7 @@ floci_aws() {
     -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
     -e AWS_SECRET_ACCESS_KEY=test relay-floci-eks aws "$@"
 }
-if [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
+if (( no_cache )) || [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
   floci_aws ecr get-login-password | docker login --username AWS --password-stdin localhost:4567
 fi
 for image in "${images[@]}"; do
@@ -65,7 +83,7 @@ for image in "${images[@]}"; do
   floci_aws ecr describe-repositories --repository-names "$repository" >/dev/null 2>&1 || floci_aws ecr create-repository --repository-name "$repository" >/dev/null
   uri="$(floci_aws ecr describe-repositories --repository-names "$repository" --query 'repositories[0].repositoryUri' --output text)"
   [[ "$uri" == localhost:4567/* ]]
-  if [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
+  if (( no_cache )) || [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
     docker tag "$image:latest" "$uri:latest"
     docker push "$uri:latest"
   fi
