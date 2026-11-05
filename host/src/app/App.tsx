@@ -153,6 +153,9 @@ function App() {
           if (!cancelled) setUserProfile(null)
           return
         }
+        // Initial session restoration chooses the signed-in landing page once.
+        // Closing the profile card must not perform this navigation again.
+        if (!cancelled) setActiveService('supplier')
         const response = await authFetch('/api/user/me', { credentials: 'include' })
         if (cancelled) return
         if (response.ok) {

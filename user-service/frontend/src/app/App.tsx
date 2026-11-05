@@ -40,8 +40,7 @@ export default function App({
     void fetchSession()
       .then((session) => {
         if (cancelled) return
-        if (session.userData.profileCreated) completeAuth()
-        else setView('profile')
+        setView(session.userData.profileCreated ? 'account' : 'profile')
       })
       .catch(() => {
         if (!cancelled) setView('login')
