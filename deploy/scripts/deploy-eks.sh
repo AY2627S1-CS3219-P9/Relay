@@ -180,6 +180,8 @@ user_event_publisher_image="$(build_and_push UserEventPublisherRepositoryUri use
 errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri errand-event-publisher)"
 errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-api)"
 credit_api_image="$(build_and_push CreditApiRepositoryUri credit-api)"
+credit_estimation_image="$(build_and_push CreditEstimationRepositoryUri credit-estimation-api)"
+errand_notification_image="$(build_and_push ErrandNotificationRepositoryUri errand-notification)"
 # Topic init uses the credit image; the digest-pinned image must exist in ECR.
 aws ecr describe-images --region "$aws_region" \
   --repository-name "$(output CreditApiRepositoryUri | sed "s|^$registry/||")" \
@@ -275,6 +277,22 @@ printf '%s\n' "$runtime_result"
 runtime_changed=0
 [[ "$runtime_result" == *unchanged* || "$runtime_existed" == 0 ]] || runtime_changed=1
 
+estimation_existed=0
+kubectl -n relay get secret relay-estimation-config >/dev/null 2>&1 && estimation_existed=1
+estimation_result="$(kubectl -n relay create secret generic relay-estimation-config \
+  --from-literal=AI_PROVIDER="${AI_PROVIDER:-}" \
+  --from-literal=AI_API_KEY="${AI_API_KEY:-}" \
+  --from-literal=AI_MODEL="${AI_MODEL:-}" \
+  --from-literal=AI_ENDPOINT="${AI_ENDPOINT:-}" \
+  --from-literal=AI_TEMPERATURE="${AI_TEMPERATURE:-}" \
+  --from-literal=AI_MAX_TOKENS="${AI_MAX_TOKENS:-}" \
+  --from-literal=AI_ESTIMATION_TIMEOUT_MS="${AI_ESTIMATION_TIMEOUT_MS:-}" \
+  --dry-run=client -o yaml | kubectl apply -f -)"
+printf '%s\n' "$estimation_result"
+estimation_changed=0
+[[ "$estimation_result" == *unchanged* || "$estimation_existed" == 0 ]] || estimation_changed=1
+
+
 step "Check Kafka topic initialization"
 # Completed Jobs are retained with fingerprints. Run them only when their
 # inputs change, or when a new cluster has no matching completed Job.
@@ -328,6 +346,8 @@ sed \
   -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
+  -e "s|IMAGE_CREDIT_ESTIMATION_API|$credit_estimation_image|g" \
+  -e "s|IMAGE_ERRAND_NOTIFICATION|$errand_notification_image|g" \
   -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
   -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
   k8s/base/migrations.yaml > "$rendered"
@@ -361,13 +381,19 @@ sed \
   -e "s|IMAGE_USER_AUTH_API|$user_auth_api_image|g" \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
+  -e "s|IMAGE_CREDIT_ESTIMATION_API|$credit_estimation_image|g" \
+  -e "s|IMAGE_ERRAND_NOTIFICATION|$errand_notification_image|g" \
   -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
   -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
   k8s/base/workloads.yaml | kubectl apply -f -
 step "Apply autoscaling, ingress, and wait for workloads"
 if [[ "$config_changed" == 1 || "$runtime_changed" == 1 ]]; then
   echo 'Runtime configuration changed; restarting environment-dependent workloads.'
-  kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/user-auth-api
+  kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/user-auth-api deployment/errand-notification deployment/credit-estimation-api
+fi
+if [[ "$estimation_changed" == 1 && "$config_changed" == 0 && "$runtime_changed" == 0 ]]; then
+  echo 'AI configuration changed; restarting credit-estimation-api.'
+  kubectl -n relay rollout restart deployment/credit-estimation-api
 fi
 kubectl apply -f k8s/base/autoscaling.yaml
 kubectl apply -f k8s/base/ingress.yaml

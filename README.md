@@ -73,7 +73,7 @@ Floci's local k3s cluster. The two full deployments can run together, but requir
 substantial Docker memory. `docker compose up` alone cannot discover the
 Floci-generated database and Cognito settings; use `npm run up:compose`.
 `npm run dev` starts its Compose dependencies, then runs frontend and backend
-processes from source. It shares ports with the full Compose application.
+processes from source. It shares ports with the full Compose application. The source-process target also starts credit estimation on port 3005 and errand notifications on port 3010, using Floci MSK and RDS endpoints from the generated environment file.
 
 The host serves all four microfrontends on the application origin through
 `/remotes/supplier/`, `/remotes/user/`, `/remotes/errand/`, and

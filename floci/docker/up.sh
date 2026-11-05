@@ -21,6 +21,19 @@ client_id="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
 msk_output="$(docker exec relay-floci-1 cat /app/data/relay-msk.env)"
 msk_brokers="$(printf '%s\n' "$msk_output" | sed -n 's/^MSK_BROKERS=//p')"
 [[ -n "$msk_brokers" ]]
+# Floci returns the broker's Docker-network listener. Source processes need
+# Redpanda's separately published host listener, whose port is assigned by Docker.
+broker_ip="${msk_brokers%%:*}"
+broker_container=""
+for candidate in $(docker ps --filter name=floci-aws-msk --format '{{.Names}}'); do
+  candidate_ip="$(docker inspect "$candidate" --format '{{with index .NetworkSettings.Networks "relay_default"}}{{.IPAddress}}{{end}}')"
+  if [[ "$candidate_ip" == "$broker_ip" ]]; then broker_container="$candidate"; break; fi
+done
+[[ -n "$broker_container" ]] || { echo "Could not find Floci MSK broker at $broker_ip" >&2; exit 1; }
+host_port="$(docker port "$broker_container" 9093/tcp | head -1 | sed 's/.*://')"
+[[ "$host_port" =~ ^[0-9]+$ ]] || { echo "Floci MSK host listener is not published" >&2; exit 1; }
+msk_brokers_host="localhost:$host_port"
+printf 'Floci MSK endpoints: source processes=%s, Compose=%s\n' "$msk_brokers_host" "$msk_brokers"
 msk_brokers="${msk_brokers//localhost:/host.docker.internal:}"
 rds_output="$(docker exec relay-floci-1 cat /app/data/relay-rds.env)"
 rds_value() { printf '%s\n' "$rds_output" | sed -n "s/^$1=//p"; }
@@ -45,7 +58,7 @@ printf 'COGNITO_USER_POOL_ID=%s\nCOGNITO_CLIENT_ID=%s\nCOGNITO_ISSUER=http://loc
   "$supplier_port" "$supplier_password" \
   "$user_password" "$user_port" "$errand_password" "$errand_port" \
   "$credit_password" "$credit_port" "$supplier_password" "$supplier_port" >floci/docker/.generated.env
-printf 'KAFKA_BROKERS=%s\n' "$msk_brokers" >>floci/docker/.generated.env
+printf 'KAFKA_BROKERS=%s\nKAFKA_BROKERS_HOST=%s\n' "$msk_brokers" "$msk_brokers_host" >>floci/docker/.generated.env
 
 compose_env=(--env-file .env.development)
 if [[ -f .env ]]; then

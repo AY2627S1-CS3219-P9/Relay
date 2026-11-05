@@ -61,7 +61,7 @@ export class ErrandNotificationEventStream {
    * Publish notification to multiple users
    * - Handles write errors gracefully
    * - Tracks consecutive failures and unsubscribes after threshold
-   * - Records successful deliveries in outbox for deduplication
+   * - Best-effort delivery to active in-memory subscribers
    */
   async publish(userSubs: string[], notification: ErrandNotification): Promise<void> {
     const start = Date.now()

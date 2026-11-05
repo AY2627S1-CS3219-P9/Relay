@@ -241,6 +241,7 @@ spec:
             - { name: USER_API_URL, value: "http://user-api:3000" }
             - { name: SUPPLIER_API_URL, value: "http://supplier-api:3000" }
             - { name: CREDIT_API_URL, value: "http://credit-api:3000" }
+            - { name: CREDIT_ESTIMATION_API_URL, value: "http://credit-estimation-api:3005" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
@@ -298,3 +299,56 @@ spec:
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
           resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: credit-estimation-api, namespace: relay }
+spec: { selector: { app: credit-estimation-api }, ports: [{ port: 3005, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: credit-estimation-api, namespace: relay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: credit-estimation-api } }
+  template:
+    metadata: { labels: { app: credit-estimation-api } }
+    spec:
+      containers:
+        - name: api
+          image: IMAGE_CREDIT_ESTIMATION_API
+          ports: [{ name: http, containerPort: 3005 }]
+          env:
+            - { name: PORT, value: "3005" }
+            - { name: USER_API_URL, value: "http://user-api:3000" }
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-estimation-config } }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: errand-notification, namespace: relay }
+spec: { selector: { app: errand-notification }, ports: [{ port: 3010, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: errand-notification, namespace: relay }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: errand-notification } }
+  template:
+    metadata: { labels: { app: errand-notification } }
+    spec:
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: notification
+          image: IMAGE_ERRAND_NOTIFICATION
+          ports: [{ name: http, containerPort: 3010 }]
+          env:
+            - { name: PORT, value: "3010" }
+          envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
+          startupProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5, failureThreshold: 24 }
+          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }

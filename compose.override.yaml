@@ -51,6 +51,10 @@ services:
     depends_on:
       floci:
         condition: service_healthy
+  errand-notification:
+    extra_hosts: ['host.docker.internal:host-gateway']
+    depends_on:
+      floci: { condition: service_healthy }
   errand-event-publisher:
     extra_hosts: ['host.docker.internal:host-gateway']
     depends_on:

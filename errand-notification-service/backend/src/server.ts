@@ -6,9 +6,23 @@ import { ErrandNotificationEventStream } from './services/notificationEventStrea
 
 const env = getEnv()
 const eventStream = new ErrandNotificationEventStream()
+const mode = process.env.KAFKA_AUTH_MODE ?? 'none'
+if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+  throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for SCRAM')
+}
 const kafka = new Kafka({
   clientId: 'errand-notification',
-  brokers: [env.kafkaBrokers],
+  brokers: env.kafkaBrokers.split(','),
+  ...(mode === 'scram'
+    ? {
+        ssl: true,
+        sasl: {
+          mechanism: 'scram-sha-512' as const,
+          username: process.env.KAFKA_USERNAME!,
+          password: process.env.KAFKA_PASSWORD!,
+        },
+      }
+    : {}),
 })
 
 const { app, consumer, startConsumer } = createNotificationApp(eventStream, kafka)

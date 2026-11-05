@@ -95,3 +95,9 @@ relying on the replication guarantee.
 
 Inspect the local cluster with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
+
+The local EKS workload set includes credit estimation and two errand notification
+pods. The notification service uses a separate Kafka consumer group per pod so
+SSE subscribers on either pod receive events. For manual validation, open two
+browser sessions, create an errand status change, and replace a notification
+pod to check reconnection. Local Floci still does not validate MSK SCRAM/TLS.

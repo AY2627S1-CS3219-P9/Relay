@@ -49,9 +49,9 @@ export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
 if [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
-  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api user-event-publisher errand-event-publisher
+  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api credit-estimation-api errand-notification user-event-publisher errand-event-publisher
 fi
-images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-user-event-publisher relay-errand-event-publisher)
+images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-credit-estimation-api relay-errand-notification relay-user-event-publisher relay-errand-event-publisher)
 floci_aws() {
   docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 -e AWS_REGION=us-east-1 \
     -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
@@ -167,6 +167,15 @@ kubectl -n relay create secret generic relay-runtime \
   --from-literal=S3_FORCE_PATH_STYLE=true \
   --dry-run=client -o yaml | kubectl apply -f -
 
+kubectl -n relay create secret generic relay-estimation-config \
+  --from-literal=AI_PROVIDER="${AI_PROVIDER:-}" \
+  --from-literal=AI_API_KEY="${AI_API_KEY:-}" \
+  --from-literal=AI_MODEL="${AI_MODEL:-}" \
+  --from-literal=AI_ENDPOINT="${AI_ENDPOINT:-}" \
+  --from-literal=AI_TEMPERATURE="${AI_TEMPERATURE:-}" \
+  --from-literal=AI_MAX_TOKENS="${AI_MAX_TOKENS:-}" \
+  --from-literal=AI_ESTIMATION_TIMEOUT_MS="${AI_ESTIMATION_TIMEOUT_MS:-}" \
+  --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n relay patch configmap relay-runtime --type merge -p '{"data":{"KAFKA_AUTH_MODE":"none","KAFKA_REPLICATION_FACTOR":"1","KAFKA_MIN_IN_SYNC_REPLICAS":"1"}}'
 access_output="$(docker exec relay-floci-eks cat /app/data/relay-aws-access.env)"
 access_value() { printf '%s\n' "$access_output" | sed -n "s/^$1=//p"; }
@@ -190,6 +199,8 @@ render() {
     -e "s|IMAGE_USER_API|${IMAGE_user_api}|g" \
     -e "s|IMAGE_ERRAND_API|${IMAGE_errand_api}|g" \
     -e "s|IMAGE_CREDIT_API|${IMAGE_credit_api}|g" \
+    -e "s|IMAGE_CREDIT_ESTIMATION_API|${IMAGE_credit_estimation_api}|g" \
+    -e "s|IMAGE_ERRAND_NOTIFICATION|${IMAGE_errand_notification}|g" \
     -e "s|IMAGE_USER_EVENT_PUBLISHER|${IMAGE_user_event_publisher}|g" \
     -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|${IMAGE_errand_event_publisher}|g" "$1" |
     sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
@@ -202,7 +213,8 @@ render k8s/base/migrations.yaml | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
 render k8s/base/workloads.yaml | kubectl apply -f -
 AWS_ACCESS_SERVICE_ACCOUNTS_FILE="$service_accounts" bash floci/eks/inject-aws-access.sh
-kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher
+kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/credit-estimation-api deployment/errand-notification
+kubectl apply -f k8s/base/autoscaling.yaml
 kubectl apply -f k8s/floci/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do kubectl -n relay rollout status "$deployment" --timeout=10m; done
 

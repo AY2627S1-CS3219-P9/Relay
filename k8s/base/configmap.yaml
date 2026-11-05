@@ -22,6 +22,8 @@ data:
   INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
   INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
   CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+  CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
+  CREDIT_ESTIMATION_API_URL: "http://credit-estimation-api:3005"
   SUPPLIER_TIMEZONE: Asia/Singapore
   SUPPLIER_SERVICE_TIMEOUT_MS: "5000"
   ERRAND_SERVICE_TIMEOUT_MS: "5000"

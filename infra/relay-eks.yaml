@@ -388,6 +388,12 @@ Resources:
   CreditApiRepository:
     Type: AWS::ECR::Repository
     Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/credit-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  CreditEstimationRepository:
+    Type: AWS::ECR::Repository
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/credit-estimation-api', ImageScanningConfiguration: { ScanOnPush: true } }
+  ErrandNotificationRepository:
+    Type: AWS::ECR::Repository
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-notification', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
   MskClusterArn: { Value: !Ref MskCluster }
@@ -412,5 +418,7 @@ Outputs:
   UserApiRepositoryUri: { Value: !GetAtt UserApiRepository.RepositoryUri }
   ErrandApiRepositoryUri: { Value: !GetAtt ErrandApiRepository.RepositoryUri }
   CreditApiRepositoryUri: { Value: !GetAtt CreditApiRepository.RepositoryUri }
+  CreditEstimationRepositoryUri: { Value: !GetAtt CreditEstimationRepository.RepositoryUri }
+  ErrandNotificationRepositoryUri: { Value: !GetAtt ErrandNotificationRepository.RepositoryUri }
   UserEventPublisherRepositoryUri: { Value: !GetAtt UserEventPublisherRepository.RepositoryUri }
   ErrandEventPublisherRepositoryUri: { Value: !GetAtt ErrandEventPublisherRepository.RepositoryUri }

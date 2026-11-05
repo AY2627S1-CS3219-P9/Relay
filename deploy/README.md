@@ -5,7 +5,7 @@ repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, their credentials, and the Metrics Server
+  four private PostgreSQL databases, their credentials, fourteen ECR repositories, and the Metrics Server
   add-on required by CPU autoscalers. A separate CloudFront stack supplies a
   trusted HTTPS hostname without a custom domain. MSK Provisioned provides
   the private event broker.
@@ -215,16 +215,16 @@ kubectl -n relay logs deployment/supplier-api --tail=100
 kubectl -n relay describe pods -l app=supplier-api
 ```
 
-Errand stays live at `/health` while `/healthz` returns 503 until its initial Kafka
-publisher connection succeeds. Startup failures retry every five seconds. This
-readiness flag tracks initial connection, not continuous Kafka availability.
+Errand API no longer owns a Kafka producer or notification subscribers. Its
+Kafka outbox publisher and notification consumer run in separate workloads.
 
 ## What scales
 
 | Workload | Replica configuration |
 | --- | --- |
 | `supplier-api`, `user-api`, `errand-api` | Independent CPU HPA, 1â€“4 replicas |
-| `credit-api` | Independent CPU HPA, 1â€“3 replicas |
+| `credit-api`, `credit-estimation-api` | Independent CPU HPA, 1-3 replicas |
+| `errand-notification` | Independent CPU HPA, 2-4 replicas |
 | Host and four microfrontends | One replica each, no HPA |
 | MSK Provisioned | Managed outside Kubernetes |
 
@@ -398,7 +398,7 @@ If CloudFormation reports `DELETE_FAILED` for an ECR repository, rerun the
 same pause or teardown command. The recovery path uses the pending pause
 manifest to identify the databases and force deletes only ECR repositories
 marked `DELETE_FAILED` in the Relay stack before retrying stack deletion.
-The template now sets `EmptyOnDelete: true` on all 12 ECR repositories for
+The template now sets `EmptyOnDelete: true` on all 14 ECR repositories for
 future deployments.
 
 
@@ -520,3 +520,30 @@ changing EKS, RDS, or MSK. The Nginx `Cache-Control: immutable` headers added
 to the frontend images take effect only when those images are rebuilt and
 redeployed with `deploy/deploy.sh`; the CloudFront cache behaviors work
 after the edge update alone. `PriceClass_200` may increase CloudFront charges.
+
+## New internal services and notification checks
+
+AWS and Floci EKS include credit-estimation-api (ClusterIP port 3005) and
+errand-notification (ClusterIP port 3010). Errand API calls estimation through
+the cluster service name, and Host Nginx proxies /api/notifications/stream to
+notification. Neither service needs a separate public ingress path.
+
+Credit estimation uses keyword analysis unless an AI provider is configured.
+To enable its optional AI provider on AWS, set AI_PROVIDER, AI_API_KEY, AI_MODEL,
+and optional AI_ENDPOINT in the ignored deploy/relay.aws.env file. The deployer
+writes these to a dedicated relay-estimation-config Secret mounted only by the
+estimation workload. The internal service token still follows the other demo
+tokens in the runtime ConfigMap.
+
+Two notification pods start by default and can scale to four. Each pod uses
+its own Kafka consumer group so each sees every errand event and can deliver
+it to its own SSE subscribers. A browser EventSource reconnects after pod
+replacement. The stream is best effort: events emitted while disconnected
+are not replayed to that browser.
+
+For manual checks, verify both new Deployments are ready. Create and update
+an errand while two browser sessions hold SSE connections. Confirm both
+receive the relevant event. Replace a notification pod, confirm reconnection,
+then send another update. Create an errand with credit estimation and inspect
+the Errand API and estimation logs. On AWS, confirm notification pods connect
+to private MSK over SCRAM/TLS; local Floci cannot validate those properties.

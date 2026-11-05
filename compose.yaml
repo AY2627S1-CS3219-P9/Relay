@@ -250,15 +250,13 @@ services:
       SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
       INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
-      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
-      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       CREDIT_API_URL: http://credit-api:3000
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+      CREDIT_ESTIMATION_API_URL: http://credit-estimation-api:3005
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
     depends_on:
       credit-api:
         condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
       user-api:
         condition: service_healthy
     healthcheck:
@@ -338,7 +336,8 @@ services:
       - '3010'
     environment:
       PORT: '3010'
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_AUTH_MODE: none
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}

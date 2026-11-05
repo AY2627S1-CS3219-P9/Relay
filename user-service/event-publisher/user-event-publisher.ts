@@ -13,12 +13,14 @@ export class UserEventPublisher {
     if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
       throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for SCRAM')
     }
+    const brokers = process.env.KAFKA_BROKERS
+    if (!brokers) throw new Error('KAFKA_BROKERS is required')
     const kafkaAuth = mode === 'scram'
       ? { ssl: true, sasl: { mechanism: 'scram-sha-512' as const, username: process.env.KAFKA_USERNAME!, password: process.env.KAFKA_PASSWORD! } }
       : {}
     this.producer = new Kafka({
       clientId: 'user-service',
-      brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','),
+      brokers: brokers.split(','),
       logLevel: logLevel.ERROR,
       ...kafkaAuth,
     }).producer()

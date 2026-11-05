@@ -8,7 +8,9 @@ if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSW
 const auth = mode === 'scram'
   ? { ssl: true, sasl: { mechanism: 'scram-sha-512' as const, username: process.env.KAFKA_USERNAME!, password: process.env.KAFKA_PASSWORD! } }
   : {}
-const kafka = new Kafka({ clientId: 'errand-event-publisher', brokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(','), retry: { retries: 3 }, ...auth })
+const brokers = process.env.KAFKA_BROKERS
+if (!brokers) throw new Error('KAFKA_BROKERS is required')
+const kafka = new Kafka({ clientId: 'errand-event-publisher', brokers: brokers.split(','), retry: { retries: 3 }, ...auth })
 const publisher = new ErrandEventPublisher(kafka, new ErrandRepository(), process.env.KAFKA_TOPIC_ERRAND_EVENTS ?? 'errand-events')
 async function start() { while (true) { try { await publisher.start(); return } catch (error) { console.error(error); await new Promise(resolve => setTimeout(resolve, 5000)) } } }
 void start()
