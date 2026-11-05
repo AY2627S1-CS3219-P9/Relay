@@ -98,7 +98,8 @@ private key local. To intentionally rotate the CA, run
 ### Optional local views
 
 Start a view only after its target environment is running. Replace `user` with
-`kafka`, `errand`, or `credit`; use `all` to start every view.
+`kafka`, `errand`, or `credit`; local EKS also supports `headlamp`. Use `all`
+to start every view available for that environment.
 
 | View | Compose URL | Local EKS URL |
 | --- | --- | --- |
@@ -106,6 +107,7 @@ Start a view only after its target environment is running. Replace `user` with
 | User Prisma Studio | http://localhost:5555 | http://localhost:6555 |
 | Errand Prisma Studio | http://localhost:5556 | http://localhost:6556 |
 | Credit Prisma Studio | http://localhost:5557 | http://localhost:6557 |
+| Headlamp Kubernetes UI | N/A | http://localhost:9082 |
 
 ```bash
 npm run views:compose -- user
@@ -113,6 +115,27 @@ npm run views:compose:stop -- user
 npm run views:eks -- user
 npm run views:eks:stop -- user
 ```
+
+To inspect and manage local EKS pods in [Headlamp](https://headlamp.dev/docs/latest/),
+start its in-cluster view and open http://localhost:9082:
+
+```bash
+npm run views:eks -- headlamp
+```
+
+The command prints an eight-hour login token. Paste it into Headlamp's login
+screen and select the `relay` namespace to inspect workloads, logs, and pod
+status or delete a pod to test replacement. To get a new token after it
+expires, run:
+
+```bash
+kubectl --kubeconfig floci/eks/.kubeconfig -n relay create token relay-headlamp-admin --duration=8h
+```
+
+The token grants cluster-admin access to this local cluster. Headlamp is
+forwarded only to localhost and is not exposed through the application ingress.
+`npm run views:eks -- all` includes it; stop it with
+`npm run views:eks:stop -- headlamp`.
 
 Both teardown commands stop their optional views and remove Floci-managed RDS
 containers and database volumes. EKS teardown also removes the local k3s node
@@ -137,6 +160,6 @@ Start credit Prisma Studio with `npm run views:compose -- credit` and open
 http://localhost:5557 to inspect the new balance.
 
 
-AWS uses two-broker MSK Provisioned with TLS and SCRAM for user and errand events. The local Compose and
+AWS uses three-broker MSK Provisioned with TLS and SCRAM for user and errand events. The local Compose and
 Floci EKS environments use Floci's MSK emulation (a Redpanda sidecar).
 See [deployment event broker differences](deploy/README.md#event-broker-targets).
