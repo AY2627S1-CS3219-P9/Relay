@@ -265,9 +265,9 @@ fi
 runtime_existed=0
 kubectl -n relay get secret relay-runtime >/dev/null 2>&1 && runtime_existed=1
 runtime_result="$(kubectl -n relay create secret generic relay-runtime \
-  --from-literal=USER_DATABASE_URL="postgresql://relay:${user_password}@$(output UserDatabaseEndpoint):5432/relay?schema=public" \
-  --from-literal=ERRAND_DATABASE_URL="postgresql://relay:${errand_password}@$(output ErrandDatabaseEndpoint):5432/relayerrand?schema=public" \
-  --from-literal=CREDIT_DATABASE_URL="postgresql://relay:${credit_password}@$(output CreditDatabaseEndpoint):5432/relay?schema=public" \
+  --from-literal=USER_DATABASE_URL="postgresql://relay:${user_password}@$(output UserDatabaseEndpoint):5432/relay?schema=public&sslmode=require&sslrootcert=/etc/ssl/certs/rds-global-bundle.pem&sslaccept=strict" \
+  --from-literal=ERRAND_DATABASE_URL="postgresql://relay:${errand_password}@$(output ErrandDatabaseEndpoint):5432/relayerrand?schema=public&sslmode=require&sslrootcert=/etc/ssl/certs/rds-global-bundle.pem&sslaccept=strict" \
+  --from-literal=CREDIT_DATABASE_URL="postgresql://relay:${credit_password}@$(output CreditDatabaseEndpoint):5432/relay?schema=public&sslmode=require&sslrootcert=/etc/ssl/certs/rds-global-bundle.pem&sslaccept=strict" \
   --from-literal=SUPPLIER_DATABASE_URL="postgresql://relay:${supplier_password}@$(output SupplierDatabaseEndpoint):5432/relay" \
   --from-literal=SUPPLIER_DB_HOST="$(output SupplierDatabaseEndpoint)" \
   --from-literal=SUPPLIER_DB_PORT=5432 \

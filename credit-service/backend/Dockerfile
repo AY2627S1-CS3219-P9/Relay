@@ -15,6 +15,8 @@ RUN npm run build --workspace @relay/user-auth-backend-middleware
 RUN npm run build --workspace @relay/credit-backend
 
 FROM node:22-alpine AS runtime
+RUN apk add --no-cache wget \
+    && wget -qO /etc/ssl/certs/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./

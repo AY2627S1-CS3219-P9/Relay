@@ -189,7 +189,7 @@ increasing the JSON body limit does not fix oversized headers. See the
 and [response-header buffer](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffer_size)
 documentation.
 
-### Backend readiness and Supplier database TLS
+### Backend readiness and database TLS
 
 Supplier verifies the `relay_access` and `relay_id` Cognito cookies directly.
 Its Deployment explicitly reads `COGNITO_ISSUER`, `COGNITO_JWKS_URI`,
@@ -205,6 +205,16 @@ Supplier `/healthz` runs `SELECT 1` and returns 503 if its database is unavailab
 global CA bundle, and its Deployment sets
 `DB_SSL_CA_PATH=/etc/ssl/certs/rds-global-bundle.pem` to enable PostgreSQL TLS with
 certificate verification. Local Compose leaves this setting unset.
+
+The AWS User, Errand, and Credit Prisma URLs require PostgreSQL TLS and verify
+the server certificate against the same RDS CA bundle (`sslmode=require`,
+`sslrootcert`, and `sslaccept=strict`). Their API, event publisher, and migration
+images include the bundle. The deployment script creates these URLs in the
+`relay-runtime` Secret; changing the Secret rolls out affected workloads and
+recreates changed migration Jobs. Local Compose and Floci EKS use Floci's RDS
+emulator, which does not provide an RDS certificate, so their generated URLs
+do not enable TLS. This local difference must not be copied into the AWS
+runtime Secret.
 
 For Supplier HTTP 500 errors or failed readiness, inspect logs, RDS status,
 database security-group access, runtime credentials, and whether the running
