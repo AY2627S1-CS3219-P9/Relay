@@ -10,7 +10,8 @@ import { timingSafeEqual } from 'node:crypto'
 export function createApp(repository = new CreditRepository()) {
   const app = express()
   app.use(express.json())
-  app.get(['/health', '/healthz'], async (_req, res) => {
+  app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }))
+  app.get('/healthz', async (_req, res) => {
     try {
       await repository.checkTables()
       res.status(200).json({ status: 'ok', database: 'ok' })

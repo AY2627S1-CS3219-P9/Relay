@@ -211,7 +211,10 @@ certificate verification. Local Compose leaves this setting unset.
 The AWS User, Errand, and Credit Prisma URLs require PostgreSQL TLS and verify
 the server certificate against the same RDS CA bundle (`sslmode=require`,
 `sslrootcert`, and `sslaccept=strict`). Their API, event publisher, and migration
-images include the bundle. The deployment script creates these URLs in the
+images include the bundle. Prisma's native TLS connector loads only one certificate
+from the URL's CA file, so these images also add all RDS roots to a combined
+OpenSSL trust store via `SSL_CERT_FILE`, retaining the system's public CAs.
+The deployment script creates these URLs in the
 `relay-runtime` Secret; changing the Secret rolls out affected workloads and
 recreates changed migration Jobs. Local Compose and Floci EKS use Floci's RDS
 emulator, which does not provide an RDS certificate, so their generated URLs
