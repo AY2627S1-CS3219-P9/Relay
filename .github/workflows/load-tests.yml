@@ -49,7 +49,10 @@ concurrency:
 jobs:
   k6:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
+    env:
+      COMPOSE_PARALLEL_LIMIT: '2'
+      COMPOSE_PROJECT_NAME: relay
 
     steps:
       - name: Check out repository
@@ -64,13 +67,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate Docker Compose configuration
+      - name: Start Compose with Floci
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.target != 'aws' }}
-        run: docker compose config --quiet
+        run: npm run up:compose
 
-      - name: Build and start the Compose environment
+      - name: Wait for Compose services
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.target != 'aws' }}
-        run: docker compose up --build --detach --wait
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://localhost:8080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Compose application did not become healthy" >&2
+          exit 1
 
       - name: Provision disposable load-test data
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.target != 'aws' }}
@@ -297,8 +308,11 @@ jobs:
       - name: Collect Compose diagnostics
         if: ${{ failure() && (github.event_name != 'workflow_dispatch' || inputs.target != 'aws') }}
         run: |
-          docker compose ps -a > compose-ps.txt
-          docker compose logs --no-color > compose-logs.txt
+          docker ps -a > compose-ps.txt
+          for id in $(docker ps -aq --filter label=com.docker.compose.project=relay); do
+            docker logs "$id" >> compose-logs.txt 2>&1 || true
+          done
+          docker logs relay-floci-1 >> compose-logs.txt 2>&1 || true
 
       - name: Upload Compose diagnostics
         if: ${{ failure() && (github.event_name != 'workflow_dispatch' || inputs.target != 'aws') }}
@@ -311,4 +325,4 @@ jobs:
 
       - name: Stop the Compose environment
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.target != 'aws') }}
-        run: docker compose down --volumes --remove-orphans
+        run: npm run down:compose
