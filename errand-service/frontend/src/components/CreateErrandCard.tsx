@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { ErrandApi, ServiceType, Supplier, SupplierApi } from '@relay/contracts'
+import type {
+  ErrandApi,
+  EstimateCreditRequest,
+  EstimateCreditResponse,
+  ServiceType,
+  Supplier,
+  SupplierApi,
+} from '@relay/contracts'
 import {
   ClockIcon,
   ErrorMessage,
@@ -59,7 +66,8 @@ export function CreateErrandCard({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [isEstimating, setIsEstimating] = useState(false)
-  const [estimatedCredits, setEstimatedCredits] = useState<number | null>(null)
+  const [estimate, setEstimate] = useState<EstimateCreditResponse | null>(null)
+  const [estimateStatus, setEstimateStatus] = useState<'success' | 'rate-limited' | 'invalid' | null>(null)
   const [form, setForm] = useState<CreateForm>({
     name: '',
     supplierId: initialSupplierId ?? '',
@@ -94,42 +102,52 @@ export function CreateErrandCard({
     setErrorMessage('')
 
     try {
-      const response = await fetch('/internal/errands/estimate-credit', {
+      const response = await fetch('/api/errands/estimate-credit', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-errand-service-token': 'local-internal-errand-service-token',
         },
         credentials: 'include',
         body: JSON.stringify({
           name: form.name.trim(),
           description: form.description.trim(),
           serviceType: form.serviceType as ServiceType,
-        }),
+          instructions: form.instructions.trim(),
+          startAt: form.startAt,
+          expiresAt: form.expiresAt,
+        } satisfies EstimateCreditRequest),
       })
 
       if (!response.ok) {
-        const errorData = await response.text()
-        setErrorMessage(`Estimation failed: ${response.status} ${errorData}`)
+        const errorData = (await response.json().catch(() => null)) as { code?: string } | null
+        if (errorData?.code === 'CREDIT_ESTIMATION_RATE_LIMITED' || response.status === 429) {
+          setEstimate(null)
+          setEstimateStatus('rate-limited')
+          setErrorMessage('')
+        } else {
+          setErrorMessage(`Estimation failed: ${response.status}`)
+        }
         return
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as EstimateCreditResponse
 
-      // data.explanation is not displayed to the user, but it is logged for debugging purposes.
-      if (data.estimatedCredits === -1) {
-        setErrorMessage('Unable to estimate credits for the provided errand details.')
-        setEstimatedCredits(null)
+      if (data.minCredits === -1 || data.maxCredits === -1) {
+        setEstimate(null)
+        setEstimateStatus('invalid')
         return
       }
 
-      setEstimatedCredits(data.estimatedCredits)
+      setEstimate(data)
+      setEstimateStatus('success')
       setForm((current) => ({
         ...current,
-        creditAmount: String(data.estimatedCredits),
+        creditAmount: String(Math.round((data.minCredits + data.maxCredits) / 2)),
       }))
     } catch (error) {
       setErrorMessage('Error encountered while estimating credits.')
+      setEstimate(null)
+      setEstimateStatus(null)
     } finally {
       setIsEstimating(false)
     }
@@ -388,9 +406,36 @@ export function CreateErrandCard({
             rows={2}
           />
         </label>
-        <div className="errand-form-grid errand-reward-grid">
+        <div className="errand-reward-grid">
           <div className="errand-field has-input-button">
             <span>Reward credits</span>
+            {estimateStatus === 'success' && estimate && (
+              <div className="errand-estimate-pill" role="status">
+                <span>
+                  Suggested range: {estimate.minCredits}–{estimate.maxCredits} credits
+                </span>
+                <button
+                  type="button"
+                  className="relay-icon-button errand-estimate-help"
+                  aria-label="Why this credit range was suggested"
+                >
+                  ?
+                </button>
+                <div className="errand-estimate-reason" role="tooltip">
+                    {estimate.reason}
+                </div>
+              </div>
+            )}
+            {estimateStatus === 'rate-limited' && (
+              <div className="errand-estimate-pill errand-estimate-pill-rate-limited" role="status">
+                Estimation is busy. Try again shortly.
+              </div>
+            )}
+            {estimateStatus === 'invalid' && (
+              <div className="errand-estimate-pill errand-estimate-pill-invalid" role="status">
+                Unable to estimate credits.
+              </div>
+            )}
             <div className="errand-credit-input-wrapper">
               <input
                 type="number"
@@ -411,12 +456,14 @@ export function CreateErrandCard({
                   form.serviceType === ''
                 }
                 title="Estimate credits based on errand details"
-                className="errand-estimate-button"
+                className="relay-icon-button errand-estimate-button"
               >
                 <ClockIcon className="errand-estimate-icon" />
               </button>
             </div>
           </div>
+        </div>
+        <div className="errand-form-grid">
           <RelayFormField label="Start time" required error={errorFor('startAt')}>
             <input
               type="datetime-local"
