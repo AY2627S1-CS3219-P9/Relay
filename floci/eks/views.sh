@@ -27,7 +27,18 @@ for item in "${views[@]}"; do
     kubectl delete -f "k8s/floci/views/$item.yaml" --ignore-not-found
     continue
   fi
-  kubectl apply -f "k8s/floci/views/$item.yaml"
+  if [[ "$item" =~ ^(user|errand|credit)$ ]]; then
+    # Reuse the image already deployed in this cluster; host Docker image names
+    # are not visible to k3s and may not exist in a remote registry.
+    api_image="$(kubectl -n relay get deployment "$item-api" -o jsonpath='{.spec.template.spec.containers[?(@.name=="api")].image}')"
+    [[ "$api_image" =~ ^[a-zA-Z0-9._:/@-]+$ ]] || {
+      echo "Could not determine the $item API image. Run npm run up:eks first." >&2
+      exit 1
+    }
+    sed "s|STUDIO_API_IMAGE|$api_image|g" "k8s/floci/views/$item.yaml" | kubectl apply -f -
+  else
+    kubectl apply -f "k8s/floci/views/$item.yaml"
+  fi
   kubectl -n relay rollout status "deployment/$service" --timeout=5m
   nohup kubectl -n relay port-forward --address 127.0.0.1 "service/$service" "$local_port:$service_port" >"floci/eks/.view-$item.log" 2>&1 &
   echo $! > "$pid_file"

@@ -412,18 +412,40 @@ if [[ "$estimation_changed" == 1 && "$config_changed" == 0 && "$runtime_changed"
   kubectl -n relay rollout restart deployment/credit-estimation-api
 fi
 kubectl apply -f k8s/base/autoscaling.yaml
-kubectl apply -f k8s/base/ingress.yaml
+sed "s/PRIVATE_ALB_SECURITY_GROUP_ID/$(output PrivateAlbSecurityGroupId)/g" k8s/base/ingress.yaml > "$rendered"
+kubectl apply -f "$rendered"
 kubectl -n relay get deployment -o name | while read -r deployment; do
   kubectl -n relay rollout status "$deployment" --timeout=10m
 done
-# Wait for the ALB hostname, then create the CloudFront entry point.
+# During migration the ingress can temporarily report the old public ALB.
+# Wait for the controller to report an active internal replacement.
 alb_dns=""
+alb_arn=""
 for attempt in $(seq 1 60); do
   alb_dns="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-  [[ -n "$alb_dns" ]] && break
+  if [[ -n "$alb_dns" ]]; then
+    alb_arn="$(aws elbv2 describe-load-balancers --region "$aws_region" \
+      --query "LoadBalancers[?DNSName=='$alb_dns' && Scheme=='internal' && State.Code=='active'].LoadBalancerArn | [0]" --output text)"
+    [[ "$alb_arn" == arn:* ]] && break
+  fi
   sleep 10
 done
-[[ -n "$alb_dns" ]] || { echo "ALB ingress has no hostname after ten minutes" >&2; exit 1; }
+[[ "$alb_arn" == arn:* ]] || { echo 'Active internal ALB did not appear after ten minutes' >&2; exit 1; }
+gateway_stack="${stack_name}-gateway"
+step "Create or update the streaming API Gateway proxy and VPC link"
+aws cloudformation deploy --region "$aws_region" --stack-name "$gateway_stack" \
+  --template-file infra/relay-gateway.yaml --parameter-overrides \
+  "VpcLinkSubnetA=$(output PrivateSubnetAId)" "VpcLinkSubnetB=$(output PrivateSubnetBId)" \
+  "VpcLinkSecurityGroupId=$(output VpcLinkSecurityGroupId)" "LoadBalancerArn=$alb_arn"
+gateway_output() {
+  aws cloudformation describe-stacks --region "$aws_region" --stack-name "$gateway_stack" \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+}
+gateway_api_id="$(gateway_output ApiId)"
+gateway_domain="$(gateway_output ApiDomainName)"
+# REST API stages are snapshots; refresh after changes to methods or integrations.
+aws apigateway create-deployment --region "$aws_region" --rest-api-id "$gateway_api_id" \
+  --stage-name relay >/dev/null
 # CloudFront provides the trusted HTTPS hostname without Route 53 or ACM.
 edge_stack="${stack_name}-edge"
 step "Create or update CloudFront edge distribution"
@@ -431,7 +453,7 @@ aws cloudformation deploy \
   --region "$aws_region" \
   --stack-name "$edge_stack" \
   --template-file infra/relay-cloudfront.yaml \
-  --parameter-overrides "LoadBalancerDnsName=$alb_dns"
+  --parameter-overrides "LoadBalancerDnsName=$gateway_domain"
 edge_output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$edge_stack" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text

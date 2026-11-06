@@ -161,6 +161,7 @@ read_pause_state() {
 # Removes all active resources in the EKS stack; Snapshot policies preserve DB data.
 pause_compute() {
   delete_stack "$edge_stack"
+  delete_stack "${stack_name}-gateway"
   if stack_exists "$stack_name" && [[ "$(stack_status "$stack_name")" == DELETE_FAILED ]]; then
     read_pending_state
     delete_stack "$access_stack"

@@ -140,11 +140,41 @@ http_listener="$(floci_aws elbv2 describe-listeners --load-balancer-arn "$load_b
 if [[ -z "$http_listener" || "$http_listener" == None ]]; then
   floci_aws elbv2 create-listener --load-balancer-arn "$load_balancer_arn" --protocol HTTP --port 18080 --default-actions "Type=forward,TargetGroupArn=$target_group_arn" >/dev/null
 fi
+# Floci REST API emulates the proxy data path. Its VPC-link implementation
+# differs from AWS VPC Link V2; use its REST VPC Link metadata locally.
+local_api_id="$(floci_aws apigateway get-rest-apis --query "items[?name=='relay-local-proxy'].id | [0]" --output text)"
+if [[ -z "$local_api_id" || "$local_api_id" == None ]]; then
+  local_api_id="$(floci_aws apigateway create-rest-api --name relay-local-proxy --query id --output text)"
+fi
+root_id="$(floci_aws apigateway get-resources --rest-api-id "$local_api_id" --query "items[?path=='/'].id | [0]" --output text)"
+proxy_id="$(floci_aws apigateway get-resources --rest-api-id "$local_api_id" --query "items[?path=='/{proxy+}'].id | [0]" --output text)"
+if [[ -z "$proxy_id" || "$proxy_id" == None ]]; then
+  proxy_id="$(floci_aws apigateway create-resource --rest-api-id "$local_api_id" --parent-id "$root_id" --path-part '{proxy+}' --query id --output text)"
+fi
+local_link="$(floci_aws apigateway get-vpc-links --query "items[?name=='relay-local-proxy-link'].id | [0]" --output text)"
+if [[ -z "$local_link" || "$local_link" == None ]]; then
+  local_link="$(floci_aws apigateway create-vpc-link --name relay-local-proxy-link --target-arns "$load_balancer_arn" --query id --output text)"
+fi
+if ! floci_aws apigateway get-method --rest-api-id "$local_api_id" --resource-id "$root_id" --http-method ANY >/dev/null 2>&1; then
+  floci_aws apigateway put-method --rest-api-id "$local_api_id" --resource-id "$root_id" --http-method ANY --authorization-type NONE >/dev/null
+fi
+floci_aws apigateway put-integration --rest-api-id "$local_api_id" --resource-id "$root_id" --http-method ANY \
+  --type HTTP_PROXY --integration-http-method ANY --connection-type VPC_LINK --connection-id "$local_link" --uri 'http://localhost:18080/' >/dev/null
+if ! floci_aws apigateway get-method --rest-api-id "$local_api_id" --resource-id "$proxy_id" --http-method ANY >/dev/null 2>&1; then
+  floci_aws apigateway put-method --rest-api-id "$local_api_id" --resource-id "$proxy_id" --http-method ANY --authorization-type NONE \
+    --request-parameters 'method.request.path.proxy=true' >/dev/null
+fi
+floci_aws apigateway put-integration --rest-api-id "$local_api_id" --resource-id "$proxy_id" --http-method ANY \
+  --type HTTP_PROXY --integration-http-method ANY --connection-type VPC_LINK --connection-id "$local_link" --uri 'http://localhost:18080/{proxy}' \
+  --request-parameters 'integration.request.path.proxy=method.request.path.proxy' >/dev/null
+floci_aws apigateway create-deployment --rest-api-id "$local_api_id" --stage-name relay >/dev/null
 floci_aws cloudformation deploy --stack-name relay-local-edge \
   --template-file /opt/relay/infra/relay-cloudfront.yaml \
-  --parameter-overrides LoadBalancerDnsName=localhost OriginHttpPort=18080
+  --parameter-overrides LoadBalancerDnsName=localhost OriginHttpPort=4566 OriginProtocolPolicy=http-only \
+    UseAwsApiGatewayPolicy=false "OriginPath=/restapis/$local_api_id/relay/_user_request_"
 cloudfront_domain="$(floci_aws cloudformation describe-stacks --stack-name relay-local-edge --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' --output text)"
-# Floci CloudFormation currently drops cache behavior methods and policy IDs.
+# Floci buffers API Gateway responses, so the local SSE path bypasses the gateway.
+# Floci CloudFormation also drops cache behavior methods and policy IDs.
 # Reconcile the generated distribution through the supported CloudFront API.
 distribution_id="$(floci_aws cloudformation describe-stacks --stack-name relay-local-edge --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' --output text)"
 origin_policy_id="$(floci_aws cloudformation describe-stack-resource --stack-name relay-local-edge --logical-resource-id RelayOriginRequestPolicy --query StackResourceDetail.PhysicalResourceId --output text)"
@@ -153,7 +183,7 @@ etag="$(floci_aws cloudfront get-distribution-config --id "$distribution_id" --q
 floci_aws cloudfront get-distribution-config --id "$distribution_id" --query DistributionConfig --output json > "$config_file"
 docker cp "$config_file" relay-floci-eks:/tmp/relay-cloudfront-config.json
 docker exec relay-floci-eks jq --arg policy "$origin_policy_id" \
-  '.DefaultCacheBehavior.AllowedMethods = {Quantity: 7, Items: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"], CachedMethods: {Quantity: 2, Items: ["GET", "HEAD"]}} | .DefaultCacheBehavior.CachePolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" | .DefaultCacheBehavior.OriginRequestPolicyId = $policy | del(.DefaultCacheBehavior.ForwardedValues)' \
+  '(.Origins.Items[0] | .Id = "local-sse-direct" | .OriginPath = "" | .CustomOriginConfig.HTTPPort = 18080) as $sseOrigin | .Origins.Items = ((.Origins.Items | map(select(.Id != "local-sse-direct"))) + [$sseOrigin]) | .Origins.Quantity = (.Origins.Items | length) | (.DefaultCacheBehavior | .TargetOriginId = "local-sse-direct" | .PathPattern = "api/notifications/stream*" | .OriginRequestPolicyId = $policy | .CachePolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" | del(.ForwardedValues)) as $sseBehavior | .CacheBehaviors.Items = ([$sseBehavior] + ((.CacheBehaviors.Items // []) | map(select(.PathPattern != "api/notifications/stream*")))) | .CacheBehaviors.Quantity = (.CacheBehaviors.Items | length) | .DefaultCacheBehavior.AllowedMethods = {Quantity: 7, Items: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"], CachedMethods: {Quantity: 2, Items: ["GET", "HEAD"]}} | .DefaultCacheBehavior.CachePolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" | .DefaultCacheBehavior.OriginRequestPolicyId = $policy | del(.DefaultCacheBehavior.ForwardedValues)' \
   /tmp/relay-cloudfront-config.json > "$config_file"
 docker cp "$config_file" relay-floci-eks:/tmp/relay-cloudfront-config.json
 floci_aws cloudfront update-distribution --id "$distribution_id" --if-match "$etag" \

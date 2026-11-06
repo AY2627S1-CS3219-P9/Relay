@@ -30,6 +30,7 @@ spec:
       serviceAccountName: relay-headlamp
       containers:
         - name: headlamp
+          securityContext: { allowPrivilegeEscalation: false }
           image: ghcr.io/headlamp-k8s/headlamp:v0.46.0
           imagePullPolicy: IfNotPresent
           args: ["-in-cluster"]

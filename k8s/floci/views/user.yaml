@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
         - name: studio
-          image: relay-user-api:latest
+          securityContext: { allowPrivilegeEscalation: false }
+          image: STUDIO_API_IMAGE
           imagePullPolicy: IfNotPresent
           command: [npx, prisma, studio, --schema=user-service/backend/prisma/schema.prisma, --hostname=0.0.0.0, --port=5555]
           ports: [{ name: web, containerPort: 5555 }]

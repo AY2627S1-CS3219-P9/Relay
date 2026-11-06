@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
         - name: ui
+          securityContext: { allowPrivilegeEscalation: false }
           image: ghcr.io/kafbat/kafka-ui:latest
           imagePullPolicy: IfNotPresent
           ports: [{ name: web, containerPort: 8080 }]

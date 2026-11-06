@@ -47,6 +47,7 @@ spec:
       serviceAccountName: relay-traefik
       containers:
         - name: traefik
+          securityContext: { allowPrivilegeEscalation: false }
           image: traefik:v3.4
           args: [--providers.kubernetesingress=true, --providers.kubernetesingress.ingressclass=traefik, --entrypoints.web.address=:8000]
           ports: [{ name: web, containerPort: 8000 }]

@@ -10,6 +10,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: schema
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_SUPPLIER_API
           command: [node, migrate.cjs]
           env:
@@ -26,6 +27,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_USER_API
           command: [sh, -c, 'npx prisma migrate deploy --schema=user-service/backend/prisma/schema.prisma']
           env:
@@ -41,6 +43,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_API
           command: [sh, -c, 'npx prisma migrate deploy --schema=errand-service/backend/prisma/schema.prisma']
           env:
@@ -56,6 +59,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: migrate
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_CREDIT_API
           command: [sh, -c, 'npx prisma migrate deploy --schema=credit-service/backend/prisma/schema.prisma']
           env:

@@ -113,3 +113,22 @@ service uses a separate Kafka consumer group per pod so
 SSE subscribers on either pod receive events. For manual validation, open two
 browser sessions, create an errand status change, and replace a notification
 pod to check reconnection. Local Floci still does not validate MSK SCRAM/TLS.
+
+### Local API Gateway differences
+
+The EKS startup script creates a Floci REST API, REST VPC Link metadata and a
+proxy integration between local CloudFront and the emulated ALB. Floci does not
+create real VPC Link network interfaces or enforce AWS security groups. Its
+CloudFront-to-gateway connection is local HTTP; the browser-to-CloudFront
+connection still uses the Floci CA. API Gateway REST response streaming is
+currently buffered in Floci. To preserve local notifications, the startup
+script adds a local-only CloudFront behavior that sends the notification stream
+directly to the emulated ALB. AWS sends that path through the streaming REST API.
+
+Run `npm run up:eks`, trust the local CA as described above, and use the URL
+printed by the script. Check the four remote frontends, login and refresh
+cookies, supplier and errand operations, credits and profile images. Open two
+browser sessions to check errand notifications, then replace the notification
+pod and check that the stream reconnects. Run `npm run views:eks -- all` to
+inspect pods in Headlamp. Floci EKS cannot validate the AWS VPC Link network,
+API Gateway streaming limits, public TLS, IAM, security groups or ALB rewrites.

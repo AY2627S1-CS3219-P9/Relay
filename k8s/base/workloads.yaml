@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
         - name: host
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_HOST
           ports: [{ name: http, containerPort: 80 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 3 }
@@ -36,6 +37,7 @@ spec:
     spec:
       containers:
         - name: frontend
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_SUPPLIER_FRONTEND
           ports: [{ name: http, containerPort: 80 }]
           readinessProbe: { httpGet: { path: /healthz, port: http } }
@@ -58,6 +60,7 @@ spec:
     spec:
       containers:
         - name: frontend
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_USER_FRONTEND
           ports: [{ name: http, containerPort: 80 }]
           readinessProbe: { httpGet: { path: /healthz, port: http } }
@@ -80,6 +83,7 @@ spec:
     spec:
       containers:
         - name: frontend
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_FRONTEND
           ports: [{ name: http, containerPort: 80 }]
           readinessProbe: { httpGet: { path: /healthz, port: http } }
@@ -102,6 +106,7 @@ spec:
     spec:
       containers:
         - name: frontend
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_CREDIT_FRONTEND
           ports: [{ name: http, containerPort: 80 }]
           readinessProbe: { httpGet: { path: /healthz, port: http } }
@@ -128,6 +133,7 @@ spec:
     spec:
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_SUPPLIER_API
           command: [node, dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
@@ -167,6 +173,7 @@ spec:
       serviceAccountName: user-api
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_USER_API
           command: [node, --import, tsx, user-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
@@ -191,6 +198,7 @@ spec:
       terminationGracePeriodSeconds: 45
       containers:
         - name: publisher
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_USER_EVENT_PUBLISHER
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
@@ -210,6 +218,7 @@ spec:
       terminationGracePeriodSeconds: 45
       containers:
         - name: publisher
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_EVENT_PUBLISHER
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
@@ -233,6 +242,7 @@ spec:
       serviceAccountName: errand-api
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_API
           command: [node, --import, tsx, errand-service/backend/dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
@@ -263,6 +273,7 @@ spec:
     spec:
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_CREDIT_API
           command: [node, --import, tsx, credit-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
@@ -291,6 +302,7 @@ spec:
       serviceAccountName: user-auth-api
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_USER_AUTH_API
           ports: [{ name: http, containerPort: 3000 }]
           env:
@@ -316,6 +328,7 @@ spec:
     spec:
       containers:
         - name: api
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_CREDIT_ESTIMATION_API
           ports: [{ name: http, containerPort: 3005 }]
           env:
@@ -343,6 +356,7 @@ spec:
       terminationGracePeriodSeconds: 45
       containers:
         - name: notification
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_NOTIFICATION
           ports: [{ name: http, containerPort: 3010 }]
           env:

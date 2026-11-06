@@ -8,6 +8,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: init
+          securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_CREDIT_API
           command: [node, scripts/kafka-topics.mjs]
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]

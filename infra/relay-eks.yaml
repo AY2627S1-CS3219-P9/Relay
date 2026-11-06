@@ -47,6 +47,19 @@ Conditions:
   RestoreSupplierDatabase: !Not [!Equals [!Ref SupplierDatabaseSnapshotId, '']]
 
 Resources:
+  VpcLinkSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: API Gateway VPC link network interfaces
+      VpcId: !Ref Vpc
+  PrivateAlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow the API Gateway VPC link to reach the private ALB
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourceSecurityGroupId: !Ref VpcLinkSecurityGroup }
+
   Vpc:
     Type: AWS::EC2::VPC
     Properties:
@@ -408,6 +421,11 @@ Resources:
     Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-notification', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
+  VpcId: { Value: !Ref Vpc }
+  PrivateSubnetAId: { Value: !Ref PrivateSubnetA }
+  PrivateSubnetBId: { Value: !Ref PrivateSubnetB }
+  VpcLinkSecurityGroupId: { Value: !Ref VpcLinkSecurityGroup }
+  PrivateAlbSecurityGroupId: { Value: !Ref PrivateAlbSecurityGroup }
   MskClusterArn: { Value: !Ref MskCluster }
   MskScramSecretArn: { Value: !Ref MskScramSecret }
   ClusterName: { Value: !Ref EksCluster }
