@@ -1,3 +1,4 @@
+import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 import { SlidingWindowRateLimiter } from './rateLimiter.js'
 
 export interface AIConfig {
@@ -13,15 +14,14 @@ export interface AIConfig {
 
 export interface AIClient {
   estimateCredit(
-    name: string,
-    description: string,
+    request: EstimateCreditRequest,
     baseline: {
       base: number
       min: number
       max: number
       name: string
     },
-  ): Promise<{ estimatedCredits: number; explanation: string }>
+  ): Promise<EstimateCreditResponse>
 }
 
 export class OpenAIClient implements AIClient {
@@ -37,11 +37,10 @@ export class OpenAIClient implements AIClient {
   }
 
   async estimateCredit(
-    name: string,
-    description: string,
+    request: EstimateCreditRequest,
     baseline: { base: number; min: number; max: number; name: string },
-  ): Promise<{ estimatedCredits: number; explanation: string }> {
-    const prompt = this.buildPrompt(name, description, baseline)
+  ): Promise<EstimateCreditResponse> {
+    const prompt = this.buildPrompt(request, baseline)
 
     try {
       // Fail fast rate limit check
@@ -51,7 +50,7 @@ export class OpenAIClient implements AIClient {
 
       const response = await this.callOpenAI(prompt)
 
-      return this.parseResponse(response, baseline)
+      return this.parseResponse(response)
     } catch (error) {
       console.error('OpenAI API error:', error)
       throw error
@@ -59,8 +58,7 @@ export class OpenAIClient implements AIClient {
   }
 
   private buildPrompt(
-    name: string,
-    description: string,
+    request: EstimateCreditRequest,
     baseline: { base: number; min: number; max: number; name: string },
   ): string {
     return `
@@ -68,40 +66,49 @@ export class OpenAIClient implements AIClient {
 
       Service: ${baseline.name}
       Baseline: ${baseline.base}
-      Range: ${baseline.min}-${baseline.max}
-      Input: ${JSON.stringify({ title: name, description })}
+      Global range: 10-50
+      Input: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions, startAt: request.startAt, expiresAt: request.expiresAt })}
 
       VALIDATE BEFORE PRICING:
-      The title and description must:
-      1. Identify a meaningful task or item.
-      2. Establish relevance to the selected service.
-      3. Be consistent with each other.
+      Validation is a hard gate. Do not estimate credits until all checks pass.
+      The title and description must together:
+      1. Identify a specific, meaningful item or an actionable errand task.
+      2. Establish a clear connection to the selected service (${baseline.name}).
+      3. Provide enough information to understand what is being collected or delivered.
+      4. Be consistent with each other.
 
       The description may clarify an ambiguous title, but cannot override
-      a clear mismatch. Missing optional details are acceptable.
-      Do not invent actions, reinterpret unrelated content, or assume
-      relevance from the selected service alone.
-      If any check fails or relevance cannot be established, return -1.
+      a clear mismatch. Missing optional details are acceptable only after
+      the core item or task is clear.
+      Do not invent an item, task, or service connection.
+      Do not assume relevance from the selected service alone.
+      Reject vague, meaningless, repeated-character, or placeholder titles
+      unless the description clearly identifies a real item or actionable task.
+      If any check fails, or relevance cannot be established confidently, return -1.
       Never use the baseline as a fallback for invalid input.
 
       PRICE ONLY VALID REQUESTS:
       - Read both name and description for pricing factors.
       - Recognize ordinary language, synonyms, and minor spelling mistakes;
         do not require exact keywords.
-      - Apply stated urgency, distance, stops, size, weight, fragility,
-        complexity, and environmental difficulty.
+      - Apply only factors stated in the input, including urgency, stops, size,
+        weight, fragility, complexity, and the available time window.
       - A brief description can still express a pricing factor.
-      - Start at baseline and increase proportionally to applicable factors.
-      - If an additional factor applies, credits must exceed baseline,
-        unless baseline already equals the maximum.
-      - Use baseline only when no additional factors are expressed.
+      - Use the service baseline as the center of the suggested range.
+      - Adjust around that baseline for applicable factors and the available
+        time window; do not replace the baseline with a generic global value.
+      - If an additional factor applies, the upper end should normally exceed
+        the baseline unless the global maximum is reached.
+      - Keep the result within the global 10-50 bounds.
       - Never invent factors. Item price or newness alone adds no credits.
-      - The explanation must reflect the factors used in the estimate.
+      - The reason must reflect only the factors used in the estimate.
 
       Return JSON only with exactly:
-      - estimatedCredits: integer within range, or -1 if invalid.
-      - explanation: maximum 12 words; main pricing reason or brief issue label.
-      No correction suggestions. No re-quoting of input.
+      - minCredits: integer from 10 to 50, or -1 if invalid.
+      - maxCredits: integer from 10 to 50, or -1 if invalid.
+      - reason: one direct, friendly, user-facing sentence, maximum 160 characters.
+      Vary the sentence structure. Do not mention AI, prompts, models, or internal rules.
+      No markdown, HTML, correction suggestions, or re-quoting of input.
     `
   }
 
@@ -158,28 +165,42 @@ export class OpenAIClient implements AIClient {
     }
   }
 
-  private parseResponse(
-    response: string,
-    baseline: { min: number; max: number },
-  ): { estimatedCredits: number; explanation: string } {
+  private parseResponse(response: string): {
+    minCredits: number
+    maxCredits: number
+    reason: string
+  } {
     try {
       const data = JSON.parse(response)
 
-      if (typeof data.estimatedCredits !== 'number' || typeof data.explanation !== 'string') {
+      if (
+        typeof data.minCredits !== 'number' ||
+        typeof data.maxCredits !== 'number' ||
+        typeof data.reason !== 'string'
+      ) {
         throw new Error('Invalid response format')
       }
 
-      // Check for invalid request marker
-      if (data.estimatedCredits === -1) {
-        return { estimatedCredits: -1, explanation: data.explanation.substring(0, 500) }
+      if (data.minCredits === -1 || data.maxCredits === -1) {
+        return { minCredits: -1, maxCredits: -1, reason: data.reason.substring(0, 160) }
       }
 
-      let estimatedCredits = Math.round(data.estimatedCredits)
-      estimatedCredits = Math.max(baseline.min, Math.min(baseline.max, estimatedCredits))
+      const minCredits = Math.round(data.minCredits)
+      const maxCredits = Math.round(data.maxCredits)
+      if (minCredits < 10 || maxCredits > 50 || minCredits > maxCredits) {
+        throw new Error('AI response range is outside global bounds')
+      }
 
-      const explanation = data.explanation.substring(0, 500)
+      const reason = data.reason
+        .replace(/[<>]/g, '')
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+        .substring(0, 160)
+      if (!reason || /[`*_#]/.test(reason)) {
+        throw new Error('AI response reason is not user-facing text')
+      }
 
-      return { estimatedCredits, explanation }
+      return { minCredits, maxCredits, reason }
     } catch (error) {
       throw new Error('Failed to parse AI response')
     }

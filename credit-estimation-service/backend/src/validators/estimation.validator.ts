@@ -1,8 +1,9 @@
-import { CreditEstimationErrors } from '@relay/contracts'
+import { CreditEstimationErrors, EstimateCreditRequest, ServiceType } from '@relay/contracts'
 import { EstimationServiceError } from '../types/estimation.types'
 
 export const MAX_NAME_LENGTH = 200
 export const MAX_DESCRIPTION_LENGTH = 5000
+export const MAX_INSTRUCTIONS_LENGTH = 5000
 
 /** Dangerous patterns to reject (XSS, injection, prompt injection) */
 const dangerousPatterns = [
@@ -34,11 +35,7 @@ function containsDangerousPatterns(text: string): boolean {
   return false
 }
 
-export function validateEstimateRequest(request: {
-  name: string
-  description: string
-  serviceType: number
-}): void {
+export function validateEstimateRequest(request: EstimateCreditRequest): void {
   // Validate name
   if (typeof request.name !== 'string') {
     throw new EstimationServiceError(
@@ -113,6 +110,42 @@ export function validateEstimateRequest(request: {
     )
   }
 
+  if (request.instructions !== undefined) {
+    if (
+      typeof request.instructions !== 'string' ||
+      request.instructions.length > MAX_INSTRUCTIONS_LENGTH
+    ) {
+      throw new EstimationServiceError(
+        CreditEstimationErrors.INVALID_INPUT,
+        `Instructions must be at most ${MAX_INSTRUCTIONS_LENGTH} characters`,
+        400,
+        { instructions: `Instructions must be at most ${MAX_INSTRUCTIONS_LENGTH} characters` },
+      )
+    }
+    if (containsDangerousPatterns(request.instructions)) {
+      throw new EstimationServiceError(
+        CreditEstimationErrors.INVALID_INPUT,
+        'Instructions contain invalid characters',
+        400,
+        { instructions: 'Instructions contain invalid characters' },
+      )
+    }
+  }
+
+  for (const field of ['startAt', 'expiresAt'] as const) {
+    if (
+      request[field] !== undefined &&
+      (typeof request[field] !== 'string' || Number.isNaN(Date.parse(request[field])))
+    ) {
+      throw new EstimationServiceError(
+        CreditEstimationErrors.INVALID_INPUT,
+        `${field} must be a valid date string`,
+        400,
+        { [field]: `${field} must be a valid date string` },
+      )
+    }
+  }
+
   // Validate service type
   if (typeof request.serviceType !== 'number') {
     throw new EstimationServiceError(
@@ -132,12 +165,12 @@ export function validateEstimateRequest(request: {
     )
   }
 
-  if (request.serviceType < 0 || request.serviceType > 4) {
+  if (!Object.values(ServiceType).includes(request.serviceType)) {
     throw new EstimationServiceError(
       CreditEstimationErrors.INVALID_INPUT,
-      'Service type must be between 0 and 4',
+      'Service type must exist',
       400,
-      { serviceType: 'Service type must be between 0 and 4' },
+      { serviceType: 'Service type must exist' },
     )
   }
 }
