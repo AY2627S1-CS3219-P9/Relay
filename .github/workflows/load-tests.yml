@@ -100,13 +100,28 @@ jobs:
           LOAD_TEST_SUPPLIER_NAME: Octobox
           LOAD_TEST_CLEANUP: true
         run: |
-          aws eks update-kubeconfig --name relay --region "$AWS_REGION"
+          mapfile -t CLOUDFRONT_DOMAINS < <(aws cloudfront list-distributions \
+            --query 'DistributionList.Items[?Enabled==`true`].DomainName' \
+            --output text | tr '\t' '\n' | sed '/^$/d')
 
-          ALB_HOST="$(kubectl -n relay get ingress relay -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-          test -n "$ALB_HOST"
-          export BASE_URL="http://$ALB_HOST"
-          echo "BASE_URL=http://$ALB_HOST" >> "$GITHUB_ENV"
-          echo "ALB_HOST=$ALB_HOST" >> "$GITHUB_ENV"
+          if [ "${#CLOUDFRONT_DOMAINS[@]}" -eq 0 ]; then
+            echo "No enabled CloudFront distributions were found"
+            exit 1
+          fi
+
+          if [ "${#CLOUDFRONT_DOMAINS[@]}" -ne 1 ]; then
+            echo "Expected exactly one enabled CloudFront distribution, found ${#CLOUDFRONT_DOMAINS[@]}:"
+            printf ' - %s\n' "${CLOUDFRONT_DOMAINS[@]}"
+            echo "Add an unambiguous CloudFront selection before running AWS load tests."
+            exit 1
+          fi
+
+          CLOUDFRONT_DOMAIN_NAME="${CLOUDFRONT_DOMAINS[0]}"
+
+          BASE_URL="https://$CLOUDFRONT_DOMAIN_NAME"
+          export BASE_URL
+          echo "BASE_URL=$BASE_URL" >> "$GITHUB_ENV"
+          echo "CLOUDFRONT_DOMAIN_NAME=$CLOUDFRONT_DOMAIN_NAME" >> "$GITHUB_ENV"
 
           COGNITO_USER_POOL_ID="$(aws cloudformation describe-stacks \
             --stack-name relay-auth \

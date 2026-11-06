@@ -5,7 +5,7 @@ The JavaScript files in this directory are the source of truth for Relay load te
 There are two supported targets:
 
 - Local Docker Compose: the provisioner uses `localhost`, while k6 uses `host.docker.internal`.
-- AWS: the provisioner and k6 use the deployed ALB hostname.
+- AWS: the provisioner and k6 use the deployed CloudFront hostname over HTTPS.
 
 Grafana Cloud runs use `--local-execution`: Grafana stores and displays metrics, but the requests still come from the local Docker engine.
 
@@ -61,20 +61,25 @@ If provisioning reports `fetch failed`, ensure `$env:BASE_URL` is
 
 The AWS provisioner is separate from the local Floci provisioner. It creates
 three disposable Cognito users with verified email attributes and permanent
-passwords, creates Relay profiles through the deployed ALB, waits for credit
-allocation, selects operational `Octobox`, and creates one fixture errand.
+passwords, creates Relay profiles through the deployed CloudFront endpoint,
+waits for credit allocation, selects operational `Octobox`, and creates one
+fixture errand.
 
-The AWS deployment must already be running. In PowerShell:
+The AWS deployment must already be running. The public CloudFront hostname is
+the endpoint to test. In PowerShell:
 
 ```powershell
 $env:AWS_PROFILE = 'relay-sso'
 $env:AWS_REGION = 'ap-southeast-1'
 $env:AWS_DEFAULT_REGION = $env:AWS_REGION
 
-$albHost = kubectl -n relay get ingress relay `
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+$cloudFrontDomain = aws cloudfront list-distributions `
+  --profile $env:AWS_PROFILE `
+  --query "DistributionList.Items[].DomainName" `
+  --output text
 
-$env:BASE_URL = "http://$albHost"
+# Select the deployed distribution from the output above.
+$env:BASE_URL = "https://<cloudfront-domain>.cloudfront.net"
 $env:COGNITO_USER_POOL_ID = aws cloudformation describe-stacks `
   --stack-name relay-auth `
   --region $env:AWS_REGION `
@@ -89,8 +94,8 @@ $env:LOAD_TEST_CLEANUP = 'true'
 node load-tests/provision-aws-test-data.mjs
 ```
 
-The generated `load-tests/.env.aws.generated` contains the ALB URL, credentials,
-supplier ID, service type, fixture errand ID, and test configuration. The AWS
+The generated `load-tests/.env.aws.generated` contains the CloudFront URL,
+credentials, supplier ID, service type, fixture errand ID, and test configuration. The AWS
 CLI profile must be allowed to administer users in the Cognito pool.
 
 The AWS provisioner does not delete Cognito users. Remove disposable users
@@ -138,7 +143,7 @@ after `docker compose down --volumes` or when generated credentials change.
 
 ## Run AWS tests and stream to Grafana Cloud
 
-After AWS provisioning, use `.env.aws.generated`. It already contains the ALB
+After AWS provisioning, use `.env.aws.generated`. It already contains the CloudFront
 `BASE_URL`, so no supplier ID or credential needs to be typed into the command:
 
 ```powershell
@@ -181,10 +186,10 @@ node load-tests/cleanup-test-data.mjs
 docker compose down --volumes --remove-orphans
 ```
 
-For AWS, use the ALB URL and AWS-generated environment:
+For AWS, use the CloudFront URL and AWS-generated environment:
 
 ```powershell
-$env:BASE_URL = "http://$albHost"
+$env:BASE_URL = "https://<cloudfront-domain>.cloudfront.net"
 $env:LOAD_TEST_ENV_FILE = 'load-tests/.env.aws.generated'
 node load-tests/cleanup-test-data.mjs
 ```
@@ -198,8 +203,9 @@ snapshots, S3 objects, or AWS stacks.
 
 - `local`: starts disposable local Compose services and uses
   `provision-test-data.mjs`.
-- `aws`: assumes the configured AWS OIDC role, retrieves the current EKS ALB
-  hostname, uses `provision-aws-test-data.mjs`, and runs against that ALB.
+- `aws`: assumes the configured AWS OIDC role, validates the configured
+  CloudFront distribution through the AWS CLI, uses `provision-aws-test-data.mjs`,
+  and runs against that CloudFront endpoint.
 
 For both targets, k6 executes locally on the GitHub runner and streams metrics
 to Grafana Cloud. Pull requests always run only the local browse smoke test.
@@ -212,6 +218,11 @@ Configure these repository secrets for non-PR cloud runs:
 - `K6_CLOUD_STACK_ID`
 - `K6_CLOUD_PROJECT_ID`
 - `AWS_LOAD_TEST_ROLE_ARN` (required for the manual `aws` target)
+
+The `aws` target queries enabled CloudFront distributions directly through the
+AWS CLI. It requires exactly one enabled distribution so that the workflow
+cannot accidentally test the wrong application. No CloudFront URL repository
+variable is required.
 
 The AWS target assumes an already-deployed `relay` EKS cluster and
 `relay-auth` CloudFormation stack. It does not deploy or tear down AWS
