@@ -13,5 +13,4 @@ export type CreditEstimationErrorCode =
 export type CreditEstimationError = {
   code: CreditEstimationErrorCode
   message: string
-  fieldErrors?: Record<string, string>
 }
