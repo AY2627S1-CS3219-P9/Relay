@@ -436,7 +436,8 @@ step "Create or update the streaming API Gateway proxy and VPC link"
 aws cloudformation deploy --region "$aws_region" --stack-name "$gateway_stack" \
   --template-file infra/relay-gateway.yaml --parameter-overrides \
   "VpcLinkSubnetA=$(output PrivateSubnetAId)" "VpcLinkSubnetB=$(output PrivateSubnetBId)" \
-  "VpcLinkSecurityGroupId=$(output VpcLinkSecurityGroupId)" "LoadBalancerArn=$alb_arn"
+  "VpcLinkSecurityGroupId=$(output VpcLinkSecurityGroupId)" "LoadBalancerArn=$alb_arn" \
+  "LoadBalancerDnsName=$alb_dns"
 gateway_output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$gateway_stack" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text

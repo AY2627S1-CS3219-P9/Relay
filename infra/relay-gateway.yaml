@@ -5,6 +5,7 @@ Parameters:
   VpcLinkSubnetB: { Type: AWS::EC2::Subnet::Id }
   VpcLinkSecurityGroupId: { Type: AWS::EC2::SecurityGroup::Id }
   LoadBalancerArn: { Type: String }
+  LoadBalancerDnsName: { Type: String }
 Resources:
   VpcLink:
     Type: AWS::ApiGatewayV2::VpcLink
@@ -36,7 +37,7 @@ Resources:
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
         IntegrationTarget: !Ref LoadBalancerArn
-        Uri: http://relay.internal/
+        Uri: !Sub 'http://${LoadBalancerDnsName}/'
         ResponseTransferMode: STREAM
   ProxyMethod:
     Type: AWS::ApiGateway::Method
@@ -52,7 +53,7 @@ Resources:
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
         IntegrationTarget: !Ref LoadBalancerArn
-        Uri: 'http://relay.internal/{proxy}'
+        Uri: !Sub 'http://${LoadBalancerDnsName}/{proxy}'
         RequestParameters: { 'integration.request.path.proxy': 'method.request.path.proxy' }
         ResponseTransferMode: STREAM
   Deployment:
