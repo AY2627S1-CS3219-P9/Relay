@@ -7,7 +7,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: host, namespace: relay }
 spec:
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: host } }
   template:
     metadata: { labels: { app: host } }
@@ -30,7 +30,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: supplier-frontend, namespace: relay }
 spec:
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: supplier-frontend } }
   template:
     metadata: { labels: { app: supplier-frontend } }
@@ -53,7 +53,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: user-frontend, namespace: relay }
 spec:
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: user-frontend } }
   template:
     metadata: { labels: { app: user-frontend } }
@@ -76,7 +76,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: errand-frontend, namespace: relay }
 spec:
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: errand-frontend } }
   template:
     metadata: { labels: { app: errand-frontend } }
@@ -99,7 +99,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: credit-frontend, namespace: relay }
 spec:
-  replicas: 1
+  replicas: 2
   selector: { matchLabels: { app: credit-frontend } }
   template:
     metadata: { labels: { app: credit-frontend } }
@@ -138,6 +138,7 @@ spec:
           command: [node, dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DB_HOST, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_HOST } } }
             - { name: DB_PORT, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PORT } } }
             - { name: DB_NAME, value: relay }
@@ -154,7 +155,7 @@ spec:
           envFrom: [{ configMapRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -178,11 +179,12 @@ spec:
           command: [node, --import, tsx, user-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -202,8 +204,9 @@ spec:
           image: IMAGE_USER_EVENT_PUBLISHER
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
-          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -222,8 +225,9 @@ spec:
           image: IMAGE_ERRAND_EVENT_PUBLISHER
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
-          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -247,6 +251,7 @@ spec:
           command: [node, --import, tsx, errand-service/backend/dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
             - { name: USER_API_URL, value: "http://user-api:3000" }
             - { name: SUPPLIER_API_URL, value: "http://supplier-api:3000" }
@@ -255,7 +260,7 @@ spec:
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -278,12 +283,13 @@ spec:
           command: [node, --import, tsx, credit-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } } }
             - { name: USER_API_URL, value: "http://user-api:3000" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 150m, memory: 256Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          resources: { requests: { cpu: 150m, memory: 512Mi }, limits: { cpu: 750m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -306,11 +312,12 @@ spec:
           image: IMAGE_USER_AUTH_API
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: COOKIE_SECURE, value: "true" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -332,12 +339,13 @@ spec:
           image: IMAGE_CREDIT_ESTIMATION_API
           ports: [{ name: http, containerPort: 3005 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: PORT, value: "3005" }
             - { name: USER_API_URL, value: "http://user-api:3000" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-estimation-config } }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
 ---
 apiVersion: v1
 kind: Service
@@ -360,9 +368,10 @@ spec:
           image: IMAGE_ERRAND_NOTIFICATION
           ports: [{ name: http, containerPort: 3010 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: PORT, value: "3010" }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
           startupProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5, failureThreshold: 24 }
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 15 }
-          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }

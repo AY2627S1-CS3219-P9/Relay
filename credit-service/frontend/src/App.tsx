@@ -157,12 +157,16 @@ export default function App({
         <header className="credit-profile-header">
           <div className="credit-history-title">
             <IconButton label="Go back" onClick={showCreditBalance}>
-              &larr;
+              <svg viewBox="0 0 24 24" height="16px" width="16px" fill="currentColor">
+                <path d="M7.83,13l5.6,5.6L12,20L4,12l8-8l1.43,1.4L7.83,11H20v2H7.83Z"/>
+              </svg>
             </IconButton>
             <h1>Credit history</h1>
           </div>
           <IconButton label="Close credits" onClick={closeCredit}>
-            &times;
+              <svg viewBox="0 0 24 24" height="16px" width="16px" fill="currentColor">
+                <path d="M6.4,19L5,17.6L10.6,12L5,6.4L6.4,5L12,10.6L17.6,5L19,6.4L13.4,12L19,17.6L17.6,19L12,13.4L6.4,19Z"/>
+              </svg>
           </IconButton>
         </header>
         {creditHistoryOpen && (

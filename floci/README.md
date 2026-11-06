@@ -136,3 +136,29 @@ API Gateway streaming limits, public TLS, IAM, security groups or ALB rewrites.
 The EKS CI smoke tests use HTTP/2 because Floci's CloudFront-to-API-Gateway
 proxy currently returns HTTP 502 for HTTP/1.1 requests. This local emulator
 limitation does not validate the AWS endpoint's HTTP/1.1 behavior.
+
+### Autoscaling
+
+Both local EKS and AWS install KEDA 2.17.3 when the EKS startup/deployment
+script runs. The credit API uses CPU, memory, and lag for the
+`relay-credit-events` consumer group on `errand-events`. AWS connects to
+MSK using SCRAM-SHA-512 and TLS with the existing runtime secret. Floci's
+broker uses plaintext and no credentials; local testing cannot validate AWS
+SCRAM, certificate validation, or MSK networking.
+
+After startup, inspect `kubectl -n keda get pods`,
+`kubectl -n relay get hpa,scaledobject`, and
+`kubectl -n relay describe scaledobject credit-api`. Confirm the Kafka
+trigger is ready and the external metrics API is available with
+`kubectl get apiservice v1beta1.external.metrics.k8s.io`. Generate a
+backlog on the errand topic and verify credit-api scales up and later down.
+Frontend HPAs should have 2 to 4 replicas. Both outbox publishers remain at one.
+
+CPU and memory utilization are percentages of Kubernetes **requests**, not
+limits. AWS Node workloads request 512 MiB, so the 85% memory target is
+approximately 435 MiB. Local EKS lowers those requests to 128 MiB so its single
+emulated node can schedule the application and KEDA; its 85% target is
+approximately 109 MiB. Local KEDA components request 64 MiB each. Both
+environments retain the 768 MiB limit and 614 MiB Node old-space heap cap. The heap cap is not a limit on total process memory.
+Local scaling therefore does not reproduce AWS memory thresholds exactly.
+Additional AWS EKS nodes may increase costs.

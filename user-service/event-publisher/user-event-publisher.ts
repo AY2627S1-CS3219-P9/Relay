@@ -3,9 +3,10 @@ import { PrismaClient } from '@relay/user-prisma'
 
 export class UserEventPublisher {
   private readonly producer: Producer
-  private timer?: ReturnType<typeof setInterval>
+  private timer?: ReturnType<typeof setTimeout>
   private connected = false
   private flushing = false
+  private running = false
   private lastCleanup = 0
 
   constructor(private readonly prisma = new PrismaClient()) {
@@ -27,13 +28,20 @@ export class UserEventPublisher {
   }
 
   start(): void {
-    this.timer = setInterval(() => void this.flush(), 1000)
-    void this.flush()
+    if (this.running) return
+    this.running = true
+    void this.tick()
   }
 
-  private async flush(): Promise<void> {
-    if (this.flushing) return
+  private async tick(): Promise<void> {
+    const fullBatch = await this.flush()
+    if (this.running) this.timer = setTimeout(() => void this.tick(), fullBatch ? 0 : 1_000)
+  }
+
+  private async flush(): Promise<boolean> {
+    if (this.flushing) return false
     this.flushing = true
+    let fullBatch = false
     try {
       if (!this.connected) {
         await this.producer.connect()
@@ -42,21 +50,33 @@ export class UserEventPublisher {
       const pending = await this.prisma.userOutboxEvent.findMany({
         where: { publishedAt: null },
         orderBy: { createdAt: 'asc' },
-        take: 50,
+        take: 100,
       })
-      for (const event of pending) {
-        await this.producer.send({
-          topic: event.topic,
-          acks: -1,
-          messages: [{ key: event.key, value: JSON.stringify(event.payload) }],
+      fullBatch = pending.length === 100
+      // Preserve Kafka ordering for each key while processing different keys concurrently.
+      const byKey = new Map<string, Promise<void>>()
+      const tasks = pending.map((event) => {
+        const task = (byKey.get(event.key) ?? Promise.resolve()).then(async () => {
+          await this.producer.send({
+            topic: event.topic,
+            acks: -1,
+            messages: [{ key: event.key, value: JSON.stringify(event.payload) }],
+          })
+          await this.prisma.userOutboxEvent.update({
+            where: { id: event.id },
+            data: { publishedAt: new Date() },
+          })
+          console.log(`Published ${event.topic} for ${event.key}`)
         })
-        await this.prisma.userOutboxEvent.update({
-          where: { id: event.id },
-          data: { publishedAt: new Date() },
-        })
-        console.log(`Published ${event.topic} for ${event.key}`)
-      }
+        byKey.set(event.key, task)
+        // Wait for every in-flight send/update even when one fails.
+        return task.then(() => undefined, (error: unknown) => error)
+      })
+      const results = await Promise.all(tasks)
+      const failure = results.find((result) => result !== undefined)
+      if (failure !== undefined) throw failure
     } catch (error) {
+      fullBatch = false
       console.error('User event outbox delivery failed; retrying:', error)
     } finally {
       try {
@@ -71,10 +91,13 @@ export class UserEventPublisher {
       }
       this.flushing = false
     }
+    return fullBatch
   }
 
   async stop(): Promise<void> {
-    if (this.timer) clearInterval(this.timer)
+    this.running = false
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = undefined
     while (this.flushing) await new Promise((resolve) => setTimeout(resolve, 50))
     if (this.connected) await this.producer.disconnect()
   }

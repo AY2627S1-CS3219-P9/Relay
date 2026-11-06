@@ -4,8 +4,10 @@ import { ErrandRepository } from '../backend/src/repositories/errand.repository.
 
 export class ErrandEventPublisher {
   private readonly producer: Producer
-  private timer?: ReturnType<typeof setInterval>
+  private timer?: ReturnType<typeof setTimeout>
   private flushing = false
+  private running = false
+  private fullBatch = false
   private lastCleanup = 0
 
   constructor(
@@ -21,37 +23,59 @@ export class ErrandEventPublisher {
   }
 
   async start(): Promise<void> {
-    if (this.timer) return
-    await this.producer.connect()
-    const tick = () =>
-      void this.flush().catch((error) => {
-        console.error('Errand event outbox delivery failed; retrying:', error)
-      })
-    tick()
-    this.timer = setInterval(tick, 1_000)
+    if (this.running) return
+    this.running = true
+    try {
+      await this.producer.connect()
+    } catch (error) {
+      this.running = false
+      throw error
+    }
+    if (this.running) void this.tick()
+  }
+
+  private async tick(): Promise<void> {
+    try {
+      await this.flush()
+    } catch (error) {
+      this.fullBatch = false
+      console.error('Errand event outbox delivery failed; retrying:', error)
+    }
+    if (this.running) this.timer = setTimeout(() => void this.tick(), this.fullBatch ? 0 : 1_000)
   }
 
   async flush(): Promise<void> {
     if (this.flushing) return
     this.flushing = true
     try {
-      for (const stored of await this.repository.unpublishedEvents()) {
+      const pending = await this.repository.unpublishedEvents()
+      this.fullBatch = pending.length === 100
+      const byKey = new Map<string, Promise<void>>()
+      const tasks = pending.map((stored) => {
         const payload = stored.payload as unknown as ErrandEventPayload
-        if (!payload.errandId) throw new Error('errandId is required for Kafka message key')
-        const event: ErrandEvent = {
-          eventId: stored.id,
-          eventType: stored.eventType as ErrandEventType,
-          timestamp: new Date().toISOString(),
-          version: 1,
-          payload,
-        }
-        await this.producer.send({
-          topic: this.topic,
-          acks: -1,
-          messages: [{ key: payload.errandId, value: JSON.stringify(event) }],
+        const key = payload.errandId
+        const task = (byKey.get(key) ?? Promise.resolve()).then(async () => {
+          if (!key) throw new Error('errandId is required for Kafka message key')
+          const event: ErrandEvent = {
+            eventId: stored.id,
+            eventType: stored.eventType as ErrandEventType,
+            timestamp: new Date().toISOString(),
+            version: 1,
+            payload,
+          }
+          await this.producer.send({
+            topic: this.topic,
+            acks: -1,
+            messages: [{ key, value: JSON.stringify(event) }],
+          })
+          await this.repository.markEventPublished(stored.id)
         })
-        await this.repository.markEventPublished(stored.id)
-      }
+        byKey.set(key, task)
+        return task.then(() => undefined, (error: unknown) => error)
+      })
+      const results = await Promise.all(tasks)
+      const failure = results.find((result) => result !== undefined)
+      if (failure !== undefined) throw failure
     } finally {
       try {
         if (Date.now() - this.lastCleanup >= 60_000) {
@@ -68,7 +92,8 @@ export class ErrandEventPublisher {
   }
 
   async stop(): Promise<void> {
-    if (this.timer) clearInterval(this.timer)
+    this.running = false
+    if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
     while (this.flushing) await new Promise((resolve) => setTimeout(resolve, 50))
     await this.producer.disconnect()

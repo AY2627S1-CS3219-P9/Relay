@@ -411,7 +411,17 @@ if [[ "$estimation_changed" == 1 && "$config_changed" == 0 && "$runtime_changed"
   echo 'AI configuration changed; restarting credit-estimation-api.'
   kubectl -n relay rollout restart deployment/credit-estimation-api
 fi
+# Pin the upstream core manifest; no Helm installation is required.
+kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.17.3/keda-2.17.3-core.yaml
+kubectl wait --for=condition=Established crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh --timeout=120s
+kubectl -n keda rollout status deployment/keda-operator --timeout=5m
+kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=5m
+# Migrate the existing HPA before KEDA creates its own for the same deployment.
+kubectl -n relay delete hpa credit-api --ignore-not-found
 kubectl apply -f k8s/base/autoscaling.yaml
+sed -e "s|KEDA_KAFKA_BROKERS|$msk_brokers|g" \
+    -e 's/KEDA_KAFKA_SASL/scram_sha512/' -e 's/KEDA_KAFKA_TLS/enable/' \
+    k8s/base/keda-credit.yaml | kubectl apply -f -
 sed "s/PRIVATE_ALB_SECURITY_GROUP_ID/$(output PrivateAlbSecurityGroupId)/g" k8s/base/ingress.yaml > "$rendered"
 kubectl apply -f "$rendered"
 kubectl -n relay get deployment -o name | while read -r deployment; do

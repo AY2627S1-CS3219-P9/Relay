@@ -20,7 +20,8 @@ spec:
           command: [npx, prisma, studio, --schema=credit-service/backend/prisma/schema.prisma, --hostname=0.0.0.0, --port=5555]
           ports: [{ name: web, containerPort: 5555 }]
           env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - name: DATABASE_URL
               valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } }
           readinessProbe: { tcpSocket: { port: web }, periodSeconds: 5 }
-          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 768Mi } }

@@ -233,7 +233,14 @@ kubectl -n relay patch configmap relay-runtime --type merge -p '{"data":{"KAFKA_
 access_output="$(docker exec relay-floci-eks cat /app/data/relay-aws-access.env)"
 access_value() { printf '%s\n' "$access_output" | sed -n "s/^$1=//p"; }
 service_accounts="$(mktemp)"
-trap 'rm -f "$service_accounts"' EXIT
+publisher_temporarily_stopped=0
+cleanup() {
+  if (( publisher_temporarily_stopped )); then
+    kubectl -n relay scale deployment/user-event-publisher --replicas=1 >/dev/null 2>&1 || true
+  fi
+  rm -f "$service_accounts"
+}
+trap cleanup EXIT
 sed \
   -e "s|ROLE_USER_API|$(access_value USER_API_ROLE_ARN)|g" \
   -e "s|ROLE_USER_AUTH_API|$(access_value USER_AUTH_API_ROLE_ARN)|g" \
@@ -257,17 +264,66 @@ render() {
     -e "s|IMAGE_USER_EVENT_PUBLISHER|${IMAGE_user_event_publisher}|g" \
     -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|${IMAGE_errand_event_publisher}|g" "$1" |
     sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
-    sed '/name: DB_SSL_CA_PATH/d'
+    # The emulated single node has much less capacity than AWS Auto Mode.
+    # Keep the same 768 MiB limits and Node heap cap, but lower local requests.
+    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g'
 }
+# Recover clusters from either previous request size, including partial runs.
+# Free a publisher reservation before rolling existing workloads if needed.
+local_workloads=(supplier-api user-api errand-api credit-api user-auth-api credit-estimation-api errand-notification user-event-publisher errand-event-publisher)
+needs_resize=0
+for workload in "${local_workloads[@]}"; do
+  request="$(kubectl -n relay get deployment "$workload" -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}' 2>/dev/null || true)"
+  if [[ -n "$request" && "$request" != 128Mi ]]; then needs_resize=1; fi
+  # A previous run may have updated the Deployment while old Pods still run.
+  pod_requests="$(kubectl -n relay get pods -l "app=$workload" -o jsonpath='{range .items[*]}{.spec.containers[0].resources.requests.memory}{" "}{end}' 2>/dev/null || true)"
+  for pod_request in $pod_requests; do
+    if [[ "$pod_request" != 128Mi ]]; then needs_resize=1; fi
+  done
+done
+if (( needs_resize )); then
+  echo 'Reducing existing local workload memory requests before running initialization jobs.'
+  if kubectl -n relay get deployment user-event-publisher >/dev/null 2>&1; then
+    publisher_temporarily_stopped=1
+    kubectl -n relay scale deployment/user-event-publisher --replicas=0
+    if [[ -n "$(kubectl -n relay get pods -l app=user-event-publisher -o name)" ]]; then
+      kubectl -n relay wait --for=delete pod -l app=user-event-publisher --timeout=2m
+    fi
+  fi
+  for workload in "${local_workloads[@]}"; do
+    if kubectl -n relay get deployment "$workload" >/dev/null 2>&1; then
+      kubectl -n relay set resources "deployment/$workload" --requests=memory=128Mi
+    fi
+  done
+  for workload in user-api credit-api; do
+    if kubectl -n relay get deployment "$workload" >/dev/null 2>&1; then
+      kubectl -n relay rollout status "deployment/$workload" --timeout=5m
+    fi
+  done
+fi
 render k8s/base/kafka-topics.yaml | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
 kubectl -n relay delete job supplier-schema user-migrate errand-migrate credit-migrate --ignore-not-found
 render k8s/base/migrations.yaml | kubectl apply -f -
 kubectl -n relay wait --for=condition=complete job/supplier-schema job/user-migrate job/errand-migrate job/credit-migrate --timeout=10m
 render k8s/base/workloads.yaml | kubectl apply -f -
+publisher_temporarily_stopped=0
 AWS_ACCESS_SERVICE_ACCOUNTS_FILE="$service_accounts" bash floci/eks/inject-aws-access.sh
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/credit-estimation-api deployment/errand-notification
+# Pin the upstream core manifest; no Helm installation is required.
+kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.17.3/keda-2.17.3-core.yaml
+kubectl wait --for=condition=Established crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh --timeout=120s
+# Keep KEDA's limits intact while reducing local scheduler reservations.
+kubectl -n keda set resources deployment/keda-operator deployment/keda-metrics-apiserver --requests=memory=64Mi
+kubectl -n keda rollout status deployment/keda-operator --timeout=5m
+kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=5m
+kubectl -n relay delete hpa credit-api --ignore-not-found
 kubectl apply -f k8s/base/autoscaling.yaml
+# Floci uses plaintext Kafka; its emulation does not implement MSK SCRAM/TLS.
+sed -e "s|KEDA_KAFKA_BROKERS|$msk_brokers|g" \
+    -e 's/KEDA_KAFKA_SASL/none/' -e 's/KEDA_KAFKA_TLS/disable/' \
+    -e '/authenticationRef:/,+1d' k8s/base/keda-credit.yaml | \
+    awk 'BEGIN { RS="---\n"; ORS="---\n" } /kind: ScaledObject/ { print }' | kubectl apply -f -
 kubectl apply -f k8s/floci/ingress.yaml
 kubectl -n relay get deployment -o name | while read -r deployment; do kubectl -n relay rollout status "$deployment" --timeout=10m; done
 
