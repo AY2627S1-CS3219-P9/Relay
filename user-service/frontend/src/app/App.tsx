@@ -164,6 +164,7 @@ export default function App({
         {view === 'account' && (
           <GlassCard className="account-glass-card">
             <AccountPage
+              closeProfile={closeProfile}
               onLoggedOut={finishLogout}
               onUpdated={() => refreshUserProfile?.()}
               onDeleted={() => {
@@ -182,25 +183,18 @@ export default function App({
   )
   if (presentation === 'card') {
     return (
-      <div className="user-profile-content">
-        <div className="user-profile-card-header">
-          <h1>Profile</h1>
-          <IconButton label="Close profile" onClick={closeProfile}>
-            ×
-          </IconButton>
-        </div>
-        <AccountPage
-          onLoggedOut={finishLogout}
-          onUpdated={() => refreshUserProfile?.()}
-          onDeleted={() => {
-            setLoginNotice('Your account was deleted successfully.')
-            setView('login')
-            refreshUserProfile?.()
-            closeProfile?.()
-            navigateTo?.('user')
-          }}
-        />
-      </div>
+      <AccountPage
+        closeProfile={closeProfile}
+        onLoggedOut={finishLogout}
+        onUpdated={() => refreshUserProfile?.()}
+        onDeleted={() => {
+          setLoginNotice('Your account was deleted successfully.')
+          setView('login')
+          refreshUserProfile?.()
+          closeProfile?.()
+          navigateTo?.('user')
+        }}
+      />
     )
   }
 
