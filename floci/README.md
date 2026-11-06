@@ -132,3 +132,7 @@ browser sessions to check errand notifications, then replace the notification
 pod and check that the stream reconnects. Run `npm run views:eks -- all` to
 inspect pods in Headlamp. Floci EKS cannot validate the AWS VPC Link network,
 API Gateway streaming limits, public TLS, IAM, security groups or ALB rewrites.
+
+The EKS CI smoke tests use HTTP/2 because Floci's CloudFront-to-API-Gateway
+proxy currently returns HTTP 502 for HTTP/1.1 requests. This local emulator
+limitation does not validate the AWS endpoint's HTTP/1.1 behavior.

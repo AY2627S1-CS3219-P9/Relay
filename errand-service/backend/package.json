@@ -8,7 +8,7 @@
     "dev": "tsx watch src/app.ts",
     "start": "node dist/app.js",
     "lint": "npm run prisma:generate && tsc --noEmit",
-    "test": "export DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}\" && npm run prisma:generate && vitest run",
+    "test": "export DATABASE_URL=\"${ERRAND_TEST_DATABASE_URL:-${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}}\" && npm run prisma:generate && vitest run --no-file-parallelism",
     "prisma:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}\" prisma generate",
     "prisma:migrate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}\" prisma migrate dev",
     "prisma:studio": "prisma studio"

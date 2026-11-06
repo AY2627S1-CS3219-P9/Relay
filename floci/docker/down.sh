@@ -11,7 +11,7 @@ if [[ -f .env ]]; then compose_env=(--env-file .env "${compose_env[@]}"); fi
 if [[ -s floci/docker/.generated.env ]]; then
   compose_env+=(--env-file floci/docker/.generated.env)
 else
-  export KAFKA_BROKERS=bootstrap
+  export S3_BUCKET=bootstrap KAFKA_BROKERS=bootstrap
   export USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap
   export CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap
   export SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap

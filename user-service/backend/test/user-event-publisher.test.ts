@@ -27,6 +27,7 @@ describe('user outbox publisher', () => {
     Object.assign(publisher, { producer })
     await publisher['flush']()
     expect(producer.send).toHaveBeenCalledWith({
+      acks: -1,
       topic: 'user-events',
       messages: [
         {
