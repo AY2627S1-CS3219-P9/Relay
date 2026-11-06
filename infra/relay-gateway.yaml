@@ -37,7 +37,8 @@ Resources:
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
         IntegrationTarget: !Ref LoadBalancerArn
-        Uri: !Sub 'http://${LoadBalancerDnsName}/'
+        # The ALB ingress routes /relay and removes that prefix before forwarding.
+        Uri: !Sub 'http://${LoadBalancerDnsName}/relay/'
         ResponseTransferMode: STREAM
   ProxyMethod:
     Type: AWS::ApiGateway::Method
@@ -53,7 +54,7 @@ Resources:
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
         IntegrationTarget: !Ref LoadBalancerArn
-        Uri: !Sub 'http://${LoadBalancerDnsName}/{proxy}'
+        Uri: !Sub 'http://${LoadBalancerDnsName}/relay/{proxy}'
         RequestParameters: { 'integration.request.path.proxy': 'method.request.path.proxy' }
         ResponseTransferMode: STREAM
   Deployment:
