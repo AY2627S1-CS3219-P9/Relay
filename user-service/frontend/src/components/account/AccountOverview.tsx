@@ -49,11 +49,7 @@ export function AccountOverview({
       <RelayList className="account-options-list">
         <RelayListItem title="Update profile" onClick={onUpdateProfile} />
         <RelayListItem title="Change password" onClick={onChangePassword} />
-        <RelayListItem
-          title="Delete account"
-          className="relay-list-item-danger"
-          onClick={onDeleteAccount}
-        />
+        <RelayListItem title="Delete account" onClick={onDeleteAccount} />
       </RelayList>
       {profile.role == 'super-admin' && (
         <RelayList className="account-options-list">
