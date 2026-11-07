@@ -1,3 +1,6 @@
+[![CI](https://github.com/AY2627S1-CS3219-P9/Relay/actions/workflows/ci.yml/badge.svg)](https://github.com/AY2627S1-CS3219-P9/Relay/actions/workflows/ci.yml)
+[![Load tests](https://github.com/AY2627S1-CS3219-P9/Relay/actions/workflows/load-tests.yml/badge.svg)](https://github.com/AY2627S1-CS3219-P9/Relay/actions/workflows/load-tests.yml)
+
 # CS3219 — Software Design and Architecture (AY2627 Sem 1)
 
 ## Relay
