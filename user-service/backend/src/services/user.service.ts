@@ -37,15 +37,24 @@ export class CognitoIdentityGateway implements IdentityGateway {
   }
 
   async deleteAccount(user: AuthenticatedUser): Promise<void> {
-    await this.client.send(
-      new AdminDeleteUserCommand({ UserPoolId: getEnv().cognitoUserPoolId, Username: user.sub }),
-    )
+    try {
+      await this.client.send(
+        new AdminDeleteUserCommand({ UserPoolId: getEnv().cognitoUserPoolId, Username: user.sub }),
+      )
+    } catch (error) {
+      if (error instanceof Error && error.name === 'UserNotFoundException') return
+      throw error
+    }
   }
 }
 
 export type ProfileUpdateRequest = {
   username?: string
   profilePicture?: string
+}
+
+export type DeleteUserResult = {
+  status: 'pending'
 }
 
 export class UserService {
@@ -142,20 +151,33 @@ export class UserService {
     return this.toPublicProfile(user, profile)
   }
 
-  async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<void> {
+  async deleteUser(user: AuthenticatedUser, confirmation: unknown): Promise<DeleteUserResult | undefined> {
     if (user.role === 'super-admin') {
       throw new UserServiceError('FORBIDDEN', 'The super admin account cannot be deleted.', 403)
     }
     const existing = await this.repository.findByCognitoSub(user.sub)
     if (!existing) {
+      if (await this.repository.hasPendingDeletion(user.sub)) return { status: 'pending' }
       throw new UserServiceError('PROFILE_NOT_FOUND', 'User profile was not found.', 404)
     }
     validateDeletionConfirmation(confirmation, existing.username)
 
-    await this.identityGateway.deleteAccount(user)
-    await this.repository.deleteProfile(user.sub, existing.profilePictureKey)
-    if (existing.profilePictureKey) {
-      await this.deleteUploadedImageSafely(existing.profilePictureKey)
+    try {
+      await this.repository.deleteProfile(user.sub, existing.profilePictureKey)
+    } catch (error) {
+      // A concurrent delete may have removed the profile after the initial
+      // lookup. Treat it as the same pending deletion when its outbox event is
+      // present instead of exposing a Prisma not-found error.
+      if (isRecordNotFoundError(error) && (await this.repository.hasPendingDeletion(user.sub))) {
+        return { status: 'pending' }
+      }
+      throw error
+    }
+    try {
+      await this.identityGateway.deleteAccount(user)
+    } catch (error) {
+      console.error(`Cognito deletion pending for ${user.sub}:`, error)
+      return { status: 'pending' }
     }
   }
 
@@ -188,5 +210,14 @@ function isUniqueConstraintError(error: unknown): error is { code: 'P2002' } {
     error !== null &&
     'code' in error &&
     (error as { code?: unknown }).code === 'P2002'
+  )
+}
+
+function isRecordNotFoundError(error: unknown): error is { code: 'P2025' } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'P2025'
   )
 }

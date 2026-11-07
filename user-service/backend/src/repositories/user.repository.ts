@@ -79,6 +79,18 @@ export class UserRepository {
     return toProfileRecord(profile)
   }
 
+  async hasPendingDeletion(cognitoSub: string): Promise<boolean> {
+    const event = await prisma.userOutboxEvent.findFirst({
+      where: {
+        topic: 'user-events',
+        key: cognitoSub,
+        payload: { path: ['eventType'], equals: UserEventTypes.USER_DELETED },
+      },
+      select: { id: true },
+    })
+    return event !== null
+  }
+
   async deleteProfile(cognitoSub: string, profilePictureKey?: string | null): Promise<UserProfileRecord> {
     const profile = await prisma.$transaction(async (tx) => {
       const deleted = await tx.userProfile.delete({ where: { cognitoSub } })

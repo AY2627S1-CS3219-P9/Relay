@@ -29,6 +29,11 @@ Compose uses `kafka:9092`. Published outbox rows older than seven days are
 removed during the publisher's minute-by-minute cleanup; unpublished rows
 remain available for retry.
 
-Deleting a profile writes a `UserDeleted` envelope to the same outbox and
-topic in the profile deletion transaction. Both envelopes include an event ID,
-timestamp, event type, and version 1.
+Deleting a profile first removes the profile and writes a `UserDeleted` envelope
+to the same outbox in one transaction. The event includes the optional profile
+picture key, so the User Service consumer can remove the object asynchronously.
+Cognito deletion is attempted after the transaction; if it is temporarily
+unavailable, the API returns `202` with `{ data: { status: "pending" } }` and
+the Auth Service consumer retries the Cognito cleanup. A retry returns the same
+pending result while the deletion event remains in the outbox. Both envelopes
+include an event ID, timestamp, event type, and version 1.

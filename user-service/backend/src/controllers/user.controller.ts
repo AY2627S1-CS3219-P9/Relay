@@ -56,7 +56,7 @@ export class UserController {
   deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!
-      await this.userService.deleteUser(user, req.body?.confirmation)
+      const result = await this.userService.deleteUser(user, req.body?.confirmation)
 
       res.clearCookie('relay_access', {
         path: '/',
@@ -76,6 +76,10 @@ export class UserController {
         sameSite: 'strict',
         secure: process.env.COOKIE_SECURE !== 'false',
       })
+      if (result?.status === 'pending') {
+        res.status(202).json({ ok: true, data: result })
+        return
+      }
       res.status(204).send()
     } catch (error) {
       next(error)
