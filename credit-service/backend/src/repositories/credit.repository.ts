@@ -226,7 +226,7 @@ export class CreditRepository {
 
   private async lockUsers(tx: Prisma.TransactionClient, ...userIds: string[]): Promise<void> {
     for (const userId of [...new Set(userIds)].sort()) {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`credit-user:${userId}`})::bigint)`
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`credit-user:${userId}`})::bigint)`
     }
   }
 
