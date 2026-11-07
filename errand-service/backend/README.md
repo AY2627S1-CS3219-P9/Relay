@@ -50,6 +50,13 @@ assigned courier receives the full reserved amount. Each transition is locked
 and written with its outbox event in one database transaction, so redelivery is
 safe and cannot duplicate settlement events.
 
+The same consumer handles deleted couriers. Valid `ACCEPTED` and `PICKED_UP`
+errands are reopened with the courier cleared. Expired assigned errands become
+`EXPIRED` and emit `ErrandExpired` to release the reservation. `DELIVERED`
+errands become `CONFIRMED` without clearing `courierSub`, so Credit Service can
+route the completed payment to pending settlement for the deleted courier.
+These transitions use the same per-errand advisory locks and are idempotent.
+
 Acceptance protection checks the requester's current User Service profile before
 allowing a courier to accept an errand. A missing profile returns
 `REQUESTER_DELETED` with HTTP 409, while a User Service outage fails closed

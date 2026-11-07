@@ -42,21 +42,25 @@ const message = (eventType: 'UserDeleted' | 'UserRegistered') => ({
 
 describe('UserDeletionConsumer', () => {
   it('transitions requester errands for UserDeleted events', async () => {
-    const deleted: string[] = []
+    const requesterDeleted: string[] = []
+    const courierDeleted: string[] = []
     const repository = {
-      handleRequesterDeleted: async (sub: string) => { deleted.push(sub); return 3 },
+      handleRequesterDeleted: async (sub: string) => { requesterDeleted.push(sub); return 3 },
+      handleCourierDeleted: async (sub: string) => { courierDeleted.push(sub); return 2 },
     } as unknown as ErrandRepository
     const consumer = new UserDeletionConsumer(repository, new FakeKafka() as never, env)
 
     await consumer.handleMessage(message('UserDeleted'))
 
-    expect(deleted).toEqual(['requester-sub'])
+    expect(requesterDeleted).toEqual(['requester-sub'])
+    expect(courierDeleted).toEqual(['requester-sub'])
   })
 
   it('acknowledges UserRegistered events without changing errands', async () => {
     let called = false
     const repository = {
       handleRequesterDeleted: async () => { called = true; return 0 },
+      handleCourierDeleted: async () => { called = true; return 0 },
     } as unknown as ErrandRepository
     const consumer = new UserDeletionConsumer(repository, new FakeKafka() as never, env)
 

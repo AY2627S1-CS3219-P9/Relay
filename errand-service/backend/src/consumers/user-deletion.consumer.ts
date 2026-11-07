@@ -106,8 +106,11 @@ export class UserDeletionConsumer {
     try {
       event = parseUserEvent(raw, key)
       if (event.eventType === UserEventTypes.USER_DELETED) {
-        const changed = await this.repository.handleRequesterDeleted(event.payload.cognitoSub)
-        console.log(`Applied requester deletion for ${event.payload.cognitoSub}; changed ${changed} errands`)
+        const requesterChanged = await this.repository.handleRequesterDeleted(event.payload.cognitoSub)
+        const courierChanged = await this.repository.handleCourierDeleted(event.payload.cognitoSub)
+        console.log(
+          `Applied user deletion for ${event.payload.cognitoSub}; changed ${requesterChanged} requester and ${courierChanged} courier errands`,
+        )
       }
     } catch (error) {
       const rejection = classify(error)

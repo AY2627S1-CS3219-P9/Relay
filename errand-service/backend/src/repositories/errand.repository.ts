@@ -379,6 +379,103 @@ export class ErrandRepository {
     })
   }
 
+  /**
+   * Applies courier deletion without involving the HTTP actor flow.
+   * ACCEPTED and PICKED_UP errands are reopened while still valid. Expired
+   * ones release their reservation through ErrandExpired. DELIVERED errands
+   * are confirmed and retain the deleted courier subject so Credit Service can
+   * route the payment to pending settlement.
+   */
+  async handleCourierDeleted(courierSub: string, now = new Date()): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
+      const activeStatuses: ErrandStatus[] = [
+        ErrandStatus.Accepted,
+        ErrandStatus.PickedUp,
+        ErrandStatus.Delivered,
+      ]
+      const candidates = await tx.errand.findMany({
+        where: { courierSub, status: { in: activeStatuses } },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      let changedCount = 0
+
+      for (const candidate of candidates) {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtext(${`errand:${candidate.id}`})::bigint)
+        `
+        const current = await tx.errand.findUnique({ where: { id: candidate.id } })
+        if (
+          !current ||
+          current.courierSub !== courierSub ||
+          !activeStatuses.includes(current.status as ErrandStatus)
+        ) {
+          continue
+        }
+
+        if (current.status === ErrandStatus.Delivered) {
+          const updated = await tx.errand.update({
+            where: { id: current.id },
+            data: { status: ErrandStatus.Confirmed },
+          })
+          await appendEvent(tx, {
+            eventType: ErrandEventTypes.ERRAND_COMPLETED,
+            payload: {
+              errandId: updated.id,
+              errandStatus: ErrandStatus.Confirmed,
+              previousStatus: ErrandStatus.Delivered,
+              actorType: 'system',
+              requesterSub: updated.requesterSub,
+              courierSub,
+              recipientSubs: [courierSub],
+              metadata: { reason: 'courier-deleted' },
+            },
+          })
+          changedCount += 1
+          continue
+        }
+
+        const isExpired = current.expiresAt <= now
+        const nextStatus = isExpired ? ErrandStatus.Expired : ErrandStatus.Open
+        const updated = await tx.errand.update({
+          where: { id: current.id },
+          data: { courierSub: null, status: nextStatus },
+        })
+
+        if (isExpired) {
+          await appendEvent(tx, {
+            eventType: ErrandEventTypes.ERRAND_EXPIRED,
+            payload: {
+              errandId: updated.id,
+              errandStatus: ErrandStatus.Expired,
+              previousStatus: current.status as ErrandStatus,
+              actorType: 'system',
+              requesterSub: updated.requesterSub,
+              recipientSubs: [updated.requesterSub],
+              metadata: { reason: 'courier-deleted' },
+            },
+          })
+        } else {
+          await appendEvent(tx, {
+            eventType: ErrandEventTypes.ERRAND_STATUS_CHANGED,
+            payload: {
+              errandId: updated.id,
+              errandStatus: ErrandStatus.Open,
+              previousStatus: current.status as ErrandStatus,
+              actorType: 'system',
+              requesterSub: updated.requesterSub,
+              recipientSubs: [updated.requesterSub],
+              metadata: { reason: 'courier-deleted' },
+            },
+          })
+        }
+        changedCount += 1
+      }
+
+      return changedCount
+    })
+  }
+
   async accept(errandId: string, actorSub: string): Promise<Errand> {
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
