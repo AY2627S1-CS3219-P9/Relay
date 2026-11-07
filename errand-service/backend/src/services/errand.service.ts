@@ -34,6 +34,15 @@ export class ErrandService {
       )
     }
 
+    const profile = await this.userClient.getProfile(user.sub)
+    if (!profile) {
+      throw new ErrandServiceError(
+        ErrandErrors.INVALID_ERRAND,
+        'A completed profile is required to create an errand.',
+        400,
+      )
+    }
+
     // Validate the supplier's current operational status before reserving credit
     // or creating any pending/database records. serviceType remains optional.
     try {

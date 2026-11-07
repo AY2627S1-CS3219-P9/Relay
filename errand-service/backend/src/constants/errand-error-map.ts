@@ -112,6 +112,11 @@ export const ERRAND_ERROR_MAP = {
     userMessage: 'Errand has expired and is no longer available.',
     statusCode: 404,
   },
+  'REQUESTER DELETED': {
+    code: ErrandErrors.REQUESTER_DELETED,
+    userMessage: 'The requester account has been deleted.',
+    statusCode: 409,
+  },
 } as const
 
 export type ErrandErrorMap = typeof ERRAND_ERROR_MAP

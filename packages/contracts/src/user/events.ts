@@ -6,13 +6,23 @@ export const UserEventTypes = {
 
 export type UserEventType = (typeof UserEventTypes)[keyof typeof UserEventTypes]
 
-/** Envelope shared by all user events. The payload remains the Cognito subject. */
+/**
+ * Shared user-event payload. Fields beyond the Cognito subject are optional so
+ * older producers and consumers remain compatible during a rolling deployment.
+ */
+export type UserEventPayload = {
+  cognitoSub: string
+  profilePictureKey?: string
+  metadata?: Record<string, string>
+}
+
+/** Envelope shared by all user events. */
 export interface UserEvent {
   eventId: string
   eventType: UserEventType
   timestamp: string
   version: 1
-  payload: { cognitoSub: string }
+  payload: UserEventPayload
 }
 
 export type UserRegisteredEvent = UserEvent & {
@@ -42,6 +52,6 @@ export type UserEventDlqMessage = {
   eventType: UserEventType | 'UserEventInvalid'
   timestamp: string
   version: 1
-  payload: { cognitoSub: string; metadata?: { rawEvent: string } }
+  payload: UserEventPayload
   error: { code: UserEventDlqErrorCode; message: string }
 }

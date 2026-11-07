@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { UserEventConsumer } from '../dist/consumers/user.consumer.js'
+import { parseUserEvent } from '../dist/validators/user-event.validator.js'
 
 process.env.KAFKA_TOPIC_USER_EVENTS ??= 'user-events'
 process.env.KAFKA_TOPIC_USER_DLQ ??= 'user-events-dlq'
@@ -75,6 +76,20 @@ test('malformed, invalid and mismatched user events go to the DLQ', async () => 
   await mismatch.handle(event(), 'different-subject')
   assert.equal(JSON.parse(mismatch.sent[0].messages[0].value).error.code, 'USER_EVENT_INVALID')
   assert.equal(mismatch.calls.length, 0)
+})
+
+test('preserves additive user-deletion cleanup fields', () => {
+  const payload = {
+    ...event('UserDeleted'),
+    payload: {
+      cognitoSub: randomUUID(),
+      profilePictureKey: 'profiles/user/avatar.png',
+      metadata: { reason: 'self_service_deletion' },
+    },
+  }
+
+  const parsed = parseUserEvent(JSON.stringify(payload), payload.payload.cognitoSub)
+  assert.deepEqual(parsed.payload, payload.payload)
 })
 
 test('duplicate and out-of-order user events go to the DLQ', async () => {
