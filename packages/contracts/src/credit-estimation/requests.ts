@@ -5,4 +5,7 @@ export type EstimateCreditRequest = {
   name: string
   description: string
   serviceType: SupplierServiceType
+  instructions: string
+  startAt: string
+  expiresAt: string
 }

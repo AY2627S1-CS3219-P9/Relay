@@ -5,7 +5,6 @@ A microservice for estimating credit values for errands based on their title and
 ## Features
 
 - AI-powered credit estimation using configurable providers (any OpenAI-compatible API)
-- Keyword-based complexity analysis as fallback
 - Rate limiting (10 requests per minute per user)
 - Authentication via session validation
 

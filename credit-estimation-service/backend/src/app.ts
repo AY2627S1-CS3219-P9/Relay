@@ -30,8 +30,11 @@ export function createApp() {
     const estimationError = translateEstimationError(err)
     res.status(estimationError.statusCode).json({
       code: estimationError.code,
-      message: estimationError.message,
-      ...(estimationError.fieldErrors ? { fieldErrors: estimationError.fieldErrors } : {}),
+      message: estimationError.fieldErrors
+        ? `${estimationError.message} ${Object.entries(estimationError.fieldErrors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join(' ')}`
+        : estimationError.message,
     })
   }
 

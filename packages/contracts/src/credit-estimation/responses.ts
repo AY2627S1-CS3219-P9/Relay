@@ -1,5 +1,6 @@
 /** Response from credit estimation. */
 export type EstimateCreditResponse = {
-  estimatedCredits: number
-  explanation?: string
+  minCredits: number
+  maxCredits: number
+  reason: string
 }
