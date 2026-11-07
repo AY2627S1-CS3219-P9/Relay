@@ -1,18 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Relay private profile-image bucket.
 
-Parameters:
-  BucketName:
-    Type: String
-    Description: Globally unique S3 bucket name for user profile images.
-
 Resources:
   UserImageBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Ref BucketName
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerEnforced

@@ -1,0 +1,91 @@
+name: Floci EKS CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      COMPOSE_PARALLEL_LIMIT: '2'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start Floci EKS
+        run: npm run up:eks
+
+      - name: Verify pod replacement
+        env:
+          KUBECONFIG: ${{ github.workspace }}/floci/eks/.kubeconfig
+        run: |
+          kubectl -n relay rollout restart deployment/errand-notification
+          kubectl -n relay rollout status deployment/errand-notification --timeout=5m
+          kubectl -n relay get pods
+
+      - name: Run application integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          domain="$(docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 \
+            -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+            relay-floci-eks aws cloudformation describe-stacks --stack-name relay-local-edge \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' --output text)"
+          [[ "$domain" == *.cloudfront.localhost.floci.io ]]
+          export RELAY_SHELL_URL="https://$domain"
+          export NODE_EXTRA_CA_CERTS="$GITHUB_WORKSPACE/floci/eks/.floci-ca.pem"
+          export RELAY_TEST_HTTP2=1
+          export NO_PROXY="localhost,127.0.0.1,.localhost.floci.io"
+          export no_proxy="$NO_PROXY"
+          npm run test:services
+
+      - name: Collect Kubernetes and Floci diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          docker ps -a > eks-diagnostics.txt
+          docker logs relay-floci-eks >> eks-diagnostics.txt 2>&1 || true
+          if [[ -s floci/eks/.kubeconfig ]]; then
+            export KUBECONFIG="$GITHUB_WORKSPACE/floci/eks/.kubeconfig"
+            kubectl -n relay get pods,jobs,deployments -o wide >> eks-diagnostics.txt 2>&1 || true
+            kubectl -n relay get events --sort-by=.metadata.creationTimestamp >> eks-diagnostics.txt 2>&1 || true
+            for deploy in $(kubectl -n relay get deployments -o name 2>/dev/null); do
+              echo "Logs for $deploy" >> eks-diagnostics.txt
+              kubectl -n relay logs "$deploy" --all-containers --tail=100 >> eks-diagnostics.txt 2>&1 || true
+            done
+          fi
+
+      - name: Upload EKS diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: floci-eks-diagnostics
+          path: eks-diagnostics.txt
+          if-no-files-found: ignore
+
+      - name: Stop Floci EKS
+        if: always()
+        run: npm run down:eks

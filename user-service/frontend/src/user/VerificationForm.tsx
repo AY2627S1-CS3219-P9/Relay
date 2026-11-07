@@ -21,15 +21,6 @@ export function VerificationForm({
         <p>
           We sent a 6-digit code to <strong>{email}</strong>.
         </p>
-        {
-          // TODO: remove this in prod
-          <p>
-            To read verification code in Floci, go to{' '}
-            <a target="_blank" href="http://localhost:4566/_aws/ses">
-              http://localhost:4566/_aws/ses
-            </a>
-          </p>
-        }
       </div>
       <VerificationComponent
         email={email}

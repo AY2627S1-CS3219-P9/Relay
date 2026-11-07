@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { fetchOverHttp2 } from './http2-fetch.mjs'
+
+const request = process.env.RELAY_TEST_HTTP2 === '1' ? fetchOverHttp2 : fetch
 
 const shellUrl = (process.env.RELAY_SHELL_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
@@ -14,7 +17,7 @@ async function fetchText(url) {
   let response
 
   try {
-    response = await fetch(url)
+    response = await request(url)
   } catch (error) {
     throw new Error(`Could not connect to ${url}. Is the Relay environment running?`, {
       cause: error,
@@ -48,7 +51,7 @@ for (const { id, federationName } of frontendServices) {
 }
 
 test('browser login reaches the auth API through the shell', async () => {
-  const response = await fetch(`${shellUrl}/api/auth/login`, {
+  const response = await request(`${shellUrl}/api/auth/login`, {
     method: 'POST',
     headers: { Origin: shellUrl, 'Content-Type': 'application/json' },
     body: '{}',
@@ -60,7 +63,7 @@ test('browser login reaches the auth API through the shell', async () => {
 })
 
 test('cross-origin browser login is rejected', async () => {
-  const response = await fetch(`${shellUrl}/api/auth/login`, {
+  const response = await request(`${shellUrl}/api/auth/login`, {
     method: 'POST',
     headers: { Origin: 'https://unrelated.example', 'Content-Type': 'application/json' },
     body: '{}',

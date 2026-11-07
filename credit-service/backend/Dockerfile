@@ -15,6 +15,10 @@ RUN npm run build --workspace @relay/user-auth-backend-middleware
 RUN npm run build --workspace @relay/credit-backend
 
 FROM node:22-alpine AS runtime
+RUN apk add --no-cache wget \
+    && wget -qO /etc/ssl/certs/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && cat /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/rds-global-bundle.pem > /etc/ssl/certs/relay-ca-bundle.pem
+ENV SSL_CERT_FILE=/etc/ssl/certs/relay-ca-bundle.pem
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/package-lock.json ./
@@ -27,5 +31,6 @@ COPY --from=build /app/credit-service/backend/dist ./credit-service/backend/dist
 
 
 COPY --from=build /app/credit-service/backend/prisma ./credit-service/backend/prisma
+COPY deploy/scripts/kafka-topics.mjs ./scripts/kafka-topics.mjs
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy --schema=credit-service/backend/prisma/schema.prisma && npx tsx credit-service/backend/dist/server.js"]

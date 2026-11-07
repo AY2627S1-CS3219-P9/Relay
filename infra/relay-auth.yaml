@@ -14,7 +14,6 @@ Parameters:
   SuperAdminGroupName:
     Type: String
     Default: SuperAdminGroup
-
 Resources:
   UserPool:
     Type: AWS::Cognito::UserPool

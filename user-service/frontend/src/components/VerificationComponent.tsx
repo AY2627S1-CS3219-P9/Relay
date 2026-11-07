@@ -1,5 +1,5 @@
 import { authFetch } from '@relay/user-auth-frontend-fetch'
-import { useEffect, useState, type SubmitEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { ErrorMessage, TextButton } from '@relay/ui'
 import { VerificationCodeField } from './VerificationCodeField'
 import type {
@@ -22,17 +22,9 @@ export function VerificationComponent({
   backLabel?: string
 }) {
   const [code, setCode] = useState('')
-  const [seconds, setSeconds] = useState(300)
   const [errorMessage, setErrorMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setSeconds((value) => Math.max(0, value - 1))
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   async function submit(event: SubmitEvent) {
     event.preventDefault()
@@ -78,7 +70,6 @@ export function VerificationComponent({
         result.status === 204 ? { ok: true, data: undefined } : result.json(),
       )) as ApiResult<undefined>
       if (response.ok) {
-        setSeconds(300)
         setCode('')
       } else {
         setErrorMessage(response.error.message)
@@ -97,11 +88,8 @@ export function VerificationComponent({
   return (
     <form className="verification-component" onSubmit={submit}>
       <VerificationCodeField value={code} onChange={setCode} />
-      <p className="otp-timer">
-        Code expires in {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
-      </p>
       <ErrorMessage message={errorMessage} />
-      <button className="glass-btn-primary user-submit" disabled={loading || seconds === 0}>
+      <button className="glass-btn-primary user-submit" disabled={loading}>
         {loading ? 'Verifying…' : 'Verify email'}
       </button>
       <TextButton onClick={() => void resend()} disabled={resending}>

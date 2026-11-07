@@ -5,287 +5,120 @@ repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
 - CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
-  four private PostgreSQL databases, their credentials, and the Metrics Server
-  add-on required by CPU autoscalers. The sandbox demo
-  runs its own single-node Kafka broker in EKS.
+  four private PostgreSQL databases, their credentials, fourteen ECR repositories, and the Metrics Server
+  add-on required by CPU autoscalers. A separate CloudFront stack supplies a
+  trusted HTTPS hostname without a custom domain. MSK Provisioned provides
+  the private event broker.
 - `infra/relay-auth.yaml` provisions the Cognito user pool, no-secret app
   client, email verification, password policy, and admin groups.
 - `infra/relay-storage.yaml` provisions the private profile-image bucket.
-  The user API accesses it through an EKS Pod Identity role, without static
+  The user API accesses it through an IRSA role, without static
   S3 credentials.
-- `scripts/deploy-eks.sh` builds the existing Dockerfiles, pushes the images,
-  creates the in-cluster runtime and Kafka Secrets, starts the demo broker,
+- `deploy/scripts/deploy-eks.sh` builds images from the Floci-neutral `compose.yaml` definitions, pushes them,
+  creates the in-cluster runtime Secret, provisions Kafka topics on MSK,
   applies one-off database migrations,
   and applies the workloads, HPA policies, and ALB Ingress.
 
-## Prerequisites
+## Deploy or redeploy
 
-Install AWS CLI v2, Docker with a running daemon, a compatible `kubectl`,
-Node.js, and OpenSSL. The script builds `linux/amd64` images, including on Apple
-Silicon. The deployment identity needs the CloudFormation, IAM, EKS, networking,
-ECR, RDS, Secrets Manager, Cognito, and S3 permissions used by the templates and
-commands, plus access to the generated Kubernetes cluster.
-
-### AWS SSO and shell configuration
-
-Configure the named profile once:
+Run from the repository root in WSL or another Bash environment with AWS CLI v2,
+Docker, kubectl, Node.js, and OpenSSL installed. Docker must be running. The
+deployment identity needs CloudFormation, CloudFront, IAM, EKS, networking,
+ECR, RDS, MSK, Secrets Manager, Cognito, and S3 access. This provisions
+billable AWS resources.
 
 ```bash
-aws configure sso --profile user
+AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash deploy/deploy.sh relay
 ```
 
-Set these variables in each terminal used for deployment or `kubectl`:
+The entry point reuses the named AWS profile and a valid SSO session. If the
+profile is missing, it runs `aws configure sso`; if the session has expired,
+it runs `aws sso login`. Without `AWS_PROFILE`, it prefers an existing
+`user` profile and otherwise prompts for a profile name. It uses the profile
+region unless `AWS_REGION` is set, and prompts if neither has a region.
+
+The script creates or updates the Cognito and profile-image storage stacks,
+reads their outputs, and writes generated values to the ignored
+`deploy/relay.aws.env` file (mode 600). It preserves other values already in
+that file. It selects a supported Kubernetes version for a new stack and keeps
+the actual cluster version on redeployment. `IMAGE_TAG` defaults to `latest`.
+To set optional values before the first deployment, create
+`deploy/relay.aws.env` from `deploy/relay.aws.env.example` and edit it;
+Cognito and S3 IDs and endpoints are always generated from stack outputs.
+
+If the Cognito super-admin group has no members, the script prompts for the
+initial admin email and password, creates the account, and adds it to the
+group. A rerun with a member already present skips this step. For unattended
+initial setup, set `RELAY_INITIAL_ADMIN_EMAIL` and
+`RELAY_INITIAL_ADMIN_PASSWORD` in the process environment. The password is
+never written to the env file. After deployment, sign in and complete the
+application profile; Cognito creation does not create a Relay database profile.
+
+The script then creates or updates the EKS and MSK stack, service-account
+roles, ECR images, Kubernetes runtime configuration, Kafka topics, database
+migrations, workloads, private ALB ingress, API Gateway, and CloudFront edge. It waits for rollouts
+and the public health endpoint, then prints the CloudFront HTTPS URL. On an
+existing stack, CloudFormation reports no changes when templates match;
+Docker uses its build cache; images are pushed only when their built image
+differs from the ECR tag; Pods use ECR digests; completed topic and migration
+Jobs are reused while their inputs match; and environment-dependent Pods are
+restarted only when ConfigMap or Secret values change.
+
+Use `NO_CACHE=1 AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash
+deploy/deploy.sh relay` when a clean Docker rebuild is needed. The lower-level
+`deploy/scripts/deploy-eks.sh` expects an already populated
+`deploy/relay.aws.env` and is normally called by `deploy/deploy.sh`.
+
+Retrieve the URL later:
 
 ```bash
-export AWS_PROFILE=user
-export AWS_REGION=ap-southeast-1
-export AWS_DEFAULT_REGION="$AWS_REGION"
-export AWS_PAGER=""
-export STACK_NAME=relay
-export AUTH_STACK=relay-auth
-export STORAGE_STACK=relay-storage
-
-aws sso login --profile "$AWS_PROFILE"
-aws sts get-caller-identity
+aws cloudformation describe-stacks --region ap-southeast-1 --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" \
+  --output text
 ```
 
-For device-code login, use
-`aws sso login --profile "$AWS_PROFILE" --use-device-code` instead. Repeat login
-when the session expires. `AWS_PROFILE` applies to subsequent AWS commands and
-the credentials used by `kubectl`; logging in alone does not grant cluster access.
+The deployment reads the MSK Provisioned SCRAM bootstrap endpoint and credential,
+then runs `kafka-init` to create the event and dead-letter topics. The MSK
+endpoint stays private to the VPC and requires SCRAM authentication over TLS.
 
-Copy the configuration file once; preserve it on subsequent deployments:
+Check topic initialization and application rollout:
 
 ```bash
-cp deploy/relay.aws.env.example deploy/relay.aws.env
+kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=10m
+kubectl -n relay get pods
 ```
 
-`relay.aws.env` remains outside Git. The script sources it on the workstation,
-so its values override exported variables with the same names. Replace every
-placeholder before deploying.
+The topic Job runs when its configuration changes or after a new cluster is created. Pausing deletes the MSK cluster and
+its topic data and consumer offsets immediately. The application databases are
+snapshotted, but previously published outbox entries are not replayed after
+resume.
 
-### Kubernetes and PostgreSQL versions
+The first deployment can take several minutes. The script creates a separate
+gateway and `relay-edge` CloudFormation stacks after the Kubernetes Ingress reports its ALB hostname, waits for CloudFront, then prints the public URL:
 
-The example versions are starting points, not a guarantee of regional support.
-Query available EKS versions and set `KUBERNETES_VERSION` in the local file:
+```text
+Deployment complete: https://d123example.cloudfront.net
+```
+
+Retrieve it later with:
 
 ```bash
-aws eks describe-cluster-versions --region "$AWS_REGION" \
-  --query 'clusterVersions[].{Version:clusterVersion,Status:status}' --output table
+aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" \
+  --output text
 ```
 
-For a new stack, query the regional PostgreSQL default and parameter-group
-family, then set `DATABASE_ENGINE_FAMILY` accordingly:
-
-```bash
-aws rds describe-db-engine-versions --region "$AWS_REGION" \
-  --engine postgres --default-only \
-  --query 'DBEngineVersions[].{Version:EngineVersion,Family:DBParameterGroupFamily}' \
-  --output table
-```
-
-The template does not pin `EngineVersion`. `DATABASE_ENGINE_FAMILY` configures
-the User database parameter group; it does not select the engine version. The
-template/script fallback is `postgres17`, while the example file currently uses
-`postgres18`. Confirm the matching family before deploying. See the
-[EKS version guide](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)
-and [RDS version command reference](https://docs.aws.amazon.com/cli/latest/reference/rds/describe-db-engine-versions.html).
-
-## Provision AWS resources
-
-The deployment script creates or updates the EKS stack only. Provision Cognito
-and storage separately first, in the same AWS region. The EKS project/cluster
-name defaults to `relay`; changing the stack name alone does not change that
-project name, ECR repository names, or Kubernetes namespace.
-
-Create the Cognito stack:
-
-```bash
-aws cloudformation deploy \
-  --region "$AWS_REGION" \
-  --stack-name "$AUTH_STACK" \
-  --template-file infra/relay-auth.yaml
-```
-
-Create the storage stack. The bucket name must be globally unique:
-
-```bash
-export PROFILE_IMAGE_BUCKET=replace-with-a-globally-unique-bucket-name
-aws cloudformation deploy \
-  --region "$AWS_REGION" \
-  --stack-name "$STORAGE_STACK" \
-  --template-file infra/relay-storage.yaml \
-  --parameter-overrides "BucketName=$PROFILE_IMAGE_BUCKET"
-```
-
-Read the generated values:
-
-```bash
-stack_output() {
-  aws cloudformation describe-stacks \
-    --region "$AWS_REGION" \
-    --stack-name "$1" \
-    --query "Stacks[0].Outputs[?OutputKey=='$2'].OutputValue" \
-    --output text
-}
-
-export COGNITO_USER_POOL_ID="$(stack_output "$AUTH_STACK" UserPoolId)"
-export COGNITO_CLIENT_ID="$(stack_output "$AUTH_STACK" UserPoolClientId)"
-export COGNITO_ISSUER="$(stack_output "$AUTH_STACK" UserPoolIssuer)"
-export COGNITO_JWKS_URI="$(stack_output "$AUTH_STACK" UserPoolJwksUri)"
-export SUPERADMIN_GROUP="$(stack_output "$AUTH_STACK" SuperAdminGroupName)"
-export S3_BUCKET="$(stack_output "$STORAGE_STACK" BucketName)"
-export S3_ENDPOINT="$(stack_output "$STORAGE_STACK" S3Endpoint)"
-export S3_PUBLIC_ENDPOINT="$(stack_output "$STORAGE_STACK" S3PublicEndpoint)"
-```
-
-Copy the Cognito and S3 values above into `deploy/relay.aws.env`. Keep that
-file uncommitted. The EKS deployment passes the bucket name to the cluster
-stack, which grants the `user-api` Pod Identity role access to the bucket.
-
-The bucket blocks public access, enforces bucket-owner ownership, uses AES256
-encryption, and is retained on stack deletion/replacement. The User API uses
-Pod Identity instead of static S3 keys and returns presigned image URLs valid
-for 15 minutes. Public bucket access is unnecessary. If customizing Cognito
-group names, also configure `COGNITO_ADMIN_GROUP_NAME` and
-`COGNITO_SUPERADMIN_GROUP_NAME` in the User API runtime; the deployment currently
-uses the default group names.
-
-For an existing EKS stack, inspect the actual User database version before
-changing `DATABASE_ENGINE_FAMILY`:
-
-```bash
-USER_DB_ID="$(aws cloudformation describe-stack-resource \
-  --stack-name "$STACK_NAME" \
-  --logical-resource-id UserDatabase \
-  --region "$AWS_REGION" \
-  --query 'StackResourceDetail.PhysicalResourceId' \
-  --output text)"
-
-aws rds describe-db-instances \
-  --db-instance-identifier "$USER_DB_ID" \
-  --region "$AWS_REGION" \
-  --query 'DBInstances[0].{Version:EngineVersion,ParameterGroups:DBParameterGroups}' \
-  --output json
-```
-
-## Bootstrap the initial super-admin
-
-CloudFormation intentionally does not create the initial user's permanent
-password. Create the first super-admin once, after the auth stack exists. Use a
-password of at least eight characters with uppercase, lowercase, numbers, and
-symbols. These prompts use Bash:
-
-```bash
-read -r -p 'Initial admin email: ' RELAY_INITIAL_ADMIN_EMAIL
-read -r -s -p 'Initial admin password: ' RELAY_INITIAL_ADMIN_PASSWORD
-printf '\n'
-
-aws cognito-idp admin-create-user \
-  --region "$AWS_REGION" \
-  --user-pool-id "$COGNITO_USER_POOL_ID" \
-  --username "$RELAY_INITIAL_ADMIN_EMAIL" \
-  --user-attributes \
-    Name=email,Value="$RELAY_INITIAL_ADMIN_EMAIL" \
-    Name=email_verified,Value=true \
-  --message-action SUPPRESS
-
-aws cognito-idp admin-set-user-password \
-  --region "$AWS_REGION" \
-  --user-pool-id "$COGNITO_USER_POOL_ID" \
-  --username "$RELAY_INITIAL_ADMIN_EMAIL" \
-  --password "$RELAY_INITIAL_ADMIN_PASSWORD" \
-  --permanent
-
-aws cognito-idp admin-add-user-to-group \
-  --region "$AWS_REGION" \
-  --user-pool-id "$COGNITO_USER_POOL_ID" \
-  --username "$RELAY_INITIAL_ADMIN_EMAIL" \
-  --group-name "$SUPERADMIN_GROUP"
-
-unset RELAY_INITIAL_ADMIN_PASSWORD
-```
-
-This bootstrap is idempotent only up to the first user creation. If the user
-already exists, use `admin-set-user-password` and
-`admin-add-user-to-group` directly. After deployment, sign in through Relay and
-complete the application profile; Cognito account creation alone does not
-create a Relay database profile.
-
-## Deploy the application
-
-Set `IMAGE_TAG` in `deploy/relay.aws.env` to a new tag per release, such as a Git
-commit hash. Reusing `latest` can leave the Deployment's Pod template unchanged;
-pushing a new image with the same tag does not guarantee a rollout.
-
-```bash
-bash scripts/deploy-eks.sh "$STACK_NAME"
-```
-
-Use `NO_CACHE=1 bash scripts/deploy-eks.sh "$STACK_NAME"` to rebuild without
-Docker's build cache. The script uses the selected profile and region, refreshes
-kubeconfig, builds and pushes ten images to ECR, prepares runtime configuration,
-starts Kafka, and waits for topic initialization. It then runs separate Supplier
-SQL and User/Errand/Credit Prisma migration Jobs before applying application
-Deployments, autoscalers, and ingress. Rollout and migration waits use ten-minute
-timeouts; topic initialization uses five minutes.
-
-The host image receives its Cognito settings at build time, so changing them
-requires rebuilding it. ConfigMap/Secret environment changes also require
-restarting the affected API Pods. Applying `kubectl apply -k k8s/base` alone does
-not perform image substitution, generate Secrets, or prepare migration Jobs;
-use the deployment script for the complete sequence.
-
-The script generates a shared Kafka password on first deployment and keeps it
-in the `kafka-auth` and `kafka-broker-config` Kubernetes Secrets. The broker is
-available only through the in-cluster `kafka:9092` Service. User, Errand, and
-Credit API use Kafka's SASL/PLAIN authentication; the password is not placed in
-the ConfigMap or the repository. The broker and its one-partition topics are
-for a short-lived demo: replacing the broker Pod loses Kafka data, including
-topic metadata and consumer offsets. A container restart within the same Pod
-retains its `emptyDir` volume. SASL/PLAIN over this internal listener does not encrypt
-traffic, so do not use this configuration for production or expose the Service
-outside the cluster.
-
-Check the demo broker and topic initializer before testing the application:
-
-```bash
-kubectl -n relay rollout status deployment/kafka
-kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
-kubectl -n relay get pods -l app=kafka
-```
-
-The broker advertises `kafka.relay.svc.cluster.local:9092`. Its Service publishes
-endpoints before readiness succeeds so startup probes can resolve the advertised
-address. Broker probes and topic initialization use the authenticated client
-settings in `kafka-broker-config`. The script reuses both Kafka Secrets; changing
-only one can break authentication. No MSK cluster is provisioned.
-
-Inspect topics without printing credentials:
-
-```bash
-kubectl -n relay exec deployment/kafka -- \
-  /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
-  --command-config /etc/kafka/secrets/client.properties --describe
-```
-
-If the broker Pod is replaced after deployment, recreate the topic initializer
-Job after Kafka is ready; its previous completion does not restore lost topics:
-
-```bash
-kubectl -n relay delete job kafka-init --ignore-not-found
-kubectl apply -f k8s/base/kafka-demo.yaml
-kubectl -n relay wait --for=condition=complete job/kafka-init --timeout=5m
-```
-
-The first deployment can take several minutes while AWS creates the cluster,
-databases, and load balancer. The script prints the command for
-finding the public ALB hostname at the end:
-
-```bash
-kubectl -n relay get ingress relay
-```
-
+The request path is browser --HTTPS--> CloudFront --HTTPS--> API Gateway
+(regional REST API) --VPC Link/HTTP--> internal ALB --HTTP--> pods.
+The public API Gateway execute-api endpoint can be called directly; the ALB
+is private and its security group accepts HTTP from the VPC Link security
+group. Inter-pod and VPC Link-to-ALB traffic are not encrypted. The gateway's
+REST proxy uses response streaming for errand notifications. AWS limits a
+stream to 15 minutes, so the browser must reconnect. API Gateway also imposes
+request size, timeout, and throttling limits and adds charges and latency.
+The internal ALB strips the REST stage prefix before forwarding to services.
+CloudFront uses its default trusted certificate and forwards API Gateway's
+required origin Host header. Viewer requests still use the CloudFront URL.
 ### Verify workloads and application behavior
 
 ```bash
@@ -298,20 +131,20 @@ kubectl -n relay logs job/errand-migrate
 kubectl -n relay logs job/credit-migrate
 ```
 
-Wait for a nonempty ingress hostname, then check the public host:
+Check the CloudFront URL printed by the deployment script:
 
 ```bash
-ALB_HOST="$(kubectl -n relay get ingress relay \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-curl --fail --show-error "http://$ALB_HOST/healthz"
+PUBLIC_HOST="$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+  --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomainName'].OutputValue" \
+  --output text)"
+curl --fail --show-error "https://$PUBLIC_HOST/healthz"
 ```
 
-This public health endpoint checks the host only. In the browser, check that
-remote assets load, sign in, complete the profile, and exercise each API with a
-valid session. Verify profile-image loading through presigned S3 URLs. A 401
-response from an unauthenticated API does not prove its database operation works.
-
-### Routing and temporary HTTP access
+This health endpoint checks the host only. In a browser, verify all four remote
+frontends, sign-in, refresh and logout with secure cookies, authenticated APIs,
+and presigned profile-image URLs.
+### Routing and HTTPS access
 
 | Public path | Destination |
 | --- | --- |
@@ -323,22 +156,18 @@ response from an unauthenticated API does not prove its database operation works
 | `/api/user*`, `/api/supplier*`, `/api/errands*`, `/api/credit*` | Host Nginx, then the matching backend Service on port 3000 |
 | Remaining paths | Host frontend |
 
-The ingress preserves remote prefixes; frontend Nginx configurations rewrite
+The ingress removes the API Gateway stage prefix and preserves remote prefixes; frontend Nginx configurations rewrite
 their prefixes before serving assets. The host also proxies remote routes using
 Kubernetes Service names, without workstation or Docker-host addresses.
 
-The deployment currently serves HTTP on port 80 using the ALB hostname. No
-application domain or ACM certificate is required. The ingress has no hostname
-restriction, HTTPS listener, or HTTPS redirect. Open `http://<ALB_HOST>` after
-the deployment completes.
-
-The runtime ConfigMap and User Auth Deployment set `COOKIE_SECURE="false"` so
-login cookies work over HTTP. Use test accounts only: passwords and session
-cookies are unencrypted. When enabling HTTPS later, configure an ACM certificate
-and HTTPS listener/redirect, then set `COOKIE_SECURE="true"` in both places.
-Host Nginx preserves forwarded HTTPS headers for that future configuration.
-Local Compose continues to use its own cookie setting. CloudFormation creates an ECR
-repository and a dedicated Pod Identity role for `user-auth-api`, restricted to
+CloudFront supplies the public `*.cloudfront.net` HTTPS URL. The gateway stack is
+created after the private ALB because the ALB is generated by EKS Ingress. The script updates `AUTH_PUBLIC_ORIGIN` to this URL and restarts
+`user-auth-api` before reporting completion. Kubernetes uses
+`COOKIE_SECURE=true`; Host Nginx forwards CloudFront's viewer protocol to User
+Auth. Local Compose retains its HTTP cookie setting.
+CloudFormation creates an ECR
+repository in the EKS stack and a dedicated IRSA role for `user-auth-api`
+in the AWS access stack, restricted to
 admin operations on the configured Cognito pool in the same account and Region.
 The script builds/pushes the auth image and deploys its Service and workload.
 
@@ -362,7 +191,7 @@ increasing the JSON body limit does not fix oversized headers. See the
 and [response-header buffer](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffer_size)
 documentation.
 
-### Backend readiness and Supplier database TLS
+### Backend readiness and database TLS
 
 Supplier verifies the `relay_access` and `relay_id` Cognito cookies directly.
 Its Deployment explicitly reads `COGNITO_ISSUER`, `COGNITO_JWKS_URI`,
@@ -379,6 +208,19 @@ global CA bundle, and its Deployment sets
 `DB_SSL_CA_PATH=/etc/ssl/certs/rds-global-bundle.pem` to enable PostgreSQL TLS with
 certificate verification. Local Compose leaves this setting unset.
 
+The AWS User, Errand, and Credit Prisma URLs require PostgreSQL TLS and verify
+the server certificate against the same RDS CA bundle (`sslmode=require`,
+`sslrootcert`, and `sslaccept=strict`). Their API, event publisher, and migration
+images include the bundle. Prisma's native TLS connector loads only one certificate
+from the URL's CA file, so these images also add all RDS roots to a combined
+OpenSSL trust store via `SSL_CERT_FILE`, retaining the system's public CAs.
+The deployment script creates these URLs in the
+`relay-runtime` Secret; changing the Secret rolls out affected workloads and
+recreates changed migration Jobs. Local Compose and Floci EKS use Floci's RDS
+emulator, which does not provide an RDS certificate, so their generated URLs
+do not enable TLS. This local difference must not be copied into the AWS
+runtime Secret.
+
 For Supplier HTTP 500 errors or failed readiness, inspect logs, RDS status,
 database security-group access, runtime credentials, and whether the running
 image contains the CA bundle. Keep certificate verification enabled:
@@ -388,18 +230,18 @@ kubectl -n relay logs deployment/supplier-api --tail=100
 kubectl -n relay describe pods -l app=supplier-api
 ```
 
-Errand stays live at `/health` while `/healthz` returns 503 until its initial Kafka
-publisher connection succeeds. Startup failures retry every five seconds. This
-readiness flag tracks initial connection, not continuous Kafka availability.
+Errand API no longer owns a Kafka producer or notification subscribers. Its
+Kafka outbox publisher and notification consumer run in separate workloads.
 
 ## What scales
 
 | Workload | Replica configuration |
 | --- | --- |
-| `supplier-api`, `user-api`, `errand-api` | Independent CPU HPA, 1–4 replicas |
-| `credit-api` | Independent CPU HPA, 1–3 replicas |
+| `supplier-api`, `user-api`, `errand-api` | Independent CPU HPA, 1â€“4 replicas |
+| `credit-api`, `credit-estimation-api` | Independent CPU HPA, 1-3 replicas |
+| `errand-notification` | Independent CPU HPA, 2-4 replicas |
 | Host and four microfrontends | One replica each, no HPA |
-| Kafka | One broker, no HPA |
+| MSK Provisioned | Managed outside Kubernetes |
 
 Each API HPA targets 65% of its requested CPU, not 65% of node capacity. All
 application workloads have CPU and memory requests/limits. EKS Auto Mode can
@@ -495,13 +337,11 @@ rollback states before starting another deployment.
 ## Intentional first-phase limits
 
 - `credit-api` still includes its Kafka consumers. It can scale for HTTP load,
-  but its consumers share Kafka consumer groups. With the current one-partition
-  local topic model, additional replicas do not add consumer throughput.
+  but its consumers share Kafka consumer groups. With 12 partitions, additional
+  replicas can share consumption, although HTTP and consumers still scale together.
 - A later phase should split Credit HTTP handling and Kafka consumption into
-  separate Deployments, increase topic partitions, and use Kafka lag to scale
-  the worker Deployment.
-- The demo broker uses one shared Kafka account for User, Errand, and Credit
-  API. User API retains EKS Pod Identity only for profile-image S3 access.
+  separate Deployments and use Kafka lag to scale the worker Deployment.
+- Kafka uses SCRAM over TLS. S3 and Cognito retain OIDC service-account roles.
 - Each API database is a separate small, single-AZ RDS instance. This preserves
   the current service data boundaries but is a cost-conscious learning setup,
   not a highly available database design.
@@ -517,14 +357,233 @@ rollback states before starting another deployment.
 
 ## Safe cleanup
 
-Delete the Kubernetes ingress while the cluster still exists. Wait for its ALB
+Delete the `relay-edge` stack first, then the `relay-gateway` stack and its VPC Link. Delete the Kubernetes ingress while the cluster still exists. Wait for its ALB
 and associated controller-managed resources to be removed before deleting the
 EKS stack. CloudFormation creates database snapshots on deletion/replacement.
-ECR repositories do not enable force-empty deletion; nonempty repositories can
-block stack deletion, so explicitly retain or remove their images according to
-your retention needs.
+ECR repositories use `EmptyOnDelete`; the pause and teardown scripts also
+recover repositories that reached `DELETE_FAILED` on older stacks.
 
 The authentication and storage stacks have separate lifecycles. Deleting the
 auth stack removes its Cognito resources. The private S3 bucket is retained even
 when the storage stack is deleted. Inventory retained database snapshots, image
 repositories, and S3 objects afterward because retained storage incurs charges.
+
+
+## AWS lifecycle
+
+Run these commands from the repository root with the same AWS account and region
+used for deployment. Install and configure AWS CLI and `kubectl` first. The
+scripts only act on the named Relay stacks and their recorded resources.
+
+```bash
+export AWS_REGION=ap-southeast-1
+bash deploy/scripts/pause-aws.sh relay
+bash deploy/deploy.sh relay
+```
+
+Pause deletes the CloudFront edge, API Gateway/VPC Link, and AWS access stacks and the EKS stack, including its EKS
+control plane, auto mode nodes, ALB, NAT gateway, ECR repositories, and RDS
+instances and the MSK Provisioned cluster. CloudFormation creates four final RDS snapshots. The script records
+their IDs and the retained S3 bucket in `deploy/.relay-pause.env`; **keep this
+file** for redeployment and full cleanup. Redeploy restores the four RDS
+instances from those snapshots, resets their passwords to the new stack
+secrets, recreates images and Kubernetes workloads, and runs migrations.
+Cognito users and profile images remain in the auth and storage stacks.
+The app is unavailable while paused. Snapshot and S3 storage, Secrets Manager
+and any other retained service usage can still incur charges; "pause" removes
+running infrastructure charges, not every possible AWS charge.
+
+To delete all stacks and their data, including Cognito users, the recorded
+RDS snapshots, and profile images:
+
+```bash
+AWS_REGION=ap-southeast-1 bash deploy/scripts/teardown-aws.sh relay --confirm-delete-all-data
+```
+
+The S3 bucket must be unversioned as in the current template. AWS may hold
+deleted Secrets Manager secrets in a recovery window. Review the AWS account
+for resources outside these CloudFormation stacks.
+
+Do not run teardown after a successful redeploy unless you first pause again,
+so the manifest refers to snapshots of the latest data.
+
+### Retrying an ECR deletion failure
+
+If CloudFormation reports `DELETE_FAILED` for an ECR repository, rerun the
+same pause or teardown command. The recovery path uses the pending pause
+manifest to identify the databases and force deletes only ECR repositories
+marked `DELETE_FAILED` in the Relay stack before retrying stack deletion.
+The template now sets `EmptyOnDelete: true` on all 14 ECR repositories for
+future deployments.
+
+
+## Event broker targets
+
+AWS EKS provisions a three-broker MSK Provisioned cluster through
+`infra/relay-eks.yaml`. The brokers are in separate private subnets and
+expose TLS with SASL/SCRAM on port 9096. The stack creates a customer-managed
+KMS key, a Secrets Manager username/password secret, and associates that
+secret with MSK. The deployment script reads the SCRAM bootstrap brokers and
+secret into the Kubernetes runtime Secret. No AWS IAM permissions are needed
+for Kafka clients. Keep that Kubernetes Secret restricted to the Relay
+namespace and rotate the SCRAM credential through Secrets Manager when needed.
+
+The topic Job creates the four event and dead-letter topics with replication
+factor 3, 12 partitions each, and `min.insync.replicas=2`. Both outbox publishers use `acks=-1`
+(acknowledge from all in-sync replicas), so they mark rows published only after
+at least two in-sync replicas commit. One broker can fail while writes remain
+available; with fewer than two in-sync replicas, publishers keep outbox rows
+pending for retry.
+
+Changing an existing two-AZ, two-broker MSK cluster to three AZs replaces the
+cluster because its subnet list changes. The deployment script stops before
+that update to avoid silently deleting Kafka records and consumer offsets.
+For a fresh three-broker cluster, explicitly pause the AWS deployment and
+redeploy, accepting the Kafka data loss described below. If those records or
+offsets must survive, migrate them to a new cluster before changing this stack.
+
+Pause deletes the MSK cluster without waiting for outboxes or consumer lag.
+Kafka records and offsets are lost at pause; RDS snapshots preserve the
+application databases, but previously published outbox rows are not replayed.
+Resume creates a fresh cluster and topics.
+
+Local Compose and Floci EKS create Provisioned cluster metadata through
+Floci's MSK API, but Floci runs one plaintext Redpanda broker. Local topic
+settings use one replica and minimum in-sync replica 1. Floci verifies the
+application event path, not TLS, SCRAM, two-copy persistence, or broker
+failover. Neither local target starts a standalone Kafka container.
+
+### AWS access for S3 and Cognito
+
+The deploy script reads the cluster OIDC issuer, reuses an existing IAM OIDC
+provider when present, and deploys `infra/relay-aws-access.yaml` as
+`relay-aws-access`. That stack grants the User API access to profile images
+in S3 and the Auth API access to Cognito administration. Their service
+accounts retain the existing OIDC and STS credential flow. The Kafka topic
+Job, publishers, and credit consumer no longer have Kafka IAM roles or
+service accounts. The runtime Secret contains no AWS access keys.
+
+If EKS is recreated, its OIDC issuer changes. The script discovers the
+current issuer and provider ARN each run. A manually created provider is not
+owned by CloudFormation and remains after pause or teardown; remove it
+separately if no longer needed.
+
+### Docker and topic Job failures
+
+Run `docker info` in the same WSL shell before deployment. If Docker Desktop
+works from Windows but this command cannot reach the Docker API, enable Docker
+Desktop's WSL integration for the Ubuntu distribution and restart the WSL
+shell. The deployment now checks this before updating CloudFormation. It also
+stops immediately if an image build, tag, or ECR push fails.
+
+`kafka-init` runs from the Credit API image. If it times out, inspect
+`kubectl -n relay describe pod -l job-name=kafka-init`. An
+`ImagePullBackOff` with `not found` means the referenced ECR image tag was not
+pushed; Kafka authentication and MSK networking have not been tested yet.
+Confirm the tag with `aws ecr describe-images --region "$AWS_REGION"
+--repository-name relay/credit-api`. After fixing Docker access, rerun the
+deployment script. CloudFormation updates the existing stack when the template
+has changes and reports no changes when it is already current. The script
+rebuilds and pushes images, then replaces the failed topic Job.
+
+## Verify MSK on AWS
+
+After running `bash deploy/deploy.sh "$STACK_NAME"`, get the cluster ARN and SCRAM broker endpoint:
+
+```bash
+MSK_ARN="$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='MskClusterArn'].OutputValue" --output text)"
+aws kafka describe-cluster-v2 --region "$AWS_REGION" --cluster-arn "$MSK_ARN" --query 'ClusterInfo.{Name:ClusterName,State:State,Type:ClusterType}' --output table
+aws kafka get-bootstrap-brokers --region "$AWS_REGION" --cluster-arn "$MSK_ARN" --query 'BootstrapBrokerStringSaslScram' --output text
+kubectl -n relay get job kafka-init
+kubectl -n relay logs job/kafka-init
+kubectl -n relay get deployments user-event-publisher errand-event-publisher credit-api
+```
+
+Expect `PROVISIONED`, `ACTIVE`, a nonempty SCRAM broker endpoint, a completed topic Job, and available deployments. The broker is private to the VPC, so a Kafka client on your workstation cannot connect directly. Create a new user and finish its Relay profile; Credit Service should allocate 100 credits. Create an errand with a credit reservation and let it expire; Credit Service should release that reservation. Inspect the event path:
+
+```bash
+kubectl -n relay logs deployment/user-event-publisher --since=10m
+kubectl -n relay logs deployment/errand-event-publisher --since=10m
+kubectl -n relay logs deployment/credit-api --since=10m
+```
+
+CloudWatch MSK broker metrics provide a second signal after events flow. Metrics can lag event processing. A successful Floci test does not validate SCRAM, TLS, or two-broker replication.
+
+## Update CloudFront caching without redeploying the application
+
+`infra/relay-cloudfront.yaml` uses `PriceClass_200` so Singapore can be a
+CloudFront edge location. It caches only fingerprinted host assets under
+`/assets/` and microfrontend assets under `/remotes/*/assets/`. HTML, APIs,
+and module federation `remoteEntry.js` continue through the uncached default
+behavior. The managed optimized cache policy may keep an asset at an edge for
+up to one year, so only put content-addressed files under these paths.
+
+From the repository root in the same WSL shell used for deployment:
+
+```bash
+export AWS_PROFILE=user
+export AWS_REGION=ap-southeast-1
+aws eks update-kubeconfig --region "$AWS_REGION" --name relay
+GATEWAY_DOMAIN="$(aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name relay-gateway --query "Stacks[0].Outputs[?OutputKey=='ApiDomainName'].OutputValue" --output text)"
+test -n "$GATEWAY_DOMAIN"
+aws cloudformation deploy --region "$AWS_REGION" --stack-name relay-edge \
+  --template-file infra/relay-cloudfront.yaml \
+  --parameter-overrides "LoadBalancerDnsName=$GATEWAY_DOMAIN"
+DISTRIBUTION_ID="$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+  --stack-name relay-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)"
+aws cloudfront wait distribution-deployed --id "$DISTRIBUTION_ID"
+aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name relay-edge \
+  --query "Stacks[0].Outputs" --output table
+```
+
+This updates the existing edge distribution without rebuilding images or
+changing EKS, RDS, or MSK. The Nginx `Cache-Control: immutable` headers added
+to the frontend images take effect only when those images are rebuilt and
+redeployed with `deploy/deploy.sh`; the CloudFront cache behaviors work
+after the edge update alone. `PriceClass_200` may increase CloudFront charges.
+
+## New internal services and notification checks
+
+AWS and Floci EKS include credit-estimation-api (ClusterIP port 3005) and
+errand-notification (ClusterIP port 3010). Errand API calls estimation through
+the cluster service name, and Host Nginx proxies /api/notifications/stream to
+notification. Neither service needs a separate public ingress path.
+
+Credit estimation uses keyword analysis unless an AI provider is configured.
+To enable its optional AI provider on AWS, set AI_PROVIDER, AI_API_KEY, AI_MODEL,
+and optional AI_ENDPOINT in the ignored deploy/relay.aws.env file. The deployer
+writes these to a dedicated relay-estimation-config Secret mounted only by the
+estimation workload. The internal service token still follows the other demo
+tokens in the runtime ConfigMap.
+
+One notification pod starts by default and can scale to four. Each pod uses
+its own Kafka consumer group so each sees every errand event and can deliver
+it to its own SSE subscribers. A browser EventSource reconnects after pod
+replacement. The stream is best effort: events emitted while disconnected
+are not replayed to that browser.
+
+For manual checks, verify both new Deployments are ready. Create and update
+an errand while two browser sessions hold SSE connections. Confirm both
+receive the relevant event. Replace a notification pod, confirm reconnection,
+then send another update. Create an errand with credit estimation and inspect
+the Errand API and estimation logs. On AWS, confirm notification pods connect
+to private MSK over SCRAM/TLS; local Floci cannot validate those properties.
+
+### Kubernetes container security
+
+Relay application Deployments, migration and Kafka initialization Jobs, and
+local view Deployments set `allowPrivilegeEscalation: false` for each container.
+This sets no-new-privileges; it does not run containers as non-root or remove
+their existing Linux capabilities. The Nginx images currently start as root and
+listen on port 80. npm and apk installation in the project Dockerfiles runs at
+image build time. The migration Jobs and publishers invoke already installed
+Prisma or tsx through npx. Third-party view image entrypoints are not controlled
+by this repository and should be checked during local testing.
+
+The IAM policy simulator reported the sampled API Gateway, CloudFormation,
+CloudFront, EC2 and EKS load-balancing actions allowed for the current sandbox
+roles. Simulation does not create the resources and cannot guarantee every
+resource-specific condition, service-linked role, quota, or organization control.
+After deploying, verify the private ALB security group and exercise login,
+cookies, frontend assets, authenticated APIs, uploads and SSE through CloudFront.

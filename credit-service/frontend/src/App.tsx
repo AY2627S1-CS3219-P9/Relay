@@ -7,7 +7,7 @@ import type {
   TransactionRecord,
   ViewCreditHistoryResponse,
 } from '@relay/contracts'
-import { ErrorMessage, IconButton, RelayButton } from '@relay/ui'
+import { BackButton, CloseButton, ErrorMessage, RelayButton } from '@relay/ui'
 import {
   HISTORY_BATCH_SIZE,
   HISTORY_PAGE_SIZE,
@@ -128,9 +128,7 @@ export default function App({
       >
         <header className="credit-profile-header">
           <h1>Credits</h1>
-          <IconButton label="Close credits" onClick={closeCredit}>
-            &times;
-          </IconButton>
+          <CloseButton label="Close credits" onClick={closeCredit} />
         </header>
         <div className="credit-balance-grid">
           <div className="relay-glass-soft">
@@ -160,14 +158,10 @@ export default function App({
       >
         <header className="credit-profile-header">
           <div className="credit-history-title">
-            <IconButton label="Go back" onClick={showCreditBalance}>
-              &larr;
-            </IconButton>
+            <BackButton onClick={showCreditBalance} />
             <h1>Credit history</h1>
           </div>
-          <IconButton label="Close credits" onClick={closeCredit}>
-            &times;
-          </IconButton>
+          <CloseButton label="Close credits" onClick={closeCredit} />
         </header>
         {creditHistoryOpen && (
           <>

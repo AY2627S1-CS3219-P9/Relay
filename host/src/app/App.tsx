@@ -153,6 +153,9 @@ function App() {
           if (!cancelled) setUserProfile(null)
           return
         }
+        // Initial session restoration chooses the signed-in landing page once.
+        // Closing the profile card must not perform this navigation again.
+        if (!cancelled) setActiveService('supplier')
         const response = await authFetch('/api/user/me', { credentials: 'include' })
         if (cancelled) return
         if (response.ok) {
@@ -338,17 +341,15 @@ function App() {
 
   function profileCardStyle(): CSSProperties | undefined {
     if (!profileAnchor) return undefined
-    const cardWidth = Math.min(520, window.innerWidth - 32)
-    const cardMaxHeight = window.innerHeight * 0.6
+    const cardWidth = Math.min(405, window.innerWidth - 32)
+    const cardMaxHeight = window.innerHeight - 96
     const top = Math.min(profileAnchor.bottom + 12, window.innerHeight - cardMaxHeight - 16)
-    const left = Math.min(
-      Math.max(16, profileAnchor.right - cardWidth),
-      window.innerWidth - cardWidth - 16,
-    )
+    const right = Math.min(Math.max(16, profileAnchor.right), 16)
     return {
       top: Math.max(16, top),
-      left,
-      width: cardWidth,
+      left: 'unset',
+      right,
+      width: cardWidth
     }
   }
 
