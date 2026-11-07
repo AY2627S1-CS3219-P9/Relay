@@ -2,7 +2,11 @@ import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './styles.css'
 import { useEffect, useRef, useState } from 'react'
-import type { RemoteAppProps, TransactionRecord, ViewCreditHistoryResponse } from '@relay/contracts'
+import type {
+  CreditRemoteProps,
+  TransactionRecord,
+  ViewCreditHistoryResponse,
+} from '@relay/contracts'
 import { BackButton, CloseButton, ErrorMessage, RelayButton } from '@relay/ui'
 import {
   HISTORY_BATCH_SIZE,
@@ -34,7 +38,7 @@ export default function App({
   creditHistoryOpen = false,
   showCreditHistory,
   showCreditBalance,
-}: RemoteAppProps) {
+}: CreditRemoteProps) {
   const [records, setRecords] = useState<TransactionRecord[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)

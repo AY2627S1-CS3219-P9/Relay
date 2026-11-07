@@ -74,3 +74,23 @@ export default defineConfig([
   },
 ])
 ```
+
+## Remote contracts
+
+The four frontend inputs are defined in
+`packages/contracts/src/frontend/remotes.ts`. `RemotePropsByService` ties each
+frontend service to its props. Backend-only services are excluded from
+`RemoteServiceId`. The host composes each service's props explicitly, and
+`RemotePage` narrows its discriminated union before rendering the typed lazy
+component. The federation loader is the trust boundary for deployed JavaScript;
+TypeScript cannot verify the version of a separately deployed remote.
+
+The contracts retain the existing flat runtime prop names for independent
+rollouts. Future field renames or grouping should use a compatibility period.
+Supplier uses `supplierApi` consistently with the host; older hosts already
+supply that field. Standalone entry points supply their own dependencies and
+navigation adapters instead of making integrated dependencies optional.
+
+Run `npm run test --workspace=@relay/host` for boundary integration coverage.
+The host build also compiles `RemotePage.typecheck.ts`, whose expected errors
+verify invalid service/props pairs and API capability restrictions.
