@@ -2,21 +2,17 @@ import {
   Component,
   lazy,
   Suspense,
-  type ComponentType,
   type CSSProperties,
   type LazyExoticComponent,
   type ReactNode,
 } from 'react'
-import type { RemoteAppProps, ServiceId } from '@relay/contracts'
+import type { RemotePropsByService, RemoteServiceId } from '@relay/contracts'
 import { GlassCard, LoadingState, RelayCardAnchor, type BubbleAnchor } from '@relay/ui'
-import { loadServiceRemote } from './RemoteLoader'
-import { REMOTE_REGISTRY } from './RemoteRegistry'
+import { loadServiceRemote, type RemoteComponents } from './RemoteLoader'
 
-type RemotePageProps = {
-  service: ServiceId
+type PresentationProps = {
   serviceLabel: string
   visible: boolean
-  appProps?: RemoteAppProps
   overlay?: boolean
   overlayClassName?: string
   card?: boolean
@@ -24,14 +20,30 @@ type RemotePageProps = {
   bubbleAnchor?: BubbleAnchor
 }
 
-type RemoteComponent = LazyExoticComponent<ComponentType<RemoteAppProps>>
+export type RemotePageProps = {
+  [K in RemoteServiceId]: PresentationProps & { service: K; appProps: RemotePropsByService[K] }
+}[RemoteServiceId]
 
-const remoteApps = Object.fromEntries(
-  Object.keys(REMOTE_REGISTRY).map((service) => [
-    service,
-    lazy(() => loadServiceRemote(service as ServiceId)),
-  ]),
-) as Record<ServiceId, RemoteComponent>
+const remoteApps: { [K in RemoteServiceId]: LazyExoticComponent<RemoteComponents[K]> } = {
+  credit: lazy(() => loadServiceRemote('credit')),
+  user: lazy(() => loadServiceRemote('user')),
+  supplier: lazy(() => loadServiceRemote('supplier')),
+  errand: lazy(() => loadServiceRemote('errand')),
+}
+
+// Narrow the discriminated union before rendering; no props assertion is needed.
+function RemoteContent(props: RemotePageProps) {
+  switch (props.service) {
+    case 'credit':
+      return <remoteApps.credit {...props.appProps} />
+    case 'user':
+      return <remoteApps.user {...props.appProps} />
+    case 'supplier':
+      return <remoteApps.supplier {...props.appProps} />
+    case 'errand':
+      return <remoteApps.errand {...props.appProps} />
+  }
+}
 
 // Catch rendering errors and show error state
 class RemoteFailureBoundary extends Component<
@@ -58,35 +70,17 @@ class RemoteFailureBoundary extends Component<
   }
 }
 
-export function RemotePage({
-  service,
-  serviceLabel,
-  visible,
-  appProps,
-  overlay,
-  overlayClassName,
-  card,
-  cardStyle,
-  bubbleAnchor,
-}: RemotePageProps) {
-  const RemoteApp = remoteApps[service]
-
-  // If the service doesn't have a frontend, show an error state
-  if (!RemoteApp) {
-    return (
-      <section
-        className={`remote-page${overlay ? ' remote-page-overlay' : ''}${overlayClassName ? ` ${overlayClassName}` : ''}`}
-        aria-label={serviceLabel}
-        style={{ display: visible ? undefined : 'none' }}
-      >
-        <RemoteFailureBoundary key={service} serviceLabel={serviceLabel}>
-          <GlassCard variant="plain">
-            <p>{serviceLabel} is not available.</p>
-          </GlassCard>
-        </RemoteFailureBoundary>
-      </section>
-    )
-  }
+export function RemotePage(props: RemotePageProps) {
+  const {
+    service,
+    serviceLabel,
+    visible,
+    overlay,
+    overlayClassName,
+    card,
+    cardStyle,
+    bubbleAnchor,
+  } = props
 
   return (
     <section
@@ -104,17 +98,17 @@ export function RemotePage({
           >
             <GlassCard
               variant="glass"
-              className={`remote-profile-card relay-mobile-sheet-surface${service === 'credit' && appProps?.creditHistoryOpen ? ' remote-credit-history-card' : ''}`}
+              className={`remote-profile-card relay-mobile-sheet-surface${props.service === 'credit' && props.appProps.creditHistoryOpen ? ' remote-credit-history-card' : ''}`}
             >
               <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
-                <RemoteApp {...appProps} />
+                <RemoteContent {...props} />
               </Suspense>
             </GlassCard>
           </RelayCardAnchor>
         ) : (
           <GlassCard variant="plain">
             <Suspense fallback={<LoadingState label={`Loading ${serviceLabel}`} />}>
-              <RemoteApp {...appProps} />
+              <RemoteContent {...props} />
             </Suspense>
           </GlassCard>
         )}

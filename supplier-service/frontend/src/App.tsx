@@ -4,9 +4,9 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
-import type { ProfileAnchor, RemoteAppProps, SupplierErrandSummary } from '@relay/contracts'
+import type { ProfileAnchor, SupplierRemoteProps, SupplierErrandSummary } from '@relay/contracts'
 import { ServiceType } from '@relay/contracts'
-import type { Supplier, SupplierApi } from '@relay/contracts'
+import type { Supplier } from '@relay/contracts'
 import {
   BellIcon,
   BoltIcon,
@@ -32,8 +32,6 @@ import { SupplierFilterPanel, type SupplierFilters } from './components/Supplier
 import { getSupplierAnchor, SupplierMap, type MapPoint } from './components/SupplierMap'
 import { SupplierList } from './components/SupplierList'
 import { SupplierRowButton } from './components/SupplierRowButton'
-import { mockSupplierApi } from './mockSupplierApi/mockSupplierApi'
-import { createHttpSupplierApi } from './supplierApi'
 
 const NUS_CENTER: MapPoint = { lat: 1.2966, lng: 103.7764 }
 export default function App({
@@ -50,16 +48,8 @@ export default function App({
   mapViewport,
   onMapViewportChange,
   mapActive,
-  api,
-}: RemoteAppProps & { api?: SupplierApi }) {
-  const activeApi = useMemo(
-    () =>
-      api ??
-      (import.meta.env.VITE_SUPPLIER_API_MODE === 'mock'
-        ? mockSupplierApi
-        : createHttpSupplierApi()),
-    [api],
-  )
+  supplierApi: activeApi,
+}: SupplierRemoteProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [fallbackCenter, setFallbackCenter] = useState<MapPoint>(NUS_CENTER)
   const [userLocation, setUserLocation] = useState<MapPoint>()

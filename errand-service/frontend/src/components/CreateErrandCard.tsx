@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { ErrandApi, ServiceType, Supplier, SupplierApi } from '@relay/contracts'
+import type { ErrandRemoteProps, ServiceType, Supplier } from '@relay/contracts'
 import {
   ClockIcon,
   ErrorMessage,
@@ -8,7 +8,6 @@ import {
   RelayFormField,
   RelayFormSurface,
 } from '@relay/ui'
-import { createHttpSupplierApi } from '../supplierApi'
 import { SERVICE_TYPE_LABELS } from '../types'
 
 type CreateForm = {
@@ -50,8 +49,8 @@ export function CreateErrandCard({
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
-  errandApi?: ErrandApi
-  supplierApi?: SupplierApi
+  errandApi: ErrandRemoteProps['errandApi']
+  supplierApi: ErrandRemoteProps['supplierApi']
 }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
@@ -138,7 +137,7 @@ export function CreateErrandCard({
   useEffect(() => {
     let cancelled = false
     setLoadingSuppliers(true)
-    const activeSupplierApi = supplierApi ?? createHttpSupplierApi()
+    const activeSupplierApi = supplierApi
     void activeSupplierApi
       .getSuppliers()
       .then(({ suppliers: loaded }) => {

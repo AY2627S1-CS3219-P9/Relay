@@ -10,7 +10,7 @@ import {
   ErrandNotificationTypes,
   ErrandStatus,
   ProfileAnchor,
-  RemoteAppProps,
+  ErrandRemoteProps,
   ServiceType,
 } from '@relay/contracts'
 import {
@@ -65,7 +65,7 @@ export default function App({
   presentation,
   errandApi,
   supplierApi,
-}: RemoteAppProps) {
+}: ErrandRemoteProps) {
   const [errands, setErrands] = useState<Errand[]>([])
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()

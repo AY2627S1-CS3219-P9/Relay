@@ -1,7 +1,7 @@
 import { Day, ServiceType } from '@relay/contracts'
 import { GlassCard, IconButton, StatusBadge } from '@relay/ui'
 import type { Supplier } from '@relay/contracts'
-import type { ErrandApi, SupplierErrandSummary } from '@relay/contracts'
+import type { SupplierRemoteProps, SupplierErrandSummary } from '@relay/contracts'
 import { SupplierErrandPanel } from './SupplierErrandPanel'
 import type { CSSProperties } from 'react'
 
@@ -32,7 +32,7 @@ export function SupplierDetailCard({
 }: {
   supplier: Supplier
   onClose: () => void
-  errandApi?: ErrandApi
+  errandApi: SupplierRemoteProps['errandApi']
   onErrandSelect: (errand: SupplierErrandSummary) => void
   style?: CSSProperties
 }) {
