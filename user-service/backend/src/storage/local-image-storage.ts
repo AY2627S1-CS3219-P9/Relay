@@ -8,7 +8,7 @@ function encodeKeyPart(value: string): string {
 }
 
 /** S3-compatible adapter for Floci locally and Amazon S3 in production. */
-export class FlociS3ImageStorage implements ImageStorage {
+export class S3ImageStorage implements ImageStorage {
   private readonly client: S3Client
   private readonly bucket: string
   private readonly endpoint: string
@@ -77,4 +77,4 @@ export class FlociS3ImageStorage implements ImageStorage {
 }
 
 /** Backwards-compatible local adapter name for the configured S3-compatible store. */
-export class LocalImageStorage extends FlociS3ImageStorage {}
+export class LocalImageStorage extends S3ImageStorage {}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { UserEventPublisher } from '../../event-publisher/user-event-publisher.js'
+import { UserEventPublisher } from '../user-event-publisher.js'
 
 describe('user outbox publisher', () => {
   it('marks sent events and prunes only old published rows', async () => {
