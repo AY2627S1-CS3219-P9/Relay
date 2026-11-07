@@ -16,6 +16,8 @@ RUN apk add --no-cache wget \
 WORKDIR /app
 COPY --from=build /app/supplier-service/backend/dist ./dist
 COPY --from=build /app/supplier-service/backend/package.json ./package.json
+COPY supplier-service/backend/src/schema.sql ./schema.sql
+COPY supplier-service/backend/migrate.cjs ./migrate.cjs
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/user-auth-backend-middleware ./packages/user-auth-backend-middleware
 EXPOSE 3000

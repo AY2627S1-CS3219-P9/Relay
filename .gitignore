@@ -26,3 +26,20 @@ deploy/relay.aws.env
 # OS
 .DS_Store
 Thumbs.db
+
+floci/eks/.kubeconfig
+floci/eks/.port-forward.log
+floci/eks/.images.tar
+
+floci/eks/.port-forward.pid
+floci/eks/.port-forward.err.log
+floci/eks/.backends.ta
+floci/eks/.host.ta
+
+floci/docker/.generated.env
+
+floci/eks/.view-*.pid
+floci/eks/.view-*.log
+
+# AWS pause state
+deploy/.*-pause.env

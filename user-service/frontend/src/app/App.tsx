@@ -2,7 +2,7 @@ import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './App.css'
 import { useEffect, useState } from 'react'
-import { CardView, GlassCard, GlassWindow, IconButton, RelayBrand, RelayButton } from '@relay/ui'
+import { GlassCard, GlassWindow, IconButton, RelayBrand } from '@relay/ui'
 import type { RemoteAppProps } from '@relay/contracts'
 import { LoginForm } from '../user/LoginForm'
 import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
@@ -11,7 +11,7 @@ import { VerificationForm } from '../user/VerificationForm'
 import { AccountPage } from '../user/AccountPage'
 import { MapView } from '../components/MapView'
 
-type View = 'login' | 'register' | 'verify' | 'profile' | 'complete' | 'account'
+type View = 'login' | 'register' | 'verify' | 'profile' | 'account'
 
 export default function App({
   fetchSession,
@@ -40,7 +40,7 @@ export default function App({
     void fetchSession()
       .then((session) => {
         if (cancelled) return
-        setView(session.userData.profileCreated ? 'complete' : 'profile')
+        setView(session.userData.profileCreated ? 'account' : 'profile')
       })
       .catch(() => {
         if (!cancelled) setView('login')
@@ -121,11 +121,7 @@ export default function App({
   }
 
   function completeAuth() {
-    setView('complete')
-  }
-
-  function goToSupplier() {
-    navigateTo?.('supplier')
+    if (presentation != 'card') navigateTo?.('supplier')
   }
 
   const userContent = (
@@ -161,39 +157,20 @@ export default function App({
           <ProfileSetupForm
             onComplete={async () => {
               await refreshUserProfile?.()
-              setView('complete')
+              completeAuth()
             }}
           />
-        )}
-        {view === 'complete' && (
-          <div className="user-form user-complete">
-            <span className="user-success-icon">✓</span>
-            <h1>Welcome!</h1>
-            <RelayButton
-              variant="primary"
-              className="glass-btn-primary user-submit"
-              onClick={finishLogout}
-            >
-              Logout
-            </RelayButton>
-            <RelayButton
-              variant="primary"
-              className="glass-btn-primary user-submit"
-              onClick={goToSupplier}
-            >
-              Continue
-            </RelayButton>
-          </div>
         )}
         {view === 'account' && (
           <GlassCard className="account-glass-card">
             <AccountPage
+              closeProfile={closeProfile}
               onLoggedOut={finishLogout}
-              onUpdated={() => void refreshUserProfile?.()}
+              onUpdated={() => refreshUserProfile?.()}
               onDeleted={() => {
                 setLoginNotice('Your account was deleted successfully.')
                 setView('login')
-                void refreshUserProfile?.()
+                refreshUserProfile?.()
                 closeProfile?.()
                 navigateTo?.('user')
               }}
@@ -204,36 +181,20 @@ export default function App({
       <p className="user-footer">Restricted to NUS Students and Staff (for now).</p>
     </div>
   )
-  const renderedUserContent =
-    view === 'complete' ? (
-      <CardView className="user-complete-card" withGlow>
-        {userContent}
-      </CardView>
-    ) : (
-      userContent
-    )
-
   if (presentation === 'card') {
     return (
-      <div className="user-profile-content">
-        <div className="user-profile-card-header">
-          <h1>Profile</h1>
-          <IconButton label="Close profile" onClick={closeProfile}>
-            ×
-          </IconButton>
-        </div>
-        <AccountPage
-          onLoggedOut={finishLogout}
-          onUpdated={() => void refreshUserProfile?.()}
-          onDeleted={() => {
-            setLoginNotice('Your account was deleted successfully.')
-            setView('login')
-            void refreshUserProfile?.()
-            closeProfile?.()
-            navigateTo?.('user')
-          }}
-        />
-      </div>
+      <AccountPage
+        closeProfile={closeProfile}
+        onLoggedOut={finishLogout}
+        onUpdated={() => refreshUserProfile?.()}
+        onDeleted={() => {
+          setLoginNotice('Your account was deleted successfully.')
+          setView('login')
+          refreshUserProfile?.()
+          closeProfile?.()
+          navigateTo?.('user')
+        }}
+      />
     )
   }
 
@@ -242,6 +203,6 @@ export default function App({
       {userContent}
     </GlassWindow>
   ) : (
-    <main className="user-app-shell">{renderedUserContent}</main>
+    <main className="user-app-shell">{userContent}</main>
   )
 }

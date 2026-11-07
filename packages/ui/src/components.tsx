@@ -280,10 +280,61 @@ export function IconButton({
       type={props.type ?? 'button'}
       style={{ ...props.style, '--relay-icon-button-scale': scale } as CSSProperties}
       className={`relay-icon-button${className ? ` ${className}` : ''}`}
+      title={label}
       aria-label={label}
     >
       {children}
     </button>
+  )
+}
+
+export function BackButton({
+  label = 'Go back',
+  className = '',
+  scale = 1,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label?: string
+  scale?: number
+}) {
+  return (
+    <IconButton label={label} scale={scale} className={className} {...props}>
+      <svg
+        viewBox="0 0 24 24"
+        height="16px"
+        width="16px"
+        fill="currentColor"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M7.83,13l5.6,5.6L12,20L4,12l8-8l1.43,1.4L7.83,11H20v2H7.83Z" />
+      </svg>
+    </IconButton>
+  )
+}
+
+export function CloseButton({
+  label = 'Close',
+  className = '',
+  scale = 1,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label?: string
+  scale?: number
+}) {
+  return (
+    <IconButton label={label} scale={scale} className={className} {...props}>
+      <svg
+        viewBox="0 0 24 24"
+        height="16px"
+        width="16px"
+        fill="currentColor"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M6.4,19L5,17.6L10.6,12L5,6.4L6.4,5L12,10.6L17.6,5L19,6.4L13.4,12L19,17.6L17.6,19L12,13.4L6.4,19Z" />
+      </svg>
+    </IconButton>
   )
 }
 
@@ -443,9 +494,28 @@ export function PlusIcon({ className = '' }: { className?: string }) {
 
 export function ClockIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 6V12L16 14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -504,9 +574,7 @@ export function UpdatesCard({
           <p className="relay-updates-eyebrow">REQUESTS</p>
           <h2>Updates</h2>
         </div>
-        <IconButton label="Close updates" onClick={onClose}>
-          ×
-        </IconButton>
+        <CloseButton label="Close updates" onClick={onClose} />
       </div>
       {loading && <LoadingState label="Loading updates" />}
       {!loading && error && <p className="relay-updates-message">{error}</p>}
@@ -803,9 +871,7 @@ export function RelayFormSurface({
           {description && <p>{description}</p>}
         </div>
         {onClose && (
-          <IconButton label="Close" onClick={onClose}>
-            ×
-          </IconButton>
+          <CloseButton onClick={onClose} />
         )}
       </header>
       <div className="relay-form-surface-body">{children}</div>

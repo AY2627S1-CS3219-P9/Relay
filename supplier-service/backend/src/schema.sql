@@ -35,6 +35,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_updated_at_trigger ON suppliers;
 CREATE TRIGGER update_updated_at_trigger
 BEFORE UPDATE ON suppliers
 FOR EACH ROW
@@ -70,4 +71,5 @@ VALUES
   ('Supersnacks', '{"lat":1.2913847,"lng":103.7776367,"buildingName":"Prince George''s Park","floorNumber":1}', true, '{"openingTime":"11:00","closingTime":"02:00","daysOfWeek":[0,1,2,3,4]}', ARRAY[0]),
   ('Good Day Cafe', '{"lat":1.2967989,"lng":103.7794336,"buildingName":"Medicine+Science Library","floorNumber":1}', true, '{"openingTime":"07:30","closingTime":"18:30","daysOfWeek":[0,1,2,3,4]}', ARRAY[0,1]),
   ('The Coffee Roaster', '{"lat":1.296252229,"lng":103.7720926,"buildingName":"Blk AS8","floorNumber":1}', true, '{"openingTime":"08:00","closingTime":"17:30","daysOfWeek":[0,1,2,3,4]}', ARRAY[0,1]),
-  ('he by He Brews', '{"lat":1.300566804,"lng":103.7707577,"buildingName":"Engineering Block EA","floorNumber":1}', true, '{"openingTime":"08:00","closingTime":"17:00","daysOfWeek":[0,1,2,3,4]}', ARRAY[0,1]);
+  ('he by He Brews', '{"lat":1.300566804,"lng":103.7707577,"buildingName":"Engineering Block EA","floorNumber":1}', true, '{"openingTime":"08:00","closingTime":"17:00","daysOfWeek":[0,1,2,3,4]}', ARRAY[0,1])
+ON CONFLICT DO NOTHING;

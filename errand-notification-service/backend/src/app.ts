@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from 'express'
+import { randomUUID } from 'node:crypto'
 import { ErrandNotificationEventStream } from './services/notificationEventStream.js'
 import { ErrandNotificationConsumer } from './consumers/consumer.js'
 import { getEnv } from './config/env.js'
@@ -12,7 +13,9 @@ import {
   type ErrandEvent,
 } from '@relay/contracts'
 
-const KAFKA_CONSUMER_GROUP_ID = 'relay-errand-notifications'
+// Every SSE pod must receive every event; a shared group would route each
+// partition to just one pod, leaving subscribers on other pods uninformed.
+const KAFKA_CONSUMER_GROUP_ID = `relay-errand-notifications-${process.env.HOSTNAME ?? randomUUID()}`
 
 function isValidEvent(event: any): event is ErrandEvent {
   if (!event || typeof event !== 'object') return false
@@ -50,8 +53,9 @@ export function createNotificationApp(eventStream: ErrandNotificationEventStream
     res.json({ status: 'ok' })
   })
 
+  let consumerReady = false
   app.get('/healthz', (_req, res) => {
-    res.status(200).send('ok\n')
+    res.status(consumerReady ? 200 : 503).send(consumerReady ? 'ok\n' : 'Kafka not ready\n')
   })
 
   // SSE endpoint for notifications
@@ -84,6 +88,7 @@ export function createNotificationApp(eventStream: ErrandNotificationEventStream
         }
       },
     })
+    consumerReady = true
   }
 
   return { app, consumer, startConsumer }
@@ -95,8 +100,7 @@ export async function processErrandEvent(
 ): Promise<void> {
   const { eventId, eventType, timestamp, payload } = event
 
-  // Kafka consumer group offsets already handle deduplication,
-  // so we don't need additional deduplication here.
+  // Kafka may redeliver after a restart; eventId lets clients deduplicate.
 
   const sseEventType = mapKafkaToSseEvent(eventType)
 
@@ -183,7 +187,6 @@ function notificationStreamHandler(eventStream: ErrandNotificationEventStream) {
 
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
-    res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no')
 
     // Send initial connection confirmed
@@ -191,11 +194,12 @@ function notificationStreamHandler(eventStream: ErrandNotificationEventStream) {
 
     // Subscribe user to errand events and get subscription ID
     const subscriptionId = eventStream.subscribe(userSub, res)
+    const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 15_000)
 
     // Handle client disconnect
-    req.on('close', () => {
+    res.on('close', () => {
+      clearInterval(heartbeat)
       eventStream.unsubscribe(userSub, subscriptionId)
-      res.end()
     })
   }
 }

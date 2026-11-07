@@ -1,5 +1,6 @@
 import type { User } from '@relay/contracts'
-import { RelayList, RelayListItem } from '@relay/ui'
+import { IconButton, RelayList, RelayListItem } from '@relay/ui'
+import { useState } from 'react'
 
 export function AccountOverview({
   profile,
@@ -7,30 +8,54 @@ export function AccountOverview({
   onUpdateProfile,
   onChangePassword,
   onDeleteAccount,
+  onManageAdmins,
 }: {
   profile: User
   onLoggedOut: () => void
   onUpdateProfile: () => void
   onChangePassword: () => void
   onDeleteAccount: () => void
+  onManageAdmins: () => void
 }) {
+  const [imageFailed, setImageFailed] = useState(false)
   return (
-    <div className="account-section" style={{ marginTop: 0 }}>
-      <h2>Personal details</h2>
+    <>
       <RelayList>
-        <RelayListItem title="Email" subtitle={profile.email} />
-      </RelayList>
-      <h2>Account options</h2>
-      <RelayList className="account-options-list">
-        <RelayListItem title="Log out" onClick={onLoggedOut} />
-        <RelayListItem title="Update profile" onClick={onUpdateProfile} />
-        <RelayListItem title="Change password" onClick={onChangePassword} />
         <RelayListItem
-          title="Delete account"
-          className="relay-list-item-danger"
-          onClick={onDeleteAccount}
+          leading={
+            <span className="relay-button-with-image-avatar">
+              {profile.profilePictureUrl && !imageFailed ? (
+                <img
+                  src={profile.profilePictureUrl}
+                  alt="User Profile Photo"
+                  onError={() => setImageFailed(true)}
+                />
+              ) : (
+                profile?.username?.trim().charAt(0).toUpperCase() || '?'
+              )}
+            </span>
+          }
+          title={profile.username}
+          subtitle={profile.email}
+          trailing={
+            <IconButton label="Log out" scale={1.25} onClick={onLoggedOut}>
+              <svg viewBox="0 0 24 24" height="20px" width="20px" fill="currentColor">
+                <path d="M5,21q-0.83,0-1.41-0.59T3,19V5Q3,4.17 3.59,3.59T5,3h7V5H5V19h7v2H5Zm11-4l-1.38-1.45L17.18,13H9V11h8.18L14.63,8.45L16,7l5,5l-5,5Z" />
+              </svg>
+            </IconButton>
+          }
         />
       </RelayList>
-    </div>
+      <RelayList className="account-options-list">
+        <RelayListItem title="Update profile" onClick={onUpdateProfile} />
+        <RelayListItem title="Change password" onClick={onChangePassword} />
+        <RelayListItem title="Delete account" onClick={onDeleteAccount} />
+      </RelayList>
+      {profile.role == 'super-admin' && (
+        <RelayList className="account-options-list">
+          <RelayListItem title="Manage admins" onClick={onManageAdmins} />
+        </RelayList>
+      )}
+    </>
   )
 }

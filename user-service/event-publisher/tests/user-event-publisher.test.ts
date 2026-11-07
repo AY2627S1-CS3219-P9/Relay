@@ -1,23 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { UserEventPublisher } from '../src/workers/user-event-publisher.js'
-import { prisma } from '../src/repositories/user.repository.js'
-
-vi.mock('../src/config/env.js', () => ({
-  getEnv: () => ({ kafkaBrokers: ['localhost:9092'] }),
-}))
-vi.mock('../src/repositories/user.repository.js', () => ({
-  prisma: {
-    userOutboxEvent: {
-      findMany: vi.fn(),
-      update: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-  },
-}))
+import { UserEventPublisher } from '../user-event-publisher.js'
 
 describe('user outbox publisher', () => {
   it('marks sent events and prunes only old published rows', async () => {
-    const outbox = vi.mocked(prisma.userOutboxEvent)
+    const outbox = {
+      findMany: vi.fn(),
+      update: vi.fn(),
+      deleteMany: vi.fn(),
+    }
     outbox.findMany.mockResolvedValueOnce([
       {
         id: 'event-id',
@@ -28,7 +18,7 @@ describe('user outbox publisher', () => {
     ] as never)
     outbox.update.mockResolvedValueOnce({} as never)
     outbox.deleteMany.mockResolvedValueOnce({ count: 1 })
-    const publisher = new UserEventPublisher()
+    const publisher = new UserEventPublisher({ userOutboxEvent: outbox } as never)
     const producer = {
       connect: vi.fn().mockResolvedValue(undefined),
       send: vi.fn().mockResolvedValue(undefined),
@@ -37,6 +27,7 @@ describe('user outbox publisher', () => {
     Object.assign(publisher, { producer })
     await publisher['flush']()
     expect(producer.send).toHaveBeenCalledWith({
+      acks: -1,
       topic: 'user-events',
       messages: [
         {

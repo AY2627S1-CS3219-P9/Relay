@@ -126,6 +126,19 @@ describe('ErrandNotificationEventStream', () => {
     })
   })
 
+  describe('closeAll', () => {
+    it('ends active responses and clears subscriptions during shutdown', () => {
+      stream.subscribe('user1', mockResponse1 as ServerResponse)
+      stream.subscribe('user2', mockResponse2 as ServerResponse)
+
+      stream.closeAll()
+
+      expect(mockResponse1.end).toHaveBeenCalledOnce()
+      expect(mockResponse2.end).toHaveBeenCalledOnce()
+      expect(stream.getSubscriberCount()).toBe(0)
+    })
+  })
+
   describe('publish', () => {
     it('should push notification to all subscribers of specified users', async () => {
       const notification: ErrandNotification = {

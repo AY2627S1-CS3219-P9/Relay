@@ -1,0 +1,35 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata: { name: credit-kafka-auth, namespace: relay }
+spec:
+  secretTargetRef:
+    - { parameter: username, name: relay-runtime, key: KAFKA_USERNAME }
+    - { parameter: password, name: relay-runtime, key: KAFKA_PASSWORD }
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: credit-api, namespace: relay }
+spec:
+  scaleTargetRef: { name: credit-api }
+  minReplicaCount: 1
+  maxReplicaCount: 4
+  pollingInterval: 30
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata: { value: "65" }
+    - type: memory
+      metricType: Utilization
+      metadata: { value: "85" }
+    - type: kafka
+      useCachedMetrics: true
+      metadata:
+        bootstrapServers: "KEDA_KAFKA_BROKERS"
+        consumerGroup: relay-credit-events
+        topic: errand-events
+        lagThreshold: "100"
+        offsetResetPolicy: earliest
+        sasl: KEDA_KAFKA_SASL
+        tls: KEDA_KAFKA_TLS
+      authenticationRef:
+        name: credit-kafka-auth

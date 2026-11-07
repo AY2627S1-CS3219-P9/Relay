@@ -1,20 +1,23 @@
 import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useEffect, useState } from 'react'
 import type { ApiResult, GetUserResponse, User } from '@relay/contracts'
-import { ErrorMessage } from '@relay/ui'
+import { BackButton, CloseButton, ErrorMessage } from '@relay/ui'
 import { DeleteAccountForm } from '../components/account/DeleteAccountForm'
 import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
 import { ChangePasswordForm } from '../components/account/ChangePasswordForm'
 import { AccountOverview } from '../components/account/AccountOverview'
 import { UpdateProfileForm } from '../components/account/UpdateProfileForm'
+import { ManageAdminsView } from '../components/account/ManageAdminsView'
 
-type Page = 'account' | 'change-password' | 'update-profile' | 'delete'
+type Page = 'account' | 'change-password' | 'update-profile' | 'delete-account' | 'manage-admins'
 
 export function AccountPage({
+  closeProfile,
   onLoggedOut,
   onDeleted,
   onUpdated,
 }: {
+  closeProfile?: () => void
   onLoggedOut: () => void
   onDeleted: () => void
   onUpdated?: () => void
@@ -61,31 +64,36 @@ export function AccountPage({
   }
 
   return (
-    <div className="account-view">
+    <div className="account-view relay-design-system">
       <ErrorMessage message={error} />
       {needsSetup && (
         <ProfileSetupForm
           onComplete={() => {
             setNeedsSetup(false)
-            void loadProfile()
+            loadProfile()
           }}
         />
       )}
       {profile && (
         <>
+          <header className="account-header">
+            {page != 'account' && <BackButton onClick={() => setPage('account')} />}
+            <h1>{page.replace(/-/g, ' ').replace(/^./, char => char.toUpperCase())}</h1>
+            <CloseButton label="Close profile" onClick={closeProfile} />
+          </header>
           {page == 'account' && (
             <AccountOverview
               profile={profile}
-              onLoggedOut={() => void logout()}
+              onLoggedOut={() => logout()}
               onUpdateProfile={() => setPage('update-profile')}
               onChangePassword={() => setPage('change-password')}
-              onDeleteAccount={() => setPage('delete')}
+              onDeleteAccount={() => setPage('delete-account')}
+              onManageAdmins={() => setPage('manage-admins')}
             />
           )}
           {page == 'update-profile' && (
             <UpdateProfileForm
               profile={profile}
-              onBack={() => setPage('account')}
               onUpdated={(updatedProfile) => {
                 setProfile(updatedProfile)
                 onUpdated?.()
@@ -94,14 +102,16 @@ export function AccountPage({
             />
           )}
           {page == 'change-password' && (
-            <ChangePasswordForm onBack={() => setPage('account')} onLoggedOut={onLoggedOut} />
+            <ChangePasswordForm onLoggedOut={onLoggedOut} />
           )}
-          {page == 'delete' && (
+          {page == 'delete-account' && (
             <DeleteAccountForm
-              onBack={() => setPage('account')}
               username={profile.username}
               onDeleted={onDeleted}
             />
+          )}
+          {page == 'manage-admins' && (
+            <ManageAdminsView />
           )}
         </>
       )}

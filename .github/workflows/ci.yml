@@ -12,10 +12,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  compose:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 60
+    env:
+      COMPOSE_PARALLEL_LIMIT: '2'
+      COMPOSE_PROJECT_NAME: relay
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -38,27 +40,45 @@ jobs:
       - name: Build workspaces
         run: npm run build
 
-      - name: Validate Docker Compose configuration
-        run: docker compose config --quiet
+      - name: Start Compose with Floci
+        run: npm run up:compose
 
-      - name: Build and start the Compose environment
-        run: docker compose up --build --detach --wait
+      - name: Wait for the application
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://localhost:8080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Compose application did not become healthy" >&2
+          exit 1
 
-      - name: Run tests
-        env:
-          CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
-          KAFKA_BROKERS: localhost:29092
-          KAFKA_TOPIC_USER_EVENTS: user-events
-          KAFKA_TOPIC_USER_DLQ: user-events-dlq
-          KAFKA_TOPIC_ERRAND_EVENTS: errand-events
-          KAFKA_TOPIC_ERRAND_DLQ: errand-events-dlq
-        run: npm test
+      - name: Run workspace and application tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source floci/docker/.generated.env
+          set +a
+          export USER_TEST_DATABASE_URL="$USER_DATABASE_URL_HOST"
+          export ERRAND_TEST_DATABASE_URL="$ERRAND_DATABASE_URL_HOST"
+          export CREDIT_TEST_DATABASE_URL="$CREDIT_DATABASE_URL_HOST"
+          export KAFKA_BROKERS="$KAFKA_BROKERS_HOST"
+          export KAFKA_AUTH_MODE=none
+          export CREDIT_SERVICE_INTERNAL_TOKEN=local-internal-credit-service-token
+          export KAFKA_TOPIC_USER_EVENTS=user-events KAFKA_TOPIC_USER_DLQ=user-events-dlq
+          export KAFKA_TOPIC_ERRAND_EVENTS=errand-events KAFKA_TOPIC_ERRAND_DLQ=errand-events-dlq
+          npm test
 
       - name: Collect Compose diagnostics
         if: failure()
         run: |
-          docker compose ps -a > compose-ps.txt
-          docker compose logs --no-color > compose-logs.txt
+          docker ps -a > compose-ps.txt
+          for id in $(docker ps -aq --filter label=com.docker.compose.project=relay); do
+            docker logs "$id" >> compose-logs.txt 2>&1 || true
+          done
+          docker logs relay-floci-1 >> compose-logs.txt 2>&1 || true
 
       - name: Upload Compose diagnostics
         if: failure()
@@ -68,7 +88,8 @@ jobs:
           path: |
             compose-ps.txt
             compose-logs.txt
+          if-no-files-found: ignore
 
       - name: Stop the Compose environment
         if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: npm run down:compose
