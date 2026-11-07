@@ -15,6 +15,12 @@ export type UserServiceEnv = {
   s3SecretAccessKey?: string
   s3Bucket: string
   s3ForcePathStyle: boolean
+  kafkaBrokers: string[]
+  kafkaAuthMode: 'none' | 'scram'
+  kafkaUsername?: string
+  kafkaPassword?: string
+  kafkaUserEventsTopic: string
+  kafkaUserDlqTopic: string
 }
 
 function required(name: string, fallback?: string): string {
@@ -32,6 +38,10 @@ export function getEnv(): UserServiceEnv {
   const authMode = process.env.AUTH_MODE ?? 'mock'
   if (authMode !== 'mock' && authMode !== 'cognito') {
     throw new Error('AUTH_MODE must be mock or cognito')
+  }
+  const kafkaAuthMode = process.env.KAFKA_AUTH_MODE ?? 'none'
+  if (kafkaAuthMode !== 'none' && kafkaAuthMode !== 'scram') {
+    throw new Error('KAFKA_AUTH_MODE must be none or scram')
   }
 
   return {
@@ -55,5 +65,11 @@ export function getEnv(): UserServiceEnv {
     s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
     s3Bucket: required('S3_BUCKET', 'relay-user-profile-images'),
     s3ForcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
+    kafkaBrokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092').split(',').map((value) => value.trim()).filter(Boolean),
+    kafkaAuthMode,
+    kafkaUsername: process.env.KAFKA_USERNAME,
+    kafkaPassword: process.env.KAFKA_PASSWORD,
+    kafkaUserEventsTopic: process.env.KAFKA_TOPIC_USER_EVENTS ?? 'user-events',
+    kafkaUserDlqTopic: process.env.KAFKA_TOPIC_USER_DLQ ?? 'user-events-dlq',
   }
 }

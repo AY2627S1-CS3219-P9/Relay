@@ -46,6 +46,8 @@ export type UserEventDlqErrorCode =
   | 'USER_EVENT_DUPLICATE'
   | 'USER_EVENT_OUT_OF_ORDER'
   | 'USER_CREDIT_OPERATION_FAILED'
+  | 'USER_AUTH_DELETE_FAILED'
+  | 'USER_PROFILE_IMAGE_DELETE_FAILED'
 
 export type UserEventDlqMessage = {
   eventId: string

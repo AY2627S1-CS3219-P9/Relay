@@ -153,7 +153,7 @@ export class UserService {
     validateDeletionConfirmation(confirmation, existing.username)
 
     await this.identityGateway.deleteAccount(user)
-    await this.repository.deleteProfile(user.sub)
+    await this.repository.deleteProfile(user.sub, existing.profilePictureKey)
     if (existing.profilePictureKey) {
       await this.deleteUploadedImageSafely(existing.profilePictureKey)
     }

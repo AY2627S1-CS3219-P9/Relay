@@ -79,7 +79,7 @@ export class UserRepository {
     return toProfileRecord(profile)
   }
 
-  async deleteProfile(cognitoSub: string): Promise<UserProfileRecord> {
+  async deleteProfile(cognitoSub: string, profilePictureKey?: string | null): Promise<UserProfileRecord> {
     const profile = await prisma.$transaction(async (tx) => {
       const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
       await tx.userOutboxEvent.create({
@@ -91,7 +91,10 @@ export class UserRepository {
             eventType: UserEventTypes.USER_DELETED,
             timestamp: new Date().toISOString(),
             version: 1,
-            payload: { cognitoSub },
+            payload: {
+              cognitoSub,
+              ...(profilePictureKey ? { profilePictureKey } : {}),
+            },
           } satisfies UserDeletedEvent,
         },
       })
