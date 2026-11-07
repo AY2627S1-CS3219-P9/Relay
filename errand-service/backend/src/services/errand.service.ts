@@ -123,6 +123,18 @@ export class ErrandService {
   async acceptErrand(courier: AuthenticatedUser, id: string): Promise<Errand> {
     await this.repository.expireOpenErrands()
 
+    const requesterSub = await this.repository.findRequesterForAcceptance(id)
+    if (requesterSub) {
+      const requesterProfile = await this.userClient.getProfile(requesterSub)
+      if (!requesterProfile) {
+        throw new ErrandServiceError(
+          ErrandErrors.REQUESTER_DELETED,
+          'The requester account has been deleted.',
+          409,
+        )
+      }
+    }
+
     try {
       const updated = await this.repository.accept(id, courier.sub)
       return this.enrichCourierProfile(updated)

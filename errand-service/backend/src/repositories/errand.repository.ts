@@ -178,6 +178,14 @@ export class ErrandRepository {
     return row ? toContract(row) : null
   }
 
+  async findRequesterForAcceptance(errandId: string): Promise<string | null> {
+    const row = await this.prisma.errand.findFirst({
+      where: { id: errandId, status: { not: ErrandStatus.Deleted } },
+      select: { requesterSub: true },
+    })
+    return row?.requesterSub ?? null
+  }
+
   async listOwnedBy(requesterSub: string): Promise<Errand[]> {
     const rows = await this.prisma.errand.findMany({
       where: {

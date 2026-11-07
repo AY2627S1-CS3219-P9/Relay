@@ -49,3 +49,17 @@ and `DELIVERED` errands become `CONFIRMED` and emit `ErrandCompleted` so the
 assigned courier receives the full reserved amount. Each transition is locked
 and written with its outbox event in one database transaction, so redelivery is
 safe and cannot duplicate settlement events.
+
+Acceptance protection checks the requester's current User Service profile before
+allowing a courier to accept an errand. A missing profile returns
+`REQUESTER_DELETED` with HTTP 409, while a User Service outage fails closed
+with the existing service-unavailable error. The check is intentionally
+eventually consistent with account deletion; the transactional consumer remains
+the final protection for deletion events that race with acceptance.
+
+The requester-deletion consumer is deployed inside the existing `errand-api`
+workload, consistent with the Credit Service consumers. The Errand image copies
+the consumer source and compiled output, and Kubernetes injects the shared
+Kafka broker, user-events topic, and user-event DLQ settings through the
+existing runtime ConfigMap and Secret. No separate consumer Deployment is
+needed.
