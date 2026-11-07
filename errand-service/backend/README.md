@@ -56,6 +56,23 @@ errands are reopened with the courier cleared. Expired assigned errands become
 errands become `CONFIRMED` without clearing `courierSub`, so Credit Service can
 route the completed payment to pending settlement for the deleted courier.
 These transitions use the same per-errand advisory locks and are idempotent.
+If both the requester and courier are deleted for one `DELIVERED` errand, the
+first deletion confirms it and emits the single `ErrandCompleted` event; the
+second deletion is a no-op. This makes the result independent of deletion
+event order and ensures Credit Service creates at most one pending settlement.
+
+The deletion regression coverage is in
+`tests/errand-user-deletion-state-matrix.test.ts` and
+`tests/errand-user-deletion-combined.test.ts`. It covers requester resolution,
+courier reopen/expiry behavior, delivered-courier settlement, terminal-state
+no-ops, duplicate events, and both deletion orders. Run it with the backend
+test command after the Errand test database is available:
+
+```bash
+npm test --workspace=@relay/errand-backend -- \
+  tests/errand-user-deletion-state-matrix.test.ts \
+  tests/errand-user-deletion-combined.test.ts
+```
 
 Acceptance protection checks the requester's current User Service profile before
 allowing a courier to accept an errand. A missing profile returns
