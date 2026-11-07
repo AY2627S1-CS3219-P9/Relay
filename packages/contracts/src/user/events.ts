@@ -48,6 +48,7 @@ export type UserEventDlqErrorCode =
   | 'USER_CREDIT_OPERATION_FAILED'
   | 'USER_AUTH_DELETE_FAILED'
   | 'USER_PROFILE_IMAGE_DELETE_FAILED'
+  | 'ERRAND_USER_DELETION_FAILED'
 
 export type UserEventDlqMessage = {
   eventId: string

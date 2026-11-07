@@ -43,6 +43,22 @@ export class UserController {
     }
   }
 
+  getDeletionStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const subject = typeof req.params.sub === 'string' ? req.params.sub : undefined
+      if (!subject) {
+        res.status(400).json({
+          ok: false,
+          error: { code: 'VALIDATION_FAILED', message: 'A user subject is required.' },
+        })
+        return
+      }
+      res.status(200).json({ ok: true, data: await this.userService.getDeletionStatus(subject) })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!

@@ -1,6 +1,7 @@
 import type { User, UserId, UserProfileSummary } from '@relay/contracts'
 import {
   AdminDeleteUserCommand,
+  AdminGetUserCommand,
   CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { getEnv } from '../config/env.js'
@@ -16,12 +17,17 @@ import {
 
 export interface IdentityGateway {
   deleteAccount(user: AuthenticatedUser): Promise<void>
+  getAccountStatus?(cognitoSub: string): Promise<boolean | null>
 }
 
 /** Temporary gateway. Can replace this with Cognito deletion later. */
 export class MockIdentityGateway implements IdentityGateway {
   async deleteAccount(_user: AuthenticatedUser): Promise<void> {
     return
+  }
+
+  async getAccountStatus(_cognitoSub: string): Promise<null> {
+    return null
   }
 }
 
@@ -46,6 +52,18 @@ export class CognitoIdentityGateway implements IdentityGateway {
       throw error
     }
   }
+
+  async getAccountStatus(cognitoSub: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new AdminGetUserCommand({ UserPoolId: getEnv().cognitoUserPoolId, Username: cognitoSub }),
+      )
+      return true
+    } catch (error) {
+      if (error instanceof Error && error.name === 'UserNotFoundException') return false
+      throw error
+    }
+  }
 }
 
 export type ProfileUpdateRequest = {
@@ -55,6 +73,12 @@ export type ProfileUpdateRequest = {
 
 export type DeleteUserResult = {
   status: 'pending'
+}
+
+export type UserDeletionStatus = {
+  profileExists: boolean
+  deletionEventExists: boolean
+  identityExists: boolean | null
 }
 
 export class UserService {
@@ -82,6 +106,17 @@ export class UserService {
       username: profile.username,
       profilePictureUrl: profile.profilePictureKey
         ? await this.imageStorage.url(profile.profilePictureKey)
+        : null,
+    }
+  }
+
+  async getDeletionStatus(cognitoSub: string): Promise<UserDeletionStatus> {
+    const profile = await this.repository.findByCognitoSub(cognitoSub)
+    return {
+      profileExists: profile !== null,
+      deletionEventExists: await this.repository.hasPendingDeletion(cognitoSub),
+      identityExists: this.identityGateway.getAccountStatus
+        ? await this.identityGateway.getAccountStatus(cognitoSub)
         : null,
     }
   }

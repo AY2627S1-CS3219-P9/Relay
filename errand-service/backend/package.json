@@ -7,6 +7,7 @@
     "build": "npm run prisma:generate && tsc",
     "dev": "tsx watch src/app.ts",
     "start": "node dist/app.js",
+    "audit:profileless": "tsx src/scripts/audit-profileless-errands.ts",
     "lint": "npm run prisma:generate && tsc --noEmit",
     "test": "export DATABASE_URL=\"${ERRAND_TEST_DATABASE_URL:-${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}}\" && npm run prisma:generate && vitest run --no-file-parallelism",
     "prisma:generate": "DATABASE_URL=\"${DATABASE_URL:-postgresql://relay:relay@localhost:5434/relay_errand?schema=public}\" prisma generate",
