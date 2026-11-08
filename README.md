@@ -140,6 +140,11 @@ forwarded only to localhost and is not exposed through the application ingress.
 `npm run views:eks -- all` includes it; stop it with
 `npm run views:eks:stop -- headlamp`.
 
+For the deployed AWS cluster, use `npm run headlamp -- start` after selecting
+its Kubernetes context. This opens a read-only dashboard for autoscaling checks.
+See the [AWS Headlamp guide](deploy/README.md#observe-autoscaling-in-headlamp)
+for login, metrics checks, and cleanup.
+
 Both teardown commands stop their optional views and remove Floci-managed RDS
 containers and database volumes. EKS teardown also removes the local k3s node
 and generated kubeconfig. The CA volume is the sole retained local resource.

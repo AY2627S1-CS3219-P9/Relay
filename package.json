@@ -17,6 +17,7 @@
     "packages/*"
   ],
   "scripts": {
+    "headlamp": "bash deploy/scripts/headlamp.sh",
     "up:compose": "bash floci/docker/up.sh",
     "up:eks": "bash floci/eks/up.sh",
     "down:compose": "bash floci/docker/down.sh",

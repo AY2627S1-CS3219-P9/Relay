@@ -241,28 +241,86 @@ Kafka outbox publisher and notification consumer run in separate workloads.
 
 | Workload | Replica configuration |
 | --- | --- |
-| `supplier-api`, `user-api`, `errand-api` | Independent CPU HPA, 1â€“4 replicas |
-| `credit-api`, `credit-estimation-api` | Independent CPU HPA, 1-3 replicas |
-| `errand-notification` | Independent CPU HPA, 2-4 replicas |
-| Host and four microfrontends | One replica each, no HPA |
+| `supplier-api`, `user-api`, `errand-api` | CPU/memory HPA, 1-4 replicas |
+| `credit-estimation-api` | CPU/memory HPA, 1-3 replicas |
+| `errand-notification` | CPU/memory HPA, 1-4 replicas |
+| `credit-api` | KEDA-managed HPA, 1-4 replicas, CPU/memory and Kafka lag |
+| Host and four microfrontends | CPU HPA, 2-4 replicas |
 | MSK Provisioned | Managed outside Kubernetes |
 
-Each API HPA targets 65% of its requested CPU, not 65% of node capacity. All
-application workloads have CPU and memory requests/limits. EKS Auto Mode can
-add node capacity when Pods cannot fit, subject to AWS quotas and capacity.
+API autoscalers target 65% of requested CPU and 85% of requested memory;
+frontend autoscalers target 80% of requested CPU. Kubernetes uses the largest
+replica recommendation across the configured metrics. Credit also scales on
+`errand-events` consumer lag (100 messages per replica). EKS Auto Mode can add
+node capacity when Pods cannot fit, subject to AWS quotas and capacity.
 
-The host and four microfrontend Deployments deliberately stay at one replica in
-this first iteration. They are static Nginx workloads; separately scaling them
-does not materially demonstrate the API autoscaling objective.
+### Observe autoscaling in Headlamp
 
-The ALB routes `/remotes/*` directly to each frontend Service. The host keeps
-handling `/api/*`, where Kubernetes Service names match the existing Compose
-names (`user-api`, `supplier-api`, `errand-api`, and `credit-api`).
+Headlamp is an optional in-cluster dashboard, installed separately from the
+application. This uses Headlamp's [in-cluster mode](https://headlamp.dev/docs/latest/installation/in-cluster/)
+with a pinned image and short-lived Kubernetes login tokens. No Helm installation
+or Cognito configuration is needed.
+
+In Bash, select your deployed AWS cluster, then start the dashboard:
+
+```bash
+export AWS_PROFILE=user
+export AWS_REGION=ap-southeast-1
+# Replace relay if your deployed cluster has a different name.
+aws eks update-kubeconfig --region "$AWS_REGION" --name relay
+npm run headlamp -- start
+```
+
+The helper prints the selected Kubernetes context and a read-only login token,
+then forwards Headlamp to http://localhost:9082. Keep that terminal open and
+paste the token into Headlamp. Select cluster `main` and namespace `relay`.
+The installing identity needs permission to create the dashboard's namespace,
+Deployment, Service, service accounts, and RBAC resources.
+
+The login identity can read Relay workloads, logs, events, HPA and KEDA
+ScaledObject status, plus node information and resource metrics. It cannot
+change replicas, delete Pods, read Secrets, or inspect workloads in other
+namespaces. Some unrelated dashboard pages will therefore show access errors.
+The dashboard has no public ingress. Its server uses a separate service account
+without the viewer's RBAC grants. Tokens request a one-hour lifetime; the API
+server controls the actual expiration. Treat the printed token as a credential.
+
+Run these commands in another terminal (using the same AWS profile/context):
+
+```bash
+npm run headlamp -- check   # Metrics Server, KEDA metrics API, Pods, HPA, ScaledObjects
+npm run headlamp -- token   # New login token when the previous one expires
+```
+
+Every action accepts a context as its final argument, for example
+`npm run headlamp -- start my-context`. The helper pins that context for all
+commands. Set `HEADLAMP_PORT=9083` before `start` if 9082 is in use. For local
+Floci EKS, the existing `npm run views:eks -- headlamp` remains available.
+
+In Headlamp, open Horizontal Pod Autoscalers and inspect `supplier-api`'s
+current metrics, target metrics, conditions, and desired/current replicas.
+Keep Deployments and Pods open in a second browser tab to watch new replicas
+become ready. Credit's HPA is normally named `keda-hpa-credit-api`; its
+ScaledObject is available through the `keda.sh` custom resources. Inspect its
+status/conditions and the generated HPA when testing Kafka lag.
+
+Use the [load-test guide](../load-tests/README.md#observe-autoscaling-with-headlamp)
+to send authenticated application traffic. Record metrics and replicas before,
+during, and after the run. Once load stops, continue watching for several
+minutes: the default HPA downscale stabilization window is five minutes, and
+memory use can keep replicas above their minimum.
+
+Ctrl-C closes the local tunnel but leaves Headlamp installed. To remove its
+resources (without removing Relay or its autoscalers):
+
+```bash
+npm run headlamp -- stop
+```
 
 ### Verify and test autoscaling
 
-The repository does not install Metrics Server. Check that the metrics API
-works and install a compatible Metrics Server if absent using the
+The AWS foundation provisions the EKS Metrics Server add-on. Check that its
+metrics API works; if the add-on is unhealthy, troubleshoot it using the
 [AWS instructions](https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html):
 
 ```bash

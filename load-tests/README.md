@@ -160,6 +160,37 @@ Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'aws-nfr-supplier-summary.json
 The AWS deployment must stay available for the entire run. Tear it down when
 finished to avoid unnecessary AWS charges.
 
+## Observe autoscaling with Headlamp
+
+Start the optional dashboard from Bash with `npm run headlamp -- start`, using
+the AWS cluster context. Open http://localhost:9082, paste the printed token,
+and select namespace `relay`. Run `npm run headlamp -- check` in another Bash
+terminal first; CPU/memory metrics must be numeric and KEDA must be available.
+See the [deployment guide](../deploy/README.md#observe-autoscaling-in-headlamp)
+for setup, permissions, and cleanup.
+
+After provisioning AWS test users, run a sustained Supplier test in the
+PowerShell session with `Invoke-K6Cloud` loaded:
+
+```powershell
+Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'aws-autoscaling-supplier-summary.json' -EnvFile 'load-tests/.env.aws.generated'
+```
+
+Watch `supplier-api` under Horizontal Pod Autoscalers, Deployments, and Pods.
+Record its initial replicas and metrics, peak replicas, ready Pod count, and
+replicas several minutes after load stops, alongside k6 error rate and p95
+latency. The default test lasts five minutes at 50 requests/second; increase
+`NFR_SUPPLIER_RATE_PER_SEC` or `NFR_SUPPLIER_DURATION` in the generated env file
+gradually if CPU stays below target. A run does not guarantee scaling: actual
+resource use must exceed the HPA target. Memory can also trigger or sustain
+scaling. Keep successful authenticated requests above 99% so errors are not
+mistaken for application load.
+
+For Credit HTTP load, use `nfr-credit.js` and inspect `keda-hpa-credit-api`.
+HTTP reads exercise CPU/memory scaling; Kafka-lag scaling requires producing
+enough errand events to exceed consumer throughput. Inspect the `credit-api`
+ScaledObject conditions as well as its HPA during that separate scenario.
+
 ## Test coverage
 
 - `errand-browse-smoke.js`: authenticated visible and owned errand reads.
