@@ -1,9 +1,8 @@
 import { Router } from 'express'
 import { ErrandController } from '../controllers/errand.controller.js'
 import { CreditEstimationClient } from '../clients/credit-estimation.client.js'
-import { sessionMiddleware } from '../middleware/session.middleware.js'
+import { sessionMiddleware, requireUser } from '../middleware/session.middleware.js'
 import { EstimateCreditRequest, ServiceType } from '@relay/contracts'
-import { ErrandServiceError } from '../types/errand.types.js'
 
 // Internal routes - authenticated via service token
 export function createInternalErrandRouter(controller: ErrandController): Router {
@@ -12,11 +11,12 @@ export function createInternalErrandRouter(controller: ErrandController): Router
 
   router.post('/supplier-events', controller.receiveSupplierEvent)
   router.post('/supplier-view', sessionMiddleware, controller.supplierView)
-  
+
   // Credit estimation endpoint - frontend calls this, which proxies to the estimation service
   router.post('/estimate-credit', async (req, res) => {
     const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
-    
+    const user = requireUser(req)
+
     if (
       typeof name !== 'string' ||
       typeof description !== 'string' ||
@@ -41,32 +41,17 @@ export function createInternalErrandRouter(controller: ErrandController): Router
       return
     }
 
-    try {
-      const request: EstimateCreditRequest = {
-        name,
-        description,
-        serviceType,
-        instructions,
-        startAt,
-        expiresAt,
-      }
-      const response = await creditEstimationClient.estimateCredit(request)
-      res.json(response)
-    } catch (error) {
-      if (error instanceof ErrandServiceError) {
-        res.status(error.statusCode).json({
-          code: error.code,
-          message: error.message,
-          ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
-        })
-        return
-      }
-
-      res.status(503).json({
-        code: 'SERVICE_UNAVAILABLE',
-        message: 'Credit estimation service is unavailable',
-      })
+    const request: EstimateCreditRequest = {
+      name,
+      description,
+      serviceType,
+      instructions,
+      startAt,
+      expiresAt,
+      userId: user.sub,
     }
+    const response = await creditEstimationClient.estimateCredit(request)
+    res.json(response)
   })
 
   return router

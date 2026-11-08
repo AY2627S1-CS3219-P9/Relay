@@ -3,8 +3,9 @@ import { getEnv } from './config/env.js'
 import { translateEstimationError } from './types/estimation.types.js'
 import { createEstimationRouter, initializeAIClient } from './routes/estimation.routes.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
+import { cleanupAIClient } from './clients/ai.client.js'
 
-export function createApp() {
+export async function createApp() {
   const app = express()
 
   app.use(express.json())
@@ -14,12 +15,12 @@ export function createApp() {
   })
 
   app.get('/healthz', (_req, res) => {
-    res.status(200).send('ok\n')
+    res.json({ status: 'ok', redis: 'connected' })
   })
 
   // Initialize AI client once at startup
   const env = getEnv()
-  initializeAIClient(env)
+  await initializeAIClient(env)
 
   // Internal routes only (authenticated via service token)
   app.use('/internal/estimation', internalServiceAuth)
@@ -40,14 +41,29 @@ export function createApp() {
 
   app.use(errorHandler)
 
-  return app
+  return { app, env }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const app = createApp()
-  const port = getEnv().port
+  const { app, env } = await createApp()
+  const port = env.port
 
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`Credit estimation service listening on port ${port}`)
   })
+
+  const shutdown = async () => {
+    console.log('Shutting down...')
+    await new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) reject(err)
+        else resolve(null)
+      })
+    })
+    await cleanupAIClient()
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }

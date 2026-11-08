@@ -8,4 +8,5 @@ export type EstimateCreditRequest = {
   instructions: string
   startAt: string
   expiresAt: string
+  userId: string
 }

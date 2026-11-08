@@ -1,5 +1,5 @@
 import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
-import { SlidingWindowRateLimiter } from './rateLimiter.js'
+import { RateLimiterFactory } from './rateLimiter.factory.js'
 
 export interface AIConfig {
   provider: string
@@ -10,6 +10,7 @@ export interface AIConfig {
   maxTokens?: number
   timeoutMs: number
   rateLimitRequestsPerMinute: number
+  redisUrl: string
 }
 
 export interface AIClient {
@@ -22,15 +23,21 @@ export interface AIClient {
       name: string
     },
   ): Promise<EstimateCreditResponse>
+  rateLimiter: {
+    tryAcquire(key?: string): Promise<boolean> | boolean
+  }
 }
 
 export class OpenAIClient implements AIClient {
   private config: AIConfig
-  private rateLimiter: SlidingWindowRateLimiter
+  public rateLimiter: {
+    tryAcquire(key?: string): Promise<boolean> | boolean
+  }
 
   constructor(config: AIConfig) {
     this.config = config
-    this.rateLimiter = new SlidingWindowRateLimiter({
+    this.rateLimiter = RateLimiterFactory.create({
+      redisUrl: config.redisUrl,
       windowMs: 60 * 1000,
       maxRequests: config.rateLimitRequestsPerMinute,
     })
@@ -43,8 +50,12 @@ export class OpenAIClient implements AIClient {
     const prompt = this.buildPrompt(request, baseline)
 
     try {
-      // Fail fast rate limit check
-      if (!this.rateLimiter.tryAcquire()) {
+      // Fail fast rate limit check (supports both sync and async)
+      // Use user-specific key (userId is mandatory)
+      const rateLimitKey = `user:${request.userId}:api_requests`
+      const allowed = await this.rateLimiter.tryAcquire(rateLimitKey)
+      if (!allowed) {
+        console.warn(`Rate limit exceeded for user ${request.userId}`)
         throw new Error('RATE_LIMITED')
       }
 
@@ -52,6 +63,9 @@ export class OpenAIClient implements AIClient {
 
       return this.parseResponse(response)
     } catch (error) {
+      if (error instanceof Error && error.message === 'RATE_LIMITED') {
+        throw error
+      }
       console.error('OpenAI API error:', error)
       throw error
     }
@@ -211,12 +225,23 @@ export function createAIClient(config: AIConfig): AIClient {
   return new OpenAIClient(config)
 }
 
-let aiClient: AIClient | undefined
+let aiClientInstance: AIClient | null = null
 
-export function setAIClient(client: AIClient | undefined): void {
-  aiClient = client
+export function getAIClient(): AIClient | null {
+  return aiClientInstance
 }
 
-export function getAIClient(): AIClient | undefined {
-  return aiClient
+export function setAIClient(client: AIClient | null): void {
+  aiClientInstance = client
+}
+
+export async function cleanupAIClient(): Promise<void> {
+  if (aiClientInstance && 'rateLimiter' in aiClientInstance) {
+    const client = aiClientInstance as OpenAIClient
+    const rateLimiter = client.rateLimiter as { disconnect?(): Promise<void> }
+    if (typeof rateLimiter.disconnect === 'function') {
+      await rateLimiter.disconnect()
+    }
+  }
+  aiClientInstance = null
 }

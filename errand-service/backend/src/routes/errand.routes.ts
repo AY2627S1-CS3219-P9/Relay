@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { ErrandController } from '../controllers/errand.controller.js'
 import { CreditEstimationClient } from '../clients/credit-estimation.client.js'
 import { EstimateCreditRequest, ServiceType } from '@relay/contracts'
+import { requireUser } from '../middleware/session.middleware.js'
 
 export function createErrandRouter(controller: ErrandController): Router {
   const router = Router()
@@ -10,6 +11,7 @@ export function createErrandRouter(controller: ErrandController): Router {
 
   router.post('/estimate-credit', async (req, res) => {
     const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
+    const user = requireUser(req)
 
     if (
       typeof name !== 'string' ||
@@ -34,6 +36,7 @@ export function createErrandRouter(controller: ErrandController): Router {
       instructions,
       startAt,
       expiresAt,
+      userId: user.sub,
     }
     const response = await new CreditEstimationClient().estimateCredit(request)
     res.json(response)

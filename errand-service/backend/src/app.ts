@@ -66,31 +66,35 @@ export const app = createApp(() => kafkaReady)
 
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
-  const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
-    ? {
-        ssl: true,
-        sasl: {
-          mechanism: 'oauthbearer' as const,
-          oauthBearerProvider: async () => {
-            const { token } = await generateAuthTokenFromCredentialsProvider({
-              region: process.env.AWS_REGION ?? 'us-east-1',
-              awsCredentialsProvider: fromHttp(),
-            })
-            return { value: token }
-          },
-        },
-      }
-    : process.env.KAFKA_AUTH_MODE === 'plain'
+  const kafkaAuth =
+    process.env.KAFKA_AUTH_MODE === 'iam'
       ? {
+          ssl: true,
           sasl: {
-            mechanism: 'plain' as const,
-            username: process.env.KAFKA_USERNAME ?? '',
-            password: process.env.KAFKA_PASSWORD ?? '',
+            mechanism: 'oauthbearer' as const,
+            oauthBearerProvider: async () => {
+              const { token } = await generateAuthTokenFromCredentialsProvider({
+                region: process.env.AWS_REGION ?? 'us-east-1',
+                awsCredentialsProvider: fromHttp(),
+              })
+              return { value: token }
+            },
           },
         }
-      : {}
+      : process.env.KAFKA_AUTH_MODE === 'plain'
+        ? {
+            sasl: {
+              mechanism: 'plain' as const,
+              username: process.env.KAFKA_USERNAME ?? '',
+              password: process.env.KAFKA_PASSWORD ?? '',
+            },
+          }
+        : {}
 
-  if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+  if (
+    process.env.KAFKA_AUTH_MODE === 'plain' &&
+    (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)
+  ) {
     throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
   }
 

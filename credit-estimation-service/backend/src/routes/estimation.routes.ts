@@ -2,12 +2,12 @@ import { Router, type Request, type Response } from 'express'
 import { translateEstimationError } from '../types/estimation.types'
 import { handleEstimateCredit } from '../controllers/estimation.controller'
 import { type EstimationEnv } from '../config/env.js'
-import { setAIClient, createAIClient } from '../clients/ai.client'
+import { setAIClient, createAIClient, getAIClient, cleanupAIClient } from '../clients/ai.client.js'
 
 const router = Router()
 let aiClientInitialized = false
 
-export function initializeAIClient(env: EstimationEnv): void {
+export async function initializeAIClient(env: EstimationEnv): Promise<void> {
   if (aiClientInitialized) {
     return
   }
@@ -24,6 +24,7 @@ export function initializeAIClient(env: EstimationEnv): void {
         maxTokens: env.aiMaxTokens,
         timeoutMs: env.aiEstimationTimeoutMs,
         rateLimitRequestsPerMinute: env.aiRateLimitRequestsPerMinute,
+        redisUrl: env.redisUrl,
       })
       setAIClient(aiClient)
       console.log('AI client initialized successfully')
@@ -34,12 +35,18 @@ export function initializeAIClient(env: EstimationEnv): void {
   aiClientInitialized = true
 }
 
+export async function cleanupAIClientFromRoutes(): Promise<void> {
+  await cleanupAIClient()
+  aiClientInitialized = false
+}
+
 /**
  * Estimate credit value for an errand (internal only)
- * Authenticated via service token
+ * Authenticated via service token, supports per-user rate limiting via x-user-id header
  */
 router.post('/estimate-credit', async (req: Request, res: Response) => {
   try {
+    const userId = req.headers['x-user-id'] as string
     const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
 
     const result = await handleEstimateCredit({
@@ -49,17 +56,18 @@ router.post('/estimate-credit', async (req: Request, res: Response) => {
       instructions,
       startAt,
       expiresAt,
+      userId,
     })
     res.json(result)
   } catch (error) {
     const err = translateEstimationError(error as Error)
     res.status(err.statusCode).json({
       code: err.code,
-        message: err.fieldErrors
-          ? `${err.message} ${Object.entries(err.fieldErrors)
-              .map(([field, message]) => `${field}: ${message}`)
-              .join(' ')}`
-          : err.message,
+      message: err.fieldErrors
+        ? `${err.message} ${Object.entries(err.fieldErrors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join(' ')}`
+        : err.message,
     })
   }
 })

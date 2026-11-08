@@ -384,6 +384,7 @@ export default function App({
         }}
         errandApi={errandApi}
         supplierApi={supplierApi}
+        authenticatedSubject={authenticatedSubject!}
       />
     </RelayCardAnchor>
   )

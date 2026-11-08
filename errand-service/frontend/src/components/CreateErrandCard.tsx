@@ -53,12 +53,14 @@ export function CreateErrandCard({
   onCreated,
   errandApi,
   supplierApi,
+  authenticatedSubject,
 }: {
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
   errandApi?: ErrandApi
   supplierApi?: SupplierApi
+  authenticatedSubject: string
 }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
@@ -67,7 +69,9 @@ export function CreateErrandCard({
   const [submitting, setSubmitting] = useState(false)
   const [isEstimating, setIsEstimating] = useState(false)
   const [estimate, setEstimate] = useState<EstimateCreditResponse | null>(null)
-  const [estimateStatus, setEstimateStatus] = useState<'success' | 'rate-limited' | 'invalid' | null>(null)
+  const [estimateStatus, setEstimateStatus] = useState<
+    'success' | 'rate-limited' | 'invalid' | null
+  >(null)
   const [form, setForm] = useState<CreateForm>({
     name: '',
     supplierId: initialSupplierId ?? '',
@@ -115,6 +119,7 @@ export function CreateErrandCard({
           instructions: form.instructions.trim(),
           startAt: form.startAt,
           expiresAt: form.expiresAt,
+          userId: authenticatedSubject,
         } satisfies EstimateCreditRequest),
       })
 
@@ -422,7 +427,7 @@ export function CreateErrandCard({
                   ?
                 </button>
                 <div className="errand-estimate-reason" role="tooltip">
-                    {estimate.reason}
+                  {estimate.reason}
                 </div>
               </div>
             )}

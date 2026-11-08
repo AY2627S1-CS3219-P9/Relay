@@ -14,6 +14,7 @@ export class CreditEstimationClient {
         headers: {
           'content-type': 'application/json',
           'x-credit-estimation-service-token': env.creditEstimationServiceToken,
+          'x-user-id': request.userId,
         },
         body: JSON.stringify(request),
         signal: AbortSignal.timeout(env.estimationTimeoutMs),
