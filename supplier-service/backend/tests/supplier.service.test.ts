@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { describe, it } from 'vitest'
 import type { Supplier } from '@relay/contracts'
 import { SupplierService } from '../src/services/supplier.service'
 import { isSupplierActive } from '../src/services/supplier-availability'
@@ -14,35 +15,37 @@ const supplier: Supplier = {
   serviceTypes: [0],
 }
 
-assert.equal(
-  isSupplierActive(
-    {
-      ...supplier,
-      operatingHours: { openingTime: '11:00', closingTime: '02:00', daysOfWeek: [0] },
-    },
-    new Date('2026-10-12T18:00:00.000Z'),
-  ),
-  true,
-)
-
-async function main(): Promise<void> {
-  const service = new SupplierService({
-    findById: async (id: string) => (id === supplier.id ? supplier : null),
-  } as never)
-
-  assert.deepEqual(await service.validateSupplierSelection({ supplierId: supplier.id }), {
-    valid: true,
-    supplierId: supplier.id,
+describe('isSupplierActive', () => {
+  it('correctly determines if a supplier is active based on operating hours', () => {
+    assert.equal(
+      isSupplierActive(
+        {
+          ...supplier,
+          operatingHours: { openingTime: '11:00', closingTime: '02:00', daysOfWeek: [0] },
+        },
+        new Date('2026-10-12T18:00:00.000Z'),
+      ),
+      true,
+    )
   })
+})
 
-  assert.deepEqual(await service.validateSupplierSelection({ supplierId: 'missing' }), {
-    valid: false,
-    supplierId: 'missing',
-    code: 'SUPPLIER_NOT_FOUND',
-    message: 'Supplier not found.',
+describe('SupplierService', () => {
+  it('validates supplier selection correctly', async () => {
+    const service = new SupplierService({
+      findById: async (id: string) => (id === supplier.id ? supplier : null),
+    } as never)
+
+    assert.deepEqual(await service.validateSupplierSelection({ supplierId: supplier.id }), {
+      valid: true,
+      supplierId: supplier.id,
+    })
+
+    assert.deepEqual(await service.validateSupplierSelection({ supplierId: 'missing' }), {
+      valid: false,
+      supplierId: 'missing',
+      code: 'SUPPLIER_NOT_FOUND',
+      message: 'Supplier not found.',
+    })
   })
-
-  console.log('supplier service checks passed')
-}
-
-void main()
+})
