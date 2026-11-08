@@ -116,6 +116,12 @@ pod to check reconnection. Local Floci still does not validate MSK SCRAM/TLS.
 
 ### Local API Gateway differences
 
+Local EKS routes `/api/auth`, `/api/user`, `/api/supplier`, `/api/errands`,
+`/api/credit`, and `/api/notifications/stream` directly through Traefik to their
+backend Services, mirroring production's ALB ingress. Host Nginx is not in this
+API path. Compose still uses host Nginx, and `npm run dev` uses Vite's proxy;
+both retain the same browser URLs and require no changes to Floci dependencies.
+
 The EKS startup script creates a Floci REST API, REST VPC Link metadata and a
 proxy integration between local CloudFront and the emulated ALB. Floci does not
 create real VPC Link network interfaces or enforce AWS security groups. Its

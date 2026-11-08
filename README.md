@@ -80,6 +80,9 @@ The host serves all four microfrontends on the application origin through
 `/remotes/credit/`. For the local EKS cluster, inspect pods with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
 
+> Note: If a clean build is failing due to a ECONNRESET error, try limiting the number of concurrent builds (e.g. 1 in the example below).
+> COMPOSE_PARALLEL_LIMIT=1 npm run up:compose -- --no-cache
+
 ### Local HTTPS certificate
 
 `npm run up:eks` writes the current local CA certificate to

@@ -65,7 +65,10 @@ done
 docker exec "$node" test -f /etc/rancher/k3s/k3s.yaml
 port="$(docker port "$node" 6443/tcp | head -1 | sed 's/.*://')"
 docker cp "$node:/etc/rancher/k3s/k3s.yaml" floci/eks/.kubeconfig
-sed -i "s|https://127.0.0.1:6443|https://127.0.0.1:$port|" floci/eks/.kubeconfig
+# BSD sed (macOS) and GNU sed use different in-place editing flags.
+kubeconfig_tmp="$(mktemp)"
+sed "s|https://127.0.0.1:6443|https://127.0.0.1:$port|" floci/eks/.kubeconfig > "$kubeconfig_tmp"
+mv "$kubeconfig_tmp" floci/eks/.kubeconfig
 export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 

@@ -32,17 +32,10 @@ function App() {
    * inactive MFE will be unmounted and its local state will be destroyed. When
    * making that change, also:
    *
-<<<<<<< Updated upstream
-   * 1. Move the authenticated session out of the User MFE and into the host,
-   * 2. Extend RemoteAppProps as needed so each MFE receives the session/auth
-   *    state it needs after being mounted.
-   * 3. Keep navigation callbacks in the host so MFEs request navigation rather
-=======
    * 1. Complete the session handoff: keep the authenticated session state in
    *    the host and extend service contracts as needed so each MFE receives the
    *    auth state it needs after being mounted.
    * 2. Keep navigation callbacks in the host so MFEs request navigation rather
->>>>>>> Stashed changes
    *    than importing or mounting one another directly.
    * 3. Ensure the User MFE can restore its exact subview, including AccountView,
    *    from host-owned state when it is mounted again after returning from
