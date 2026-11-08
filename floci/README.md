@@ -158,7 +158,8 @@ After startup, inspect `kubectl -n keda get pods`,
 trigger is ready and the external metrics API is available with
 `kubectl get apiservice v1beta1.external.metrics.k8s.io`. Generate a
 backlog on the errand topic and verify credit-api scales up and later down.
-Frontend HPAs should have 2 to 4 replicas. Both outbox publishers remain at one.
+In Floci, the host and four remote frontends stay at one replica, with frontend
+HPA minimum and maximum replicas both set to 1. Both outbox publishers remain at one.
 
 CPU and memory utilization are percentages of Kubernetes **requests**, not
 limits. AWS Node workloads request 512 MiB, so the 85% memory target is

@@ -269,7 +269,15 @@ render() {
     sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
     # The emulated single node has much less capacity than AWS Auto Mode.
     # Keep the same 768 MiB limits and Node heap cap, but lower local requests.
-    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g'
+    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g' |
+    # Keep the host and remote frontends at one replica on the local node,
+    # including their HPA bounds so autoscaling cannot restore extra replicas.
+    awk '
+      /^---/ { frontend = 0 }
+      /^metadata: \{ name: (host|supplier-frontend|user-frontend|errand-frontend|credit-frontend),/ { frontend = 1 }
+      frontend && /^  (replicas|minReplicas|maxReplicas):/ { sub(/: [0-9]+/, ": 1") }
+      { print }
+    '
 }
 # Recover clusters from either previous request size, including partial runs.
 # Free a publisher reservation before rolling existing workloads if needed.
@@ -321,7 +329,7 @@ kubectl -n keda set resources deployment/keda-operator deployment/keda-metrics-a
 kubectl -n keda rollout status deployment/keda-operator --timeout=5m
 kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=5m
 kubectl -n relay delete hpa credit-api --ignore-not-found
-kubectl apply -f k8s/base/autoscaling.yaml
+render k8s/base/autoscaling.yaml | kubectl apply -f -
 # Floci uses plaintext Kafka; its emulation does not implement MSK SCRAM/TLS.
 sed -e "s|KEDA_KAFKA_BROKERS|$msk_brokers|g" \
     -e 's/KEDA_KAFKA_SASL/none/' -e 's/KEDA_KAFKA_TLS/disable/' \
