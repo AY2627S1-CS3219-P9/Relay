@@ -198,13 +198,21 @@ ScaledObject conditions as well as its HPA during that separate scenario.
 - `errand-core-scenarios.js`: create verification, concurrent acceptance, and credit guards.
 - `nfr-auth.js`: authentication arrival-rate workload.
 - `nfr-errand-read.js`: ramping authenticated errand reads.
-- `nfr-errand-mixed.js`: concurrent errand reads and low-rate create/cancel writes.
+- `nfr-errand-mixed.js`: concurrent errand reads and create/cancel writes. Its
+  latency limits are operation-specific: 150 ms for reads, 250 ms for create,
+  and 150 ms for cancel. These limits were recalibrated after a larger AWS
+  sample and should still be rechecked on the post-#83 deployment before being
+  presented as stable benchmarks.
 - `nfr-credit.js`: authenticated credit-balance reads and non-negative balance checks.
 - `nfr-supplier.js`: authenticated supplier-query workload.
 
-NFR defaults are bounded by the current Grafana Cloud project limit. Increase
-them gradually and record VUs, throughput, p95 latency, failure rate, threshold
-status, and the Grafana run link.
+NFR defaults are bounded by the current Grafana Cloud project limit. The
+errand-read limit is 150 ms based on the latest AWS deployment baseline. The mixed
+test uses separate read/create/cancel limits because those operations perform
+different synchronous work; this is threshold calibration, not an application
+performance fix. The supplier limit remains 200 ms until its long-tail p99
+behavior is investigated. Increase load gradually and record VUs, throughput,
+p95 latency, failure rate, threshold status, and the Grafana run link.
 
 ## Cleanup
 

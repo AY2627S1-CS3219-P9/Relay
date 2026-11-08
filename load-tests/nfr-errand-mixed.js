@@ -11,9 +11,11 @@ const summaryPath = __ENV.K6_SUMMARY_PATH ?? 'load-tests/results/nfr-errand-mixe
 const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 const readTargetVUs = Number(__ENV.NFR_MIXED_READ_TARGET_VUS ?? 90)
 const readHold = __ENV.NFR_MIXED_READ_HOLD_DURATION ?? '2m'
-const writeRatePerMinute = Number(__ENV.NFR_MIXED_WRITE_RATE_PER_MIN ?? 5)
+const writeRatePerMinute = Number(__ENV.NFR_MIXED_WRITE_RATE_PER_MIN ?? 30)
 const writeDuration = __ENV.NFR_MIXED_WRITE_DURATION ?? '2m'
-const p95Limit = Number(__ENV.NFR_MIXED_P95_LIMIT_MS ?? 200)
+const readP95Limit = Number(__ENV.NFR_MIXED_READ_P95_LIMIT_MS ?? __ENV.NFR_MIXED_P95_LIMIT_MS ?? __ENV.NFR_P95_LIMIT_MS ?? 150)
+const createP95Limit = Number(__ENV.NFR_MIXED_CREATE_P95_LIMIT_MS ?? 250)
+const cancelP95Limit = Number(__ENV.NFR_MIXED_CANCEL_P95_LIMIT_MS ?? 150)
 const cleanup = (__ENV.LOAD_TEST_CLEANUP ?? 'true') !== 'false'
 
 http.setResponseCallback(http.expectedStatuses(200, 201, 204))
@@ -44,10 +46,10 @@ export const options = {
   thresholds: {
     http_req_failed: ['rate<0.01'],
     checks: ['rate>0.99'],
-    'http_req_duration{endpoint:mixed-visible}': [`p(95)<${p95Limit}`],
-    'http_req_duration{endpoint:mixed-detail}': [`p(95)<${p95Limit}`],
-    'http_req_duration{endpoint:mixed-create}': [`p(95)<${p95Limit}`],
-    'http_req_duration{endpoint:mixed-cancel}': [`p(95)<${p95Limit}`],
+    'http_req_duration{endpoint:mixed-visible}': [`p(95)<${readP95Limit}`],
+    'http_req_duration{endpoint:mixed-detail}': [`p(95)<${readP95Limit}`],
+    'http_req_duration{endpoint:mixed-create}': [`p(95)<${createP95Limit}`],
+    'http_req_duration{endpoint:mixed-cancel}': [`p(95)<${cancelP95Limit}`],
   },
   ...(cloudProjectId > 0 ? { cloud: { projectID: cloudProjectId } } : {}),
 }
