@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-13
+// Scope: Generated initial implementation, decomposed App.tsx into separate components
+// Author review: I validated correctness and edited for style.
+
 import { ServiceType } from '@relay/contracts'
 import { FilterIcon, IconButton, RelayButton } from '@relay/ui'
 import type { ErrandStatus } from '@relay/contracts/errand'

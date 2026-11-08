@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-23
+// Scope: Generated components and implemented shared components across microfrontends based on my specification
+// Author review: I validated correctness and edited for style.
+
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import type { Errand } from '@relay/contracts'

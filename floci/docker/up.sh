@@ -99,5 +99,5 @@ else
   docker compose "${compose_env[@]}" up -d "${services[@]}"
 fi
 if (( ${#services[@]} == 0 )); then
-  docker compose "${compose_env[@]}" up -d --no-deps --force-recreate host
+  docker compose "${compose_env[@]}" up -d --no-deps --force-recreate --wait --wait-timeout 90 host
 fi
