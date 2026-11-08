@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Local Floci EKS cluster using the VPC and subnets from relay-floci-db.yaml.
+Parameters:
+  ClusterName:
+    Type: String
+    Default: relay-local
+  KubernetesVersion:
+    Type: String
+    Default: '1.31'
+  VpcId:
+    Type: String
+  SubnetAId:
+    Type: String
+  SubnetBId:
+    Type: String
+Resources:
+  ClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: eks.amazonaws.com }
+            Action: sts:AssumeRole
+  Cluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      Version: !Ref KubernetesVersion
+      RoleArn: !GetAtt ClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds: [!Ref SubnetAId, !Ref SubnetBId]
+Outputs:
+  ClusterName: { Value: !Ref Cluster }
+  ClusterEndpoint: { Value: !GetAtt Cluster.Endpoint }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Kafka } from 'kafkajs'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
-import { ErrandEventPublisher } from '../src/workers/errand-event-publisher.js'
+import { ErrandEventPublisher } from '../../event-publisher/errand-event-publisher.js'
 
 function setup() {
   const repository = {

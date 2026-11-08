@@ -20,6 +20,10 @@ RUN npm run build --workspace @relay/user-auth-backend-middleware
 RUN npm run build --workspace @relay/errand-backend
 
 FROM node:22-alpine AS runtime
+RUN apk add --no-cache wget \
+    && wget -qO /etc/ssl/certs/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && cat /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/rds-global-bundle.pem > /etc/ssl/certs/relay-ca-bundle.pem
+ENV SSL_CERT_FILE=/etc/ssl/certs/relay-ca-bundle.pem
 
 WORKDIR /app
 ENV NODE_ENV=production

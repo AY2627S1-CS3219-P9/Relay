@@ -1,7 +1,4 @@
 import express, { type ErrorRequestHandler } from 'express'
-import { Kafka } from 'kafkajs'
-import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
-import { fromHttp } from '@aws-sdk/credential-provider-http'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'
 import { ErrandServiceError } from './types/errand.types.js'
@@ -12,11 +9,9 @@ import { CreditClient } from './clients/credit.client.js'
 import { SupplierClient } from './clients/supplier.client.js'
 import { ErrandController } from './controllers/errand.controller.js'
 import { createErrandRouter } from './routes/errand.routes.js'
-import { ErrandConsumer } from './consumers/consumer.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
 import { PendingErrandWorker } from './workers/pending-errand.worker.js'
-import { ErrandEventPublisher } from './workers/errand-event-publisher.js'
 
 export function createApp(isReady: () => boolean = () => true) {
   const app = express()
@@ -61,9 +56,7 @@ export function createApp(isReady: () => boolean = () => true) {
   return app
 }
 
-let kafkaReady = process.env.NODE_ENV === 'test'
-export const app = createApp(() => kafkaReady)
-
+export const app = createApp()
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
   const kafkaAuth =
@@ -106,45 +99,15 @@ if (process.env.NODE_ENV !== 'test') {
   })
   const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())
-  const publisher = new ErrandEventPublisher(
-    kafka,
-    new ErrandRepository(),
-    env.kafkaTopicErrandEvents,
-  )
   worker.start()
-  let stopping = false
-  const connectPublisher = async () => {
-    while (!stopping) {
-      try {
-        await publisher.start()
-        kafkaReady = true
-        return
-      } catch (err) {
-        console.error('Failed to connect Kafka producer; retrying:', err)
-        await publisher.stop().catch(() => undefined)
-        if (!stopping) await new Promise((resolve) => setTimeout(resolve, 5_000))
-      }
-    }
-  }
-  const publisherConnection = connectPublisher()
-
-  const server = app.listen(env.port, () => {
-    console.log(`Errand Service listening on port ${env.port}`)
-  })
-
+  const server = app.listen(env.port, () =>
+    console.log(`Errand Service listening on port ${env.port}`),
+  )
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down Errand Service.`)
-    stopping = true
-    kafkaReady = false
     worker.stop()
-    server.close(async () => {
-      await publisherConnection
-      await publisher.stop()
-      await consumer.stop()
-      process.exit(0)
-    })
+    server.close(() => process.exit(0))
   }
-
   process.once('SIGINT', () => shutdown('SIGINT'))
   process.once('SIGTERM', () => shutdown('SIGTERM'))
 }

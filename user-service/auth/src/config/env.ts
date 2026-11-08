@@ -17,7 +17,7 @@ export function getEnv(): AuthEnv {
   return {
     port,
     region: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
-    endpoint: process.env.AWS_ENDPOINT_URL ?? 'http://floci:4566',
+    endpoint: process.env.COGNITO_ENDPOINT_URL ?? process.env.AWS_ENDPOINT_URL ?? 'http://floci:4566',
     clientId: process.env.COGNITO_CLIENT_ID ?? 'test',
     poolId: process.env.COGNITO_USER_POOL_ID ?? 'us-east-1_test',
     adminGroup: process.env.COGNITO_ADMIN_GROUP_NAME ?? 'AdminGroup',
