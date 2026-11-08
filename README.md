@@ -52,95 +52,92 @@ From the repository root, run `AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash d
 
 ---
 
-## Local development
+## Local deployment and development
 
-Run these commands from the repository root using Linux Node/npm in WSL. If
-`npm` resolves to the Windows installation, first run `source ~/.nvm/nvm.sh`.
-Create `.env.development` with the local Floci settings before starting an
-environment.
+Choose one startup path only.
 
-| Target | Start | Application | Floci API | Stop |
-| --- | --- | --- | --- | --- |
-| Docker Compose | `npm run up:compose` | http://localhost:8080 | http://localhost:4566 | `npm run down:compose` |
-| Local Floci EKS | `npm run up:eks` | CloudFront URL printed by startup (`https://<id>.cloudfront.localhost.floci.io`) | https://localhost:4567 | `npm run down:eks` |
-| Local source processes | `npm run dev` | http://localhost:8080 | http://localhost:4566 | Ctrl+C, then `npm run down:compose` |
+Run commands from the repository root with Docker running and Docker Compose available. 
+Use Node.js 24 and run `npm ci` once.
+Review the local settings in `.env.development` before starting. 
 
-The startup commands provision local Cognito, S3, and four RDS instances.
-Local EKS also pushes application images to Floci ECR and deploys the shared
-CloudFront template in front of an internal HTTP ALB. Compose
-runs the application as Docker services; EKS runs it as Kubernetes workloads in
-Floci's local k3s cluster. The two full deployments can run together, but require
-substantial Docker memory. `docker compose up` alone cannot discover the
-Floci-generated database and Cognito settings; use `npm run up:compose`.
-`npm run dev` starts its Compose dependencies, then runs frontend and backend
-processes from source. It shares ports with the full Compose application. The source-process target also starts credit estimation on port 3005 and errand notifications on port 3010, using Floci MSK and RDS endpoints from the generated environment file.
+On Windows, use WSL with Linux Node/npm (`source ~/.nvm/nvm.sh` if needed).
 
-The host serves all four microfrontends on the application origin through
-`/remotes/supplier/`, `/remotes/user/`, `/remotes/errand/`, and
-`/remotes/credit/`. For the local EKS cluster, inspect pods with
-`kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
+| Path | Application | Floci API | Best for |
+| --- | --- | --- | --- |
+| Simulated EKS with Floci | HTTPS CloudFront URL printed by startup | https://localhost:4567 | Kubernetes deployment and pod lifecycle checks |
+| Docker Compose | http://localhost:8080 | http://localhost:4566 | Running the complete application in containers |
+| Source development | http://localhost:8080 | http://localhost:4566 | Editing frontend and backend code locally |
 
-### Local HTTPS certificate
+### Simulated EKS deployment using Floci
 
-`npm run up:eks` writes the current local CA certificate to
-`floci/eks/.floci-ca.pem`. Import that file into your operating system or
-browser's **Trusted Root Certification Authorities** store, then restart the
-browser. This trusts requests to the Floci CloudFront hostname printed by
-`npm run up:eks` and to `https://localhost:4567`; accepting a one-page browser exception does not
-cover all application requests. The first run needs this import once. The
-`relay-floci-eks-ca` Docker volume preserves **only Floci's CA and server
-certificate** across `npm run down:eks` and later `npm run up:eks`; application,
-Kubernetes, and database state is still removed. Keep the CA volume and its
-private key local. To intentionally rotate the CA, run
-`docker volume rm relay-floci-eks-ca` after `npm run down:eks`, then run
-`npm run up:eks` and trust the new `.floci-ca.pem`.
-
-### Optional local views
-
-Start a view only after its target environment is running. Replace `user` with
-`kafka`, `errand`, or `credit`; local EKS also supports `headlamp`. Use `all`
-to start every view available for that environment.
-
-| View | Compose URL | Local EKS URL |
-| --- | --- | --- |
-| Kafka UI | http://localhost:8081 | http://localhost:9081 |
-| User Prisma Studio | http://localhost:5555 | http://localhost:6555 |
-| Errand Prisma Studio | http://localhost:5556 | http://localhost:6556 |
-| Credit Prisma Studio | http://localhost:5557 | http://localhost:6557 |
-| Headlamp Kubernetes UI | N/A | http://localhost:9082 |
+Requires `kubectl` in addition to the common prerequisites.
 
 ```bash
-npm run views:compose -- user
-npm run views:compose:stop -- user
-npm run views:eks -- user
-npm run views:eks:stop -- user
+npm run up:eks
 ```
 
-To inspect and manage local EKS pods in [Headlamp](https://headlamp.dev/docs/latest/),
-start its in-cluster view and open http://localhost:9082:
+This starts a separate Floci instance and provisions simulated Cognito, S3,
+four RDS databases, MSK, and an EKS cluster backed by local k3s. It builds and
+pushes application images to Floci ECR, configures Kubernetes secrets and AWS
+service-account access, initializes Kafka topics and database schemas, deploys
+the application and autoscaling, and sets up CloudFront/API Gateway/ALB routing.
+Startup waits for the workloads and application health check.
+
+Import `floci/eks/.floci-ca.pem` into your browser or OS trusted root store
+once, restart the browser, and open the HTTPS CloudFront URL printed by the
+script. The CA is retained across teardown and startup.
 
 ```bash
-npm run views:eks -- headlamp
+# Inspect the local cluster
+kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods
+
+# Stop and remove this environment, including its databases
+npm run down:eks
 ```
 
-The command prints an eight-hour login token. Paste it into Headlamp's login
-screen and select the `relay` namespace to inspect workloads, logs, and pod
-status or delete a pod to test replacement. To get a new token after it
-expires, run:
+### Docker Compose deployment
 
 ```bash
-kubectl --kubeconfig floci/eks/.kubeconfig -n relay create token relay-headlamp-admin --duration=8h
+npm run up:compose
 ```
 
-The token grants cluster-admin access to this local cluster. Headlamp is
-forwarded only to localhost and is not exposed through the application ingress.
-`npm run views:eks -- all` includes it; stop it with
-`npm run views:eks:stop -- headlamp`.
+This starts Floci and provisions simulated Cognito, S3, four RDS databases,
+and MSK. It discovers their generated settings, writes
+`floci/docker/.generated.env`, and starts the complete application as Compose
+services, including database initialization, Kafka topics, and event publishers.
+Open http://localhost:8080. This path does not start Kubernetes.
 
-Both teardown commands stop their optional views and remove Floci-managed RDS
-containers and database volumes. EKS teardown also removes the local k3s node
-and generated kubeconfig. The CA volume is the sole retained local resource.
-See [floci/README.md](floci/README.md) for infrastructure details.
+```bash
+# Stop and remove this environment, including its databases
+npm run down:compose
+```
+
+Use the npm launcher rather than plain `docker compose up`: the launcher
+supplies the database, Cognito, S3, and Kafka settings generated by Floci.
+
+### Source development with npm run dev
+
+```bash
+# If the full Compose application is running, stop it first:
+# npm run down:compose  # removes its local database data
+npm run dev
+```
+
+This prepares Compose infrastructure, then runs the host and four frontend
+remotes with Vite and the backend APIs, notification service, and two event
+publishers from source. Authentication stays in a Compose container. It uses
+Floci's generated database, Kafka, Cognito, and S3 settings and prepares the
+database schemas automatically. Open http://localhost:8080.
+
+`npm run dev` is a complete startup command; you do not need to run
+`up:compose` or `up:eks` first. It shares ports with the full Compose app, so
+stop that app before switching. To stop source development, press Ctrl+C;
+run `npm run down:compose` afterward to remove the remaining infrastructure
+and database data.
+
+See the [local environment guide](floci/README.md) for script details,
+rebuild options, optional Kafka/Prisma/Headlamp views, certificate rotation,
+and differences between Floci and AWS.
 
 ---
 ## Local credit-allocation flow
