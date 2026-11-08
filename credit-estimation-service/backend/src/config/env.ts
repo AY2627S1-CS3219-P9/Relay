@@ -23,6 +23,7 @@ export type EstimationEnv = {
   aiMaxTokens: number
   aiEstimationTimeoutMs: number
   aiRateLimitRequestsPerMinute: number
+  aiFallbackRateLimitRequestsPerMinute: number
   redisUrl: string
 }
 
@@ -44,6 +45,10 @@ export function getEnv(): EstimationEnv {
     aiRateLimitRequestsPerMinute: positiveInteger(
       process.env.AI_RATE_LIMIT_REQUESTS_PER_MINUTE,
       20,
+    ),
+    aiFallbackRateLimitRequestsPerMinute: positiveInteger(
+      process.env.AI_FALLBACK_RATE_LIMIT_REQUESTS_PER_MINUTE,
+      50,
     ),
     redisUrl: process.env.REDIS_URL || 'redis://redis:6379',
   }

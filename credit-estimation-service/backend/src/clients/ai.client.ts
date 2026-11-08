@@ -10,6 +10,7 @@ export interface AIConfig {
   maxTokens?: number
   timeoutMs: number
   rateLimitRequestsPerMinute: number
+  fallbackRateLimitRequestsPerMinute: number
   redisUrl: string
 }
 
@@ -40,6 +41,7 @@ export class OpenAIClient implements AIClient {
       redisUrl: config.redisUrl,
       windowMs: 60 * 1000,
       maxRequests: config.rateLimitRequestsPerMinute,
+      fallbackMaxRequests: config.fallbackRateLimitRequestsPerMinute,
     })
   }
 
