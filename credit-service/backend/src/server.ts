@@ -1,7 +1,5 @@
 import type { Server } from 'node:http'
 import { Kafka, logLevel } from 'kafkajs'
-import { generateAuthTokenFromCredentialsProvider } from 'aws-msk-iam-sasl-signer-js'
-import { fromHttp } from '@aws-sdk/credential-provider-http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
 import { ErrandEventConsumer } from './consumers/errand.consumer.js'
@@ -12,33 +10,13 @@ import { CreditRepository } from './repositories/credit.repository.js'
 const env = getEnv()
 const creditService = new CreditService(new CreditRepository())
 
-// AWS Deployment requirement
-const kafkaAuth = process.env.KAFKA_AUTH_MODE === 'iam'
-  ? {
-      ssl: true,
-      sasl: {
-        mechanism: 'oauthbearer' as const,
-          oauthBearerProvider: async () => {
-            const { token } = await generateAuthTokenFromCredentialsProvider({
-              region: process.env.AWS_REGION ?? 'us-east-1',
-              awsCredentialsProvider: fromHttp(),
-            })
-          return { value: token }
-        },
-      },
-  }
-  : process.env.KAFKA_AUTH_MODE === 'plain'
-    ? {
-        sasl: {
-          mechanism: 'plain' as const,
-          username: process.env.KAFKA_USERNAME ?? '',
-          password: process.env.KAFKA_PASSWORD ?? '',
-        },
-      }
-    : {}
-if (process.env.KAFKA_AUTH_MODE === 'plain' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
-  throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
+const mode = process.env.KAFKA_AUTH_MODE ?? 'none'
+if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+  throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for SCRAM')
 }
+const kafkaAuth = mode === 'scram'
+  ? { ssl: true, sasl: { mechanism: 'scram-sha-512' as const, username: process.env.KAFKA_USERNAME!, password: process.env.KAFKA_PASSWORD! } }
+  : {}
 
 const kafka = new Kafka({
   clientId: 'credit-service', 

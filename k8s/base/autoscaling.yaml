@@ -5,7 +5,7 @@ spec:
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: supplier-api }
   minReplicas: 1
   maxReplicas: 4
-  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }, { type: Resource, resource: { name: memory, target: { type: Utilization, averageUtilization: 85 } } }]
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -14,7 +14,7 @@ spec:
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: user-api }
   minReplicas: 1
   maxReplicas: 4
-  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }, { type: Resource, resource: { name: memory, target: { type: Utilization, averageUtilization: 85 } } }]
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -23,13 +23,67 @@ spec:
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: errand-api }
   minReplicas: 1
   maxReplicas: 4
-  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }, { type: Resource, resource: { name: memory, target: { type: Utilization, averageUtilization: 85 } } }]
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
-metadata: { name: credit-api, namespace: relay }
+metadata: { name: credit-estimation-api, namespace: relay }
 spec:
-  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: credit-api }
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: credit-estimation-api }
   minReplicas: 1
   maxReplicas: 3
-  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }, { type: Resource, resource: { name: memory, target: { type: Utilization, averageUtilization: 85 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: errand-notification, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: errand-notification }
+  minReplicas: 1
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }, { type: Resource, resource: { name: memory, target: { type: Utilization, averageUtilization: 85 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: host, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: host }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 80 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: supplier-frontend, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: supplier-frontend }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 80 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: user-frontend, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: user-frontend }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 80 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: errand-frontend, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: errand-frontend }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 80 } } }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: credit-frontend, namespace: relay }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: credit-frontend }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 80 } } }]

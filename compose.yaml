@@ -1,113 +1,13 @@
 services:
-  kafka:
-    image: apache/kafka:latest
-    ports:
-      - '9092:9092'
-      - '29092:29092'
-    environment:
-      KAFKA_NODE_ID: '1'
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:29092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-      KAFKA_NUM_PARTITIONS: '1'
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
   kafka-init:
-    build: ./kafka
-    environment:
-      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
-      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
-      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
-      KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
-    depends_on:
-      kafka:
-        condition: service_healthy
-
-  user-postgres:
     build:
       context: .
-      dockerfile_inline: |
-        FROM postgres:16-alpine
-        RUN apk add --no-cache --virtual .pgcron-build-deps build-base curl \
-            && curl -fsSL https://github.com/citusdata/pg_cron/archive/refs/tags/v1.6.7.tar.gz \
-              | tar -xz -C /tmp \
-            && make -C /tmp/pg_cron-1.6.7 with_llvm=no \
-            && make -C /tmp/pg_cron-1.6.7 with_llvm=no install \
-            && rm -rf /tmp/pg_cron-1.6.7 \
-            && apk del .pgcron-build-deps
-    command:
-      - postgres
-      - -c
-      - shared_preload_libraries=pg_cron
-      - -c
-      - cron.database_name=relay
-      - -c
-      - cron.timezone=Asia/Singapore
-      - -c
-      - cron.use_background_workers=on
+      dockerfile: credit-service/backend/Dockerfile
+    command: [node, scripts/kafka-topics.mjs]
     environment:
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-      POSTGRES_DB: relay
-    ports:
-      - '5432:5432'
-    volumes:
-      - user-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_AUTH_MODE: none
 
-  errand-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: relay_errand
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-    ports:
-      - '5434:5432'
-    volumes:
-      - errand-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay_errand']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  credit-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: relay
-      POSTGRES_PASSWORD: relay
-      POSTGRES_DB: relay
-    ports:
-      - '5435:5432'
-    volumes:
-      - credit-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U relay -d relay']
-      interval: 5s
-      timeout: 5s
-      retries: 10
   # Each domain owns a frontend remote and, when implemented, its own API.
   # Keep the API private to this Compose network with `expose`, rather than
   # publishing its port. The host is the browser-facing API boundary.
@@ -117,8 +17,6 @@ services:
       dockerfile: host/Dockerfile
     ports:
       - '8080:80'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
     depends_on:
       supplier-frontend:
         condition: service_healthy
@@ -212,23 +110,6 @@ services:
     # TODO(kubernetes): Create a Deployment and ClusterIP Service.
     # Add a health-checked credit-api dependency when its API exists.
 
-  # Database services
-  supplier-db:
-    image: postgres:16-alpine
-    ports:
-      - '5433:5432'
-    environment:
-      POSTGRES_DB: relay
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - ./supplier-service/backend/src/schema.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
   # Backend service templates
   #
   # Copy and adapt one of these stanzas when implementing a service API.
@@ -237,6 +118,15 @@ services:
   # Add the corresponding /api/<service>/ proxy route to host/nginx.conf so
   # browser code can use a relative URL such as /api/supplier/shops.
   #
+  supplier-schema:
+    build:
+      context: .
+      dockerfile: supplier-service/backend/Dockerfile
+    environment:
+      SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Set SUPPLIER_DATABASE_URL}
+    command: ['node', 'migrate.cjs']
+    restart: 'no'
+
   supplier-api:
     build:
       context: .
@@ -244,26 +134,25 @@ services:
     expose:
       - '3000'
     environment:
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
       COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
-      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
-      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       PORT: '3000'
-      DB_HOST: supplier-db
-      DB_PORT: '5432'
+      DB_PORT: ${SUPPLIER_DATABASE_PORT:?Set SUPPLIER_DATABASE_PORT}
       DB_NAME: relay
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_USER: relay
+      DB_PASSWORD: ${SUPPLIER_DATABASE_PASSWORD:?Set SUPPLIER_DATABASE_PASSWORD}
       USER_API_URL: 'http://user-api:3000'
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       SUPPLIER_TIMEZONE: Asia/Singapore
     depends_on:
-      supplier-db:
-        condition: service_healthy
+      supplier-schema:
+        condition: service_completed_successfully
       user-api:
         condition: service_healthy
     healthcheck:
@@ -279,36 +168,52 @@ services:
     expose:
       - '3000'
     environment:
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
       COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
-      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
-      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@user-postgres:5432/relay?schema=public
-      S3_ENDPOINT: http://host.docker.internal:4566
-      S3_PUBLIC_ENDPOINT: http://localhost:4566
-      S3_REGION: us-east-1
-      S3_ACCESS_KEY_ID: test
-      S3_SECRET_ACCESS_KEY: test
-      S3_BUCKET: relay-user-profile-images
-      S3_FORCE_PATH_STYLE: 'true'
+      DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
       INTERNAL_USER_SERVICE_TOKEN: local-internal-user-service-token
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
     depends_on:
       kafka-init:
         condition: service_completed_successfully
-      user-postgres:
-        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 10s
       timeout: 3s
       retries: 5
   #
+  user-event-publisher:
+    build:
+      context: .
+      dockerfile: user-service/event-publisher/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${USER_DATABASE_URL:?Set USER_DATABASE_URL}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  errand-event-publisher:
+    build:
+      context: .
+      dockerfile: errand-service/event-publisher/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
   user-auth-api:
     build:
       context: .
@@ -316,7 +221,6 @@ services:
     expose:
       - '3000'
     environment:
-      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${FLOCI_INITIAL_ADMIN_EMAIL:-admin@example.com}
       NODE_ENV: production
       PORT: '3000'
     healthcheck:
@@ -331,32 +235,28 @@ services:
     expose:
       - '3000'
     environment:
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
       COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
-      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
-      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@errand-postgres:5432/relay_errand?schema=public
+      DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
       USER_API_URL: http://user-api:3000
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
       SUPPLIER_API_URL: http://supplier-api:3000
       SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
       INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
       ERRAND_SERVICE_TIMEOUT_MS: '5000'
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       CREDIT_API_URL: http://credit-api:3000
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+      CREDIT_ESTIMATION_API_URL: http://credit-estimation-api:3005
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
     depends_on:
       credit-api:
         condition: service_healthy
-      errand-postgres:
-        condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
       user-api:
         condition: service_healthy
     healthcheck:
@@ -372,27 +272,25 @@ services:
     expose:
       - '3000'
     environment:
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
       COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
-      COGNITO_ISSUER: ${COGNITO_ISSUER:-http://localhost:4566/us-east-1_test}
-      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI:-http://floci:4566/us-east-1_test/.well-known/jwks.json}
+      COGNITO_ISSUER: ${COGNITO_ISSUER}
+      COGNITO_JWKS_URI: ${COGNITO_JWKS_URI}
       NODE_ENV: production
       PORT: '3000'
-      DATABASE_URL: postgresql://relay:relay@credit-postgres:5432/relay?schema=public
+      DATABASE_URL: ${CREDIT_DATABASE_URL:?Set CREDIT_DATABASE_URL}
       USER_API_URL: http://user-api:3000
       USER_API_TIMEOUT: '5000'
       USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       KAFKA_TOPIC_ERRAND_DLQ: ${KAFKA_TOPIC_ERRAND_DLQ:-errand-events-dlq}
       CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
     depends_on:
-      credit-postgres:
-        condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
     healthcheck:
@@ -438,7 +336,8 @@ services:
       - '3010'
     environment:
       PORT: '3010'
-      KAFKA_BROKERS: kafka:9092
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_AUTH_MODE: none
       KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_test}
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-test}
@@ -452,9 +351,3 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-
-volumes:
-  user-postgres-data:
-  errand-postgres-data:
-  credit-postgres-data:
-  kafka-data:

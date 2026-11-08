@@ -18,9 +18,6 @@ COPY --from=build /app/credit-estimation-service/backend/package.json ./credit-e
 COPY --from=build /app/credit-estimation-service/backend/node_modules ./credit-estimation-service/backend/node_modules
 COPY --from=build /app/credit-estimation-service/backend/dist ./credit-estimation-service/backend/dist
 COPY --from=build /app/credit-estimation-service/backend/src ./credit-estimation-service/backend/src
-COPY --from=build /app/credit-estimation-service/backend/vitest.config.ts ./credit-estimation-service/backend/vitest.config.ts
-COPY --from=build /app/credit-estimation-service/backend/tests ./credit-estimation-service/backend/tests
-COPY --from=build /app/credit-estimation-service/backend/.env.test ./credit-estimation-service/backend/.env.test
 
 EXPOSE 3005
 CMD ["sh", "-c", "npx tsx credit-estimation-service/backend/dist/app.js"]

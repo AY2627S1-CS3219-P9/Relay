@@ -1,18 +1,16 @@
 import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
 import type { ApiResult, ImageDataUrl, UpdateUserResponse, User } from '@relay/contracts'
-import { ErrorMessage, RelayButton, RelayFormSurface } from '@relay/ui'
+import { ErrorMessage, RelayButton } from '@relay/ui'
 import { ImageUploadField } from '../../components/base-elements/ImageUploadField'
 import { UsernameField } from '../../components/base-elements/UsernameField'
 import { usernameError } from '../../validation/validation'
 
 export function UpdateProfileForm({
   profile,
-  onBack,
   onUpdated,
 }: {
   profile: User
-  onBack: () => void
   onUpdated: (profile: User) => void
 }) {
   const [username, setUsername] = useState(profile.username ?? '')
@@ -48,19 +46,13 @@ export function UpdateProfileForm({
   }
 
   return (
-    <RelayFormSurface
-      className="account-section account-profile-section"
-      title="Update profile details"
-      onClose={onBack}
-    >
-      <form onSubmit={submit}>
-        <UsernameField value={username} onChange={setUsername} />
-        <ImageUploadField value={picture} onChange={setPicture} />
-        <ErrorMessage message={error} />
-        <RelayButton variant="primary" type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save profile'}
-        </RelayButton>
-      </form>
-    </RelayFormSurface>
+    <form className="account-section" onSubmit={submit}>
+      <UsernameField value={username} onChange={setUsername} />
+      <ImageUploadField value={picture} onChange={setPicture} />
+      <ErrorMessage message={error} />
+      <RelayButton variant="primary" type="submit" disabled={saving}>
+        {saving ? 'Saving…' : 'Save profile'}
+      </RelayButton>
+    </form>
   )
 }

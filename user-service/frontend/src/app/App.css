@@ -246,27 +246,33 @@ body {
 }
 .account-view {
   display: grid;
-  gap: 0;
+  gap: 20px;
+  padding: 24px;
 }
+
 .account-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
 }
+
 .account-header h1 {
-  margin: 7px 0 0;
-  color: var(--relay-text);
-  font-size: clamp(1.8rem, 4vw, 2.35rem);
-  letter-spacing: -0.04em;
+  margin: 0 !important;
+  font-size: 1.4rem !important;
+  flex: 1;
 }
+
+.account-view .relay-button-with-image-avatar {
+  width: 48px;
+  height: 48px;
+}
+
 .account-section {
   display: grid;
   gap: 14px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(0, 122, 255, 0.18);
 }
+
 .account-section h2 {
   margin: 0;
   color: var(--relay-blue-dark);
@@ -329,9 +335,6 @@ body {
   color: var(--relay-text-muted);
   font: inherit;
   font-size: 0.82rem;
-}
-.account-danger-zone {
-  border-top-color: rgba(255, 59, 48, 0.28);
 }
 .account-danger-zone h2 {
   color: var(--relay-red-dark);
@@ -557,4 +560,17 @@ body {
   .user-map-panel {
     display: none;
   }
+}
+
+.manage-admins {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.manage-admins-divider {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, .12);
 }

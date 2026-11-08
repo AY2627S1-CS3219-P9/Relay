@@ -6,9 +6,23 @@ import { ErrandNotificationEventStream } from './services/notificationEventStrea
 
 const env = getEnv()
 const eventStream = new ErrandNotificationEventStream()
+const mode = process.env.KAFKA_AUTH_MODE ?? 'none'
+if (mode === 'scram' && (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)) {
+  throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for SCRAM')
+}
 const kafka = new Kafka({
   clientId: 'errand-notification',
-  brokers: [env.kafkaBrokers],
+  brokers: env.kafkaBrokers.split(','),
+  ...(mode === 'scram'
+    ? {
+        ssl: true,
+        sasl: {
+          mechanism: 'scram-sha-512' as const,
+          username: process.env.KAFKA_USERNAME!,
+          password: process.env.KAFKA_PASSWORD!,
+        },
+      }
+    : {}),
 })
 
 const { app, consumer, startConsumer } = createNotificationApp(eventStream, kafka)
@@ -32,26 +46,28 @@ const shutdown = async (signal: string) => {
   console.log(`${signal} received, shutting down gracefully...`)
   console.log(`Active subscribers: ${eventStream.getSubscriberCount()}`)
 
-  // Close server to stop accepting new connections
-  server.close(async () => {
-    console.log('HTTP server closed')
-
-    // Stop Kafka consumer
-    await consumer.stop()
-    console.log('Kafka consumer stopped')
-
-    // Log final stats
-    const stats = eventStream.getSubscriberStats()
-    console.log(`Final subscriber stats: ${JSON.stringify(stats)}`)
-
-    process.exit(0)
-  })
-
-  // Force exit after timeout
-  setTimeout(() => {
+  // Stop accepting new requests, then finish open SSE responses so EventSource
+  // can reconnect to a ready pod instead of waiting for the force-exit timer.
+  const forceExit = setTimeout(() => {
     console.error('Graceful shutdown timed out, forcing exit')
     process.exit(1)
-  }, 30_000).unref()
+  }, 30_000)
+  forceExit.unref()
+
+  server.close(async (error) => {
+    if (error) console.error('HTTP server close failed:', error)
+    else console.log('HTTP server closed')
+    try {
+      await consumer.stop()
+      console.log('Kafka consumer stopped')
+      clearTimeout(forceExit)
+      process.exit(error ? 1 : 0)
+    } catch (stopError) {
+      console.error('Kafka consumer shutdown failed:', stopError)
+      process.exit(1)
+    }
+  })
+  eventStream.closeAll()
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))

@@ -23,7 +23,7 @@
 .remote-profile-card {
   width: 100%;
   box-sizing: border-box;
-  max-height: 60dvh;
+  max-height: calc(100dvh - 96px);
   overflow: auto;
   border-radius: 28px;
   pointer-events: auto;
@@ -61,7 +61,6 @@
     left: 0 !important;
     width: 100% !important;
     max-height: calc(100dvh - 96px) !important;
-    overflow: visible;
   }
   .remote-profile-anchor.relay-mobile-bottom-sheet-anchor::after {
     position: absolute;

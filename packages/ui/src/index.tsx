@@ -3,11 +3,13 @@ import type { ServiceMetadata } from '@relay/contracts'
 export { ErrorMessage } from './ErrorMessage'
 export type { MessageVariant } from './ErrorMessage'
 export {
+  BackButton,
   BellIcon,
   BoltIcon,
   ButtonWithImage,
   CardView,
   ClockIcon,
+  CloseButton,
   BubblePopover,
   ClipboardPlusIcon,
   FilterIcon,

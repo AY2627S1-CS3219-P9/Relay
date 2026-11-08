@@ -1,6 +1,3 @@
--- pg_cron must be preloaded and configured for this database before migration.
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-
 CREATE INDEX "user_sessions_revoked_at_idx" ON "user_sessions"("revoked_at");
 
 -- Limit each DELETE statement to keep row locks and WAL bursts small. The loop
@@ -37,10 +34,3 @@ BEGIN
     RETURN total_deleted;
 END;
 $$;
-
--- pg_cron uses cron.timezone=Asia/Singapore from the PostgreSQL configuration.
-SELECT cron.schedule(
-    'cleanup-user-sessions',
-    '0 2 * * *',
-    'SELECT cleanup_user_sessions(1000)'
-);

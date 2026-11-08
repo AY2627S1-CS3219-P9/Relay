@@ -1,15 +1,13 @@
 import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { useState, type SubmitEvent } from 'react'
-import { ErrorMessage, IconButton } from '@relay/ui'
+import { ErrorMessage } from '@relay/ui'
 import type { ApiResult } from '@relay/contracts'
 
 export function DeleteAccountForm({
   username,
-  onBack,
   onDeleted,
 }: {
   username: string | null
-  onBack: () => void
   onDeleted: () => void
 }) {
   const [confirmation, setConfirmation] = useState('')
@@ -45,10 +43,6 @@ export function DeleteAccountForm({
   return (
     <form className="account-section account-danger-zone" onSubmit={submit}>
       <div>
-        <IconButton label="Go back" onClick={onBack}>
-          ←
-        </IconButton>
-        <h2>Delete account</h2>
         <p>This permanently removes your credentials, username, and profile picture.</p>
       </div>
       {username ? (

@@ -8,7 +8,7 @@ function encodeKeyPart(value: string): string {
 }
 
 /** S3-compatible adapter for Floci locally and Amazon S3 in production. */
-export class FlociS3ImageStorage implements ImageStorage {
+export class S3ImageStorage implements ImageStorage {
   private readonly client: S3Client
   private readonly bucket: string
   private readonly endpoint: string
@@ -54,7 +54,14 @@ export class FlociS3ImageStorage implements ImageStorage {
   }
 
   async url(key: string): Promise<string> {
-    if (this.endpoint.includes('localhost') || this.endpoint.includes('127.0.0.1')) {
+    // Local Floci exposes a browser endpoint separately from the in-cluster S3 endpoint.
+    const publicHost = new URL(this.publicEndpoint).hostname
+    if (
+      publicHost === 'localhost' ||
+      publicHost === '127.0.0.1' ||
+      publicHost.endsWith('.localhost') ||
+      publicHost.endsWith('.localhost.floci.io')
+    ) {
       return `${this.publicEndpoint}/${encodeURIComponent(this.bucket)}/${key
         .split('/')
         .map(encodeURIComponent)
@@ -70,4 +77,4 @@ export class FlociS3ImageStorage implements ImageStorage {
 }
 
 /** Backwards-compatible local adapter name for the configured S3-compatible store. */
-export class LocalImageStorage extends FlociS3ImageStorage {}
+export class LocalImageStorage extends S3ImageStorage {}

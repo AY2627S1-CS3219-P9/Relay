@@ -57,11 +57,23 @@ export class ErrandNotificationEventStream {
     }
   }
 
+  /** End active SSE responses so clients can reconnect during pod shutdown. */
+  closeAll(): void {
+    for (const subs of this.subscribers.values()) {
+      for (const { response } of subs.values()) {
+        if (!response.writableEnded && !response.destroyed) {
+          response.end()
+        }
+      }
+    }
+    this.subscribers.clear()
+  }
+
   /**
    * Publish notification to multiple users
    * - Handles write errors gracefully
    * - Tracks consecutive failures and unsubscribes after threshold
-   * - Records successful deliveries in outbox for deduplication
+   * - Best-effort delivery to active in-memory subscribers
    */
   async publish(userSubs: string[], notification: ErrandNotification): Promise<void> {
     const start = Date.now()

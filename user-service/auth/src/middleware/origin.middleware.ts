@@ -7,7 +7,8 @@ export const requireSameOrigin: RequestHandler = (req, res, next) => {
   } // Non-browser clients do not set Origin.
   const host = req.header('x-forwarded-host') ?? req.header('host')
   const protocol = req.header('x-forwarded-proto') ?? req.protocol
-  if (host && origin === `${protocol}://${host}`) {
+  const expectedOrigin = process.env.AUTH_PUBLIC_ORIGIN ?? (host ? `${protocol}://${host}` : undefined)
+  if (origin === expectedOrigin) {
     next()
     return
   }

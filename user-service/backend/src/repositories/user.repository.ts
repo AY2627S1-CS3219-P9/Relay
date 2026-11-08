@@ -1,5 +1,4 @@
 import { PrismaClient } from '@relay/user-prisma'
-import { getEnv } from '../config/env.js'
 import { UserEventTypes, type UserDeletedEvent, type UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'
 
@@ -51,7 +50,7 @@ export class UserRepository {
       })
       await tx.userOutboxEvent.create({
         data: {
-          topic: getEnv().kafkaTopicUserEvents,
+          topic: 'user-events',
           key: cognitoSub,
           payload: {
             eventId: crypto.randomUUID(),
@@ -85,7 +84,7 @@ export class UserRepository {
       const deleted = await tx.userProfile.delete({ where: { cognitoSub } })
       await tx.userOutboxEvent.create({
         data: {
-          topic: getEnv().kafkaTopicUserEvents,
+          topic: 'user-events',
           key: cognitoSub,
           payload: {
             eventId: crypto.randomUUID(),

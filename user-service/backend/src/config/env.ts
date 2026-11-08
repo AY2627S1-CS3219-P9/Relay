@@ -15,8 +15,6 @@ export type UserServiceEnv = {
   s3SecretAccessKey?: string
   s3Bucket: string
   s3ForcePathStyle: boolean
-  kafkaBrokers: string[]
-  kafkaTopicUserEvents: string
 }
 
 function required(name: string, fallback?: string): string {
@@ -39,7 +37,7 @@ export function getEnv(): UserServiceEnv {
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port,
-    awsEndpointUrl: process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
+    awsEndpointUrl: process.env.COGNITO_ENDPOINT_URL ?? process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566',
     awsRegion: process.env.AWS_DEFAULT_REGION ?? 'us-east-1',
     authMode,
     cognitoUserPoolId: required('COGNITO_USER_POOL_ID', 'us-east-1_test'),
@@ -57,7 +55,5 @@ export function getEnv(): UserServiceEnv {
     s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
     s3Bucket: required('S3_BUCKET', 'relay-user-profile-images'),
     s3ForcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
-    kafkaBrokers: required('KAFKA_BROKERS', 'kafka:9092').split(','),
-    kafkaTopicUserEvents: required('KAFKA_TOPIC_USER_EVENTS'),
   }
 }
