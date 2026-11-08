@@ -45,6 +45,7 @@ auth_output="$(docker exec relay-floci-eks cat /app/data/relay-auth.env)"
 COGNITO_USER_POOL_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
 COGNITO_CLIENT_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
 [[ -n "$COGNITO_USER_POOL_ID" && -n "$COGNITO_CLIENT_ID" ]]
+export COGNITO_USER_POOL_ID COGNITO_CLIENT_ID
 rds_output="$(docker exec relay-floci-eks cat /app/data/relay-rds.env)"
 rds_value() { printf '%s\n' "$rds_output" | sed -n "s/^$1=//p"; }
 for name in USER ERRAND CREDIT SUPPLIER; do

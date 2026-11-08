@@ -35,6 +35,6 @@ export interface CreditApi {
   /** Transfers credit amount from sender's reserve balance to receiver's available balance. */
   transferCredit(command: TransferCreditCommand): Promise<void>
 
-  /** Deletes user credit balance record. */
+  /** Closes a user's credit account while preserving settlement history. */
   deleteUserCredit(command: DeleteUserCreditCommand): Promise<void>
 }

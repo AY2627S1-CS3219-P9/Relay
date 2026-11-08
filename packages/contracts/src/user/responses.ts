@@ -17,12 +17,15 @@ export type ApiFailure = {
  * Uniform result returned by every public UserApi method.
  *
  * The HTTP adapter converts a successful 204 response to
- * `{ ok: true, data: undefined }`.
+ * `{ ok: true, data: undefined }`; a 202 deletion response includes its
+ * pending status in `data`.
  */
 export type ApiResult<T> = ApiSuccess<T> | ApiFailure
 
 export type GetUserResponse = User
 export type UpdateUserResponse = User
+/** The profile is deleted; Cognito cleanup may still be finalized asynchronously. */
+export type DeleteUserResponse = { status: 'pending' } | undefined
 
 /** Response from the private profile lookup used by backend services. */
 export type GetUserProfileBySubjectResponse = UserProfileSummary
