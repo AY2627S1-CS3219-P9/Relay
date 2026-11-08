@@ -59,45 +59,6 @@ export function createApp(isReady: () => boolean = () => true) {
 export const app = createApp()
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
-  const kafkaAuth =
-    process.env.KAFKA_AUTH_MODE === 'iam'
-      ? {
-          ssl: true,
-          sasl: {
-            mechanism: 'oauthbearer' as const,
-            oauthBearerProvider: async () => {
-              const { token } = await generateAuthTokenFromCredentialsProvider({
-                region: process.env.AWS_REGION ?? 'us-east-1',
-                awsCredentialsProvider: fromHttp(),
-              })
-              return { value: token }
-            },
-          },
-        }
-      : process.env.KAFKA_AUTH_MODE === 'plain'
-        ? {
-            sasl: {
-              mechanism: 'plain' as const,
-              username: process.env.KAFKA_USERNAME ?? '',
-              password: process.env.KAFKA_PASSWORD ?? '',
-            },
-          }
-        : {}
-
-  if (
-    process.env.KAFKA_AUTH_MODE === 'plain' &&
-    (!process.env.KAFKA_USERNAME || !process.env.KAFKA_PASSWORD)
-  ) {
-    throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD are required for plain Kafka authentication')
-  }
-
-  const kafka = new Kafka({
-    clientId: 'errand-service',
-    brokers: env.kafkaBrokers.split(','),
-    retry: { retries: 3, initialRetryTime: 100, maxRetryTime: 1000 },
-    ...kafkaAuth,
-  })
-  const consumer = new ErrandConsumer(kafka)
   const worker = new PendingErrandWorker(new ErrandRepository())
   worker.start()
   const server = app.listen(env.port, () =>
