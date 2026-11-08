@@ -43,6 +43,22 @@ export class UserController {
     }
   }
 
+  getDeletionStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const subject = typeof req.params.sub === 'string' ? req.params.sub : undefined
+      if (!subject) {
+        res.status(400).json({
+          ok: false,
+          error: { code: 'VALIDATION_FAILED', message: 'A user subject is required.' },
+        })
+        return
+      }
+      res.status(200).json({ ok: true, data: await this.userService.getDeletionStatus(subject) })
+    } catch (error) {
+      next(error)
+    }
+  }
+
   updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!
@@ -56,7 +72,7 @@ export class UserController {
   deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!
-      await this.userService.deleteUser(user, req.body?.confirmation)
+      const result = await this.userService.deleteUser(user, req.body?.confirmation)
 
       res.clearCookie('relay_access', {
         path: '/',
@@ -76,6 +92,10 @@ export class UserController {
         sameSite: 'strict',
         secure: process.env.COOKIE_SECURE !== 'false',
       })
+      if (result?.status === 'pending') {
+        res.status(202).json({ ok: true, data: result })
+        return
+      }
       res.status(204).send()
     } catch (error) {
       next(error)

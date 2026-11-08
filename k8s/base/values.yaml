@@ -1,0 +1,6 @@
+config:
+  oidc:
+  clientID: 3jogdcledhgeu9uc3tkn2pisjr
+  clientSecret: 58gso71q0l8es02mu68ic8tioah8m5gu38v9v6gnbdj7c1vka60
+  issuerURL: "https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_a2E8gk8Mw"
+  scopes: "profile,email,openid"

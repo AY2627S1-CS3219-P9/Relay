@@ -9,3 +9,81 @@ the configured errand topic, and marks each row published only after Kafka
 acknowledges it. A failed send leaves the row pending for retry. The publisher
 removes published rows older than seven days during its minute-by-minute cleanup.
 Unpublished rows are never deleted by this cleanup.
+
+Before enabling or deploying requester-deletion acceptance protection, run the
+profile audit:
+
+```bash
+npm run audit:profileless --workspace=@relay/errand-backend
+```
+
+The audit compares every distinct errand requester with User Service. A
+missing profile with a recorded `UserDeleted` event is classified as
+`legitimately-deleted`. A missing profile without that event is classified with
+Cognito when available: an existing Cognito user is
+`legacy-profile-never-created`, while a missing Cognito user is
+`inconsistent-data`. Local/mock identity mode reports
+`needs-manual-classification` because it cannot safely make that distinction.
+The command exits non-zero while unresolved entries remain.
+
+After reviewing the JSON report, remediation is explicit:
+
+```bash
+npm run audit:profileless --workspace=@relay/errand-backend -- --remediate-open
+npm run audit:profileless --workspace=@relay/errand-backend -- --resolve-assigned
+```
+
+`--remediate-open` cancels only profile-less `OPEN` errands and emits
+`ErrandCancelled`, allowing Credit Service to release their reservations.
+Assigned errands are left untouched unless `--resolve-assigned` is explicitly
+provided; that option applies the same requester-deletion rule as the live
+consumer and emits `ErrandCompleted` for settlement. Run the audit again and
+record the final report before deploying the acceptance guard.
+
+The Errand API also consumes `UserDeleted` events with the dedicated
+`relay-errand-user-events` group. New consumer groups start from the current
+Kafka tail; historical deletions require an explicit audit/backfill. For a
+deleted requester, `OPEN` errands become `CANCELLED` and emit
+`ErrandCancelled` so reserved credit is released. `ACCEPTED`, `PICKED_UP`,
+and `DELIVERED` errands become `CONFIRMED` and emit `ErrandCompleted` so the
+assigned courier receives the full reserved amount. Each transition is locked
+and written with its outbox event in one database transaction, so redelivery is
+safe and cannot duplicate settlement events.
+
+The same consumer handles deleted couriers. Valid `ACCEPTED` and `PICKED_UP`
+errands are reopened with the courier cleared. Expired assigned errands become
+`EXPIRED` and emit `ErrandExpired` to release the reservation. `DELIVERED`
+errands become `CONFIRMED` without clearing `courierSub`, so Credit Service can
+route the completed payment to pending settlement for the deleted courier.
+These transitions use the same per-errand advisory locks and are idempotent.
+If both the requester and courier are deleted for one `DELIVERED` errand, the
+first deletion confirms it and emits the single `ErrandCompleted` event; the
+second deletion is a no-op. This makes the result independent of deletion
+event order and ensures Credit Service creates at most one pending settlement.
+
+The deletion regression coverage is in
+`tests/errand-user-deletion-state-matrix.test.ts` and
+`tests/errand-user-deletion-combined.test.ts`. It covers requester resolution,
+courier reopen/expiry behavior, delivered-courier settlement, terminal-state
+no-ops, duplicate events, and both deletion orders. Run it with the backend
+test command after the Errand test database is available:
+
+```bash
+npm test --workspace=@relay/errand-backend -- \
+  tests/errand-user-deletion-state-matrix.test.ts \
+  tests/errand-user-deletion-combined.test.ts
+```
+
+Acceptance protection checks the requester's current User Service profile before
+allowing a courier to accept an errand. A missing profile returns
+`REQUESTER_DELETED` with HTTP 409, while a User Service outage fails closed
+with the existing service-unavailable error. The check is intentionally
+eventually consistent with account deletion; the transactional consumer remains
+the final protection for deletion events that race with acceptance.
+
+The requester-deletion consumer is deployed inside the existing `errand-api`
+workload, consistent with the Credit Service consumers. The Errand image copies
+the consumer source and compiled output, and Kubernetes injects the shared
+Kafka broker, user-events topic, and user-event DLQ settings through the
+existing runtime ConfigMap and Secret. No separate consumer Deployment is
+needed.

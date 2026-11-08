@@ -18,6 +18,8 @@ const schema = z.object({
       .trim()
       .min(1)
       .refine((value) => !value.includes(':')),
+    profilePictureKey: z.string().trim().min(1).optional(),
+    metadata: z.record(z.string(), z.string()).optional(),
   }),
 })
 

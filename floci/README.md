@@ -210,6 +210,12 @@ pod to check reconnection. Local Floci still does not validate MSK SCRAM/TLS.
 
 ### Local API Gateway differences
 
+Local EKS routes `/api/auth`, `/api/user`, `/api/supplier`, `/api/errands`,
+`/api/credit`, and `/api/notifications/stream` directly through Traefik to their
+backend Services, mirroring production's ALB ingress. Host Nginx is not in this
+API path. Compose still uses host Nginx, and `npm run dev` uses Vite's proxy;
+both retain the same browser URLs and require no changes to Floci dependencies.
+
 The EKS startup script creates a Floci REST API, REST VPC Link metadata and a
 proxy integration between local CloudFront and the emulated ALB. Floci does not
 create real VPC Link network interfaces or enforce AWS security groups. Its
@@ -246,7 +252,8 @@ After startup, inspect `kubectl -n keda get pods`,
 trigger is ready and the external metrics API is available with
 `kubectl get apiservice v1beta1.external.metrics.k8s.io`. Generate a
 backlog on the errand topic and verify credit-api scales up and later down.
-Frontend HPAs should have 2 to 4 replicas. Both outbox publishers remain at one.
+In Floci, the host and four remote frontends stay at one replica, with frontend
+HPA minimum and maximum replicas both set to 1. Both outbox publishers remain at one.
 
 CPU and memory utilization are percentages of Kubernetes **requests**, not
 limits. AWS Node workloads request 512 MiB, so the 85% memory target is

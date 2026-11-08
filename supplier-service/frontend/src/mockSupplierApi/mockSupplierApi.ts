@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-22
+// Scope: Generated initial implementation.
+// Author review: I validated correctness and edited for style.
+
 import { Day, ServiceType } from '@relay/contracts'
 import type {
   CreateSupplierRequest,
