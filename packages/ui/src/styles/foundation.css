@@ -1,3 +1,8 @@
+/* AI Assistance Disclosure:
+Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-23
+Scope: Generated css and implemented shared css across microfrontends
+Author review: I validated correctness and edited for style. */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {

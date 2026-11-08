@@ -413,7 +413,7 @@ if [[ "$estimation_changed" == 1 && "$config_changed" == 0 && "$runtime_changed"
 fi
 # Pin the upstream core manifest; no Helm installation is required.
 kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.17.3/keda-2.17.3-core.yaml
-kubectl wait --for=condition=Established crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh --timeout=120s
+bash deploy/scripts/wait-for-crds.sh crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh
 kubectl -n keda rollout status deployment/keda-operator --timeout=5m
 kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=5m
 # Migrate the existing HPA before KEDA creates its own for the same deployment.

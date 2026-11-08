@@ -80,6 +80,9 @@ The host serves all four microfrontends on the application origin through
 `/remotes/credit/`. For the local EKS cluster, inspect pods with
 `kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
 
+> Note: If a clean build is failing due to a ECONNRESET error, try limiting the number of concurrent builds (e.g. 1 in the example below).
+> COMPOSE_PARALLEL_LIMIT=1 npm run up:compose -- --no-cache
+
 ### Local HTTPS certificate
 
 `npm run up:eks` writes the current local CA certificate to
@@ -136,6 +139,11 @@ The token grants cluster-admin access to this local cluster. Headlamp is
 forwarded only to localhost and is not exposed through the application ingress.
 `npm run views:eks -- all` includes it; stop it with
 `npm run views:eks:stop -- headlamp`.
+
+For the deployed AWS cluster, use `npm run headlamp -- start` after selecting
+its Kubernetes context. This opens a read-only dashboard for autoscaling checks.
+See the [AWS Headlamp guide](deploy/README.md#observe-autoscaling-in-headlamp)
+for login, metrics checks, and cleanup.
 
 Both teardown commands stop their optional views and remove Floci-managed RDS
 containers and database volumes. EKS teardown also removes the local k3s node
