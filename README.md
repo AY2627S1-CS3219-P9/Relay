@@ -12,12 +12,14 @@ withdrawn, or exchanged for money, and only circulate within the platform.
 
 ## Team Members
 
-| Name      | Role           |
-| --------- | -------------- |
-| Ryan      | Your ownership |
-| Javier    | Your ownership |
-| Rong Kang | Your ownership |
-| Zhouxuan  | Your ownership |
+| Role/Name        | **Cai Zhouxuan**                      | **Ng Zhe, Javier**      | **Wong Rong Kang**                     | **Toh Jun Yeen, Ryan**        |
+| ---------------- | ------------------------------------- | ----------------------- | -------------------------------------- | ----------------------------- |
+| User Service     | User Authentication, Admin Management | User Profile Management |                                        | Frontend                      |
+| Supplier Service |                                       |                         | Supplier CRUD                          | Frontend                      |
+| Errand Service   |                                       | Errand CRUD             | Errand Courier Lifecycle, Kafka Events | Frontend                      |
+| Credit Service   | Backend, Frontend                     |                         |                                        |                               |
+| Misc             | Kafka Event Publishers, CD, IaC       | CI, Load Testing, Docs  | Errand Notification                    | Kubernetes, UI Contracts, IaC |
+| N2H              | AWS Deployment, Kubernetes            | Grafana Load Testing    | Credit Estimation                      | Interactive Map               |
 
 ---
 
