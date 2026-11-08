@@ -367,6 +367,10 @@ spec:
           securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_NOTIFICATION
           ports: [{ name: http, containerPort: 3010 }]
+          # Keep serving while ingress removes this terminating pod from its endpoints.
+          lifecycle:
+            preStop:
+              exec: { command: ["sleep", "5"] }
           env:
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: PORT, value: "3010" }
