@@ -315,7 +315,7 @@ AWS_ACCESS_SERVICE_ACCOUNTS_FILE="$service_accounts" bash floci/eks/inject-aws-a
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/credit-estimation-api deployment/errand-notification
 # Pin the upstream core manifest; no Helm installation is required.
 kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.17.3/keda-2.17.3-core.yaml
-kubectl wait --for=condition=Established crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh --timeout=120s
+bash deploy/scripts/wait-for-crds.sh crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh
 # Keep KEDA's limits intact while reducing local scheduler reservations.
 kubectl -n keda set resources deployment/keda-operator deployment/keda-metrics-apiserver --requests=memory=64Mi
 kubectl -n keda rollout status deployment/keda-operator --timeout=5m
