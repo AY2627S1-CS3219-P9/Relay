@@ -232,6 +232,8 @@ kubectl -n relay create secret generic relay-estimation-config \
   --from-literal=AI_TEMPERATURE="${AI_TEMPERATURE:-}" \
   --from-literal=AI_MAX_TOKENS="${AI_MAX_TOKENS:-}" \
   --from-literal=AI_ESTIMATION_TIMEOUT_MS="${AI_ESTIMATION_TIMEOUT_MS:-}" \
+  --from-literal=AI_RATE_LIMIT_REQUESTS_PER_MINUTE="${AI_RATE_LIMIT_REQUESTS_PER_MINUTE:-20}" \
+  --from-literal=AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE="${AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE:-300}" \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n relay patch configmap relay-runtime --type merge -p '{"data":{"KAFKA_AUTH_MODE":"none","KAFKA_REPLICATION_FACTOR":"1","KAFKA_MIN_IN_SYNC_REPLICAS":"1"}}'
 access_output="$(docker exec relay-floci-eks cat /app/data/relay-aws-access.env)"

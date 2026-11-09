@@ -200,11 +200,36 @@ ScaledObject conditions as well as its HPA during that separate scenario.
 - `nfr-errand-read.js`: ramping authenticated errand reads.
 - `nfr-errand-mixed.js`: concurrent errand reads and low-rate create/cancel writes.
 - `nfr-credit.js`: authenticated credit-balance reads and non-negative balance checks.
+- `nfr-credit-estimation.js`: sustained AI credit-estimation recommendations across three users.
+- `credit-estimation-rate-limit.js`: exact per-user rate-limit boundary behavior.
 - `nfr-supplier.js`: authenticated supplier-query workload.
 
 NFR defaults are bounded by the current Grafana Cloud project limit. Increase
 them gradually and record VUs, throughput, p95 latency, failure rate, threshold
 status, and the Grafana run link.
+
+## Local credit estimation single-instance suite
+
+The local suite runs the sustained estimation NFR and exact per-user
+rate-limit boundary test against one `credit-estimation-api` container. A
+temporary OpenAI-compatible mock makes responses deterministic and avoids paid
+provider calls. A separate temporary Redis instance isolates limiter state and
+is reset between the two scenarios.
+
+Start and provision the local environment first as described above. Then run
+with Docker Desktop running:
+
+```bash
+node load-tests/run-credit-estimation-single-instance.mjs
+```
+
+The single runner creates its Compose override and mock AI server configuration
+in a temporary directory, verifies that exactly one estimator container is
+active, executes both k6 files directly without Grafana Cloud, and restores the
+normal Compose estimator configuration afterward. By default, the sustained
+test runs at 15 requests per minute for three minutes; the boundary test sends
+25 requests and expects exactly 20 successes plus 5 rate-limit responses.
+Summaries are written under `load-tests/results/`.
 
 ## Cleanup
 
