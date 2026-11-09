@@ -24,7 +24,7 @@ export async function initializeAIClient(env: EstimationEnv): Promise<void> {
         maxTokens: env.aiMaxTokens,
         timeoutMs: env.aiEstimationTimeoutMs,
         rateLimitRequestsPerMinute: env.aiRateLimitRequestsPerMinute,
-        fallbackRateLimitRequestsPerMinute: env.aiFallbackRateLimitRequestsPerMinute,
+        globalRateLimitRequestsPerMinute: env.aiGlobalRateLimitRequestsPerMinute,
         redisUrl: env.redisUrl,
       })
       setAIClient(aiClient)

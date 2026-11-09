@@ -1,151 +1,135 @@
 /**
- * Redis-backed distributed rate limiter using Lua scripts
+ * Redis-backed rolling-window limiter shared by every service instance.
  *
- * This implementation provides:
- * - Atomic rate limit operations across all instances
- * - Sliding window algorithm with Redis
- * - Connection pooling for efficiency
+ * Checks and records the per-user and service-wide limits
+ * atomically. Rejected requests are not added to either window.
  */
 
+import { randomUUID } from 'node:crypto'
 import { Redis } from 'ioredis'
+
+export type RateLimitScope = 'user' | 'global'
+
+export type RateLimitDecision =
+  { allowed: true } | { allowed: false; scope: RateLimitScope; retryAfterMs: number }
 
 export interface RateLimiterConfig {
   windowMs: number
-  maxRequests: number
+  perUserMaxRequests: number
+  globalMaxRequests: number
   redisUrl: string
   namespace?: string
 }
 
+type RedisClient = Pick<Redis, 'eval' | 'quit' | 'ping'>
+
+const USER_LIMITED = 1
+const GLOBAL_LIMITED = 2
+
 export class DistributedRateLimiter {
-  private redis: Redis
+  private readonly redis: RedisClient
   private readonly windowMs: number
-  private readonly maxRequests: number
+  private readonly perUserMaxRequests: number
+  private readonly globalMaxRequests: number
   private readonly namespace: string
   private readonly script: string
 
-  constructor(config: RateLimiterConfig) {
+  constructor(config: RateLimiterConfig, redisClient?: RedisClient) {
     this.windowMs = config.windowMs
-    this.maxRequests = config.maxRequests
-    this.namespace = config.namespace || 'rate_limit'
-    this.redis = new Redis(config.redisUrl, {
-      // Connection pooling settings
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: true,
-      // Retry strategy
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000)
-        return delay
-      },
-    })
+    this.perUserMaxRequests = config.perUserMaxRequests
+    this.globalMaxRequests = config.globalMaxRequests
+    this.namespace = config.namespace || 'credit_estimation'
+    this.redis =
+      redisClient ??
+      new Redis(config.redisUrl, {
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        retryStrategy: (times) => Math.min(times * 50, 2000),
+      })
 
-    // Lua script for atomic increment + expiry
-    // This ensures thread-safe rate limiting
-    // Always refresh TTL
-    // Returns: {current, ttl_ms, remaining}
+    // KEYS use the same Redis hash tag so the script also works with Redis Cluster.
     this.script = `
-      local current = redis.call('INCR', KEYS[1])
-      redis.call('PEXPIRE', KEYS[1], ARGV[1])
-      local ttl_ms = redis.call('PTTL', KEYS[1])
-      local remaining = math.max(0, tonumber(ARGV[2]) - current)
-      return {current, ttl_ms, remaining}
+      local now_ms = tonumber(ARGV[1])
+      local window_ms = tonumber(ARGV[2])
+      local user_limit = tonumber(ARGV[3])
+      local global_limit = tonumber(ARGV[4])
+      local request_id = ARGV[5]
+      local cutoff = now_ms - window_ms
+
+      redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', cutoff)
+      redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', cutoff)
+
+      local user_count = redis.call('ZCARD', KEYS[1])
+      local global_count = redis.call('ZCARD', KEYS[2])
+
+      local function retry_after(key)
+        local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+        if oldest[2] == nil then
+          return window_ms
+        end
+        return math.max(0, window_ms - (now_ms - tonumber(oldest[2])))
+      end
+
+      if user_count >= user_limit then
+        return {0, ${USER_LIMITED}, retry_after(KEYS[1])}
+      end
+
+      if global_count >= global_limit then
+        return {0, ${GLOBAL_LIMITED}, retry_after(KEYS[2])}
+      end
+
+      redis.call('ZADD', KEYS[1], now_ms, request_id)
+      redis.call('ZADD', KEYS[2], now_ms, request_id)
+      redis.call('PEXPIRE', KEYS[1], window_ms)
+      redis.call('PEXPIRE', KEYS[2], window_ms)
+
+      return {1, 0, 0}
     `
   }
 
-  /**
-   * Try to acquire a rate limit token
-   * @param key Unique identifier for the rate limit (e.g., service name)
-   * @returns true if request is allowed, false if rate limited
-   */
-  async tryAcquire(key: string): Promise<boolean> {
-    const redisKey = `${this.namespace}:${key}`
+  async tryAcquire(
+    userId: string,
+    nowMs: number = Date.now(),
+    requestId: string = randomUUID(),
+  ): Promise<RateLimitDecision> {
+    const hashTag = `{${this.namespace}}`
+    const userKey = `${hashTag}:user:${userId}`
+    const globalKey = `${hashTag}:global`
 
     try {
       const result = (await this.redis.eval(
         this.script,
-        1,
-        redisKey,
+        2,
+        userKey,
+        globalKey,
+        nowMs,
         this.windowMs,
-        this.maxRequests,
+        this.perUserMaxRequests,
+        this.globalMaxRequests,
+        requestId,
       )) as number[]
 
-      if (result.length < 3) {
-        throw new Error('Invalid rate limiter response')
+      if (result.length < 3) throw new Error('Invalid rate limiter response')
+      if (result[0] === 1) return { allowed: true }
+
+      const scope = result[1] === GLOBAL_LIMITED ? 'global' : 'user'
+      return {
+        allowed: false,
+        scope,
+        retryAfterMs: Math.max(0, Number(result[2]) || 0),
       }
-
-      const currentRequests = result[0]
-      this.ttlMs = result[1]
-      this.remaining = result[2]
-
-      return currentRequests <= this.maxRequests
     } catch (error) {
       console.error('Redis rate limiter error:', error)
-      // Fail open - allow request if Redis is unavailable
-      return true
+      // Estimation is optional and invokes a paid API. If the shared limiter
+      // cannot be enforced, fail closed instead of allowing unbounded calls.
+      throw error
     }
   }
 
-  // Cached values from last tryAcquire call
-  private ttlMs: number = 0
-  private remaining: number = 0
-
-  /**
-   * Get remaining requests in current window
-   * Uses cached value from last tryAcquire for consistency
-   * @param key Unique identifier
-   * @returns Number of remaining requests
-   */
-  async getRemaining(key: string): Promise<number> {
-    // Return cached value from last tryAcquire
-    return this.remaining
-  }
-
-  /**
-   * Get time until rate limit resets (in milliseconds)
-   * Uses cached value from last tryAcquire for consistency
-   * @param key Unique identifier
-   * @returns Milliseconds until reset, or 0 if no active limit
-   */
-  async getNextReset(key: string): Promise<number> {
-    // Return cached value from last tryAcquire
-    return this.ttlMs
-  }
-
-  /**
-   * Get current request count in window
-   * @param key Unique identifier
-   * @returns Current request count
-   */
-  async getCurrentCount(key: string): Promise<number> {
-    const redisKey = `${this.namespace}:${key}`
-
-    try {
-      const current = await this.redis.get(redisKey)
-      return parseInt(current || '0', 10)
-    } catch (error) {
-      console.error('Redis getCurrentCount error:', error)
-      return 0
-    }
-  }
-
-  /**
-   * Reset rate limit for a key, used for testing or manual reset
-   * @param key Unique identifier
-   */
-  async reset(key: string): Promise<void> {
-    const redisKey = `${this.namespace}:${key}`
-    await this.redis.del(redisKey)
-  }
-
-  /**
-   * Close Redis connection
-   */
   async disconnect(): Promise<void> {
     await this.redis.quit()
   }
 
-  /**
-   * Check if Redis is connected
-   */
   async isConnected(): Promise<boolean> {
     try {
       return (await this.redis.ping()) === 'PONG'
@@ -155,13 +139,15 @@ export class DistributedRateLimiter {
   }
 }
 
-export async function createDistributedRateLimiter(
+export function createDistributedRateLimiter(
   redisUrl: string,
-): Promise<DistributedRateLimiter> {
+  perUserMaxRequests: number = 20,
+  globalMaxRequests: number = 300,
+): DistributedRateLimiter {
   return new DistributedRateLimiter({
-    windowMs: 60 * 1000, // 1 minute
-    maxRequests: 20, // Default, configurable via env
+    windowMs: 60 * 1000,
+    perUserMaxRequests,
+    globalMaxRequests,
     redisUrl,
-    namespace: 'credit_estimation',
   })
 }

@@ -40,6 +40,46 @@ describe('validateEstimateRequest available credit', () => {
   )
 })
 
+describe('validateEstimateRequest user identity', () => {
+  it.each([undefined, '', '   '])('rejects missing user ID %s', (userId) => {
+    expect(() =>
+      validateEstimateRequest({ ...validRequest, userId } as unknown as EstimateCreditRequest, now),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'INVALID_INPUT',
+        fieldErrors: { userId: 'User ID is required' },
+      }),
+    )
+  })
+})
+
+describe('validateEstimateRequest text limits', () => {
+  it.each([
+    ['name', 200],
+    ['description', 5000],
+    ['instructions', 5000],
+  ] as const)('accepts %s at its %i-character limit', (field, limit) => {
+    expect(() =>
+      validateEstimateRequest({ ...validRequest, [field]: 'a'.repeat(limit) }, now),
+    ).not.toThrow()
+  })
+
+  it.each([
+    ['name', 200],
+    ['description', 5000],
+    ['instructions', 5000],
+  ] as const)('rejects %s above its %i-character limit', (field, limit) => {
+    expect(() =>
+      validateEstimateRequest({ ...validRequest, [field]: 'a'.repeat(limit + 1) }, now),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'INVALID_INPUT',
+        fieldErrors: expect.objectContaining({ [field]: expect.any(String) }),
+      }),
+    )
+  })
+})
+
 describe('validateEstimateRequest time window', () => {
   it.each(['startAt', 'expiresAt'] as const)('requires %s', (field) => {
     const request = { ...validRequest, [field]: undefined } as unknown as EstimateCreditRequest

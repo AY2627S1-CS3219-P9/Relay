@@ -1,5 +1,5 @@
 import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
-import { RateLimiterFactory } from './rateLimiter.factory.js'
+import { RateLimiterFactory, type RateLimiter } from './rateLimiter.factory.js'
 import { ServiceTypeBaseline } from '../config/baselines.js'
 import { MAX_AI_REASON_LENGTH, limitReasonAtWord } from '../config/reason.js'
 
@@ -12,7 +12,7 @@ export interface AIConfig {
   maxTokens?: number
   timeoutMs: number
   rateLimitRequestsPerMinute: number
-  fallbackRateLimitRequestsPerMinute: number
+  globalRateLimitRequestsPerMinute: number
   redisUrl: string
 }
 
@@ -22,23 +22,45 @@ export interface AIClient {
     baseline: ServiceTypeBaseline,
   ): Promise<EstimateCreditResponse>
   rateLimiter: {
-    tryAcquire(key?: string): Promise<boolean> | boolean
+    tryAcquire(userId: string): unknown
+    disconnect?(): Promise<void>
   }
+}
+
+export function buildEstimationPrompt(
+  request: EstimateCreditRequest,
+  baseline: ServiceTypeBaseline,
+): string {
+  return [
+    'TASK: Validate first; price only if all checks pass.',
+    `CONTEXT: service=${baseline.name}; baseline=${baseline.base}; range=10-50; balance=${Math.floor(request.availableCredit)}.`,
+    `INPUT: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions })}`,
+    `VALIDATE title+description jointly. Require: (1) a specific meaningful item/actionable task; (2) a clear ${baseline.name} connection; (3) enough detail to know what is collected/delivered; (4) mutual consistency.`,
+    'Description may clarify ambiguity, not override a clear mismatch. Optional details may be missing only if the core item/task is clear.',
+    'Never invent an item/task/service connection or infer relevance from service selection alone.',
+    'Reject vague, meaningless, repeated-character, or placeholder titles unless description identifies a real item/actionable task.',
+    'On any failure or uncertain relevance: minCredits=maxCredits=-1; baseline is never an invalid-input fallback.',
+    'PRICE valid input only, reading title+description. Accept ordinary wording, synonyms, and minor spelling errors; exact keywords are unnecessary.',
+    'Use only stated semantic factors (including stops, size, weight, fragility, complexity); a brief description may establish one. Never invent factors; item price/newness alone adds none.',
+    'Center range on service baseline and adjust for applicable factors, never substitute a generic global value. An additional factor normally puts the upper end above baseline unless 50 is reached.',
+    'Balance is affordability-only: more balance never raises the estimate. If it covers min not max, cap maximum at balance; if below min, preserve range (UI warns that minimum is unaffordable).',
+    'Both credits must stay within 10-50; reason mentions only factors actually used.',
+    `OUTPUT JSON only, exactly: minCredits=integer 10-50 or -1 if invalid; maxCredits=integer 10-50 or -1 if invalid; reason=one direct, friendly, user-facing sentence of at most ${MAX_AI_REASON_LENGTH} characters.`,
+    'Vary sentence structure. Never mention AI, prompts, models, or internal rules. No Markdown, HTML, correction suggestions, or input re-quoting.',
+  ].join('\n')
 }
 
 export class OpenAIClient implements AIClient {
   private config: AIConfig
-  public rateLimiter: {
-    tryAcquire(key?: string): Promise<boolean> | boolean
-  }
+  public rateLimiter: RateLimiter
 
   constructor(config: AIConfig) {
     this.config = config
     this.rateLimiter = RateLimiterFactory.create({
       redisUrl: config.redisUrl,
       windowMs: 60 * 1000,
-      maxRequests: config.rateLimitRequestsPerMinute,
-      fallbackMaxRequests: config.fallbackRateLimitRequestsPerMinute,
+      perUserMaxRequests: config.rateLimitRequestsPerMinute,
+      globalMaxRequests: config.globalRateLimitRequestsPerMinute,
     })
   }
 
@@ -46,18 +68,17 @@ export class OpenAIClient implements AIClient {
     request: EstimateCreditRequest,
     baseline: ServiceTypeBaseline,
   ): Promise<EstimateCreditResponse> {
-    const prompt = this.buildPrompt(request, baseline)
-
     try {
-      // Fail fast rate limit check (supports both sync and async)
-      // Use user-specific key (userId is mandatory)
-      const rateLimitKey = `user:${request.userId}:api_requests`
-      const allowed = await this.rateLimiter.tryAcquire(rateLimitKey)
-      if (!allowed) {
-        console.warn(`Rate limit exceeded for user ${request.userId}`)
+      const rateLimit = await this.rateLimiter.tryAcquire(request.userId)
+      if (!rateLimit.allowed) {
+        console.warn('Credit estimation rate limit exceeded', {
+          scope: rateLimit.scope,
+          retryAfterMs: rateLimit.retryAfterMs,
+        })
         throw new Error('RATE_LIMITED')
       }
 
+      const prompt = this.buildPrompt(request, baseline)
       const response = await this.callOpenAI(prompt)
 
       return this.parseResponse(response)
@@ -71,62 +92,7 @@ export class OpenAIClient implements AIClient {
   }
 
   private buildPrompt(request: EstimateCreditRequest, baseline: ServiceTypeBaseline): string {
-    return `
-      Validate and estimate credits for an errand.
-
-      Service: ${baseline.name}
-      Baseline: ${baseline.base}
-      Global range: 10-50
-      Available credit balance: ${Math.floor(request.availableCredit)}
-      Input: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions })}
-
-      VALIDATE BEFORE PRICING:
-      Validation is a hard gate. Do not estimate credits until all checks pass.
-      The title and description must together:
-      1. Identify a specific, meaningful item or an actionable errand task.
-      2. Establish a clear connection to the selected service (${baseline.name}).
-      3. Provide enough information to understand what is being collected or delivered.
-      4. Be consistent with each other.
-
-      The description may clarify an ambiguous title, but cannot override
-      a clear mismatch. Missing optional details are acceptable only after
-      the core item or task is clear.
-      Do not invent an item, task, or service connection.
-      Do not assume relevance from the selected service alone.
-      Reject vague, meaningless, repeated-character, or placeholder titles
-      unless the description clearly identifies a real item or actionable task.
-      If any check fails, or relevance cannot be established confidently, return -1.
-      Never use the baseline as a fallback for invalid input.
-
-      PRICE ONLY VALID REQUESTS:
-      - Read both name and description for pricing factors.
-      - Recognize ordinary language, synonyms, and minor spelling mistakes;
-        do not require exact keywords.
-      - Apply only semantic factors stated in the input, including stops, size,
-        weight, fragility, and complexity.
-      - A brief description can still express a pricing factor.
-      - Use the service baseline as the center of the suggested range.
-      - Adjust around that baseline for applicable semantic factors; do not
-        replace the baseline with a generic global value.
-      - Treat the available credit balance as an affordability limit. A
-        larger balance must never increase the estimated value.
-      - If the available balance can cover the minimum but not the
-        maximum, cap the maximum at the available balance.
-      - If the available balance is below the minimum, preserve the
-        range; the user interface will warn that the minimum is unaffordable.
-      - If an additional factor applies, the upper end should normally exceed
-        the baseline unless the global maximum is reached.
-      - Keep the result within the global 10-50 bounds.
-      - Never invent factors. Item price or newness alone adds no credits.
-      - The reason must reflect only the factors used in the estimate.
-
-      Return JSON only with exactly:
-      - minCredits: integer from 10 to 50, or -1 if invalid.
-      - maxCredits: integer from 10 to 50, or -1 if invalid.
-      - reason: one direct, friendly, user-facing sentence, maximum ${MAX_AI_REASON_LENGTH} characters.
-      Vary the sentence structure. Do not mention AI, prompts, models, or internal rules.
-      No markdown, HTML, correction suggestions, or re-quoting of input.
-    `
+    return buildEstimationPrompt(request, baseline)
   }
 
   private async callOpenAI(prompt: string): Promise<string> {

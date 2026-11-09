@@ -5,8 +5,8 @@ A microservice for estimating credit values for errands based on their title, de
 ## Features
 
 - AI-powered credit estimation using configurable providers (any OpenAI-compatible API)
-- Per-user rate limiting (10 req/min per user) when Redis is available
-- Per-service rate limiting (configurable, default 50 req/min total) when Redis is unavailable
+- Distributed per-user rate limiting
+- Distributed global rate limiting across all service instances
 - Authentication via service token
 
 ## API Endpoints
@@ -34,8 +34,9 @@ Estimate credits for an errand.
 
 **Rate Limit:**
 
-- When Redis available: 20 requests per minute per user (configurable via `AI_RATE_LIMIT_REQUESTS_PER_MINUTE`)
-- When Redis unavailable: 50 requests per minute total for the service (configurable via `AI_FALLBACK_RATE_LIMIT_REQUESTS_PER_MINUTE`)
+- Per user: 20 requests per minute (configurable via `AI_RATE_LIMIT_REQUESTS_PER_MINUTE`)
+- Across all users and service instances: 300 requests per minute (configurable via `AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE`)
+- When Redis is unavailable, estimation fails closed.
 
 **Response:**
 
@@ -69,23 +70,23 @@ Estimate credits for an errand.
 
 The AI provider and rate limiting are configured via environment variables.
 
-| Variable                                   | Default                                 | Description                                       |
-| ------------------------------------------ | --------------------------------------- | ------------------------------------------------- |
-| PORT                                       | 3005                                    | Service port                                      |
-| USER_API_URL                               | http://user-api:3000                    | User API URL for session validation               |
-| USER_SERVICE_INTERNAL_TOKEN                | local-internal-user-service-token       | Token for user API auth                           |
-| CREDIT_ESTIMATION_SERVICE_TOKEN            | local-internal-estimation-service-token | Internal service token                            |
-| ESTIMATION_SERVICE_TIMEOUT_MS              | 5000                                    | Request timeout in ms                             |
-| AI_PROVIDER                                | -                                       | AI provider (e.g., openai)                        |
-| AI_API_KEY                                 | -                                       | AI API key (required)                             |
-| AI_MODEL                                   | -                                       | AI model to use                                   |
-| AI_ENDPOINT                                | -                                       | AI API endpoint                                   |
-| AI_ESTIMATION_TIMEOUT_MS                   | 3000                                    | AI request timeout in ms                          |
-| AI_TEMPERATURE                             | 0                                       | AI temperature setting                            |
-| AI_MAX_TOKENS                              | 1000                                    | Max tokens for AI response                        |
-| AI_RATE_LIMIT_REQUESTS_PER_MINUTE          | 20                                      | Rate limit per user per minute (Redis mode)       |
-| AI_FALLBACK_RATE_LIMIT_REQUESTS_PER_MINUTE | 50                                      | Rate limit total for service (in-memory fallback) |
-| REDIS_URL                                  | redis://redis:6379                      | Redis connection URL                              |
+| Variable                                 | Default                                 | Description                                    |
+| ---------------------------------------- | --------------------------------------- | ---------------------------------------------- |
+| PORT                                     | 3005                                    | Service port                                   |
+| USER_API_URL                             | http://user-api:3000                    | User API URL for session validation            |
+| USER_SERVICE_INTERNAL_TOKEN              | local-internal-user-service-token       | Token for user API auth                        |
+| CREDIT_ESTIMATION_SERVICE_TOKEN          | local-internal-estimation-service-token | Internal service token                         |
+| ESTIMATION_SERVICE_TIMEOUT_MS            | 5000                                    | Request timeout in ms                          |
+| AI_PROVIDER                              | -                                       | AI provider (e.g., openai)                     |
+| AI_API_KEY                               | -                                       | AI API key (required)                          |
+| AI_MODEL                                 | -                                       | AI model to use                                |
+| AI_ENDPOINT                              | -                                       | AI API endpoint                                |
+| AI_ESTIMATION_TIMEOUT_MS                 | 3000                                    | AI request timeout in ms                       |
+| AI_TEMPERATURE                           | 0                                       | AI temperature setting                         |
+| AI_MAX_TOKENS                            | 1000                                    | Max tokens for AI response                     |
+| AI_RATE_LIMIT_REQUESTS_PER_MINUTE        | 20                                      | Rate limit per user per minute                 |
+| AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE | 300                                     | Shared rate limit across all service instances |
+| REDIS_URL                                | redis://redis:6379                      | Redis connection URL                           |
 
 ### Example Configuration
 
@@ -98,7 +99,7 @@ AI_ESTIMATION_TIMEOUT_MS=3000
 AI_TEMPERATURE=0
 AI_MAX_TOKENS=1000
 AI_RATE_LIMIT_REQUESTS_PER_MINUTE=20
-AI_FALLBACK_RATE_LIMIT_REQUESTS_PER_MINUTE=50
+AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE=300
 REDIS_URL=redis://redis:6379
 ```
 

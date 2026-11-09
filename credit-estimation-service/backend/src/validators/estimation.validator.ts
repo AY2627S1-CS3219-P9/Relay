@@ -39,6 +39,15 @@ export function validateEstimateRequest(
   request: EstimateCreditRequest,
   now: Date = new Date(),
 ): void {
+  if (typeof request.userId !== 'string' || request.userId.trim().length === 0) {
+    throw new EstimationServiceError(
+      CreditEstimationErrors.INVALID_INPUT,
+      'User ID is required',
+      400,
+      { userId: 'User ID is required' },
+    )
+  }
+
   if (
     typeof request.availableCredit !== 'number' ||
     !Number.isFinite(request.availableCredit) ||
