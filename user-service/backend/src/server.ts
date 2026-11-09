@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-21
+// Scope: Generated initial implementation of the User Service server.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'

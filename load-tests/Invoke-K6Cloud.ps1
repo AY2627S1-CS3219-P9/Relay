@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-04
+# Scope: Generated initial implementation of the Grafana Cloud k6 runner script.
+# Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 function Invoke-K6Cloud {
     [CmdletBinding()]
     param(

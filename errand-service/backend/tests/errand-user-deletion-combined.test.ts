@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the combined user-deletion tests.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { PrismaClient } from '@relay/errand-prisma'
 import { ErrandEventTypes, ErrandStatus } from '@relay/contracts'

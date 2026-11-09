@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-21
+// Scope: Generated initial implementation of the User Service application.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import express, { type ErrorRequestHandler } from 'express'
 import { UserController } from './controllers/user.controller.js'
 import { prisma, UserRepository } from './repositories/user.repository.js'

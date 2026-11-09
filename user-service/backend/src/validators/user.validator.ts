@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-21
+// Scope: Generated initial implementation of the User Service validators.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { z } from 'zod'
 import type { ImageContentType, ImageUpload } from '../storage/image-storage.js'
 import { UserServiceError } from '../types/user.types.js'

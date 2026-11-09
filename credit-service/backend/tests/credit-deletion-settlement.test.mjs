@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the credit deletion and pending-settlement tests.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'

@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service types.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import type { ErrandErrorCode, UserRole } from '@relay/contracts'
 
 export type AuthenticatedUser = {

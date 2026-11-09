@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service controller.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import type { NextFunction, Request, Response } from 'express'
 import { ErrandService } from '../services/errand.service.js'
 import { requireUser } from '../middleware/session.middleware.js'
