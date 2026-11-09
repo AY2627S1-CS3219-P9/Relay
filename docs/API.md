@@ -6,13 +6,11 @@
   document after any later merge that touches `*/backend/src/routes/*`,
   `*/backend/src/app.ts`, `user-service/auth/src/routes/*`, or
   `packages/contracts/src/*`.
-- **PR #90 is merged.** Its behaviour (account-deletion `202 pending`,
-  closed credit accounts with pending settlements, profile requirement
-  at errand creation, `409 REQUESTER_DELETED` on accept,
-  account-deletion errand transitions, and
-  `GET /internal/user/deletion-status/:sub`) is documented below as
-  current `main` behaviour. Known gaps carried over from the PR review
-  are listed in the changelog (item 9) — they were merged unfixed.
+- **Current behavior:** Account deletion can return `202 pending`, credit
+  accounts can be closed with pending settlements, profiles are required
+  for errand creation, accepting an errand can return
+  `409 REQUESTER_DELETED`, account deletion can trigger errand transitions,
+  and `GET /internal/user/deletion-status/:sub` is available internally.
 - **Audience:** Relay frontend developers, reviewers, and anyone integrating with
   the Relay backend through the host application. It is not a public third-party API:
   all browser APIs are cookie-authenticated and same-origin through the host.
@@ -53,7 +51,7 @@ the host proxy and the services route on the unversioned paths below.
 | AWS / EKS deployment | `https://<distribution>.cloudfront.net` | Public HTTPS only (HTTP redirects to HTTPS). Chain: CloudFront → API Gateway (regional REST API, stage `relay`) → VPC Link → private internal ALB (HTTP :80 only) → host Nginx. The `/relay` stage/origin path is origin-side only and is **not** part of the viewer-facing base URL. The ALB DNS is private and is not a public entry point. No real distribution hostname is recorded in the repo; retrieve it from the `relay-edge` CloudFormation stack output `DistributionDomainName`. |
 
 All examples in this document use `http://localhost:8080` as the base URL.
-Replace it with your deployed host when testing against AWS.
+Replace it with deployed host when testing against AWS.
 
 ## How Relay is structured
 
@@ -75,16 +73,14 @@ to the matching backend. That is why every public path below starts with
 
 The Credit Estimation API has **no public host route**, and browsers cannot
 reach it through the host at all: host Nginx does not proxy `/internal/*`
-(the `/internal/errands` location that existed at the previous snapshot was
-removed), and the errand creation frontend's direct call to
+(and the errand creation frontend's direct call to
 `/internal/errands/estimate-credit` never reaches the Errand API — see
 [Internal service APIs](#internal-service-apis-not-for-browsers). All
 `/internal/*` routes are service-to-service only. **This is an active known
-defect, not a planned limitation:** the frontend still calls the internal
-path on every errand creation, the call falls through to the SPA fallback
+defect, not a planned limitation:** the frontend calls the internal path when
+the user requests a credit estimate, the call falls through to the SPA fallback
 and returns HTML instead of JSON, and it sends a hard-coded local-default
-service token. It should become a proper public route behind cookie auth
-(see changelog item 4).
+service token. It should become a proper public route behind cookie auth.
 
 ## Authentication
 
@@ -97,17 +93,16 @@ browser APIs. Authentication is cookie-based, backed by AWS Cognito
 After a successful login or email-verification login, the Auth API sets
 three `HttpOnly` cookies:
 
-| Cookie | Path | Max-Age | Purpose |
+| Cookie | Path | Lifetime | Purpose |
 | --- | --- | --- | --- |
-| `relay_access` | `/` | 900 seconds (15 minutes) | Cognito access token. |
-| `relay_id` | `/` | 900 seconds (15 minutes) | Cognito ID token. |
-| `relay_refresh` | `/api/auth` | Session cookie (no `Max-Age`/`Expires`) | Cognito refresh token. |
+| `relay_access` | `/` | `Max-Age=900` (15 minutes) | Cognito access token. |
+| `relay_id` | `/` | `Max-Age=900` (15 minutes) | Cognito ID token. |
+| `relay_refresh` | `/api/auth` | Session cookie; no `Max-Age` or `Expires` | Cognito refresh token. |
 
 All three are `SameSite=Strict` and `HttpOnly`, so JavaScript cannot read
 them. `Secure` is added only when `COOKIE_SECURE` is enabled; on the
 current HTTP demo deployment it is off. The frontend refreshes the session
-by calling `POST /api/auth/refresh` (the host refreshes every 12 minutes
-and on focus/visibility change in normal use).
+by calling `POST /api/auth/refresh`.
 
 Every authenticated backend request must send **both** `relay_access` and
 `relay_id`. The backend middleware verifies both JWTs against the Cognito
@@ -155,7 +150,7 @@ it is protected by the cookie middleware instead.
 2. Verify with the emailed code → cookies are set, session starts.
 3. Login with a verified account → cookies are set.
 4. Login with an unverified account → `403 EMAIL_NOT_VERIFIED`; no cookies.
-5. Access/id cookies expire after 15 minutes → call
+5. Access and ID cookies expire after 15 minutes → call
    `POST /api/auth/refresh` with the `relay_refresh` cookie to rotate them.
    If the refresh cookie is missing, refresh returns `401 UNAUTHENTICATED`
    with the message `A refresh token is required.`
@@ -314,13 +309,31 @@ curl -s -c cookies.txt -X POST "$BASE/api/auth/verification/confirm-and-login" \
   -H 'Content-Type: application/json' \
   -d '{"email":"e1234567@u.nus.edu","password":"Example!1","code":"123456"}'
 
-# 3. Check who you are.
-curl -s -b cookies.txt "$BASE/api/auth/me"
+# 3. Create the required Relay profile.
+#    A username is required when creating a profile. The profile picture is optional.
+curl -s -b cookies.txt -X PATCH "$BASE/api/user/me" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"e1234567"}'
 
-# 4. List suppliers and your credit balance.
+# Optional: create the profile with a JPG/PNG data URL instead.
+# The decoded image must be smaller than 5 MB.
+# curl -s -b cookies.txt -X PATCH "$BASE/api/user/me" \
+#   -H 'Content-Type: application/json' \
+#   -d '{"username":"e1234567","profilePicture":"data:image/jpeg;base64,<base64-image-data>"}'
+
+# 4. Check who you are and confirm that the profile was created.
+curl -s -b cookies.txt "$BASE/api/auth/me"
+curl -s -b cookies.txt "$BASE/api/user/me"
+
+# 5. List suppliers and check your credit balance.
 curl -s -b cookies.txt "$BASE/api/supplier"
 curl -s -b cookies.txt "$BASE/api/credit"
 ```
+
+The first successful profile creation publishes the `UserRegistered` event.
+Credit is then allocated asynchronously after Credit Service consumes that
+event. If `/api/credit` is not ready immediately, retry it after a short delay
+until the balance exists (normally 100 available credits for a new user).
 
 In a browser, `fetch(..., { credentials: 'include' })` is required so the
 cookies are sent. The frontend's `authFetch` helper refreshes once on `401`
@@ -636,7 +649,7 @@ Cookie: relay_access=<access-token>; relay_id=<id-token>
     "data": {
       "id": "profile-id",
       "email": "e1234567@u.nus.edu",
-      "username": "javier123",
+      "username": "alice123",
       "profilePictureUrl": "https://…/profile.jpg",
       "emailVerified": true,
       "profileCreated": true,
@@ -657,7 +670,7 @@ Cookie: relay_access=<access-token>; relay_id=<id-token>
 Content-Type: application/json
 
 {
-  "username": "javier123",
+  "username": "alice123",
   "profilePicture": "data:image/jpeg;base64,/9j/…"
 }
 ```
@@ -684,7 +697,7 @@ DELETE /api/user/me
 Cookie: relay_access=<access-token>; relay_id=<id-token>
 Content-Type: application/json
 
-{ "confirmation": "javier123" }
+{ "confirmation": "alice123" }
 ```
 
 - **Auth:** Cookie pair.
@@ -861,12 +874,11 @@ unverified). Envelope: bare resource (`{ errand: … }` /
 `{ errands: […] }`); errors are flat
 `{ code, message, fieldErrors? }`.
 
-The SSE stream used to live here as `GET /api/errands/stream/notifications`;
-it moved to the Errand Notification API at
+The Errand Notification API provides the SSE stream at
 `GET /api/notifications/stream` (see
-[Server-Sent Events (SSE)](#server-sent-events-sse)) and no longer exists
-under `/api/errands`. `GET /api/errands/suppliers/:supplierId/errands`
-is a distinct route from `GET /api/errands/:id`.
+[Server-Sent Events (SSE)](#server-sent-events-sse)).
+`GET /api/errands/suppliers/:supplierId/errands` is a distinct route from
+`GET /api/errands/:id`.
 
 ### Create errand
 
@@ -1141,8 +1153,9 @@ unlike every other service.
 Credits are per-user, keyed internally by Cognito `sub` (`userId` in
 API payloads). A new user starts with **100 available credits and 0
 reserved credits**, allocated asynchronously when the Credit Service
-consumes a `UserRegistered` event. Do not assume the balance exists
-immediately after registration — poll `GET /api/credit` until it
+consumes the `UserRegistered` event published by first profile creation.
+Do not assume the balance exists immediately after profile creation — poll
+`GET /api/credit` until it
 returns `200` (the load-test provisioner in the repository does exactly
 this, with a 30-second timeout).
 
@@ -1231,8 +1244,8 @@ are not listed here, and do not assume a transition is allowed from a
 state not listed for it.
 
 ```
-OPEN ──accept──▶ ACCEPTED ──pickup──▶ PICKED_UP ──deliver──▶ DELIVERED ──confirm──▶ CONFIRMED
-  │                │                                                    (deletable)
+OPEN ──accept──▶ ACCEPTED ──pickup──▶ PICKED_UP ──deliver──▶ DELIVERED ──confirm──▶ CONFIRMED (deletable)
+  │                │
   │                └─drop──▶ OPEN (or EXPIRED if past expiresAt)
   └─cancel──▶ CANCELLED (deletable)
   └─expiry──▶ EXPIRED (deletable)
@@ -1310,7 +1323,7 @@ send `null` for a required field unless the endpoint explicitly allows it.
 {
   "id": "profile-id",
   "email": "e1234567@u.nus.edu",
-  "username": "javier123",
+  "username": "alice123",
   "profilePictureUrl": "https://…/profile.jpg",
   "emailVerified": true,
   "profileCreated": true,
@@ -1323,7 +1336,7 @@ send `null` for a required field unless the endpoint explicitly allows it.
 ### UserProfileSummary (internal only)
 
 ```json
-{ "username": "javier123", "profilePictureUrl": "https://…/profile.jpg" }
+{ "username": "alice123", "profilePictureUrl": "https://…/profile.jpg" }
 ```
 
 Returned by `GET /internal/user/profile/:sub`. Both fields may be `null`.
@@ -1502,9 +1515,8 @@ Accept: text/event-stream
   minutes, so the browser must reconnect.
 - **Errors:** `401 UNAUTHENTICATED`.
 
-The old path `GET /api/errands/stream/notifications` no longer exists
-in any service, Nginx config, or frontend code. The frontend opens the
-stream only once the caller has at least one errand to show
+The frontend opens the stream only once the caller has at least one errand
+to show
 (`errands.length > 0` gates the connection in `useErrandNotifications`),
 so a user with no errands has no open SSE connection.
 
@@ -1662,8 +1674,7 @@ Content-Type: application/json
 
 - **Do not document or call this as a browser API.** Although the
   errand creation frontend currently calls this path directly from the
-  browser, host Nginx does **not** proxy `/internal/errands` (the
-  location that existed at the previous snapshot was removed), and the
+  browser, host Nginx does **not** proxy `/internal/errands`, and the
   Vite dev proxy does not proxy it either — so the request never
   reaches the Errand API and falls through to the SPA fallback. The
   route also requires the `x-errand-service-token` header, and the
@@ -1823,60 +1834,10 @@ envelope as Auth's `UNAUTHENTICATED`.
 
 ## Changelog and maintenance notes
 
-- **2026-11-09 — Third version.** Re-verified against `main@482cadd`
-  (*Merge pull request #90*, 2026-11-09). PR #90 is merged, so all
-  "PR #90 — not yet merged" labels are removed and its behaviour is
-  documented as current: `202` pending deletion (including the
-  retry-of-a-pending-deletion case), closed credit accounts with pending
-  settlements, profile requirement at errand creation,
-  `409 REQUESTER_DELETED` on accept, account-deletion lifecycle
-  transitions, and `GET /internal/user/deletion-status/:sub`.
-  Corrections: Errand `/healthz` is Kafka-gated on the user-deletion
-  consumer (`200 ok` / `503 Kafka unavailable`) — the previous version's
-  health table wrongly said it was always `200`; Credit Estimation
-  `/healthz` performs no Redis/AI check; Supplier `PUT` applies no
-  field validation on update (documented as incomplete, not as following
-  the create rules) and the overview now says "Partially update a
-  supplier"; account deletion documents both `204` (synchronous) and
-  `202 pending`; credit terminology corrected from "deletes the record"
-  to "closes the account"; the `404` ambiguity is split — `GET`
-  conflates not-found / deleted / not-visible, `DELETE` conflates
-  not-found / not-in-terminal-state; browser credit estimation is
-  highlighted as an active known defect. Known gaps from the PR #90
-  review are still present in `main` and are listed in item 9 below.
-  Both previously documented `500` bugs (supplier update/delete of a
-  missing supplier; errand drop by a non-assigned courier) were
-  re-verified and are still present.
-- **2026-11-08 — Second version.** Re-verified against `main@12b93bf`
-  (*Merge pull request #83*, 2026-11-07) and PR #90 at `27feb71`
-  (unmerged). Corrections: AWS base URL is now public HTTPS CloudFront →
-  API Gateway (stage `relay`) → private internal ALB (the old public HTTP
-  ALB entry point no longer exists); SSE moved to
-  `GET /api/notifications/stream` (per-user subscription, `: connected`
-  first frame, `: keepalive` every 15 s, in-memory best-effort, no replay,
-  no verified-email gate); browser credit estimation marked as an
-  unresolved implementation mismatch (not proxied by host Nginx or Vite);
-  credit history no longer documents a `404`; Vite dev stays on port
-  8080 but the proxy list is corrected; password rule corrected (other
-  specials permitted); Notification Service added to the health table;
-  Credit `/health` no longer does a DB check and Errand `/healthz` is
-  no longer Kafka-gated; internal credit reserve no longer claims a
-  reachable `403` user mismatch; same-origin check now honours
-  `AUTH_PUBLIC_ORIGIN`; accept race losers now get a clean `409`;
-  `ErrandNotification` model added. PR #90-only additions are flagged
-  inline: `202` pending deletion, closed credit with pending settlements,
-  profile requirement at errand creation, `409 REQUESTER_DELETED` on
-  accept, account-deletion lifecycle transitions, and
-  `GET /internal/user/deletion-status/:sub`. Both previously documented
-  `500` bugs (supplier update/delete of a missing supplier; errand drop
-  by a non-assigned courier) were re-verified and are still present.
-- **2026-11-04 — Initial version.** Generated from `main@5a88d55`.
-  Covers all routes found by reading `*/backend/src/routes/*`,
-  `*/backend/src/app.ts`, `user-service/auth/src/routes/*`,
-  `packages/contracts/src/*`, and the matching controllers/validators.
-  No endpoint was invented from the frontend alone; where the frontend
-  and backend disagree, the backend is documented and the disagreement
-  is noted (see below).
+- **Current snapshot:** `main@482cadd`. This document describes the
+  currently implemented public and internal paths, request/response shapes,
+  authentication rules, asynchronous credit behavior, and known
+  implementation inconsistencies below.
 - **Known inconsistencies to fix in code, not by editing this doc alone:**
   1. Error envelopes differ by service (`{ ok, … }` vs bare resource
      vs `{ success, … }` for `check-auth`; Credit `500` has no `code`).
@@ -1884,8 +1845,7 @@ envelope as Auth's `UNAUTHENTICATED`.
      while Errand/Credit return `403 FORBIDDEN`.
   3. Supplier update is `PUT` but behaves like a partial update.
   4. Credit estimation is not reachable from browsers at all: host
-     Nginx does not proxy `/internal/errands` (the location that
-     existed at the previous snapshot was removed), the Vite dev proxy
+     Nginx does not proxy `/internal/errands`, and the Vite dev proxy
      does not proxy it either, and the frontend's direct call to
      `/internal/errands/estimate-credit` falls through to the SPA
      fallback — plus it sends a hard-coded local-default service token.
@@ -1904,16 +1864,14 @@ envelope as Auth's `UNAUTHENTICATED`.
   7. Two unmapped errors surface as `500` instead of their intended
      status: supplier update/delete of a missing supplier, and an
      errand drop by a non-assigned courier (`ONLY COURIER CAN DROP`
-     is missing from `errand-error-map.ts`). Found on the second-pass
-     verification of this document against the code.
-  8. Drop-event payload regression (internal/Kafka only, found in the
-     2026-11-08 re-scan): the `ERRAND_STATUS_CHANGED` event for a drop
+     is missing from `errand-error-map.ts`).
+  8. Drop-event payload regression (internal/Kafka only): the
+     `ERRAND_STATUS_CHANGED` event for a drop
      hard-codes `errandStatus: OPEN` even when the errand expired, so
      an SSE notification derived from it misstates an expired drop as
      `OPEN` (a second `ERRAND_EXPIRED` event is still emitted). The
      HTTP response is unaffected.
-  9. Known gaps in `main` at `482cadd`, carried over from the PR #90
-     review (merged unfixed): pending errands are not handled on
+  9. Current known gaps in `main@482cadd`: pending errands are not handled on
      requester deletion; the user-backend Vitest config still includes
      `test/**/*.test.ts` while the tests live in `tests/`; the 7-day
      outbox purge still breaks deletion idempotency; releases after
