@@ -5,7 +5,16 @@ import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 export async function handleEstimateCredit(
   request: EstimateCreditRequest,
 ): Promise<EstimateCreditResponse> {
-  const { name, description, serviceType, instructions, startAt, expiresAt, userId } = request
+  const {
+    name,
+    description,
+    serviceType,
+    instructions,
+    startAt,
+    expiresAt,
+    userId,
+    availableCredit,
+  } = request
 
   validateEstimateRequest(request)
 
@@ -17,5 +26,6 @@ export async function handleEstimateCredit(
     startAt,
     expiresAt,
     userId,
+    availableCredit,
   })
 }

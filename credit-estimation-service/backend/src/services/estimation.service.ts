@@ -29,6 +29,15 @@ export async function estimateCredit(
       }
     }
 
+    // Ensure the estimated range is within the available credit balance
+    const availableWholeCredits = Math.floor(request.availableCredit)
+    if (
+      availableWholeCredits >= aiResult.minCredits &&
+      availableWholeCredits < aiResult.maxCredits
+    ) {
+      return { ...aiResult, maxCredits: availableWholeCredits }
+    }
+
     return aiResult
   } catch (error) {
     if (error instanceof Error && error.message === 'RATE_LIMITED') {

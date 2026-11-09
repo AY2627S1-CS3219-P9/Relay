@@ -25,7 +25,8 @@ Estimate credits for an errand.
   "instructions": "Optional instructions",
   "startAt": "2026-11-08T10:00:00Z",
   "expiresAt": "2026-11-08T12:00:00Z",
-  "userId": "user-sub-identifier"
+  "userId": "user-sub-identifier",
+  "availableCredit": 37
 }
 ```
 

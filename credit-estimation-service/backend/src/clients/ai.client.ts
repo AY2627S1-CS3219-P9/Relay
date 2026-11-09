@@ -83,6 +83,7 @@ export class OpenAIClient implements AIClient {
       Service: ${baseline.name}
       Baseline: ${baseline.base}
       Global range: 10-50
+      Available credit balance: ${Math.floor(request.availableCredit)}
       Input: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions, startAt: request.startAt, expiresAt: request.expiresAt })}
 
       VALIDATE BEFORE PRICING:
@@ -113,6 +114,12 @@ export class OpenAIClient implements AIClient {
       - Use the service baseline as the center of the suggested range.
       - Adjust around that baseline for applicable factors and the available
         time window; do not replace the baseline with a generic global value.
+      - Treat the available credit balance as an affordability limit. A
+        larger balance must never increase the estimated value.
+      - If the available balance can cover the minimum but not the
+        maximum, cap the maximum at the available balance.
+      - If the available balance is below the minimum, preserve the
+        range; the user interface will warn that the minimum is unaffordable.
       - If an additional factor applies, the upper end should normally exceed
         the baseline unless the global maximum is reached.
       - Keep the result within the global 10-50 bounds.

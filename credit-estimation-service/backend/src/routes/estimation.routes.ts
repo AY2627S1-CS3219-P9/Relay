@@ -48,7 +48,8 @@ export async function cleanupAIClientFromRoutes(): Promise<void> {
 router.post('/estimate-credit', async (req: Request, res: Response) => {
   try {
     const userId = req.headers['x-user-id'] as string
-    const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
+    const { name, description, serviceType, instructions, startAt, expiresAt, availableCredit } =
+      req.body
 
     const result = await handleEstimateCredit({
       name,
@@ -58,6 +59,7 @@ router.post('/estimate-credit', async (req: Request, res: Response) => {
       startAt,
       expiresAt,
       userId,
+      availableCredit,
     })
     res.json(result)
   } catch (error) {

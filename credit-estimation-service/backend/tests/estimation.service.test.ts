@@ -14,6 +14,8 @@ describe('estimateCredit', () => {
         name: 'Pick up lunch',
         description: 'Collect one meal and deliver it.',
         serviceType: 0,
+        userId: 'user-1',
+        availableCredit: 100,
       }),
     ).rejects.toMatchObject({
       code: 'SERVICE_UNAVAILABLE',
@@ -42,6 +44,8 @@ describe('estimateCredit', () => {
       instructions: 'Call when downstairs.',
       startAt: '2026-11-06T10:00:00.000Z',
       expiresAt: '2026-11-06T10:30:00.000Z',
+      userId: 'user-1',
+      availableCredit: 100,
     })
 
     expect(result).toEqual({
@@ -59,6 +63,8 @@ describe('estimateCredit', () => {
         instructions: 'Call when downstairs.',
         startAt: '2026-11-06T10:00:00.000Z',
         expiresAt: '2026-11-06T10:30:00.000Z',
+        userId: 'user-1',
+        availableCredit: 100,
       },
       {
         base: 10, // Drink baseline
@@ -67,6 +73,56 @@ describe('estimateCredit', () => {
         name: 'Drink',
       },
     ])
+  })
+
+  it('caps the upper estimate when the available balance can cover the minimum', async () => {
+    setAIClient({
+      estimateCredit: async () => ({
+        minCredits: 20,
+        maxCredits: 28,
+        reason: 'The short deadline raises the suggested range.',
+      }),
+      rateLimiter: { tryAcquire: () => true },
+    })
+
+    await expect(
+      estimateCredit({
+        name: 'Deliver notes',
+        description: 'Please deliver these before class.',
+        serviceType: 1,
+        userId: 'user-1',
+        availableCredit: 24.9,
+      }),
+    ).resolves.toEqual({
+      minCredits: 20,
+      maxCredits: 24,
+      reason: 'The short deadline raises the suggested range.',
+    })
+  })
+
+  it('preserves the fair range when the balance is below its minimum', async () => {
+    setAIClient({
+      estimateCredit: async () => ({
+        minCredits: 20,
+        maxCredits: 28,
+        reason: 'The short deadline raises the suggested range.',
+      }),
+      rateLimiter: { tryAcquire: () => true },
+    })
+
+    await expect(
+      estimateCredit({
+        name: 'Deliver notes',
+        description: 'Please deliver these before class.',
+        serviceType: 1,
+        userId: 'user-1',
+        availableCredit: 7,
+      }),
+    ).resolves.toEqual({
+      minCredits: 20,
+      maxCredits: 28,
+      reason: 'The short deadline raises the suggested range.',
+    })
   })
 
   it('returns rate limited error when AI client throws rate limit error', async () => {
@@ -82,6 +138,8 @@ describe('estimateCredit', () => {
         name: 'Test task',
         description: 'Test description',
         serviceType: 0,
+        userId: 'user-1',
+        availableCredit: 100,
       }),
     ).rejects.toMatchObject({
       code: 'RATE_LIMITED',
@@ -102,6 +160,8 @@ describe('estimateCredit', () => {
         name: 'Test task',
         description: 'Test description',
         serviceType: 0,
+        userId: 'user-1',
+        availableCredit: 100,
       }),
     ).rejects.toMatchObject({
       code: 'SERVICE_UNAVAILABLE',

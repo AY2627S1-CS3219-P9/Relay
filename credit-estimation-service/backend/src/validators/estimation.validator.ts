@@ -36,6 +36,19 @@ function containsDangerousPatterns(text: string): boolean {
 }
 
 export function validateEstimateRequest(request: EstimateCreditRequest): void {
+  if (
+    typeof request.availableCredit !== 'number' ||
+    !Number.isFinite(request.availableCredit) ||
+    request.availableCredit < 0
+  ) {
+    throw new EstimationServiceError(
+      CreditEstimationErrors.INVALID_INPUT,
+      'Available credit must be a nonnegative number',
+      400,
+      { availableCredit: 'Available credit must be a nonnegative number' },
+    )
+  }
+
   // Validate name
   if (typeof request.name !== 'string') {
     throw new EstimationServiceError(
