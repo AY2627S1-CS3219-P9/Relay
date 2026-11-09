@@ -135,13 +135,7 @@ describe('errand accept - expiry edge cases', () => {
       const courierSub = `courier-${Date.now()}`
       const errandId = `errand-${Date.now()}`
 
-      // Leave enough time for database setup on a busy CI runner.
-      const soon = new Date(Date.now() + 5_000)
-      const errandId = await createOpenErrandWithExpiry(requesterSub, soon, supplierId)
-
-      try {
-        // Immediately try to accept (should succeed before expiry)
-      // Mock the accept method to return accepted errand
+      // Mock the accept method to return accepted errand before expiry
       const acceptedErrand = createErrandData(
         errandId,
         requesterSub,
