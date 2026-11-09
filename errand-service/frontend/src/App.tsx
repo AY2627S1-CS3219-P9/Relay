@@ -26,6 +26,8 @@ import {
   ClipboardPlusIcon,
   FilterIcon,
   LocationIcon,
+  MapSelectionList,
+  StatusBadge,
   PlusIcon,
   RelayButton,
   RelayCardAnchor,
@@ -37,7 +39,8 @@ import {
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
 import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilterPanel'
-import { ErrandMap } from './components/ErrandMap'
+import { ErrandMap, getErrandAnchor } from './components/ErrandMap'
+import { formatRoute, STATUS_LABELS, statusTone } from './types'
 import { useErrandNotifications } from './hooks/useErrandNotifications'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
@@ -72,6 +75,7 @@ export default function App({
   supplierApi,
 }: ErrandRemoteProps) {
   const [errands, setErrands] = useState<Errand[]>([])
+  const [nearbyErrandIds, setNearbyErrandIds] = useState<string[]>([])
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
@@ -162,6 +166,18 @@ export default function App({
       return lifecycleRank[left.status] - lifecycleRank[right.status]
     })
   }, [errands, filters, location, view, authenticatedSubject])
+
+  const nearbyErrands = visibleErrands.filter((errand) => nearbyErrandIds.includes(errand.id))
+
+  function closeMapSelection() {
+    setNearbyErrandIds([])
+    setSelectedErrandId(undefined)
+    setSelectedErrandAnchor(undefined)
+  }
+
+  useEffect(() => {
+    closeMapSelection()
+  }, [view])
 
   function closeRemote() {
     if (presentation === 'card') {
@@ -404,14 +420,13 @@ export default function App({
         center={mapViewport?.center ?? location ?? NUS_CENTER}
         userLocation={location}
         selectedId={selectedErrandId}
-        onSelect={(errand, anchor) => {
-          setSelectedErrandId(errand.id)
+        groupOverlaps={view === 'requests' || view === 'my-errands'}
+        onSelect={(errand, anchor, nearby) => {
+          setNearbyErrandIds(nearby.length > 1 ? nearby.map((item) => item.id) : [])
+          setSelectedErrandId(nearby.length === 1 ? errand.id : undefined)
           setSelectedErrandAnchor(anchor)
         }}
-        onMapClick={() => {
-          setSelectedErrandId(undefined)
-          setSelectedErrandAnchor(undefined)
-        }}
+        onMapClick={closeMapSelection}
         onMapReady={setMap}
         zoom={mapViewport?.zoom ?? 16}
         onViewportChange={handleViewportChange}
@@ -528,6 +543,28 @@ export default function App({
           <span className="errand-control-label">New request</span>
         </RelayButton>
       </div>
+      {!selectedErrand && nearbyErrands.length > 0 && (
+        <BubblePopover anchor={selectedErrandAnchor}>
+          <MapSelectionList
+            title={view === 'requests' ? 'Select a request' : 'Select an errand'}
+            items={nearbyErrands}
+            getTitle={(errand) => errand.name}
+            getSubtitle={(errand) => formatRoute(errand.pickupLocation)}
+            getTrailing={(errand) => (
+              <StatusBadge tone={statusTone(errand.status)}>
+                {STATUS_LABELS[errand.status]}
+              </StatusBadge>
+            )}
+            onSelect={(errand) => {
+              if (!map) return
+              setSelectedErrandId(errand.id)
+              setSelectedErrandAnchor(getErrandAnchor(map, errand))
+              setNearbyErrandIds([])
+            }}
+            onClose={closeMapSelection}
+          />
+        </BubblePopover>
+      )}
       {selectedErrand && (
         <BubblePopover
           anchor={selectedErrandAnchor}
@@ -537,10 +574,7 @@ export default function App({
           <ErrandDetailCard
             errand={selectedErrand}
             role={role}
-            onClose={() => {
-              setSelectedErrandId(undefined)
-              setSelectedErrandAnchor(undefined)
-            }}
+            onClose={closeMapSelection}
             onAction={(action) => updateErrand(action, selectedErrand.id)}
           />
         </BubblePopover>
@@ -560,6 +594,7 @@ export default function App({
             onSelect={(errand) => {
               const anchor = updatesAnchor
               closeUpdates()
+              setNearbyErrandIds([])
               setSelectedErrandId(errand.id)
               setSelectedErrandAnchor(anchor)
             }}

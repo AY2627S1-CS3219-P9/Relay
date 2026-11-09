@@ -131,20 +131,6 @@ input {
   transform: rotate(-45deg);
   animation: supplier-marker-enter 0.34s cubic-bezier(0.22, 1.16, 0.36, 1) both;
 }
-.supplier-cluster-marker {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--relay-blue);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 800;
-  animation: supplier-cluster-enter 0.34s cubic-bezier(0.22, 1.16, 0.36, 1) both;
-}
 @keyframes supplier-marker-enter {
   from {
     opacity: 0.45;
@@ -155,19 +141,8 @@ input {
     transform: scale(1) rotate(-45deg);
   }
 }
-@keyframes supplier-cluster-enter {
-  from {
-    opacity: 0.45;
-    transform: scale(0.6);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 .supplier-filter-panel,
-.supplier-detail-card,
-.supplier-list {
+.supplier-detail-card {
   position: absolute;
   z-index: var(--relay-layer-card);
   top: 92px;
@@ -178,11 +153,6 @@ input {
 }
 .supplier-filter-panel {
   --relay-toolbar-sheet-padding: 22px;
-}
-.supplier-list {
-  z-index: var(--relay-layer-card);
-  max-height: min(520px, calc(100dvh - 48px));
-  overflow: auto;
 }
 .supplier-detail-card {
   z-index: var(--relay-layer-card);
@@ -263,8 +233,7 @@ input {
   letter-spacing: 0.13em;
 }
 .supplier-filter-panel h2,
-.supplier-detail-card h2,
-.supplier-list h2 {
+.supplier-detail-card h2 {
   margin: 5px 0 0;
   font-size: 1.35rem;
   letter-spacing: -0.03em;
@@ -311,15 +280,6 @@ input {
   height: 16px;
   margin-right: 5px;
   vertical-align: -3px;
-}
-.supplier-list-items {
-  display: grid;
-  gap: 8px;
-  margin-top: 20px;
-  min-width: 0;
-}
-.supplier-list-item-meta {
-  flex: 0 0 auto;
 }
 .icon-button {
   width: calc(32px * var(--relay-icon-button-scale, 1)) !important;
@@ -495,8 +455,7 @@ legend {
     display: none;
   }
   .supplier-filter-panel,
-  .supplier-detail-card,
-  .supplier-list {
+  .supplier-detail-card {
     top: auto;
     right: 16px;
     bottom: 92px;
@@ -514,14 +473,6 @@ legend {
     bottom: calc(72px + env(safe-area-inset-bottom));
     left: 0;
     width: 100%;
-    border-radius: 24px 24px 0 0;
-  }
-  .supplier-list {
-    right: 0;
-    bottom: calc(72px + env(safe-area-inset-bottom));
-    left: 0;
-    width: 100%;
-    max-height: min(520px, calc(100dvh - 96px));
     border-radius: 24px 24px 0 0;
   }
 }
