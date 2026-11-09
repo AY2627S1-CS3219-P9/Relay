@@ -70,6 +70,9 @@ function login(email, password, label) {
     headers: { 'Content-Type': 'application/json' }, tags: { endpoint: `auth-login-${label}` },
   })
   expect(response, `${label} login succeeds`, (res) => res.status === 200)
+  expect(response, `${label} login returns both authentication cookies`, (res) =>
+    Boolean(res.cookies.relay_access?.[0]?.value) && Boolean(res.cookies.relay_id?.[0]?.value),
+  )
   const subject = json(response)?.data?.user?.subject
   if (!subject) fail(`${label} login did not return a user subject.`)
   return {
@@ -77,6 +80,17 @@ function login(email, password, label) {
     idToken: response.cookies.relay_id?.[0]?.value,
     subject,
   }
+}
+
+function requireProfile(session, label) {
+  const response = http.get(`${baseUrl}/api/user/me`, {
+    headers: headers(session),
+    tags: { endpoint: `profile-check-${label}` },
+  })
+  expect(response, `${label} profile exists`, (res) => {
+    const profile = json(res)?.data
+    return res.status === 200 && profile?.profileCreated === true
+  })
 }
 
 function supplierFor(requester) {
@@ -178,6 +192,9 @@ export async function setup() {
     await secretOrEnv(__ENV.LOAD_TEST_COURIER_B_PASSWORD, 'loadtestcourierbpassword', 'LOAD_TEST_COURIER_B_PASSWORD'), 'courier-b')
   if (requester.subject === courierA.subject) fail('Requester and courier must be different users.')
   if (requester.subject === courierB.subject || courierA.subject === courierB.subject) fail('Requester and both couriers must be different users.')
+  requireProfile(requester, 'requester')
+  requireProfile(courierA, 'courier-a')
+  requireProfile(courierB, 'courier-b')
   const supplier = supplierFor(requester)
   balance(requester, 'requester-before')
   balance(courierA, 'courier-before')

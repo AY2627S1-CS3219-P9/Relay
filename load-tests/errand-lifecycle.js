@@ -122,6 +122,17 @@ function getCreditBalance(session, role) {
   return balance
 }
 
+function requireProfile(session, role) {
+  const response = http.get(`${baseUrl}/api/user/me`, {
+    headers: sessionHeaders(session),
+    tags: { endpoint: `profile-check-${role}` },
+  })
+  expect(response, `${role} profile exists`, (res) => {
+    const profile = responseJson(res)?.data
+    return res.status === 200 && profile?.profileCreated === true
+  })
+}
+
 function getSupplier(requester) {
   const response = http.get(`${baseUrl}/api/supplier/${encodeURIComponent(required(supplierId, 'LOAD_TEST_SUPPLIER_ID'))}`, {
     headers: sessionHeaders(requester),
@@ -211,6 +222,8 @@ export async function setup() {
   )
   if (requester.subject === courier.subject) fail('Requester and courier must be different users.')
 
+  requireProfile(requester, 'requester')
+  requireProfile(courier, 'courier')
   const requesterBalance = getCreditBalance(requester, 'requester')
   getCreditBalance(courier, 'courier')
   if (requesterBalance.availableCredit < creditAmount) {
