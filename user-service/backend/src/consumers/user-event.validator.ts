@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the user-event validator.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { randomUUID } from 'node:crypto'
 import { UserEventTypes, type UserEvent, type UserEventDlqErrorCode, type UserEventDlqMessage } from '@relay/contracts'
 import { z } from 'zod'

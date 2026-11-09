@@ -133,13 +133,14 @@ export declare function RelayCardAnchor({ children, placement, size, anchor, pre
     className?: string;
     style?: CSSProperties;
 }): import("react").JSX.Element;
-export declare function RelayFormSurface({ children, title, description, footer, onClose, className, as, style, }: {
+export declare function RelayFormSurface({ children, title, description, footer, onClose, className, headerVariant, as, style, }: {
     children: ReactNode;
     title: ReactNode;
     description?: ReactNode;
     footer?: ReactNode;
     onClose?: () => void;
     className?: string;
+    headerVariant?: 'default' | 'card';
     as?: 'div' | 'section' | 'aside';
     style?: CSSProperties;
 }): import("react").JSX.Element;

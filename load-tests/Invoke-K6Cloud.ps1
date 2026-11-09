@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-04
+# Scope: Generated initial implementation of the Grafana Cloud k6 runner script.
+# Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 function Invoke-K6Cloud {
     [CmdletBinding()]
     param(
@@ -27,7 +32,8 @@ function Invoke-K6Cloud {
         "NFR_RAMP_DOWN_DURATION", "NFR_THINK_TIME", "NFR_P95_LIMIT_MS",
         "NFR_MIXED_READ_TARGET_VUS", "NFR_MIXED_READ_HOLD_DURATION",
         "NFR_MIXED_WRITE_RATE_PER_MIN", "NFR_MIXED_WRITE_DURATION",
-        "NFR_MIXED_THINK_TIME", "NFR_MIXED_P95_LIMIT_MS",
+        "NFR_MIXED_THINK_TIME", "NFR_MIXED_READ_P95_LIMIT_MS",
+        "NFR_MIXED_CREATE_P95_LIMIT_MS", "NFR_MIXED_CANCEL_P95_LIMIT_MS",
         "NFR_CREDIT_RATE_PER_SEC", "NFR_CREDIT_DURATION",
         "NFR_CREDIT_PREALLOCATED_VUS", "NFR_CREDIT_MAX_VUS", "NFR_CREDIT_P95_LIMIT_MS",
         "NFR_SUPPLIER_RATE_PER_SEC", "NFR_SUPPLIER_DURATION",
@@ -46,6 +52,9 @@ function Invoke-K6Cloud {
         ' --env K6_SUMMARY_PATH="' + $summaryContainerPath + '" /scripts/' + $Script
 
     New-Item -ItemType Directory -Force load-tests/results | Out-Null
+    if ($IsLinux) {
+        & chmod 777 load-tests/results
+    }
 
     docker run --rm -i `
         --add-host host.docker.internal:host-gateway `

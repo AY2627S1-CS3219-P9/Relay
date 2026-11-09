@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service repository.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { Prisma, PrismaClient, type Errand as PrismaErrand } from '@relay/errand-prisma'
 import { ErrandEventTypes } from '@relay/contracts'
 import {

@@ -1,9 +1,7 @@
-/*
- * AI Assistance Disclosure:
- * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
- * Scope: Removed old user auth implementation and used new userAuthMiddleware
- * Author review: Verified correctness.
- */
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service session middleware.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
 
 import type { RequestHandler } from 'express'
 import { userAuthMiddleware, type AuthenticatedUser } from '@relay/user-auth-backend-middleware'

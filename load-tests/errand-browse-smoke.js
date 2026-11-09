@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-31
+// Scope: Generated initial implementation of the errand browse smoke test.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
 import secrets from 'k6/secrets'

@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-28
+// Scope: Generated initial implementation of the Supplier frontend API client.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { authFetch } from '@relay/user-auth-frontend-fetch'
 import { SupplierErrors } from '@relay/contracts'
 import type {

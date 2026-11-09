@@ -8,7 +8,11 @@ import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './styles.css'
 import { useEffect, useRef, useState } from 'react'
-import type { RemoteAppProps, TransactionRecord, ViewCreditHistoryResponse } from '@relay/contracts'
+import type {
+  CreditRemoteProps,
+  TransactionRecord,
+  ViewCreditHistoryResponse,
+} from '@relay/contracts'
 import { BackButton, CloseButton, ErrorMessage, RelayButton } from '@relay/ui'
 import {
   HISTORY_BATCH_SIZE,
@@ -40,7 +44,7 @@ export default function App({
   creditHistoryOpen = false,
   showCreditHistory,
   showCreditBalance,
-}: RemoteAppProps) {
+}: CreditRemoteProps) {
   const [records, setRecords] = useState<TransactionRecord[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -128,7 +132,7 @@ export default function App({
         aria-hidden={creditHistoryOpen}
         inert={creditHistoryOpen}
       >
-        <header className="credit-profile-header">
+        <header className="credit-profile-header relay-card-header">
           <h1>Credits</h1>
           <CloseButton label="Close credits" onClick={closeCredit} />
         </header>
@@ -158,7 +162,7 @@ export default function App({
         aria-hidden={!creditHistoryOpen}
         inert={!creditHistoryOpen}
       >
-        <header className="credit-profile-header">
+        <header className="credit-profile-header relay-card-header">
           <div className="credit-history-title">
             <BackButton onClick={showCreditBalance} />
             <h1>Credit history</h1>

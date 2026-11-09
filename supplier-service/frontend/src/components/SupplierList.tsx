@@ -4,7 +4,7 @@
 // Author review: I validated correctness and edited for style.
 
 import type { ServiceType, Supplier } from '@relay/contracts'
-import { RelayFormSurface, RelayList, RelayListItem, StatusBadge } from '@relay/ui'
+import { MapSelectionList, StatusBadge } from '@relay/ui'
 import type { CSSProperties } from 'react'
 
 const serviceLabels: Record<ServiceType, string> = {
@@ -27,31 +27,21 @@ export function SupplierList({
   style?: CSSProperties
 }) {
   return (
-    <RelayFormSurface
-      as="aside"
-      className="supplier-list relay-mobile-sheet-surface relay-card-scroll-surface"
-      style={style}
+    <MapSelectionList
       title="Select a supplier"
+      items={suppliers}
+      getTitle={(supplier) => supplier.name}
+      getSubtitle={(supplier) =>
+        supplier.serviceTypes.map((type) => serviceLabels[type]).join(' · ')
+      }
+      getTrailing={(supplier) => (
+        <StatusBadge tone={supplier.isOperational ? 'success' : 'danger'}>
+          {supplier.isOperational ? 'Operational' : 'Not operational'}
+        </StatusBadge>
+      )}
+      onSelect={onSelect}
       onClose={onClose}
-    >
-      <RelayList className="supplier-list-items">
-        {suppliers.map((supplier) => (
-          <RelayListItem
-            className="supplier-list-item"
-            key={supplier.id}
-            onClick={() => onSelect(supplier)}
-            title={supplier.name}
-            subtitle={supplier.serviceTypes.map((type) => serviceLabels[type]).join(' · ')}
-            trailing={
-              <span className="supplier-list-item-meta">
-                <StatusBadge tone={supplier.isOperational ? 'success' : 'danger'}>
-                  {supplier.isOperational ? 'Operational' : 'Not operational'}
-                </StatusBadge>
-              </span>
-            }
-          />
-        ))}
-      </RelayList>
-    </RelayFormSurface>
+      style={style}
+    />
   )
 }

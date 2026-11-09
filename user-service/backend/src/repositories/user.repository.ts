@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-21
+// Scope: Generated initial implementation of the User Service repository.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { PrismaClient } from '@relay/user-prisma'
 import { UserEventTypes, type UserDeletedEvent, type UserRegisteredEvent } from '@relay/contracts'
 import type { ProfileUpdate, UserProfileRecord } from '../types/user.types.js'

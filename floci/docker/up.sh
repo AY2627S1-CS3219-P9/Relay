@@ -88,16 +88,19 @@ if [[ -f .env ]]; then
   compose_env=(--env-file .env "${compose_env[@]}")
 fi
 compose_env+=(--env-file floci/docker/.generated.env)
+compose_up=(up -d)
+if (( no_cache )); then compose_up+=(--no-build); fi
+# Bash 3.2 treats an empty array as unset under nounset; expand only when nonempty.
+if (( ${#services[@]} > 0 )); then compose_up+=("${services[@]}"); fi
 if (( no_cache )); then
   # Floci was built before generating these endpoints. Rebuild application
   # images separately so Compose does not recreate Floci with stale endpoints.
   app_build_services=(kafka-init host supplier-frontend user-frontend errand-frontend credit-frontend supplier-schema supplier-api user-api user-event-publisher errand-event-publisher user-auth-api errand-api credit-api credit-estimation-api errand-notification)
   docker compose "${compose_env[@]}" build --no-cache "${app_build_services[@]}"
-  docker compose "${compose_env[@]}" up -d --no-build "${services[@]}"
 else
   docker compose "${compose_env[@]}" build kafka-init
-  docker compose "${compose_env[@]}" up -d "${services[@]}"
 fi
+docker compose "${compose_env[@]}" "${compose_up[@]}"
 if (( ${#services[@]} == 0 )); then
   docker compose "${compose_env[@]}" up -d --no-deps --force-recreate --wait --wait-timeout 90 host
 fi
