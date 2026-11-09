@@ -13,16 +13,22 @@ const validRequest: EstimateCreditRequest = {
   availableCredit: 37,
 }
 
+const now = new Date('2026-11-09T09:00:00.000Z')
+
 describe('validateEstimateRequest available credit', () => {
   it('accepts zero and fractional balances', () => {
-    expect(() => validateEstimateRequest({ ...validRequest, availableCredit: 0 })).not.toThrow()
-    expect(() => validateEstimateRequest({ ...validRequest, availableCredit: 12.5 })).not.toThrow()
+    expect(() =>
+      validateEstimateRequest({ ...validRequest, availableCredit: 0 }, now),
+    ).not.toThrow()
+    expect(() =>
+      validateEstimateRequest({ ...validRequest, availableCredit: 12.5 }, now),
+    ).not.toThrow()
   })
 
   it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
     'rejects invalid balance %s',
     (availableCredit) => {
-      expect(() => validateEstimateRequest({ ...validRequest, availableCredit })).toThrowError(
+      expect(() => validateEstimateRequest({ ...validRequest, availableCredit }, now)).toThrowError(
         expect.objectContaining({
           code: 'INVALID_INPUT',
           fieldErrors: {
@@ -32,4 +38,50 @@ describe('validateEstimateRequest available credit', () => {
       )
     },
   )
+})
+
+describe('validateEstimateRequest time window', () => {
+  it.each(['startAt', 'expiresAt'] as const)('requires %s', (field) => {
+    const request = { ...validRequest, [field]: undefined } as unknown as EstimateCreditRequest
+
+    expect(() => validateEstimateRequest(request, now)).toThrowError(
+      expect.objectContaining({
+        code: 'INVALID_INPUT',
+        fieldErrors: { [field]: `${field} must be a valid date string` },
+      }),
+    )
+  })
+
+  it('rejects a deadline before the selected start time', () => {
+    expect(() =>
+      validateEstimateRequest(
+        {
+          ...validRequest,
+          startAt: '2026-11-09T12:00:00.000Z',
+          expiresAt: '2026-11-09T11:00:00.000Z',
+        },
+        now,
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'INVALID_INPUT',
+        fieldErrors: {
+          expiresAt: 'Deadline must be after the start time and in the future',
+        },
+      }),
+    )
+  })
+
+  it('rejects a deadline that has already passed', () => {
+    expect(() =>
+      validateEstimateRequest(
+        {
+          ...validRequest,
+          startAt: '2026-11-09T07:00:00.000Z',
+          expiresAt: '2026-11-09T08:00:00.000Z',
+        },
+        now,
+      ),
+    ).toThrowError(expect.objectContaining({ code: 'INVALID_INPUT' }))
+  })
 })
