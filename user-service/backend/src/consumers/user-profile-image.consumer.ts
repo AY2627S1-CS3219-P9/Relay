@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the profile-image cleanup consumer.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { Kafka, logLevel, type Consumer, type KafkaMessage, type Producer } from 'kafkajs'
 import { UserEventTypes, type UserEvent } from '@relay/contracts'
 import { getEnv, type UserServiceEnv } from '../config/env.js'

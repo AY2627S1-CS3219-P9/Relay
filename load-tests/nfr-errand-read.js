@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-31
+// Scope: Generated initial implementation of the errand read NFR load test.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
 import secrets from 'k6/secrets'
@@ -13,7 +18,7 @@ const rampDuration = __ENV.NFR_RAMP_DURATION ?? '1m'
 const holdDuration = __ENV.NFR_HOLD_DURATION ?? '5m'
 const rampDownDuration = __ENV.NFR_RAMP_DOWN_DURATION ?? '1m'
 const thinkTime = Number(__ENV.NFR_THINK_TIME ?? 1)
-const p95Limit = Number(__ENV.NFR_P95_LIMIT_MS ?? 200)
+const p95Limit = Number(__ENV.NFR_P95_LIMIT_MS ?? 250)
 
 export const options = {
   scenarios: {

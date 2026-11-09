@@ -44,6 +44,32 @@ jobs:
         run: |
           kubectl -n relay rollout restart deployment/errand-notification
           kubectl -n relay rollout status deployment/errand-notification --timeout=5m
+          kubectl -n relay wait --for=condition=ready pod \
+            -l app=errand-notification --timeout=5m
+
+          # Traefik watches EndpointSlices asynchronously.  A ready Pod does
+          # not necessarily mean the public route has received the endpoint
+          # yet, so wait until the Service has a ready address before testing
+          # the notification route through CloudFront.
+          for attempt in $(seq 1 30); do
+            ready_endpoints="$(kubectl -n relay get endpointslice \
+              -l kubernetes.io/service-name=errand-notification \
+              -o jsonpath='{range .items[*].endpoints[?(@.conditions.ready==true)]}{.addresses[0]}{"\n"}{end}')"
+            if [[ -n "$ready_endpoints" ]]; then
+              printf 'Ready notification endpoints:\n%s\n' "$ready_endpoints"
+              break
+            fi
+            if [[ "$attempt" == 30 ]]; then
+              echo 'Timed out waiting for a ready notification EndpointSlice.' >&2
+              kubectl -n relay get service errand-notification endpointslice \
+                -l kubernetes.io/service-name=errand-notification -o yaml >&2 || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          # Allow the local Traefik provider to observe the EndpointSlice.
+          sleep 3
           kubectl -n relay get pods
 
       - name: Run application integration tests

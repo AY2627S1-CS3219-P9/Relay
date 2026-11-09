@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the profile-image consumer tests.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { describe, expect, it } from 'vitest'
 import { UserProfileImageDeletionConsumer } from '../src/consumers/user-profile-image.consumer.js'
 import type { ImageStorage } from '../src/storage/image-storage.js'

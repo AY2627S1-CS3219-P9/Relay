@@ -17,3 +17,15 @@ Usage Scenario:
 - `user-service/frontend/src/components/account`
 - `user-service/frontend/src/components/base-elements`
 - `user-service/frontend/src/user`
+- `credit-service/backend/tests`
+- `errand-service/backend/src`
+- `errand-service/backend/tests`
+- `user-service/auth/src/consumers`
+- `user-service/auth/tests`
+- `user-service/backend/src`
+- `user-service/backend/tests`
+- `user-service/backend/prisma`
+- `supplier-service/backend/src/controllers`
+- `load-tests`
+- `.github/workflows`
+- `docs`
