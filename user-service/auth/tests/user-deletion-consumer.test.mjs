@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the auth deletion-consumer tests.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { UserDeletionConsumer } from '../dist/consumers/user-deletion.consumer.js'

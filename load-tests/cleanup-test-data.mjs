@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-31
+// Scope: Generated initial implementation of the load-test data cleanup script.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { readFile } from 'node:fs/promises'
 
 const baseUrl = (process.env.BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')

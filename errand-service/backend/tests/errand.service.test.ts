@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-17
+// Scope: Generated initial implementation of the Errand Service tests.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import { ErrandService } from '../src/services/errand.service.js'

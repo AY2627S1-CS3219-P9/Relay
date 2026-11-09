@@ -1,3 +1,10 @@
+<!--
+AI Assistance Disclosure:
+Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-04
+Scope: Drafted the API reference from the codebase, verified against main@5a88d55, main@12b93bf, and main@482cadd.
+Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+-->
+
 # Relay API Reference
 
 - **Repository:** [AY2627S1-CS3219-P9/Relay](https://github.com/AY2627S1-CS3219-P9/Relay)
