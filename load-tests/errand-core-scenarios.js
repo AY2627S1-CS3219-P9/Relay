@@ -170,10 +170,19 @@ function waitForTransfer(requester, courier, errandId) {
 
 function cleanupErrand(requester, courier, errandId, status) {
   if (!cleanup) return
-  if (status === 'ACCEPTED') action(courier, errandId, 'drop', 'errand-drop-cleanup')
-  if (status === 'OPEN' || status === 'ACCEPTED') action(requester, errandId, 'cancel', 'errand-cancel-cleanup')
+  if (status === 'ACCEPTED') {
+    const dropped = action(courier, errandId, 'drop', 'errand-drop-cleanup')
+    check(dropped, { 'accepted errand cleanup drop returns HTTP 200': (res) => res.status === 200 })
+  }
+  if (status === 'OPEN' || status === 'ACCEPTED') {
+    const cancelled = action(requester, errandId, 'cancel', 'errand-cancel-cleanup')
+    check(cancelled, { 'errand cleanup cancel returns HTTP 200': (res) => res.status === 200 })
+  }
   if (status === 'CANCELLED' || status === 'CONFIRMED') {
-    http.del(`${baseUrl}/api/errands/${encodeURIComponent(errandId)}`, '', { headers: headers(requester), tags: { endpoint: 'errand-delete-cleanup' } })
+    const deleted = http.del(`${baseUrl}/api/errands/${encodeURIComponent(errandId)}`, '', {
+      headers: headers(requester), tags: { endpoint: 'errand-delete-cleanup' },
+    })
+    check(deleted, { 'errand cleanup delete returns HTTP 204': (res) => res.status === 204 })
   }
 }
 
@@ -249,10 +258,15 @@ export function acceptanceRaceScenario(data) {
   const detail = http.get(`${baseUrl}/api/errands/${errandId}`, { headers: headers(data.requester), tags: { endpoint: 'errand-race-detail' } })
   expect(detail, 'race leaves one assigned courier', (res) => res.status === 200 && Boolean(json(res)?.errand?.courierSub))
   if (cleanup) {
-    action(data.courierA, errandId, 'drop', 'errand-drop-race-cleanup-a')
-    action(data.courierB, errandId, 'drop', 'errand-drop-race-cleanup-b')
-    action(data.requester, errandId, 'cancel', 'errand-cancel-race-cleanup')
-    http.del(`${baseUrl}/api/errands/${errandId}`, '', { headers: headers(data.requester), tags: { endpoint: 'errand-delete-race-cleanup' } })
+    const winningCourier = responses[0].status === 200 ? data.courierA : data.courierB
+    const dropped = action(winningCourier, errandId, 'drop', 'errand-drop-race-cleanup')
+    check(dropped, { 'race cleanup drops the winning courier': (res) => res.status === 200 })
+    const cancelled = action(data.requester, errandId, 'cancel', 'errand-cancel-race-cleanup')
+    check(cancelled, { 'race cleanup cancel returns HTTP 200': (res) => res.status === 200 })
+    const deleted = http.del(`${baseUrl}/api/errands/${errandId}`, '', {
+      headers: headers(data.requester), tags: { endpoint: 'errand-delete-race-cleanup' },
+    })
+    check(deleted, { 'race cleanup delete returns HTTP 204': (res) => res.status === 204 })
   }
 }
 
@@ -282,7 +296,12 @@ export function creditGuardScenario(data) {
     transferCount(data.requester, errandId, data.requester.subject, data.courierA.subject) === 1 })
   balance(data.requester, 'requester-credit-guard-after')
   balance(data.courierA, 'courier-credit-guard-after')
-  if (cleanup) http.del(`${baseUrl}/api/errands/${errandId}`, '', { headers: headers(data.requester), tags: { endpoint: 'errand-delete-credit-guard' } })
+  if (cleanup) {
+    const deleted = http.del(`${baseUrl}/api/errands/${errandId}`, '', {
+      headers: headers(data.requester), tags: { endpoint: 'errand-delete-credit-guard' },
+    })
+    check(deleted, { 'credit guard cleanup delete returns HTTP 204': (res) => res.status === 204 })
+  }
 }
 
 export function handleSummary(data) {

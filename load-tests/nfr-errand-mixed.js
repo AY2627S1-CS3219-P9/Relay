@@ -147,9 +147,10 @@ export function writeScenario(session) {
   check(cancelled, { 'mixed errand cancellation returns HTTP 200': (res) => res.status === 200 })
 
   if (cleanup && cancelled.status === 200) {
-    http.del(`${baseUrl}/api/errands/${encodeURIComponent(id)}`, '', {
+    const deleted = http.del(`${baseUrl}/api/errands/${encodeURIComponent(id)}`, '', {
       headers: headers(session), tags: { endpoint: 'mixed-delete' },
     })
+    check(deleted, { 'mixed errand cleanup delete returns HTTP 204': (res) => res.status === 204 })
   }
 }
 
