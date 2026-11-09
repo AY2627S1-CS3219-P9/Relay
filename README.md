@@ -256,6 +256,12 @@ public origin to the CloudFront URL, waits for application rollouts, checks the
 public `/healthz` endpoint and prints the HTTPS URL. This endpoint checks the
 host; application workflows still need separate verification.
 
+Production service tokens are generated in Secrets Manager and injected through
+`relay-service-tokens`; local simulated EKS creates that Secret with dummy values.
+Optional production timeout, partition count and timezone overrides are read from
+`deploy/relay.aws.env`. See [production configuration](deploy/README.md#production-configuration)
+for the old/new flow comparison and portable verification command.
+
 The production script renders image and role placeholders and applies the
 manifests in order. It does not deploy the application through a Helm chart or
 by applying `k8s/base/kustomization.yaml` directly.
