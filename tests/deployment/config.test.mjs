@@ -35,7 +35,7 @@ test('service token references match generated resources and local bootstrap', (
   }
 });
 test('deployment scripts parse with system Bash', () => {
-  for (const script of ['deploy/deploy.sh', 'deploy/scripts/deploy-eks.sh', 'floci/eks/up.sh']) {
+  for (const script of ['deploy/deploy.sh', 'deploy/scripts/deploy-eks.sh', 'deploy/scripts/aws-lifecycle-lib.sh', 'floci/eks/up.sh']) {
     const result = spawnSync('/bin/bash', ['-n', script], { cwd: root, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
   }
@@ -63,4 +63,32 @@ test('token provisioning rejects missing secrets and detects updates under syste
   assert.equal(changed.status, 0, changed.stderr);
   assert.equal(changed.stdout, '1');
   assert.equal(exercise('a'.repeat(48), 'secret/relay-service-tokens unchanged').stdout, '0');
+});
+test('production ECR publishing preserves the Docker endpoint with a temporary config', () => {
+  const script = readFileSync(`${root}/deploy/scripts/deploy-eks.sh`, 'utf8');
+  const lines = script.split('\n').map(line => line.trim());
+  const endpoint = lines.find(line => line.startsWith('docker_endpoint='));
+  const login = lines.find(line => line.startsWith('docker --host') && line.includes(' login '));
+  const push = lines.find(line => line.startsWith('docker --host') && line.includes(' push '))?.replace(' >&2 || return 1', '');
+  assert.ok(endpoint && login && push, 'endpoint capture and both explicit-host operations exist');
+  for (const host of ['', 'tcp://docker-engine:2375']) {
+    const result = spawnSync('/bin/bash', ['-c', `
+      set -euo pipefail
+      docker() {
+        if [[ "$1" == context ]]; then
+          printf '%s' 'unix:///tmp/docker-desktop.sock'
+        else
+          [[ "$1" == --host && "$2" == "$expected" && "$3" == --config && "$4" == "$ecr_docker_config" ]]
+        fi
+      }
+      expected="\${DOCKER_HOST:-unix:///tmp/docker-desktop.sock}"
+      ${endpoint}
+      ecr_docker_config=/tmp/private-ecr-config
+      registry=registry.example
+      image_uri=registry.example/relay/host:latest
+      printf '%s' mock-token | ${login}
+      ${push}
+    `], { cwd: root, encoding: 'utf8', env: { ...process.env, DOCKER_HOST: host } });
+    assert.equal(result.status, 0, result.stderr);
+  }
 });

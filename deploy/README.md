@@ -696,3 +696,12 @@ roles. Simulation does not create the resources and cannot guarantee every
 resource-specific condition, service-linked role, quota, or organization control.
 After deploying, verify the private ALB security group and exercise login,
 cookies, frontend assets, authenticated APIs, uploads and SSE through CloudFront.
+
+### Docker Desktop connection during ECR publishing
+
+The production deployer captures the active Docker endpoint before creating its
+temporary ECR credential configuration. Login and push commands pass both
+`--host` and `--config`, preserving Docker Desktop connectivity on macOS and WSL
+while keeping registry credentials in a private temporary directory.
+Deployment environment files and cluster access files are excluded from Docker
+build contexts.

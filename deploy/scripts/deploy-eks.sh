@@ -122,6 +122,8 @@ registry="$(output HostRepositoryUri)"
 registry="${registry%%/*}"
 # Docker Desktop's WSL credential helper can fail while saving ECR tokens.
 # Keep ECR credentials in a private temporary config for login/push only.
+# A fresh --config directory has no Docker Desktop context. Preserve its endpoint.
+docker_endpoint="${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}')}"
 ecr_docker_config="$(mktemp -d)"
 chmod 700 "$ecr_docker_config"
 rendered=""
@@ -131,7 +133,7 @@ cleanup() {
 }
 trap cleanup EXIT
 aws ecr get-login-password --region "$aws_region" |
-  docker --config "$ecr_docker_config" login --username AWS --password-stdin "$registry"
+  docker --host "$docker_endpoint" --config "$ecr_docker_config" login --username AWS --password-stdin "$registry"
 
 build_and_push() {
   local output_name="$1" service="$2"
@@ -171,7 +173,7 @@ build_and_push() {
   if [[ "$remote_config" != "$local_id" ]]; then
     echo "Pushing changed image $service..." >&2
     docker tag "relay-aws-build-$service:latest" "$image_uri" || return 1
-    docker --config "$ecr_docker_config" push "$image_uri" >&2 || return 1
+    docker --host "$docker_endpoint" --config "$ecr_docker_config" push "$image_uri" >&2 || return 1
   else
     echo "Skipping unchanged ECR image $service." >&2
   fi
