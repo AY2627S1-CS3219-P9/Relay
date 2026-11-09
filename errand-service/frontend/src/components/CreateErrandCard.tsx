@@ -4,7 +4,13 @@
 // Author review: I validated correctness and edited for style.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { ErrandRemoteProps, ServiceType, Supplier } from '@relay/contracts'
+import type {
+  ErrandRemoteProps,
+  EstimateCreditRequest,
+  EstimateCreditResponse,
+  ServiceType,
+  Supplier,
+} from '@relay/contracts'
 import {
   ClockIcon,
   ErrorMessage,
@@ -51,14 +57,17 @@ export function CreateErrandCard({
   errandApi,
   supplierApi,
   authenticatedSubject,
-  availableCredit,
+  creditBalance,
 }: {
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
   errandApi: ErrandRemoteProps['errandApi']
   supplierApi: ErrandRemoteProps['supplierApi']
+  authenticatedSubject: ErrandRemoteProps['authenticatedSubject']
+  creditBalance: ErrandRemoteProps['creditBalance']
 }) {
+  const availableCredit = creditBalance?.availableCredit
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
@@ -85,6 +94,10 @@ export function CreateErrandCard({
   })
 
   const handleEstimateCredits = async () => {
+    if (!authenticatedSubject) {
+      setErrorMessage('Sign in before estimating credits.')
+      return
+    }
     if (availableCredit === undefined) {
       setErrorMessage('Your credit balance is still loading. Try again shortly.')
       return
@@ -498,12 +511,15 @@ export function CreateErrandCard({
                   !form.name.trim() ||
                   !form.description.trim() ||
                   form.serviceType === '' ||
+                  !authenticatedSubject ||
                   availableCredit === undefined
                 }
                 title={
-                  availableCredit === undefined
-                    ? 'Waiting for your credit balance'
-                    : 'Estimate credits based on errand details'
+                  !authenticatedSubject
+                    ? 'Sign in to estimate credits'
+                    : availableCredit === undefined
+                      ? 'Waiting for your credit balance'
+                      : 'Estimate credits based on errand details'
                 }
                 className="relay-icon-button errand-estimate-button"
               >
