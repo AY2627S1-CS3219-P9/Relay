@@ -51,12 +51,6 @@ body {
   box-sizing: border-box;
   padding: 24px;
 }
-.user-profile-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
 .user-profile-card-empty {
   margin: 0;
   color: var(--relay-text-muted);
@@ -255,16 +249,7 @@ body {
   padding: 24px;
 }
 
-.account-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .account-header h1 {
-  margin: 0 !important;
-  font-size: 1.4rem !important;
   flex: 1;
 }
 

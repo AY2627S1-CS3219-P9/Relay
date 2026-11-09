@@ -287,6 +287,7 @@ button.relay-updates-item:hover {
   position: fixed;
   z-index: var(--relay-layer-card);
   box-sizing: border-box;
+  border-radius: 24px;
   overflow: auto;
   pointer-events: auto;
   scrollbar-width: none;
@@ -520,4 +521,70 @@ button.relay-updates-item:hover {
   to {
     transform: rotate(360deg);
   }
+}
+
+.relay-notification-card {
+  position: relative;
+  padding: 20px;
+  min-width: 0;
+}
+.relay-notification-close {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  right: 10px;
+}
+.relay-notification-content {
+  box-sizing: border-box;
+  display: grid;
+  justify-content: stretch;
+  justify-items: start;
+  min-height: 0;
+  gap: 10px;
+  width: 100%;
+  padding: 0 34px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.relay-notification-content strong {
+  font-size: 1rem;
+}
+.relay-notification-content time {
+  color: var(--relay-text-muted);
+  font-size: 0.8rem;
+}
+.relay-notification-content:focus-visible {
+  outline: 2px solid var(--relay-blue);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.relay-notification-warning {
+  margin-top: 16px;
+  border-top: 1px solid var(--relay-glass-soft-border);
+  padding-top: 12px;
+}
+.relay-notification-warning p {
+  margin: 0 0 12px;
+}
+.relay-notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.relay-notification-history {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: min(640px, calc(100dvh - 160px));
+  padding: 22px;
+}
+.relay-notification-history-list {
+  display: grid;
+  gap: 12px;
 }

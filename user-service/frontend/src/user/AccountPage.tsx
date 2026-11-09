@@ -81,7 +81,7 @@ export function AccountPage({
       )}
       {profile && (
         <>
-          <header className="account-header">
+          <header className="account-header relay-card-header">
             {page != 'account' && <BackButton onClick={() => setPage('account')} />}
             <h1>{page.replace(/-/g, ' ').replace(/^./, char => char.toUpperCase())}</h1>
             <CloseButton label="Close profile" onClick={closeProfile} />

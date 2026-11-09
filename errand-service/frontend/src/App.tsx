@@ -7,15 +7,15 @@ import '@relay/ui/styles.css'
 import '@relay/ui/styles/map.css'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import {
   Errand,
-  ErrandNotificationType,
+  ErrandNotification,
   ErrandNotificationTypes,
   ErrandStatus,
   ProfileAnchor,
-  RemoteAppProps,
+  ErrandRemoteProps,
   ServiceType,
 } from '@relay/contracts'
 import {
@@ -26,19 +26,28 @@ import {
   ClipboardPlusIcon,
   FilterIcon,
   LocationIcon,
+  MapSelectionList,
+  StatusBadge,
   PlusIcon,
   RelayButton,
   RelayCardAnchor,
   SlidingSegmentedControl,
   Spacer,
-  UpdatesCard,
+  RelayFormSurface,
+  LoadingState,
+  ErrorMessage,
   type BubbleAnchor,
 } from '@relay/ui'
 import { CreateErrandCard } from './components/CreateErrandCard'
 import { ErrandDetailCard } from './components/ErrandDetailCard'
 import { ErrandFilterPanel, type ErrandFilters } from './components/ErrandFilterPanel'
-import { ErrandMap } from './components/ErrandMap'
+import { ErrandMap, getErrandAnchor } from './components/ErrandMap'
+import { formatRoute, STATUS_LABELS, statusTone } from './types'
 import { useErrandNotifications } from './hooks/useErrandNotifications'
+
+import { useNotificationHistory } from './hooks/useNotificationHistory'
+import { ErrandNotificationCard } from './components/ErrandNotificationCard'
+import type { SavedNotification } from './notificationStore'
 
 const NUS_CENTER = { lat: 1.2966, lng: 103.7764 }
 const lifecycleRank: Record<ErrandStatus, number> = {
@@ -70,15 +79,18 @@ export default function App({
   presentation,
   errandApi,
   supplierApi,
-}: RemoteAppProps) {
+}: ErrandRemoteProps) {
   const [errands, setErrands] = useState<Errand[]>([])
+  const [nearbyErrandIds, setNearbyErrandIds] = useState<string[]>([])
   const [selectedErrandId, setSelectedErrandId] = useState<string>()
   const [selectedErrandAnchor, setSelectedErrandAnchor] = useState<BubbleAnchor>()
   const [showFilters, setShowFilters] = useState(false)
   const [showUpdates, setShowUpdates] = useState(false)
   const [updatesAnchor, setUpdatesAnchor] = useState<BubbleAnchor>()
-  const [updates, setUpdates] = useState<Errand[]>([])
+  const updatesControlRef = useRef<HTMLDivElement>(null)
+  const [notificationErrand, setNotificationErrand] = useState<Errand>()
   const [updatesLoading, setUpdatesLoading] = useState(false)
+  const notificationRequestRef = useRef(0)
   const [updatesError, setUpdatesError] = useState('')
   const [location, setLocation] = useState(userLocation)
   const [map, setMap] = useState<LeafletMap>()
@@ -102,16 +114,51 @@ export default function App({
     sort: 'lifecycle',
   })
   const view = errandViewContext?.view ?? 'requests'
-  const notificationCount = 2
-  const selectedErrand = errands.find((errand) => errand.id === selectedErrandId)
+  const selectedErrand =
+    (notificationErrand?.id === selectedErrandId ? notificationErrand : undefined) ??
+    errands.find((errand) => errand.id === selectedErrandId)
+  const {
+    notifications,
+    popup,
+    store: notificationStore,
+  } = useNotificationHistory(
+    authenticatedSubject,
+    showUpdates || view === 'updates' || mapActive === false || presentation === 'card',
+  )
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (errandViewContext?.view === 'updates') {
+        setUpdatesAnchor(errandViewContext.anchor)
+        return
+      }
+      const bounds = updatesControlRef.current?.getBoundingClientRect()
+      if (bounds) {
+        const { top, left, right, bottom } = bounds
+        setUpdatesAnchor({ top, left, right, bottom })
+      }
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [popup?.eventId, showUpdates, mapActive, presentation, errandViewContext])
+
+  useEffect(() => {
+    notificationRequestRef.current += 1
+    setNotificationErrand(undefined)
+    setSelectedErrandId(undefined)
+    setShowUpdates(false)
+    setUpdatesLoading(false)
+    setUpdatesError('')
+  }, [authenticatedSubject])
   const isCourierView =
     view === 'explore' ||
     (errandViewContext?.view === 'supplier' && errandViewContext.scope === 'explore')
   const isRequester = authenticatedSubject === selectedErrand?.requesterSub
-  const role = isCourierView ? 'courier' : isRequester ? 'requester' : 'courier'
+  const role = isRequester ? 'requester' : 'courier'
 
   useEffect(() => {
-    if (!errandApi || view === 'create' || view === 'supplier') return
+    if (!errandApi || view === 'create' || view === 'supplier' || view === 'updates') return
     const load =
       view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
     void load
@@ -163,6 +210,22 @@ export default function App({
     })
   }, [errands, filters, location, view, authenticatedSubject])
 
+  const nearbyErrands = visibleErrands.filter((errand) => nearbyErrandIds.includes(errand.id))
+
+  function closeMapSelection() {
+    notificationRequestRef.current += 1
+    setUpdatesLoading(false)
+    setNotificationErrand(undefined)
+    setNearbyErrandIds([])
+    setSelectedErrandId(undefined)
+    setSelectedErrandAnchor(undefined)
+  }
+
+  useEffect(() => {
+    closeMapSelection()
+    if (view === 'updates') setUpdatesError('')
+  }, [view, errandViewContext])
+
   function closeRemote() {
     if (presentation === 'card') {
       navigateTo?.('supplier')
@@ -188,28 +251,44 @@ export default function App({
   }
 
   function closeUpdates() {
+    notificationRequestRef.current += 1
+    setUpdatesLoading(false)
     setShowUpdates(false)
-    setUpdatesAnchor(undefined)
+    if (view === 'updates') closeRemote()
   }
 
-  function openUpdates(button: HTMLButtonElement) {
-    const { top, left, right, bottom } = button.getBoundingClientRect()
-    setUpdatesAnchor({ top, left, right, bottom })
+  function openUpdates() {
+    closeMapSelection()
+    setUpdatesError('')
     setShowUpdates(true)
+  }
+
+  async function openNotification(notification: SavedNotification) {
+    const request = ++notificationRequestRef.current
     setUpdatesLoading(true)
     setUpdatesError('')
-    if (!errandApi) {
-      setUpdates(errands.filter((errand) => errand.requesterSub === authenticatedSubject))
-      setUpdatesLoading(false)
-      return
+    // Hide the transient popup, preserving its saved entry.
+    notificationStore.dismiss(notification.eventId)
+    try {
+      const errand = errandApi
+        ? (await errandApi.getErrand(notification.errandId)).errand
+        : errands.find((item) => item.id === notification.errandId)
+      if (request !== notificationRequestRef.current) return
+      if (!errand) throw new Error('This errand is no longer available.')
+      setNotificationErrand(errand)
+      setSelectedErrandId(errand.id)
+      setSelectedErrandAnchor(updatesAnchor)
+      setNearbyErrandIds([])
+      setShowUpdates(false)
+    } catch {
+      if (request !== notificationRequestRef.current) return
+      setShowUpdates(true)
+      setUpdatesError(
+        'Unable to open this errand. It may have been deleted or is no longer available to you.',
+      )
+    } finally {
+      if (request === notificationRequestRef.current) setUpdatesLoading(false)
     }
-    void errandApi
-      .getErrands({ scope: 'mine' })
-      .then(({ errands: loaded }) => setUpdates(loaded))
-      .catch((error: unknown) => {
-        setUpdatesError(error instanceof Error ? error.message : 'Unable to load updates.')
-      })
-      .finally(() => setUpdatesLoading(false))
   }
   async function updateErrand(
     action: 'accept' | 'pickup' | 'deliver' | 'confirm' | 'cancel' | 'drop' | 'delete',
@@ -260,6 +339,7 @@ export default function App({
         return
       }
       const response = await actions[action](id)
+      setNotificationErrand((current) => (current?.id === id ? response.errand : current))
       setErrands((current) =>
         current.map((errand) => (errand.id === id ? { ...errand, ...response.errand } : errand)),
       )
@@ -296,7 +376,7 @@ export default function App({
 
   // Refetch errands from API
   const refetchErrands = useCallback(async () => {
-    if (!errandApi || view === 'create' || view === 'supplier') return
+    if (!errandApi || view === 'create' || view === 'supplier' || view === 'updates') return
     const load =
       view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
     void load
@@ -318,6 +398,7 @@ export default function App({
         .getErrand(errandId)
         .then(({ errand }) => {
           setErrands((current) => current.map((e) => (e.id === errandId ? errand : e)))
+          setNotificationErrand((current) => (current?.id === errandId ? errand : current))
         })
         .catch(() => undefined)
     },
@@ -326,21 +407,37 @@ export default function App({
 
   // SSE notifications for other users' changes
   const handleErrandUpdate = useCallback(
-    (event: {
-      errandId: string
-      type: ErrandNotificationType
-      oldStatus?: string
-      newStatus: string
-    }) => {
-      // Update errand status locally without refetching
+    (event: ErrandNotification) => {
+      const known = errands.find((errand) => errand.id === event.errandId)
+      const name =
+        known?.name ??
+        notificationStore
+          .getSnapshot()
+          .notifications.find((item) => item.errandId === event.errandId)?.errandName ??
+        `Errand ${event.errandId.slice(0, 8)}`
+      notificationStore.add(event, name)
+      if (!known && errandApi && event.type !== ErrandNotificationTypes.ERRAND_DELETED) {
+        void errandApi
+          .getErrand(event.errandId)
+          .then(({ errand }) => {
+            notificationStore.nameErrand(event.errandId, errand.name)
+          })
+          .catch(() => undefined)
+      }
       const updateStatus = (current: Errand[]) =>
-        current.map((errand) =>
-          errand.id === event.errandId
-            ? { ...errand, status: event.newStatus as ErrandStatus }
-            : errand,
-        )
+        event.type === ErrandNotificationTypes.ERRAND_DELETED
+          ? current.filter((errand) => errand.id !== event.errandId)
+          : current.map((errand) =>
+              errand.id === event.errandId ? { ...errand, status: event.newStatus } : errand,
+            )
       setErrands(updateStatus)
-      setUpdates(updateStatus)
+      setNotificationErrand((current) =>
+        current?.id === event.errandId
+          ? event.type === ErrandNotificationTypes.ERRAND_DELETED
+            ? undefined
+            : { ...current, status: event.newStatus }
+          : current,
+      )
 
       // Invalidate credit balance when errand status changes affect credits
       if (event.type === ErrandNotificationTypes.ERRAND_STATUS_CHANGED) {
@@ -353,12 +450,11 @@ export default function App({
         }
       }
     },
-    [invalidateCreditBalance],
+    [errands, errandApi, notificationStore, invalidateCreditBalance],
   )
 
   useErrandNotifications(
     authenticatedSubject,
-    errands,
     handleErrandUpdate,
     refetchErrands,
     refetchErrandDetails,
@@ -393,6 +489,59 @@ export default function App({
     </RelayCardAnchor>
   )
 
+  const selectedErrandCard = selectedErrand && (
+    <BubblePopover anchor={selectedErrandAnchor} maxWidth={405} className="errand-detail-popover">
+      <ErrandDetailCard
+        errand={selectedErrand}
+        role={role}
+        onClose={closeMapSelection}
+        onAction={(action) => updateErrand(action, selectedErrand.id)}
+      />
+    </BubblePopover>
+  )
+
+  const updatesCard = (showUpdates || view === 'updates') && !selectedErrand && (
+    <RelayCardAnchor
+      anchor={updatesAnchor}
+      size="small"
+      placement="anchored"
+      preferredSide="top-start"
+      className="errand-updates-popover"
+    >
+      <RelayFormSurface
+        as="aside"
+        headerVariant="card"
+        className="relay-notification-history relay-card-scroll-surface"
+        title="Updates"
+        onClose={closeUpdates}
+      >
+        {updatesLoading && <LoadingState label="Opening errand" />}
+        {updatesError && <ErrorMessage message={updatesError} />}
+        {notifications.length === 0 && <p>No notifications yet.</p>}
+        <div className="relay-notification-history-list">
+          {notifications.map((notification) => (
+            <ErrandNotificationCard
+              key={notification.eventId}
+              notification={notification}
+              confirmRemoval
+              onClose={() => notificationStore.remove(notification.eventId)}
+              onSelect={() => void openNotification(notification)}
+            />
+          ))}
+        </div>
+      </RelayFormSurface>
+    </RelayCardAnchor>
+  )
+
+  if (presentation === 'card' && view === 'updates') {
+    return (
+      <main className="errand-updates-overlay relay-design-system">
+        {selectedErrandCard}
+        {updatesCard}
+      </main>
+    )
+  }
+
   if (presentation === 'card' && createCard) {
     return <main className="errand-create-overlay relay-design-system">{createCard}</main>
   }
@@ -404,14 +553,13 @@ export default function App({
         center={mapViewport?.center ?? location ?? NUS_CENTER}
         userLocation={location}
         selectedId={selectedErrandId}
-        onSelect={(errand, anchor) => {
-          setSelectedErrandId(errand.id)
+        groupOverlaps={view === 'requests' || view === 'my-errands'}
+        onSelect={(errand, anchor, nearby) => {
+          setNearbyErrandIds(nearby.length > 1 ? nearby.map((item) => item.id) : [])
+          setSelectedErrandId(nearby.length === 1 ? errand.id : undefined)
           setSelectedErrandAnchor(anchor)
         }}
-        onMapClick={() => {
-          setSelectedErrandId(undefined)
-          setSelectedErrandAnchor(undefined)
-        }}
+        onMapClick={closeMapSelection}
         onMapReady={setMap}
         zoom={mapViewport?.zoom ?? 16}
         onViewportChange={handleViewportChange}
@@ -498,21 +646,18 @@ export default function App({
         </RelayButton>
       </div>
       <div className="errand-bottom-controls map-bottom-menu" data-relay-card-exclusion="bottom">
-        <RelayButton
-          variant="secondary"
-          size="map-action"
-          className="updates-action"
-          aria-label="Updates"
-          onClick={(event) => openUpdates(event.currentTarget)}
-        >
-          <span className="relay-button-icon-badge">
+        <div ref={updatesControlRef} className="errand-updates-control">
+          <RelayButton
+            variant="secondary"
+            size="map-action"
+            className="updates-action"
+            aria-label="Updates"
+            onClick={openUpdates}
+          >
             <BellIcon className="errand-control-icon" />
-            {notificationCount > 0 && (
-              <span className="relay-button-notification-dot" aria-hidden="true" />
-            )}
-          </span>
-          <span className="errand-control-label">Updates</span>
-        </RelayButton>
+            <span className="errand-control-label">Updates</span>
+          </RelayButton>
+        </div>
         <Spacer />
         <RelayButton
           variant="primary"
@@ -528,43 +673,47 @@ export default function App({
           <span className="errand-control-label">New request</span>
         </RelayButton>
       </div>
-      {selectedErrand && (
-        <BubblePopover
-          anchor={selectedErrandAnchor}
-          maxWidth={405}
-          className="errand-detail-popover"
-        >
-          <ErrandDetailCard
-            errand={selectedErrand}
-            role={role}
-            onClose={() => {
-              setSelectedErrandId(undefined)
-              setSelectedErrandAnchor(undefined)
+      {!selectedErrand && nearbyErrands.length > 0 && (
+        <BubblePopover anchor={selectedErrandAnchor}>
+          <MapSelectionList
+            title={view === 'requests' ? 'Select a request' : 'Select an errand'}
+            items={nearbyErrands}
+            getTitle={(errand) => errand.name}
+            getSubtitle={(errand) => formatRoute(errand.pickupLocation)}
+            getTrailing={(errand) => (
+              <StatusBadge tone={statusTone(errand.status)}>
+                {STATUS_LABELS[errand.status]}
+              </StatusBadge>
+            )}
+            onSelect={(errand) => {
+              if (!map) return
+              setSelectedErrandId(errand.id)
+              setSelectedErrandAnchor(getErrandAnchor(map, errand))
+              setNearbyErrandIds([])
             }}
-            onAction={(action) => updateErrand(action, selectedErrand.id)}
+            onClose={closeMapSelection}
           />
         </BubblePopover>
       )}
-      {showUpdates && (
-        <BubblePopover
+      {selectedErrandCard}
+      {updatesCard}
+      {!showUpdates && view !== 'updates' && popup && mapActive !== false && (
+        <RelayCardAnchor
+          key={popup.eventId}
           anchor={updatesAnchor}
-          maxWidth={405}
-          placement="above"
+          size="small"
+          placement="anchored"
+          preferredSide="top-start"
           className="errand-updates-popover"
         >
-          <UpdatesCard
-            errands={updates}
-            loading={updatesLoading}
-            error={updatesError}
-            onClose={closeUpdates}
-            onSelect={(errand) => {
-              const anchor = updatesAnchor
-              closeUpdates()
-              setSelectedErrandId(errand.id)
-              setSelectedErrandAnchor(anchor)
-            }}
-          />
-        </BubblePopover>
+          <div role="status" aria-live="polite">
+            <ErrandNotificationCard
+              notification={popup}
+              onClose={() => notificationStore.dismiss(popup.eventId)}
+              onSelect={() => void openNotification(popup)}
+            />
+          </div>
+        </RelayCardAnchor>
       )}
       {createCard}
       {showFilters && (

@@ -86,6 +86,26 @@ jobs:
           export RELAY_TEST_HTTP2=1
           export NO_PROXY="localhost,127.0.0.1,.localhost.floci.io"
           export no_proxy="$NO_PROXY"
+          # Pod readiness can precede Traefik's update to the replacement endpoint.
+          # Bound the entire wait, including stalled requests, to 15 seconds.
+          if ! timeout 15s bash <<'BASH'
+          while true; do
+            status="$(curl --silent --show-error --http2 \
+              --cacert "$NODE_EXTRA_CA_CERTS" --connect-timeout 2 --max-time 3 \
+              --output /dev/null --write-out '%{http_code}' \
+              "$RELAY_SHELL_URL/api/notifications/stream")" || status=000
+            if [[ "$status" == 401 ]]; then
+              echo 'Notification route is ready (HTTP 401).'
+              exit 0
+            fi
+            echo "Waiting for notification route (HTTP $status)..."
+            sleep 1
+          done
+          BASH
+          then
+            echo 'Notification route did not return HTTP 401 within 15 seconds.' >&2
+            exit 1
+          fi
           npm run test:services
 
       - name: Collect Kubernetes and Floci diagnostics

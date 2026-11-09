@@ -92,7 +92,7 @@ else
   k8s_version="${KUBERNETES_VERSION:-}"
   if [[ -z "$k8s_version" ]]; then
     k8s_version="$(aws eks describe-cluster-versions --region "$AWS_REGION" \
-      --query 'clusterVersions[?status==`STANDARD_SUPPORT`].clusterVersion' --output text | tr '\t' '\n' | sort -V | tail -1)"
+      --query 'clusterVersions[?status==`STANDARD_SUPPORT`].clusterVersion' --output text | tr '\t' '\n' | node deploy/scripts/config-tools.mjs latest-version)"
   fi
 fi
 [[ -n "$k8s_version" && "$k8s_version" != None ]] || fail 'Could not choose a supported Kubernetes version.'

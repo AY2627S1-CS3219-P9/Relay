@@ -3,11 +3,11 @@
 // Scope: Generated initial implementation, decomposed App.tsx into separate components
 // Author review: I validated correctness and edited for style.
 
-import { useEffect, useLayoutEffect } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapViewport, UserLocation } from '@relay/contracts'
-import type { BubbleAnchor } from '@relay/ui'
+import { groupOverlappingPoints, type BubbleAnchor } from '@relay/ui'
 import type { Errand } from '@relay/contracts/errand'
 
 export type MapPoint = { lat: number; lng: number }
@@ -31,6 +31,74 @@ function markerIcon(errand: Errand, selected: boolean) {
     iconSize: [38, 38],
     iconAnchor: [19, 38],
   })
+}
+
+export function getErrandAnchor(map: L.Map, errand: Errand): BubbleAnchor {
+  const point = map.latLngToContainerPoint([errand.pickupLocation.lat, errand.pickupLocation.lng])
+  const bounds = map.getContainer().getBoundingClientRect()
+  const left = bounds.left + point.x - 19
+  const top = bounds.top + point.y - 38
+  return { top, left, right: left + 38, bottom: top + 38 }
+}
+
+function ErrandMarkers({
+  errands,
+  selectedId,
+  groupOverlaps,
+  onSelect,
+}: {
+  errands: Errand[]
+  selectedId?: string
+  groupOverlaps: boolean
+  onSelect: (errand: Errand, anchor: BubbleAnchor, nearby: Errand[]) => void
+}) {
+  const map = useMap()
+  const [zoomRevision, setZoomRevision] = useState(0)
+  useMapEvents({ zoomend: () => setZoomRevision((revision) => revision + 1) })
+  const clusters = useMemo(
+    () =>
+      groupOverlaps
+        ? groupOverlappingPoints(errands, (errand) =>
+            map.latLngToContainerPoint([errand.pickupLocation.lat, errand.pickupLocation.lng]),
+          )
+        : errands.map((errand) => [errand]),
+    [errands, groupOverlaps, map, zoomRevision],
+  )
+  return (
+    <>
+      {clusters.map((cluster) => {
+        const first = cluster[0]
+        const icon =
+          cluster.length === 1
+            ? markerIcon(first, first.id === selectedId)
+            : L.divIcon({
+                className: 'relay-leaflet-icon relay-cluster-icon',
+                html: `<span class="relay-cluster-marker"><span>${cluster.length}</span></span>`,
+                iconSize: [42, 42],
+                iconAnchor: [21, 42],
+              })
+        return (
+          <Marker
+            key={cluster
+              .map((errand) => errand.id)
+              .sort()
+              .join('-')}
+            position={[first.pickupLocation.lat, first.pickupLocation.lng]}
+            icon={icon}
+            eventHandlers={{
+              click: (event) => {
+                event.originalEvent.stopPropagation()
+                const element = (event.target as L.Marker).getElement()
+                if (!element) return
+                const { top, left, right, bottom } = element.getBoundingClientRect()
+                onSelect(first, { top, left, right, bottom }, cluster)
+              },
+            }}
+          />
+        )
+      })}
+    </>
+  )
 }
 
 function MapCenterController({
@@ -102,6 +170,7 @@ export function ErrandMap({
   center,
   userLocation,
   selectedId,
+  groupOverlaps = false,
   onSelect,
   onMapClick,
   onMapReady,
@@ -113,7 +182,8 @@ export function ErrandMap({
   center: MapPoint
   userLocation?: UserLocation
   selectedId?: string
-  onSelect: (errand: Errand, anchor: BubbleAnchor) => void
+  groupOverlaps?: boolean
+  onSelect: (errand: Errand, anchor: BubbleAnchor, nearby: Errand[]) => void
   onMapClick?: () => void
   onMapReady?: (map: L.Map) => void
   zoom: number
@@ -138,22 +208,12 @@ export function ErrandMap({
           pathOptions={{ color: '#fff', fillColor: '#007aff', fillOpacity: 1, weight: 3 }}
         />
       )}
-      {errands.map((errand) => (
-        <Marker
-          key={errand.id}
-          position={[errand.pickupLocation.lat, errand.pickupLocation.lng]}
-          icon={markerIcon(errand, errand.id === selectedId)}
-          eventHandlers={{
-            click: (event) => {
-              event.originalEvent.stopPropagation()
-              const element = (event.target as L.Marker).getElement()
-              if (!element) return
-              const { top, left, right, bottom } = element.getBoundingClientRect()
-              onSelect(errand, { top, left, right, bottom })
-            },
-          }}
-        />
-      ))}
+      <ErrandMarkers
+        errands={errands}
+        selectedId={selectedId}
+        groupOverlaps={groupOverlaps}
+        onSelect={onSelect}
+      />
     </MapContainer>
   )
 }
