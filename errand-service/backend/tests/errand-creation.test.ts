@@ -56,6 +56,37 @@ describe('errand creation and credit reservation', () => {
     ).toThrow('The errand request is invalid.')
   })
 
+  it('rejects instructions longer than 5000 characters', () => {
+    expect(() =>
+      validateCreateErrand({
+        ...request,
+        deliveryDetails: {
+          ...request.deliveryDetails,
+          instructions: 'a'.repeat(5001),
+        },
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'INVALID_ERRAND',
+        fieldErrors: {
+          'deliveryDetails.instructions': 'Instructions must be no more than 5000 characters',
+        },
+      }),
+    )
+  })
+
+  it('accepts instructions at the 5000-character limit', () => {
+    expect(() =>
+      validateCreateErrand({
+        ...request,
+        deliveryDetails: {
+          ...request.deliveryDetails,
+          instructions: 'a'.repeat(5000),
+        },
+      }),
+    ).not.toThrow()
+  })
+
   it('reserves credit between pending insert and atomic completion', async () => {
     const { service, repository, credit, supplier, userClient } = setup()
     await service.createErrand(user, request)

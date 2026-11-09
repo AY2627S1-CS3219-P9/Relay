@@ -77,7 +77,7 @@ export function CreateErrandCard({
   const [isEstimating, setIsEstimating] = useState(false)
   const [estimate, setEstimate] = useState<EstimateCreditResponse | null>(null)
   const [estimateStatus, setEstimateStatus] = useState<
-    'success' | 'rate-limited' | 'invalid' | null
+    'success' | 'rate-limited' | 'invalid' | 'unavailable' | null
   >(null)
   const [form, setForm] = useState<CreateForm>({
     name: '',
@@ -127,6 +127,8 @@ export function CreateErrandCard({
 
     setIsEstimating(true)
     setErrorMessage('')
+    setEstimate(null)
+    setEstimateStatus(null)
 
     try {
       const response = await fetch('/api/errands/estimate-credit', {
@@ -150,8 +152,10 @@ export function CreateErrandCard({
       if (!response.ok) {
         const errorData = (await response.json().catch(() => null)) as { code?: string } | null
         if (errorData?.code === 'CREDIT_ESTIMATION_RATE_LIMITED' || response.status === 429) {
-          setEstimate(null)
           setEstimateStatus('rate-limited')
+          setErrorMessage('')
+        } else if (errorData?.code === 'CREDIT_ESTIMATION_UNAVAILABLE' || response.status >= 500) {
+          setEstimateStatus('unavailable')
           setErrorMessage('')
         } else {
           setErrorMessage(`Estimation failed: ${response.status}`)
@@ -176,10 +180,10 @@ export function CreateErrandCard({
         ...current,
         creditAmount: String(suggestedCredits),
       }))
-    } catch (error) {
-      setErrorMessage('Error encountered while estimating credits.')
+    } catch {
+      setErrorMessage('')
       setEstimate(null)
-      setEstimateStatus(null)
+      setEstimateStatus('unavailable')
     } finally {
       setIsEstimating(false)
     }
@@ -268,6 +272,8 @@ export function CreateErrandCard({
     if (!form.description.trim()) validationErrors.description = 'Enter a description.'
     else if (form.description.trim().length > 5000)
       validationErrors.description = 'Use 5,000 characters or fewer.'
+    if (form.instructions.trim().length > 5000)
+      validationErrors.instructions = 'Use 5,000 characters or fewer.'
     if (!form.creditAmount.trim() || !Number.isInteger(creditAmount) || creditAmount < 0)
       validationErrors.creditAmount = 'Enter a whole number of credits that is 0 or greater.'
     if (!start) validationErrors.startAt = 'Choose a start time.'
@@ -427,17 +433,18 @@ export function CreateErrandCard({
             rows={3}
           />
         </RelayFormField>
-        <label className="errand-field">
-          <span>
-            Instructions <em>Optional</em>
-          </span>
+        <RelayFormField
+          label="Instructions (optional)"
+          error={errorFor('instructions', 'deliveryDetails.instructions')}
+        >
           <textarea
             value={form.instructions}
             onChange={(e) => update('instructions', e.target.value)}
             placeholder="Add any handling or collection instructions."
+            maxLength={5000}
             rows={2}
           />
-        </label>
+        </RelayFormField>
         <div className="errand-reward-grid">
           <div className="errand-field has-input-button">
             <span>Reward credits</span>
@@ -475,6 +482,11 @@ export function CreateErrandCard({
             {estimateStatus === 'invalid' && (
               <div className="errand-estimate-pill errand-estimate-pill-invalid" role="status">
                 Unable to estimate credits.
+              </div>
+            )}
+            {estimateStatus === 'unavailable' && (
+              <div className="errand-estimate-pill errand-estimate-pill-invalid" role="alert">
+                Credit estimation is currently unavailable. Enter the reward credits manually.
               </div>
             )}
             <div className="errand-credit-input-wrapper">
