@@ -8,7 +8,7 @@ import '@relay/ui/styles.css'
 import './App.css'
 import { useEffect, useState } from 'react'
 import { GlassCard, GlassWindow, IconButton, RelayBrand } from '@relay/ui'
-import type { RemoteAppProps } from '@relay/contracts'
+import type { UserRemoteProps } from '@relay/contracts'
 import { LoginForm } from '../user/LoginForm'
 import { ProfileSetupForm } from '../components/account/ProfileSetupForm'
 import { RegisterForm } from '../user/RegisterForm'
@@ -25,7 +25,7 @@ export default function App({
   closeProfile,
   refreshUserProfile,
   presentation = 'full',
-}: RemoteAppProps) {
+}: UserRemoteProps) {
   const [view, setView] = useState<View>('login')
   const [restoringSession, setRestoringSession] = useState(Boolean(fetchSession))
   const [email, setEmail] = useState('')
@@ -62,7 +62,7 @@ export default function App({
   if (restoringSession) {
     return presentation === 'card' ? (
       <div className="user-profile-content">
-        <div className="user-profile-card-header">
+        <div className="user-profile-card-header relay-card-header">
           <h1>Profile</h1>
           <IconButton label="Close profile" onClick={closeProfile}>
             ×

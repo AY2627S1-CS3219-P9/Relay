@@ -1,8 +1,3 @@
-/* AI Assistance Disclosure:
-Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-23
-Scope: Generated css and implemented shared css across microfrontends
-Author review: I validated correctness and edited for style. */
-
 .relay-glass-surface,
 .glass-card {
   border-radius: 24px;
@@ -81,6 +76,7 @@ Author review: I validated correctness and edited for style. */
   width: min(var(--relay-card-max-width, 540px), calc(100vw - 32px));
   max-height: var(--relay-card-max-height, calc(100dvh - 150px));
   box-sizing: border-box;
+  border-radius: 24px;
   overflow: auto;
   animation: relay-card-anchor-in 0.46s cubic-bezier(0.22, 1.16, 0.36, 1) both;
 }
@@ -335,6 +331,7 @@ Author review: I validated correctness and edited for style. */
     width: 100% !important;
   }
   .relay-card-anchor.relay-mobile-bottom-sheet-anchor {
+    border-radius: 24px 24px 0 0;
     top: auto !important;
     right: 0 !important;
     bottom: 0 !important;
@@ -529,4 +526,28 @@ Author review: I validated correctness and edited for style. */
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Shared title row for marketplace cards, including Credit and Profile. */
+.relay-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.relay-card-header :is(h1, h2) {
+  margin: 0;
+  color: var(--relay-text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+.relay-card-header > .relay-icon-button {
+  flex-shrink: 0;
+}
+.relay-card-description {
+  margin: 8px 0 0;
+  color: var(--relay-text-muted);
 }

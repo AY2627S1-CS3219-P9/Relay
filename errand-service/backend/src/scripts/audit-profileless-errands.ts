@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-08
+// Scope: Generated initial implementation of the profileless-errand audit script.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { ErrandRepository, type ErrandAuditRow } from '../repositories/errand.repository.js'
 import { getEnv } from '../config/env.js'
 

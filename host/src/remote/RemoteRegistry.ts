@@ -1,4 +1,4 @@
-import type { ServiceId } from '@relay/contracts'
+import type { RemoteServiceId } from '@relay/contracts'
 
 export type RemoteDefinition = {
   name: string
@@ -10,7 +10,7 @@ export type RemoteDefinition = {
 // vite.config.ts has the same name, remoteEntry path
 // and exposes the same module.
 // Not all services have a frontend (e.g., credit-estimation is backend-only).
-export const REMOTE_REGISTRY: Partial<Record<ServiceId, RemoteDefinition>> = {
+export const REMOTE_REGISTRY: Record<RemoteServiceId, RemoteDefinition> = {
   supplier: {
     name: 'supplierFrontend',
     entry: '/remotes/supplier/remoteEntry.js',

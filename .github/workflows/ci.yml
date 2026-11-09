@@ -12,6 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  deployment-config:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify portable deployment configuration
+        run: node --test tests/deployment/*.test.mjs
+
   compose:
     runs-on: ubuntu-latest
     timeout-minutes: 60

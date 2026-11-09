@@ -3,10 +3,14 @@ import * as ReactDOM from 'react-dom'
 import * as ReactDOMClient from 'react-dom/client'
 import { init, loadRemote } from '@module-federation/runtime'
 import type { ComponentType } from 'react'
-import type { RemoteAppProps, ServiceId } from '@relay/contracts'
+import type { RemotePropsByService, RemoteServiceId } from '@relay/contracts'
 import { REMOTE_REGISTRY } from './RemoteRegistry'
 
-type RemoteModule = { default: ComponentType<RemoteAppProps> }
+export type RemoteComponents = {
+  [K in RemoteServiceId]: ComponentType<RemotePropsByService[K]>
+}
+
+type RemoteModule<K extends RemoteServiceId> = { default: RemoteComponents[K] }
 
 // configure Module Federation to find components in the registry
 init({
@@ -35,11 +39,14 @@ init({
   },
 })
 
-export async function loadServiceRemote(service: ServiceId): Promise<RemoteModule> {
+export async function loadServiceRemote<K extends RemoteServiceId>(
+  service: K,
+): Promise<RemoteModule<K>> {
   const remoteDef = REMOTE_REGISTRY[service]
   if (!remoteDef) throw new Error(`${service} frontend is not available.`)
   const { name, exposedModule } = remoteDef
-  const remote = await loadRemote<RemoteModule>(`${name}/${exposedModule.replace('./', '')}`)
+  // This generic is the only trust assertion about independently deployed code.
+  const remote = await loadRemote<RemoteModule<K>>(`${name}/${exposedModule.replace('./', '')}`)
   if (!remote) throw new Error(`${service} frontend returned no application.`)
   return remote
 }

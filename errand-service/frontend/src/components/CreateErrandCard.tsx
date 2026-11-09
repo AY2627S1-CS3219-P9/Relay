@@ -4,14 +4,7 @@
 // Author review: I validated correctness and edited for style.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type {
-  ErrandApi,
-  EstimateCreditRequest,
-  EstimateCreditResponse,
-  ServiceType,
-  Supplier,
-  SupplierApi,
-} from '@relay/contracts'
+import type { ErrandRemoteProps, ServiceType, Supplier } from '@relay/contracts'
 import {
   ClockIcon,
   ErrorMessage,
@@ -20,7 +13,6 @@ import {
   RelayFormField,
   RelayFormSurface,
 } from '@relay/ui'
-import { createHttpSupplierApi } from '../supplierApi'
 import { SERVICE_TYPE_LABELS } from '../types'
 
 type CreateForm = {
@@ -64,10 +56,8 @@ export function CreateErrandCard({
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
-  errandApi?: ErrandApi
-  supplierApi?: SupplierApi
-  authenticatedSubject: string
-  availableCredit?: number
+  errandApi: ErrandRemoteProps['errandApi']
+  supplierApi: ErrandRemoteProps['supplierApi']
 }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
@@ -192,7 +182,7 @@ export function CreateErrandCard({
   useEffect(() => {
     let cancelled = false
     setLoadingSuppliers(true)
-    const activeSupplierApi = supplierApi ?? createHttpSupplierApi()
+    const activeSupplierApi = supplierApi
     void activeSupplierApi
       .getSuppliers()
       .then(({ suppliers: loaded }) => {
@@ -325,6 +315,7 @@ export function CreateErrandCard({
 
   return (
     <RelayFormSurface
+      headerVariant="card"
       className="create-errand-card relay-mobile-sheet-surface"
       title="Create an errand"
       description="Tell us what you need delivered."

@@ -18,13 +18,22 @@ Grafana Cloud runs use `--local-execution`: Grafana stores and displays metrics,
 
 ## Local Compose setup and provisioning
 
-Start the local environment:
+Start the local environment from Git Bash or WSL, from the repository root.
+The Floci launcher must run first because it generates the required local
+Cognito, database, S3, and Kafka configuration:
 
-```powershell
-docker compose up --build --wait
+```bash
+npm run up:compose
 ```
 
-Use `--build` after application or Dockerfile changes. For changes only under `load-tests/`, `docker compose up --wait` is sufficient when the services are already built.
+For a full uncached rebuild after application or Dockerfile changes:
+
+```bash
+npm run up:compose -- --no-cache
+```
+
+Do not use plain `docker compose up` for a fresh Floci environment; it cannot
+discover the generated settings in `floci/docker/.generated.env`.
 
 The local provisioner creates three disposable users, verifies them through Floci SES, creates profiles, waits for credit allocation, selects the operational `Octobox` supplier, and creates one open fixture errand.
 
@@ -139,7 +148,8 @@ Invoke-K6Cloud -Script 'nfr-supplier.js' -Summary 'local-nfr-supplier-summary.js
 ```
 
 The local app must remain running throughout the tests. Rerun the provisioner
-after `docker compose down --volumes` or when generated credentials change.
+after `npm run down:compose` with volume cleanup or when generated credentials
+change.
 
 ## Run AWS tests and stream to Grafana Cloud
 
@@ -198,15 +208,26 @@ ScaledObject conditions as well as its HPA during that separate scenario.
 - `errand-core-scenarios.js`: create verification, concurrent acceptance, and credit guards.
 - `nfr-auth.js`: authentication arrival-rate workload.
 - `nfr-errand-read.js`: ramping authenticated errand reads.
-- `nfr-errand-mixed.js`: concurrent errand reads and low-rate create/cancel writes.
+- `nfr-errand-mixed.js`: concurrent errand reads and create/cancel writes. Its
+  latency limits are operation-specific: 250 ms for reads, 250 ms for create,
+  and 150 ms for cancel.
 - `nfr-credit.js`: authenticated credit-balance reads and non-negative balance checks.
 - `nfr-credit-estimation.js`: sustained AI credit-estimation recommendations across three users.
 - `credit-estimation-rate-limit.js`: exact per-user rate-limit boundary behavior.
 - `nfr-supplier.js`: authenticated supplier-query workload.
 
-NFR defaults are bounded by the current Grafana Cloud project limit. Increase
-them gradually and record VUs, throughput, p95 latency, failure rate, threshold
-status, and the Grafana run link.
+NFR defaults are bounded by the current Grafana Cloud project limit. The
+general errand-read limit is 250 ms because read latency varies between runs.
+The mixed test uses separate read/create/cancel limits because those operations
+perform different synchronous work; this is threshold calibration, not an
+application performance fix. The supplier limit remains 200 ms until its long-tail p99
+behavior is investigated. Increase load gradually and record VUs, throughput,
+p95 latency, failure rate, threshold status, and the Grafana run link.
+
+Lifecycle and Core are correctness tests, not only latency tests. Their
+summaries must contain nonzero scenario-execution counters, HTTP requests, and
+checks. A Grafana run showing zero requests must not be reported as passing;
+validate it locally with plain `k6 run` before relying on the cloud result.
 
 ## Local credit estimation single-instance suite
 

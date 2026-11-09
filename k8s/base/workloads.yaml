@@ -138,6 +138,8 @@ spec:
           command: [node, dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: USER_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: USER_SERVICE_INTERNAL_TOKEN } } }
+            - { name: INTERNAL_SUPPLIER_SERVICE_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: INTERNAL_SUPPLIER_SERVICE_TOKEN } } }
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DB_HOST, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_HOST } } }
             - { name: DB_PORT, valueFrom: { secretKeyRef: { name: relay-runtime, key: SUPPLIER_DB_PORT } } }
@@ -179,6 +181,7 @@ spec:
           command: [node, --import, tsx, user-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: INTERNAL_USER_SERVICE_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: INTERNAL_USER_SERVICE_TOKEN } } }
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: USER_DATABASE_URL } } }
           envFrom: [{ configMapRef: { name: relay-runtime } }, { secretRef: { name: relay-runtime } }]
@@ -251,6 +254,10 @@ spec:
           command: [node, --import, tsx, errand-service/backend/dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: USER_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: USER_SERVICE_INTERNAL_TOKEN } } }
+            - { name: INTERNAL_SUPPLIER_SERVICE_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: INTERNAL_SUPPLIER_SERVICE_TOKEN } } }
+            - { name: CREDIT_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: CREDIT_SERVICE_INTERNAL_TOKEN } } }
+            - { name: CREDIT_ESTIMATION_SERVICE_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: CREDIT_ESTIMATION_SERVICE_TOKEN } } }
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: ERRAND_DATABASE_URL } } }
             - { name: USER_API_URL, value: "http://user-api:3000" }
@@ -283,6 +290,8 @@ spec:
           command: [node, --import, tsx, credit-service/backend/dist/server.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
+            - { name: USER_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: USER_SERVICE_INTERNAL_TOKEN } } }
+            - { name: CREDIT_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: CREDIT_SERVICE_INTERNAL_TOKEN } } }
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: DATABASE_URL, valueFrom: { secretKeyRef: { name: relay-runtime, key: CREDIT_DATABASE_URL } } }
             - { name: USER_API_URL, value: "http://user-api:3000" }
@@ -339,6 +348,8 @@ spec:
           image: IMAGE_CREDIT_ESTIMATION_API
           ports: [{ name: http, containerPort: 3005 }]
           env:
+            - { name: USER_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: USER_SERVICE_INTERNAL_TOKEN } } }
+            - { name: CREDIT_ESTIMATION_SERVICE_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: CREDIT_ESTIMATION_SERVICE_TOKEN } } }
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: PORT, value: "3005" }
             - { name: USER_API_URL, value: "http://user-api:3000" }
@@ -367,6 +378,10 @@ spec:
           securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_ERRAND_NOTIFICATION
           ports: [{ name: http, containerPort: 3010 }]
+          # Keep serving while ingress removes this terminating pod from its endpoints.
+          lifecycle:
+            preStop:
+              exec: { command: ["sleep", "5"] }
           env:
             - { name: NODE_OPTIONS, value: "--max-old-space-size=614" }
             - { name: PORT, value: "3010" }

@@ -34,7 +34,7 @@ const serviceOptions: Array<{ value: ServiceType; label: string }> = [
 ]
 
 type Props = {
-  api: SupplierApi
+  api: Pick<SupplierApi, 'addSupplier' | 'updateSupplier' | 'removeSupplier'>
   supplier?: Supplier
   onSaved: (supplier: Supplier) => void
   onDeleted: (id: string) => void
@@ -150,6 +150,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
 
   return (
     <RelayFormSurface
+      headerVariant="card"
       as="aside"
       className="supplier-admin-panel relay-mobile-sheet-surface"
       title={editing ? 'Update supplier' : 'Add supplier'}

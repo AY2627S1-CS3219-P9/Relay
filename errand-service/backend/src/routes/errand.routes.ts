@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service routes.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import { Router } from 'express'
 import { ErrandController } from '../controllers/errand.controller.js'
 import { CreditEstimationClient } from '../clients/credit-estimation.client.js'

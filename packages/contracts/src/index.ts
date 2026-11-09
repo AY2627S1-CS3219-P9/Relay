@@ -39,6 +39,16 @@ export type ErrandViewContext =
       }
     }
   | {
+      /** Open the errand-owned notification history, anchored to the caller's button. */
+      view: 'updates'
+      anchor: {
+        top: number
+        left: number
+        right: number
+        bottom: number
+      }
+    }
+  | {
       view: 'requests'
     }
   | {
@@ -64,38 +74,7 @@ export type MapViewport = {
   zoom: number
 }
 
-export type RemoteAppProps = {
-  fetchSession?: FetchSessionHandler
-  authVersion?: number
-  /** Cognito subject from the authenticated session, distinct from the profile database id. */
-  authenticatedSubject?: string
-  userProfile?: import('./user/models').User | null
-  creditBalance?: import('./credit/models').CreditBalance | null
-  invalidateCreditBalance?: () => void
-  refreshUserProfile?: () => Promise<void>
-  navigateHome?: () => void
-  navigateTo?: (service: ServiceId) => void
-  openProfile?: (anchor: ProfileAnchor) => void
-  openCredit?: (anchor: ProfileAnchor) => void
-  closeCredit?: () => void
-  creditHistoryOpen?: boolean
-  showCreditHistory?: () => void
-  showCreditBalance?: () => void
-  closeProfile?: () => void
-  openErrandView?: (context: ErrandViewContext) => void
-  errandViewContext?: ErrandViewContext
-  userLocation?: UserLocation
-  requestUserLocation?: () => Promise<UserLocation | undefined>
-  supplierMode?: 'explore' | 'requests' | 'my-errands'
-  errandApi?: import('./errand/api').ErrandApi
-  supplierApi?: import('./supplier/api').SupplierApi
-  onErrandAccepted?: () => void
-  mapViewport?: MapViewport
-  onMapViewportChange?: (viewport: MapViewport) => void
-  /** Whether this remote's map is currently visible and can safely apply a viewport. */
-  mapActive?: boolean
-  presentation?: 'full' | 'card'
-}
+export * from './frontend/remotes'
 
 export type ProfileAnchor = {
   top: number

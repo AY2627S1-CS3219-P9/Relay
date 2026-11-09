@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service application.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import express, { type ErrorRequestHandler } from 'express'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from './config/env.js'

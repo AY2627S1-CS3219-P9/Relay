@@ -85,8 +85,8 @@ for (const path of [
 ]) {
   test(`${path} reaches its backend and requires authentication`, async () => {
     const response = await request(`${shellUrl}${path}`)
-    assert.equal(response.status, 401, `${path} must reach the protected API`)
     const body = await response.text()
+    assert.equal(response.status, 401, `${path} must reach the protected API; response: ${body.slice(0, 500)}`)
     assert.doesNotMatch(body, /<!doctype html|id=["']root["']/i)
   })
 }

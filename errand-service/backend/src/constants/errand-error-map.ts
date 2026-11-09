@@ -19,7 +19,7 @@ export const ERRAND_ERROR_MAP = {
   },
   'REQUESTER CANNOT ACCEPT OWN ERRAND': {
     code: ErrandErrors.FORBIDDEN,
-    userMessage: 'Requesters cannot accept their own errands.',
+    userMessage: 'You (a requestor) cannot accept your own errand.',
     statusCode: 403,
   },
   'MAX ERRANDS REACHED': {

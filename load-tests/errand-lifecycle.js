@@ -1,6 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-31
+// Scope: Generated initial implementation of the errand lifecycle load test.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
-import { Rate } from 'k6/metrics'
+import { Counter, Rate } from 'k6/metrics'
 import secrets from 'k6/secrets'
 
 const baseUrl = (__ENV.BASE_URL ?? 'http://host.docker.internal:8080').replace(/\/$/, '')
@@ -16,6 +21,7 @@ const settlementPollSeconds = Number(__ENV.SETTLEMENT_POLL_SECONDS ?? 1)
 const cleanup = (__ENV.LOAD_TEST_CLEANUP ?? 'true') !== 'false'
 const summaryPath = __ENV.K6_SUMMARY_PATH ?? 'load-tests/results/errand-lifecycle-summary.json'
 const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
+const lifecycleIterationsStarted = new Counter('lifecycle_iterations_started')
 const lifecycleComplete = new Rate('lifecycle_complete')
 
 export const options = {
@@ -30,6 +36,7 @@ export const options = {
   thresholds: {
     http_req_failed: ['rate<0.01'],
     checks: ['rate==1'],
+    lifecycle_iterations_started: ['count>0'],
     lifecycle_complete: ['rate==1'],
     'http_req_duration{endpoint:errand-create}': ['p(95)<2000'],
     'http_req_duration{endpoint:errand-confirm}': ['p(95)<2000'],
@@ -118,6 +125,17 @@ function getCreditBalance(session, role) {
     balance.reserveCredit >= 0,
   )
   return balance
+}
+
+function requireProfile(session, role) {
+  const response = http.get(`${baseUrl}/api/user/me`, {
+    headers: sessionHeaders(session),
+    tags: { endpoint: `profile-check-${role}` },
+  })
+  expect(response, `${role} profile exists`, (res) => {
+    const profile = responseJson(res)?.data
+    return res.status === 200 && profile?.profileCreated === true
+  })
 }
 
 function getSupplier(requester) {
@@ -209,6 +227,8 @@ export async function setup() {
   )
   if (requester.subject === courier.subject) fail('Requester and courier must be different users.')
 
+  requireProfile(requester, 'requester')
+  requireProfile(courier, 'courier')
   const requesterBalance = getCreditBalance(requester, 'requester')
   getCreditBalance(courier, 'courier')
   if (requesterBalance.availableCredit < creditAmount) {
@@ -219,6 +239,7 @@ export async function setup() {
 }
 
 export default function ({ requester, courier, supplier }) {
+  lifecycleIterationsStarted.add(1)
   const uniqueSuffix = `${Date.now()}-vu${__VU}-iter${__ITER}`
   const created = http.post(
     `${baseUrl}/api/errands`,

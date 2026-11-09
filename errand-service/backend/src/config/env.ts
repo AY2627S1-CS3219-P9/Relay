@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
+// Scope: Generated initial implementation of the Errand Service environment configuration.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import 'dotenv/config'
 
 const positiveInteger = (value: string | undefined, fallback: number): number => {

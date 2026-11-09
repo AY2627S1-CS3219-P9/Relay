@@ -197,6 +197,15 @@ rm -f "$config_file"
 [[ "$cloudfront_domain" == *.cloudfront.localhost.floci.io ]]
 public_origin="https://${cloudfront_domain}"
 
+# Shared workload manifests require the same Secret shape as production.
+kubectl -n relay create secret generic relay-service-tokens \
+  --from-literal=INTERNAL_USER_SERVICE_TOKEN=local-internal-user-service-token \
+  --from-literal=USER_SERVICE_INTERNAL_TOKEN=local-internal-user-service-token \
+  --from-literal=INTERNAL_SUPPLIER_SERVICE_TOKEN=local-internal-supplier-service-token \
+  --from-literal=CREDIT_SERVICE_INTERNAL_TOKEN=local-internal-credit-service-token \
+  --from-literal=CREDIT_ESTIMATION_SERVICE_TOKEN=local-internal-estimation-service-token \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 kubectl -n relay create secret generic relay-runtime \
   --from-literal=USER_DATABASE_URL=postgresql://relay:${USER_DATABASE_PASSWORD}@${USER_DATABASE_HOST}:${USER_DATABASE_PORT}/relay?schema=public \
   --from-literal=ERRAND_DATABASE_URL=postgresql://relay:${ERRAND_DATABASE_PASSWORD}@${ERRAND_DATABASE_HOST}:${ERRAND_DATABASE_PORT}/relayerrand?schema=public \

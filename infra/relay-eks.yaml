@@ -47,6 +47,30 @@ Conditions:
   RestoreSupplierDatabase: !Not [!Equals [!Ref SupplierDatabaseSnapshotId, '']]
 
 Resources:
+  UserServiceToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+  SupplierServiceToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+  CreditServiceToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+  EstimationServiceToken:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
   VpcLinkSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -421,6 +445,10 @@ Resources:
     Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-notification', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
+  UserServiceTokenArn: { Value: !Ref UserServiceToken }
+  SupplierServiceTokenArn: { Value: !Ref SupplierServiceToken }
+  CreditServiceTokenArn: { Value: !Ref CreditServiceToken }
+  EstimationServiceTokenArn: { Value: !Ref EstimationServiceToken }
   VpcId: { Value: !Ref Vpc }
   PrivateSubnetAId: { Value: !Ref PrivateSubnetA }
   PrivateSubnetBId: { Value: !Ref PrivateSubnetB }

@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-31
+// Scope: Generated initial implementation of the errand core-scenarios load test.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
 import { Counter, Rate } from 'k6/metrics'
@@ -12,6 +17,9 @@ const cleanup = (__ENV.LOAD_TEST_CLEANUP ?? 'true') !== 'false'
 const summaryPath = __ENV.K6_SUMMARY_PATH ?? 'load-tests/results/errand-core-summary.json'
 const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 const acceptanceWinners = new Counter('acceptance_winners')
+const createScenarioStarted = new Counter('create_scenario_started')
+const acceptanceRaceStarted = new Counter('acceptance_race_started')
+const creditGuardStarted = new Counter('credit_guard_started')
 const settlementsComplete = new Rate('settlements_complete')
 
 // 404/409/422 are intentional outcomes in the race and credit-guard tests.
@@ -26,6 +34,9 @@ export const options = {
   },
   thresholds: {
     checks: ['rate==1'],
+    create_scenario_started: ['count>0'],
+    acceptance_race_started: ['count>0'],
+    credit_guard_started: ['count>0'],
     acceptance_winners: ['count==1'],
     settlements_complete: ['rate==1'],
   },
@@ -64,6 +75,9 @@ function login(email, password, label) {
     headers: { 'Content-Type': 'application/json' }, tags: { endpoint: `auth-login-${label}` },
   })
   expect(response, `${label} login succeeds`, (res) => res.status === 200)
+  expect(response, `${label} login returns both authentication cookies`, (res) =>
+    Boolean(res.cookies.relay_access?.[0]?.value) && Boolean(res.cookies.relay_id?.[0]?.value),
+  )
   const subject = json(response)?.data?.user?.subject
   if (!subject) fail(`${label} login did not return a user subject.`)
   return {
@@ -71,6 +85,17 @@ function login(email, password, label) {
     idToken: response.cookies.relay_id?.[0]?.value,
     subject,
   }
+}
+
+function requireProfile(session, label) {
+  const response = http.get(`${baseUrl}/api/user/me`, {
+    headers: headers(session),
+    tags: { endpoint: `profile-check-${label}` },
+  })
+  expect(response, `${label} profile exists`, (res) => {
+    const profile = json(res)?.data
+    return res.status === 200 && profile?.profileCreated === true
+  })
 }
 
 function supplierFor(requester) {
@@ -150,10 +175,19 @@ function waitForTransfer(requester, courier, errandId) {
 
 function cleanupErrand(requester, courier, errandId, status) {
   if (!cleanup) return
-  if (status === 'ACCEPTED') action(courier, errandId, 'drop', 'errand-drop-cleanup')
-  if (status === 'OPEN' || status === 'ACCEPTED') action(requester, errandId, 'cancel', 'errand-cancel-cleanup')
+  if (status === 'ACCEPTED') {
+    const dropped = action(courier, errandId, 'drop', 'errand-drop-cleanup')
+    check(dropped, { 'accepted errand cleanup drop returns HTTP 200': (res) => res.status === 200 })
+  }
+  if (status === 'OPEN' || status === 'ACCEPTED') {
+    const cancelled = action(requester, errandId, 'cancel', 'errand-cancel-cleanup')
+    check(cancelled, { 'errand cleanup cancel returns HTTP 200': (res) => res.status === 200 })
+  }
   if (status === 'CANCELLED' || status === 'CONFIRMED') {
-    http.del(`${baseUrl}/api/errands/${encodeURIComponent(errandId)}`, '', { headers: headers(requester), tags: { endpoint: 'errand-delete-cleanup' } })
+    const deleted = http.del(`${baseUrl}/api/errands/${encodeURIComponent(errandId)}`, '', {
+      headers: headers(requester), tags: { endpoint: 'errand-delete-cleanup' },
+    })
+    check(deleted, { 'errand cleanup delete returns HTTP 204': (res) => res.status === 204 })
   }
 }
 
@@ -172,6 +206,9 @@ export async function setup() {
     await secretOrEnv(__ENV.LOAD_TEST_COURIER_B_PASSWORD, 'loadtestcourierbpassword', 'LOAD_TEST_COURIER_B_PASSWORD'), 'courier-b')
   if (requester.subject === courierA.subject) fail('Requester and courier must be different users.')
   if (requester.subject === courierB.subject || courierA.subject === courierB.subject) fail('Requester and both couriers must be different users.')
+  requireProfile(requester, 'requester')
+  requireProfile(courierA, 'courier-a')
+  requireProfile(courierB, 'courier-b')
   const supplier = supplierFor(requester)
   balance(requester, 'requester-before')
   balance(courierA, 'courier-before')
@@ -179,6 +216,7 @@ export async function setup() {
 }
 
 export function createScenario(data) {
+  createScenarioStarted.add(1)
   const suffix = `create-${Date.now()}`
   const before = balance(data.requester, 'requester-create-before')
   const created = create(data.requester, data.supplier, suffix)
@@ -198,6 +236,7 @@ export function createScenario(data) {
 }
 
 export function acceptanceRaceScenario(data) {
+  acceptanceRaceStarted.add(1)
   const suffix = `race-${Date.now()}`
   const created = create(data.requester, data.supplier, suffix)
   expect(created, 'race errand is created', (res) => res.status === 201)
@@ -224,14 +263,20 @@ export function acceptanceRaceScenario(data) {
   const detail = http.get(`${baseUrl}/api/errands/${errandId}`, { headers: headers(data.requester), tags: { endpoint: 'errand-race-detail' } })
   expect(detail, 'race leaves one assigned courier', (res) => res.status === 200 && Boolean(json(res)?.errand?.courierSub))
   if (cleanup) {
-    action(data.courierA, errandId, 'drop', 'errand-drop-race-cleanup-a')
-    action(data.courierB, errandId, 'drop', 'errand-drop-race-cleanup-b')
-    action(data.requester, errandId, 'cancel', 'errand-cancel-race-cleanup')
-    http.del(`${baseUrl}/api/errands/${errandId}`, '', { headers: headers(data.requester), tags: { endpoint: 'errand-delete-race-cleanup' } })
+    const winningCourier = responses[0].status === 200 ? data.courierA : data.courierB
+    const dropped = action(winningCourier, errandId, 'drop', 'errand-drop-race-cleanup')
+    check(dropped, { 'race cleanup drops the winning courier': (res) => res.status === 200 })
+    const cancelled = action(data.requester, errandId, 'cancel', 'errand-cancel-race-cleanup')
+    check(cancelled, { 'race cleanup cancel returns HTTP 200': (res) => res.status === 200 })
+    const deleted = http.del(`${baseUrl}/api/errands/${errandId}`, '', {
+      headers: headers(data.requester), tags: { endpoint: 'errand-delete-race-cleanup' },
+    })
+    check(deleted, { 'race cleanup delete returns HTTP 204': (res) => res.status === 204 })
   }
 }
 
 export function creditGuardScenario(data) {
+  creditGuardStarted.add(1)
   const suffix = `credit-${Date.now()}`
   const before = balance(data.requester, 'requester-credit-guard-before')
   const failed = create(data.requester, data.supplier, `${suffix}-insufficient`, 1_000_000_000)
@@ -256,7 +301,12 @@ export function creditGuardScenario(data) {
     transferCount(data.requester, errandId, data.requester.subject, data.courierA.subject) === 1 })
   balance(data.requester, 'requester-credit-guard-after')
   balance(data.courierA, 'courier-credit-guard-after')
-  if (cleanup) http.del(`${baseUrl}/api/errands/${errandId}`, '', { headers: headers(data.requester), tags: { endpoint: 'errand-delete-credit-guard' } })
+  if (cleanup) {
+    const deleted = http.del(`${baseUrl}/api/errands/${errandId}`, '', {
+      headers: headers(data.requester), tags: { endpoint: 'errand-delete-credit-guard' },
+    })
+    check(deleted, { 'credit guard cleanup delete returns HTTP 204': (res) => res.status === 204 })
+  }
 }
 
 export function handleSummary(data) {

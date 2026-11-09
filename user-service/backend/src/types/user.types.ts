@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-21
+// Scope: Generated initial implementation of the User Service types.
+// Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+
 import type { UserApiError, UserRole } from '@relay/contracts'
 
 /** Claims extracted from a verified mock or Cognito-compatible JWT. */

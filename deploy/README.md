@@ -19,6 +19,53 @@ billable AWS resources.
   applies one-off database migrations,
   and applies the workloads, HPA policies, and ALB Ingress.
 
+## Production configuration
+
+The deployer configures production without reading development Compose runtime
+settings. CloudFormation generates four independent 48-character service tokens
+in Secrets Manager (User, Supplier, Credit and Estimation). `deploy-eks.sh`
+retrieves and validates them, creates `relay-service-tokens`, and injects only
+required tokens into each workload through explicit `secretKeyRef` entries.
+The User caller and receiver variable names share the same generated token.
+Tokens are never written to `deploy/relay.aws.env`.
+
+On an existing deployment, rerunning the entry point creates the new secrets,
+removes the old local token values from the ConfigMap, and updates workloads.
+Subsequent deployments reuse the generated secrets. After manually changing a
+service token in Secrets Manager, rerun deployment to update Kubernetes and
+restart environment-dependent workloads. Rotation can briefly interrupt
+service-to-service calls while old and new pods overlap; coordinated dual-token
+rotation is not implemented. Pause/recreation generates fresh service tokens.
+
+Optional ordinary settings in `deploy/relay.aws.env` are explicitly allowlisted:
+`USER_API_TIMEOUT`, `SUPPLIER_SERVICE_TIMEOUT_MS`, `ERRAND_SERVICE_TIMEOUT_MS`,
+`KAFKA_PARTITION_COUNT` and `SUPPLIER_TIMEZONE`. Unset options retain the checked-in
+ConfigMap defaults. Timeouts and partition count must be positive integers;
+timezone must be valid. Kafka partitions can be increased, not reduced on an
+existing topic. These options are exported to the configuration renderer;
+arbitrary env-file entries are not automatically injected into pods. Internal
+service addresses and container ports remain deployment definitions.
+
+| Configuration | Previous flow | Current flow |
+| --- | --- | --- |
+| Service tokens | Fixed local strings in the production ConfigMap | CloudFormation → Secrets Manager → deployer → Kubernetes Secret → required pods |
+| Ordinary settings | Edit ConfigMap YAML | Optional env-file overrides → validated renderer → ConfigMap; defaults remain in YAML |
+| AWS resource configuration | Stack outputs and Secrets Manager → runtime Secret | Same automatic discovery |
+| Token changes | Manual manifest edits | Update Secrets Manager and redeploy; affected workloads restart |
+| Local simulated EKS | Tokens inherited from the shared ConfigMap | Local bootstrap creates the same Secret shape using dummy tokens |
+
+Run the deployment configuration checks without Docker or AWS credentials:
+
+```bash
+node --test tests/deployment/*.test.mjs
+```
+
+These tests use Node.js and `/bin/bash`, work on macOS and WSL, and run in CI
+on both macOS and Ubuntu. Deployment hashing, Base64 decoding and Kubernetes
+version selection use Node.js, avoiding GNU-only utilities and Bash 4 case
+conversion. A real AWS rollout is still required to verify cloud permissions,
+resource creation and application behavior.
+
 ## Deploy or redeploy
 
 Run from the repository root in WSL or another Bash environment with AWS CLI v2,
@@ -649,3 +696,12 @@ roles. Simulation does not create the resources and cannot guarantee every
 resource-specific condition, service-linked role, quota, or organization control.
 After deploying, verify the private ALB security group and exercise login,
 cookies, frontend assets, authenticated APIs, uploads and SSE through CloudFront.
+
+### Docker Desktop connection during ECR publishing
+
+The production deployer captures the active Docker endpoint before creating its
+temporary ECR credential configuration. Login and push commands pass both
+`--host` and `--config`, preserving Docker Desktop connectivity on macOS and WSL
+while keeping registry credentials in a private temporary directory.
+Deployment environment files and cluster access files are excluded from Docker
+build contexts.

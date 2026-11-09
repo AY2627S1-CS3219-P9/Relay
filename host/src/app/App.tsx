@@ -62,7 +62,7 @@ function App() {
   const creditBalance =
     storedCreditBalance?.userId === authenticatedSubject ? storedCreditBalance : null
   const [errandViewContext, setErrandViewContext] = useState<ErrandViewContext>()
-  const [createErrandOnSupplierMap, setCreateErrandOnSupplierMap] = useState(false)
+  const [errandCardOnSupplierMap, setErrandCardOnSupplierMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation>()
   const [supplierMode, setSupplierMode] = useState<'explore' | 'requests' | 'my-errands'>('explore')
   const [marketplaceMapViewport, setMarketplaceMapViewport] = useState({
@@ -270,7 +270,7 @@ function App() {
     closeCredit()
     if (service !== 'errand') {
       setErrandViewContext(undefined)
-      setCreateErrandOnSupplierMap(false)
+      setErrandCardOnSupplierMap(false)
     }
     if (service === 'supplier') setSupplierMode('explore')
     setActiveService(service)
@@ -283,15 +283,17 @@ function App() {
       navigateTo('supplier')
       return
     }
-    if (context.view === 'create') {
-      setCreateErrandOnSupplierMap(activeService === 'supplier')
+    if (context.view === 'create' || context.view === 'updates') {
+      setErrandCardOnSupplierMap(activeService === 'supplier')
     } else {
-      setCreateErrandOnSupplierMap(false)
+      setErrandCardOnSupplierMap(false)
     }
     if (context.view === 'requests') setSupplierMode('requests')
     if (context.view === 'my-errands') setSupplierMode('my-errands')
     setErrandViewContext(context)
-    if (context.view !== 'create' || activeService !== 'supplier') setActiveService('errand')
+    if ((context.view !== 'create' && context.view !== 'updates') || activeService !== 'supplier') {
+      setActiveService('errand')
+    }
   }
 
   function openProfile(anchor: ProfileAnchor) {
@@ -352,7 +354,7 @@ function App() {
       top: Math.max(16, top),
       left: 'unset',
       right,
-      width: cardWidth
+      width: cardWidth,
     }
   }
 
@@ -376,81 +378,94 @@ function App() {
   return (
     <main className="relay-host-shell">
       <div className="remote-grid">
-        {Object.values(SERVICE_METADATA).map(({ id, label }) => (
-          <RemotePage
-            key={id}
-            service={id}
-            serviceLabel={label}
-            visible={
-              activeService === id ||
-              (id === 'user' && profileOpen) ||
-              (id === 'credit' && creditOpen) ||
-              (id === 'errand' && createErrandOnSupplierMap)
-            }
-            bubbleAnchor={
-              id === 'user' && profileOpen
-                ? profileAnchor
-                : id === 'credit' && creditOpen
-                  ? creditAnchor
-                  : undefined
-            }
-            appProps={{
-              fetchSession,
-              authVersion,
-              authenticatedSubject,
-              userProfile,
-              creditBalance,
-              invalidateCreditBalance,
-              refreshUserProfile,
-              navigateTo,
-              openProfile,
-              openCredit,
-              closeCredit: id === 'credit' ? closeCredit : undefined,
-              creditHistoryOpen: id === 'credit' ? creditHistoryOpen : undefined,
-              showCreditHistory: id === 'credit' ? () => setCreditHistoryOpen(true) : undefined,
-              showCreditBalance: id === 'credit' ? () => setCreditHistoryOpen(false) : undefined,
-              openErrandView,
-              errandApi: hostErrandApi,
-              supplierApi: hostSupplierApi,
-              onErrandAccepted: () => openErrandView({ view: 'my-errands' }),
-              errandViewContext: id === 'errand' ? errandViewContext : undefined,
-              userLocation,
-              requestUserLocation,
-              supplierMode: id === 'supplier' ? supplierMode : undefined,
-              mapViewport: marketplaceMapViewport,
-              onMapViewportChange:
-                activeService === id ? handleMarketplaceMapViewportChange : undefined,
-              mapActive: activeService === id,
-              closeProfile: id === 'user' ? closeProfile : undefined,
-              presentation:
-                id === 'credit'
-                  ? undefined
-                  : id === 'user' && profileOpen
-                    ? 'card'
-                    : id === 'errand' && createErrandOnSupplierMap
-                      ? 'card'
-                      : 'full',
-            }}
-            overlay={
-              (id === 'user' && profileOpen) ||
-              (id === 'credit' && creditOpen) ||
-              (id === 'errand' && createErrandOnSupplierMap)
-            }
-            overlayClassName={
-              id === 'errand' && createErrandOnSupplierMap
-                ? 'errand-create-overlay-page'
-                : undefined
-            }
-            card={(id === 'user' && profileOpen) || (id === 'credit' && creditOpen)}
-            cardStyle={
-              id === 'user' && profileOpen
-                ? profileCardStyle()
-                : id === 'credit' && creditOpen
-                  ? creditCardStyle()
-                  : undefined
-            }
-          />
-        ))}
+        <RemotePage
+          service="supplier"
+          serviceLabel={SERVICE_METADATA.supplier.label}
+          visible={activeService === 'supplier'}
+          appProps={{
+            userProfile,
+            creditBalance,
+            authVersion,
+            supplierMode,
+            navigateTo,
+            openProfile,
+            openCredit,
+            openErrandView,
+            supplierApi: hostSupplierApi,
+            errandApi: hostErrandApi,
+            onErrandAccepted: () => openErrandView({ view: 'my-errands' }),
+            mapViewport: marketplaceMapViewport,
+            onMapViewportChange:
+              activeService === 'supplier' ? handleMarketplaceMapViewportChange : undefined,
+            mapActive: activeService === 'supplier',
+          }}
+        />
+        <RemotePage
+          service="user"
+          serviceLabel={SERVICE_METADATA.user.label}
+          visible={activeService === 'user' || profileOpen}
+          appProps={{
+            fetchSession,
+            authVersion,
+            navigateTo,
+            closeProfile,
+            refreshUserProfile,
+            presentation: profileOpen ? 'card' : 'full',
+          }}
+          overlay={profileOpen}
+          bubbleAnchor={profileOpen ? profileAnchor : undefined}
+          card={profileOpen}
+          cardStyle={profileOpen ? profileCardStyle() : undefined}
+        />
+        <RemotePage
+          service="credit"
+          serviceLabel={SERVICE_METADATA.credit.label}
+          visible={activeService === 'credit' || creditOpen}
+          appProps={{
+            creditBalance,
+            authenticatedSubject,
+            authVersion,
+            closeCredit,
+            creditHistoryOpen,
+            showCreditHistory: () => setCreditHistoryOpen(true),
+            showCreditBalance: () => setCreditHistoryOpen(false),
+          }}
+          overlay={creditOpen}
+          bubbleAnchor={creditOpen ? creditAnchor : undefined}
+          card={creditOpen}
+          cardStyle={creditOpen ? creditCardStyle() : undefined}
+        />
+        <RemotePage
+          service="errand"
+          serviceLabel={SERVICE_METADATA.errand.label}
+          visible={activeService === 'errand' || errandCardOnSupplierMap}
+          appProps={{
+            userProfile,
+            creditBalance,
+            authenticatedSubject,
+            invalidateCreditBalance,
+            navigateTo,
+            openProfile,
+            openCredit,
+            openErrandView,
+            errandViewContext,
+            userLocation,
+            requestUserLocation,
+            errandApi: hostErrandApi,
+            supplierApi: hostSupplierApi,
+            mapViewport: marketplaceMapViewport,
+            onMapViewportChange:
+              activeService === 'errand' ? handleMarketplaceMapViewportChange : undefined,
+            mapActive: activeService === 'errand',
+            presentation: errandCardOnSupplierMap ? 'card' : 'full',
+          }}
+          overlay={errandCardOnSupplierMap}
+          overlayClassName={
+            errandCardOnSupplierMap && errandViewContext?.view === 'create'
+              ? 'errand-create-overlay-page'
+              : undefined
+          }
+        />
       </div>
     </main>
   )
