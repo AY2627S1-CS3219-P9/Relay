@@ -93,7 +93,8 @@ Author review: I validated correctness and edited for style. */
   .remote-profile-anchor.relay-mobile-bottom-sheet-anchor > .remote-profile-card::after {
     display: none;
   }
-  .remote-credit-anchor.relay-mobile-bottom-sheet-anchor {
+  .remote-credit-anchor.relay-mobile-bottom-sheet-anchor,
+  .remote-profile-anchor.relay-mobile-bottom-sheet-anchor {
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
     overflow: hidden;
   }

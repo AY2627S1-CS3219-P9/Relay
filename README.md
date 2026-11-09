@@ -12,12 +12,14 @@ withdrawn, or exchanged for money, and only circulate within the platform.
 
 ## Team Members
 
-| Name      | Role           |
-| --------- | -------------- |
-| Ryan      | Your ownership |
-| Javier    | Your ownership |
-| Rong Kang | Your ownership |
-| Zhouxuan  | Your ownership |
+| Role/Name        | **Cai Zhouxuan**                      | **Ng Zhe, Javier**      | **Wong Rong Kang**                     | **Toh Jun Yeen, Ryan**        |
+| ---------------- | ------------------------------------- | ----------------------- | -------------------------------------- | ----------------------------- |
+| User Service     | User Authentication, Admin Management | User Profile Management |                                        | Frontend                      |
+| Supplier Service |                                       |                         | Supplier CRUD                          | Frontend                      |
+| Errand Service   |                                       | Errand CRUD             | Errand Courier Lifecycle, Kafka Events | Frontend                      |
+| Credit Service   | Backend, Frontend                     |                         |                                        |                               |
+| Misc             | Kafka Event Publishers, CD, IaC       | CI, Load Testing, Docs  | Errand Notification                    | Kubernetes, UI Contracts, IaC |
+| N2H              | AWS Deployment, Kubernetes            | Grafana Load Testing    | Credit Estimation                      | Interactive Map               |
 
 ---
 
@@ -46,111 +48,242 @@ microservice (`user-service/`, `supplier-service/`, `errand-service/`,
 
 ---
 
-## AWS deployment
+## Deployment
+
+### AWS deployment
 
 From the repository root, run `AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash deploy/deploy.sh relay`. The script guides SSO login, provisions the stacks, deploys the application, and prints its HTTPS URL. See [the deployment guide](deploy/README.md) for prerequisites, redeployment, pause, and teardown.
 
 ---
 
-## Local development
+### Local deployment and development
 
-Run these commands from the repository root using Linux Node/npm in WSL. If
-`npm` resolves to the Windows installation, first run `source ~/.nvm/nvm.sh`.
-Create `.env.development` with the local Floci settings before starting an
-environment.
+Choose one startup path only.
 
-| Target | Start | Application | Floci API | Stop |
-| --- | --- | --- | --- | --- |
-| Docker Compose | `npm run up:compose` | http://localhost:8080 | http://localhost:4566 | `npm run down:compose` |
-| Local Floci EKS | `npm run up:eks` | CloudFront URL printed by startup (`https://<id>.cloudfront.localhost.floci.io`) | https://localhost:4567 | `npm run down:eks` |
-| Local source processes | `npm run dev` | http://localhost:8080 | http://localhost:4566 | Ctrl+C, then `npm run down:compose` |
+Run commands from the repository root with Docker running and Docker Compose available. 
+Use Node.js 24 and run `npm ci` once.
+Review the local settings in `.env.development` before starting. 
 
-The startup commands provision local Cognito, S3, and four RDS instances.
-Local EKS also pushes application images to Floci ECR and deploys the shared
-CloudFront template in front of an internal HTTP ALB. Compose
-runs the application as Docker services; EKS runs it as Kubernetes workloads in
-Floci's local k3s cluster. The two full deployments can run together, but require
-substantial Docker memory. `docker compose up` alone cannot discover the
-Floci-generated database and Cognito settings; use `npm run up:compose`.
-`npm run dev` starts its Compose dependencies, then runs frontend and backend
-processes from source. It shares ports with the full Compose application. The source-process target also starts credit estimation on port 3005 and errand notifications on port 3010, using Floci MSK and RDS endpoints from the generated environment file.
+On Windows, use WSL with Linux Node/npm (`source ~/.nvm/nvm.sh` if needed).
 
-The host serves all four microfrontends on the application origin through
-`/remotes/supplier/`, `/remotes/user/`, `/remotes/errand/`, and
-`/remotes/credit/`. For the local EKS cluster, inspect pods with
-`kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods`.
+| Path | Application | Floci API | Best for |
+| --- | --- | --- | --- |
+| Simulated EKS with Floci | HTTPS CloudFront URL printed by startup | https://localhost:4567 | Kubernetes deployment and pod lifecycle checks |
+| Docker Compose | http://localhost:8080 | http://localhost:4566 | Running the complete application in containers |
+| Source development | http://localhost:8080 | http://localhost:4566 | Editing frontend and backend code locally |
 
-> Note: If a clean build is failing due to a ECONNRESET error, try limiting the number of concurrent builds (e.g. 1 in the example below).
-> COMPOSE_PARALLEL_LIMIT=1 npm run up:compose -- --no-cache
+#### Option 1: Simulated EKS deployment using Floci
 
-### Local HTTPS certificate
-
-`npm run up:eks` writes the current local CA certificate to
-`floci/eks/.floci-ca.pem`. Import that file into your operating system or
-browser's **Trusted Root Certification Authorities** store, then restart the
-browser. This trusts requests to the Floci CloudFront hostname printed by
-`npm run up:eks` and to `https://localhost:4567`; accepting a one-page browser exception does not
-cover all application requests. The first run needs this import once. The
-`relay-floci-eks-ca` Docker volume preserves **only Floci's CA and server
-certificate** across `npm run down:eks` and later `npm run up:eks`; application,
-Kubernetes, and database state is still removed. Keep the CA volume and its
-private key local. To intentionally rotate the CA, run
-`docker volume rm relay-floci-eks-ca` after `npm run down:eks`, then run
-`npm run up:eks` and trust the new `.floci-ca.pem`.
-
-### Optional local views
-
-Start a view only after its target environment is running. Replace `user` with
-`kafka`, `errand`, or `credit`; local EKS also supports `headlamp`. Use `all`
-to start every view available for that environment.
-
-| View | Compose URL | Local EKS URL |
-| --- | --- | --- |
-| Kafka UI | http://localhost:8081 | http://localhost:9081 |
-| User Prisma Studio | http://localhost:5555 | http://localhost:6555 |
-| Errand Prisma Studio | http://localhost:5556 | http://localhost:6556 |
-| Credit Prisma Studio | http://localhost:5557 | http://localhost:6557 |
-| Headlamp Kubernetes UI | N/A | http://localhost:9082 |
+Requires `kubectl` in addition to the common prerequisites.
 
 ```bash
-npm run views:compose -- user
-npm run views:compose:stop -- user
-npm run views:eks -- user
-npm run views:eks:stop -- user
+npm run up:eks
 ```
 
-To inspect and manage local EKS pods in [Headlamp](https://headlamp.dev/docs/latest/),
-start its in-cluster view and open http://localhost:9082:
+This starts a separate Floci instance and provisions simulated Cognito, S3,
+four RDS databases, MSK, and an EKS cluster backed by local k3s. It builds and
+pushes application images to Floci ECR, configures Kubernetes secrets and AWS
+service-account access, initializes Kafka topics and database schemas, deploys
+the application and autoscaling, and sets up CloudFront/API Gateway/ALB routing.
+Startup waits for the workloads and application health check.
+
+Import `floci/eks/.floci-ca.pem` into your browser or OS trusted root store
+once, restart the browser, and open the HTTPS CloudFront URL printed by the
+script. The CA is retained across teardown and startup.
 
 ```bash
-npm run views:eks -- headlamp
+# Inspect the local cluster
+kubectl --kubeconfig floci/eks/.kubeconfig -n relay get pods
+
+# Stop and remove this environment, including its databases
+npm run down:eks
 ```
 
-The command prints an eight-hour login token. Paste it into Headlamp's login
-screen and select the `relay` namespace to inspect workloads, logs, and pod
-status or delete a pod to test replacement. To get a new token after it
-expires, run:
+#### Option 2: Docker Compose deployment
 
 ```bash
-kubectl --kubeconfig floci/eks/.kubeconfig -n relay create token relay-headlamp-admin --duration=8h
+npm run up:compose
 ```
 
-The token grants cluster-admin access to this local cluster. Headlamp is
-forwarded only to localhost and is not exposed through the application ingress.
-`npm run views:eks -- all` includes it; stop it with
-`npm run views:eks:stop -- headlamp`.
+This starts Floci and provisions simulated Cognito, S3, four RDS databases,
+and MSK. It discovers their generated settings, writes
+`floci/docker/.generated.env`, and starts the complete application as Compose
+services, including database initialization, Kafka topics, and event publishers.
+Open http://localhost:8080. This path does not start Kubernetes.
 
-For the deployed AWS cluster, use `npm run headlamp -- start` after selecting
-its Kubernetes context. This opens a read-only dashboard for autoscaling checks.
-See the [AWS Headlamp guide](deploy/README.md#observe-autoscaling-in-headlamp)
-for login, metrics checks, and cleanup.
+```bash
+# Stop and remove this environment, including its databases
+npm run down:compose
+```
 
-Both teardown commands stop their optional views and remove Floci-managed RDS
-containers and database volumes. EKS teardown also removes the local k3s node
-and generated kubeconfig. The CA volume is the sole retained local resource.
-See [floci/README.md](floci/README.md) for infrastructure details.
+Use the npm launcher rather than plain `docker compose up`: the launcher
+supplies the database, Cognito, S3, and Kafka settings generated by Floci.
+
+#### Option 3: Source development with npm run dev
+
+```bash
+# If the full Compose application is running, stop it first:
+# npm run down:compose  # removes its local database data
+npm run dev
+```
+
+This prepares Compose infrastructure, then runs the host and four frontend
+remotes with Vite and the backend APIs, notification service, and two event
+publishers from source. Authentication stays in a Compose container. It uses
+Floci's generated database, Kafka, Cognito, and S3 settings and prepares the
+database schemas automatically. Open http://localhost:8080.
+
+`npm run dev` is a complete startup command; you do not need to run
+`up:compose` or `up:eks` first. It shares ports with the full Compose app, so
+stop that app before switching. To stop source development, press Ctrl+C;
+run `npm run down:compose` afterward to remove the remaining infrastructure
+and database data.
+
+See the [local environment guide](floci/README.md) for script details,
+rebuild options, optional Kafka/Prisma/Headlamp views, certificate rotation,
+and differences between Floci and AWS.
 
 ---
+## Deployment Flow
+
+Local Compose and AWS deployment share the same application Dockerfiles.
+Locally, Docker Compose runs the containers and Floci simulates AWS services.
+On AWS, CloudFormation provisions the infrastructure, ECR stores application
+images, and Kubernetes runs them on EKS.
+
+### Local Docker Compose
+
+```mermaid
+flowchart TD
+    A["npm run up:compose"] --> B["package.json → floci/docker/up.sh"]
+    B --> C["compose.yaml + compose.override.yaml"]
+    C --> D["floci/docker/Dockerfile"]
+    D --> E["floci/common/init.sh → infra templates"]
+    E --> F["Simulated Cognito, S3, RDS and MSK"]
+    F --> G["floci/docker/.generated.env"]
+    G --> H["Compose → application Dockerfiles"]
+    H --> I["Topic/schema initialization → application containers"]
+    I --> J["localhost:8080 → host Nginx → frontends/APIs"]
+```
+
+1. **Launch and load the Compose files.** The `up:compose` script in
+   [package.json](package.json) calls [floci/docker/up.sh](floci/docker/up.sh).
+   Compose automatically combines [compose.yaml](compose.yaml), which defines
+   application builds, configuration, health checks and dependencies, with
+   [compose.override.yaml](compose.override.yaml), which adds Floci, local
+   endpoints, development ports and optional inspection tools.
+
+2. **Start Floci and provision simulated AWS resources.**
+   [floci/docker/Dockerfile](floci/docker/Dockerfile) installs
+   [floci/common/init.sh](floci/common/init.sh) as a startup hook. The hook
+   applies [infra/relay-auth.yaml](infra/relay-auth.yaml) for Cognito,
+   [infra/relay-storage.yaml](infra/relay-storage.yaml) for profile-image storage,
+   and [infra/relay-floci-db.yaml](infra/relay-floci-db.yaml) for four PostgreSQL
+   databases and supporting resources. It also creates simulated MSK through
+   AWS API calls and bootstraps the local admin account. Floci backs its RDS
+   and MSK emulation with local database containers and a Redpanda sidecar.
+
+3. **Discover generated settings.** The launcher waits for Floci initialization,
+   then reads the database credentials, Cognito IDs, bucket name and Kafka
+   endpoints into `floci/docker/.generated.env`. Compose interpolation loads
+   optional `.env`, then `.env.development`, then `.generated.env`; later files
+   override earlier values. This discovery is why startup uses the npm launcher
+   instead of plain `docker compose up`.
+
+4. **Build images and initialize application data.** Compose follows each
+   service's Dockerfile. For example, [host/Dockerfile](host/Dockerfile) builds
+   the host frontend and packages it in Nginx, while
+   [user-service/backend/Dockerfile](user-service/backend/Dockerfile) builds the
+   User API and its shared packages. The `kafka-init` service runs
+   [deploy/scripts/kafka-topics.mjs](deploy/scripts/kafka-topics.mjs) from the
+   Credit API image. `supplier-schema` initializes Supplier's database, and
+   the User, Errand and Credit API startup commands run Prisma migrations.
+   Dependency conditions and health checks coordinate container startup.
+
+5. **Serve the application.** At http://localhost:8080,
+   [host/config/nginx.conf](host/config/nginx.conf) serves the host frontend
+   and proxies `/remotes/*` and `/api/*` to the appropriate Compose services.
+   Backend services use Compose service names to communicate with each other.
+
+### AWS and Kubernetes
+
+Start from the repository root:
+
+```bash
+AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash deploy/deploy.sh relay
+```
+
+```mermaid
+flowchart TD
+    A["deploy/deploy.sh"] --> B["Auth/storage CloudFormation stacks"]
+    B --> C["deploy/relay.aws.env"]
+    C --> D["deploy/scripts/deploy-eks.sh"]
+    D --> E["relay-eks.yaml → VPC, EKS, RDS, MSK, ECR"]
+    E --> F["relay-aws-access.yaml → IAM roles"]
+    F --> G["compose.yaml → application Dockerfiles → ECR images"]
+    G --> H["Kubernetes configuration → topic and migration Jobs"]
+    H --> I["Deployments, Services, autoscaling and Ingress"]
+    I --> J["Internal ALB"]
+    J --> K["relay-gateway.yaml → API Gateway and VPC Link"]
+    K --> L["relay-cloudfront.yaml → public HTTPS URL"]
+```
+
+| Stage | Files and responsibility |
+| --- | --- |
+| Entry and initial configuration | [deploy/deploy.sh](deploy/deploy.sh) checks AWS access, applies the shared auth and storage templates, records their outputs in the ignored `deploy/relay.aws.env`, and bootstraps the first admin when needed. It then calls the EKS deployer. |
+| AWS foundation | [deploy/scripts/deploy-eks.sh](deploy/scripts/deploy-eks.sh) applies [infra/relay-eks.yaml](infra/relay-eks.yaml), creating networking, EKS Auto Mode, four private RDS databases, three-broker MSK, ECR repositories and Metrics Server. |
+| Application AWS permissions | [infra/relay-aws-access.yaml](infra/relay-aws-access.yaml) creates IAM roles linked to Kubernetes service accounts: User API accesses S3, and Auth API performs Cognito administration. |
+| Image build and publishing | The deployer explicitly uses only [compose.yaml](compose.yaml) to build application images, excluding the local override. It pushes changed images to ECR and uses image digests in Kubernetes. Compose supplies build definitions; Kubernetes runs the AWS application. |
+| Runtime configuration | [k8s/base/configmap.yaml](k8s/base/configmap.yaml) supplies common settings. The deployer reads AWS outputs and Secrets Manager credentials to generate Kubernetes Secrets, then fills IAM role placeholders in [k8s/base/serviceaccounts.yaml](k8s/base/serviceaccounts.yaml). |
+| Initialization | [k8s/base/kafka-topics.yaml](k8s/base/kafka-topics.yaml) creates event and dead-letter topics; [k8s/base/migrations.yaml](k8s/base/migrations.yaml) runs database initialization Jobs. The deployer waits for completion before applying workloads and reuses completed Jobs when their inputs match. |
+| Application execution | [k8s/base/workloads.yaml](k8s/base/workloads.yaml) defines Deployments, internal Services, configuration references and health probes. [k8s/base/autoscaling.yaml](k8s/base/autoscaling.yaml) supplies resource-based scaling; [k8s/base/keda-credit.yaml](k8s/base/keda-credit.yaml) also scales Credit using Kafka consumer lag. |
+| Public access | [k8s/base/ingress.yaml](k8s/base/ingress.yaml) configures an internal ALB. Once its address exists, [infra/relay-gateway.yaml](infra/relay-gateway.yaml) creates API Gateway and its VPC Link, followed by [infra/relay-cloudfront.yaml](infra/relay-cloudfront.yaml) for public HTTPS. |
+
+The browser request path is:
+
+```mermaid
+flowchart LR
+    A["Browser"] -->|HTTPS| B["CloudFront"]
+    B -->|HTTPS| C["API Gateway"]
+    C --> D["VPC Link"]
+    D -->|HTTP| E["Internal ALB"]
+    E -->|HTTP| F["Application pods"]
+```
+
+The ALB routes frontend and public API paths directly to their Kubernetes
+Services; API requests bypass host Nginx. The deployer updates authentication's
+public origin to the CloudFront URL, waits for application rollouts, checks the
+public `/healthz` endpoint and prints the HTTPS URL. This endpoint checks the
+host; application workflows still need separate verification.
+
+Production service tokens are generated in Secrets Manager and injected through
+`relay-service-tokens`; local simulated EKS creates that Secret with dummy values.
+Optional production timeout, partition count and timezone overrides are read from
+`deploy/relay.aws.env`. See [production configuration](deploy/README.md#production-configuration)
+for the old/new flow comparison and portable verification command.
+
+The production script renders image and role placeholders and applies the
+manifests in order. It does not deploy the application through a Helm chart or
+by applying `k8s/base/kustomization.yaml` directly.
+
+### How the deployment targets differ
+
+| Concern | Local Docker Compose | AWS Kubernetes |
+| --- | --- | --- |
+| Container execution | Compose services on your machine | Kubernetes Deployments and Jobs on EKS |
+| AWS services | Floci emulation | Real Cognito, S3, RDS and MSK |
+| Configuration | Local env files and generated Floci endpoints | ConfigMap, generated Secrets and IAM roles |
+| Database initialization | Compose schema service and API startup commands | One-off migration Jobs before application rollout |
+| Browser routing | HTTP through host Nginx | HTTPS through CloudFront, API Gateway and internal ALB |
+| Event broker | One plaintext Redpanda broker managed by Floci | Three MSK brokers using TLS and SCRAM authentication |
+
+`npm run up:eks` is a separate local Kubernetes simulation using Floci and k3s.
+It exercises Kubernetes deployment locally; it does not provision real AWS
+resources. See the [local environment guide](floci/README.md) and
+[AWS deployment guide](deploy/README.md) for operational details.
+
+---
+
 ## Local credit-allocation flow
 
 Docker Compose provisions Floci MSK emulation, backed by a Redpanda sidecar.

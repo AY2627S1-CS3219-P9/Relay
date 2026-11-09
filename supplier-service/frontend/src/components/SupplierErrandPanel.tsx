@@ -4,7 +4,7 @@
 // Author review: I validated correctness and edited for style.
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import type { ErrandApi, SupplierErrandSummary } from '@relay/contracts'
+import type { SupplierRemoteProps, SupplierErrandSummary } from '@relay/contracts'
 import {
   ErrorMessage,
   GlassCard,
@@ -32,7 +32,7 @@ export function ErrandDetailCard({
   style,
 }: {
   errand: SupplierErrandSummary
-  api?: ErrandApi
+  api: SupplierRemoteProps['errandApi']
   onBack: () => void
   onAccepted?: () => void
   style?: CSSProperties
@@ -113,7 +113,7 @@ export function SupplierErrandPanel({
   onSelect,
 }: {
   supplierId: string
-  api?: ErrandApi
+  api: SupplierRemoteProps['errandApi']
   onSelect: (errand: SupplierErrandSummary) => void
 }) {
   const [errands, setErrands] = useState<SupplierErrandSummary[]>([])

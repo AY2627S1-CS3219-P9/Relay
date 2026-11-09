@@ -7,7 +7,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapViewport, Supplier } from '@relay/contracts'
-import type { BubbleAnchor } from '@relay/ui'
+import { groupOverlappingPoints, type BubbleAnchor } from '@relay/ui'
 
 export type MapPoint = { lat: number; lng: number }
 
@@ -19,7 +19,6 @@ const supplierIcon = L.divIcon({
 })
 
 const markerSize = 36
-const overlapRadius = 24
 
 export function getSupplierAnchor(map: L.Map, supplier: Supplier): BubbleAnchor {
   const point = map.latLngToContainerPoint([supplier.location.lat, supplier.location.lng])
@@ -113,37 +112,13 @@ function SupplierMarkers({
     zoomend: () => setZoomRevision((revision) => revision + 1),
   })
 
-  const clusters = useMemo(() => {
-    const remaining = new Set(suppliers.map((supplier) => supplier.id))
-    const byId = new Map(suppliers.map((supplier) => [supplier.id, supplier]))
-    const result: Supplier[][] = []
-
-    while (remaining.size > 0) {
-      const firstId = remaining.values().next().value as string
-      const group = [byId.get(firstId)!]
-      remaining.delete(firstId)
-
-      for (let memberIndex = 0; memberIndex < group.length; memberIndex += 1) {
-        const member = group[memberIndex]
-        const memberPoint = map.latLngToContainerPoint([member.location.lat, member.location.lng])
-        for (const candidateId of [...remaining]) {
-          const candidate = byId.get(candidateId)!
-          const candidatePoint = map.latLngToContainerPoint([
-            candidate.location.lat,
-            candidate.location.lng,
-          ])
-          if (memberPoint.distanceTo(candidatePoint) <= overlapRadius) {
-            group.push(candidate)
-            remaining.delete(candidateId)
-          }
-        }
-      }
-
-      result.push(group)
-    }
-
-    return result
-  }, [map, suppliers, zoomRevision])
+  const clusters = useMemo(
+    () =>
+      groupOverlappingPoints(suppliers, (supplier) =>
+        map.latLngToContainerPoint([supplier.location.lat, supplier.location.lng]),
+      ),
+    [map, suppliers, zoomRevision],
+  )
 
   function selectCluster(cluster: Supplier[], event: L.LeafletMouseEvent) {
     event.originalEvent.stopPropagation()
@@ -174,8 +149,8 @@ function SupplierMarkers({
         }
 
         const clusterIcon = L.divIcon({
-          className: 'relay-leaflet-icon supplier-cluster-icon',
-          html: `<span class="supplier-cluster-marker"><span>${cluster.length}</span></span>`,
+          className: 'relay-leaflet-icon relay-cluster-icon',
+          html: `<span class="relay-cluster-marker"><span>${cluster.length}</span></span>`,
           iconSize: [42, 42],
           iconAnchor: [21, 42],
         })

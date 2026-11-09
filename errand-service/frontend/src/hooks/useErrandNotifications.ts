@@ -3,106 +3,43 @@
 // Scope: Generated initial implementation, debugged implementation.
 // Author review: I validated correctness and edited for style.
 
-import { useCallback, useEffect, useRef } from 'react'
-import { ErrandNotificationTypes, type Errand, type ErrandNotification } from '@relay/contracts'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+import { ErrandNotificationTypes, type ErrandNotification } from '@relay/contracts'
+import { isErrandNotification } from '../notificationStore'
 
-/**
- * Subscribe to SSE notifications for errand status changes
- * @param authenticatedSubject - Current user's sub for authentication
- * @param errands - Current errands to subscribe to
- * @param onErrandUpdate - Callback when errand notification received
- * @param refetchErrands - Function to refetch errand list
- * @param refetchErrandDetails - Function to refetch a specific errand
- */
-export function useErrandNotifications<T extends { id: string; status: string }>(
+/** Keep one authenticated stream while using the latest view callbacks. */
+export function useErrandNotifications(
   authenticatedSubject: string | undefined,
-  errands: T[],
   onErrandUpdate: (event: ErrandNotification) => void,
   refetchErrands: () => Promise<void>,
   refetchErrandDetails: (errandId: string) => Promise<void>,
 ) {
-  const sourceRef = useRef<EventSource | null>(null)
-  const connectedRef = useRef(false)
-  const eventIdCacheRef = useRef<string[]>([])
-  const CACHE_SIZE = 100
+  const callbacks = useRef({ onErrandUpdate, refetchErrands, refetchErrandDetails })
+  useLayoutEffect(() => {
+    callbacks.current = { onErrandUpdate, refetchErrands, refetchErrandDetails }
+  }, [onErrandUpdate, refetchErrands, refetchErrandDetails])
 
   useEffect(() => {
-    // Only establish connection once, when errands become available and user is authenticated
-    if (connectedRef.current || errands.length === 0 || !authenticatedSubject) {
-      return
-    }
-
-    // Mark as connected before creating connection to prevent race conditions
-    connectedRef.current = true
-
-    // Create new connection
+    if (!authenticatedSubject) return
+    const seen = new Set<string>()
     const source = new EventSource('/api/notifications/stream')
-
     source.onopen = () => {
-      console.log('SSE connection opened for errand notifications')
-      // Refresh relevant lists AND any open errand details on connection/reconnection
-      void refetchErrands()
-      // Refetch details for open errands displayed in UI
-      const openErrands = document.querySelectorAll('[data-errand-id]')
-      for (const el of openErrands) {
-        const errandId = el.getAttribute('data-errand-id')
-        if (errandId) void refetchErrandDetails(errandId)
-      }
+      void callbacks.current.refetchErrands()
     }
-
-    source.onmessage = (e) => {
-      if (e.data.startsWith(':')) return // Skip SSE comments
-
+    source.onmessage = (message) => {
       try {
-        const event: ErrandNotification = JSON.parse(e.data)
-
-        // Check for duplicate using eventId
-        if (eventIdCacheRef.current.includes(event.eventId)) {
-          return // Duplicate - ignore
+        const event: unknown = JSON.parse(message.data)
+        if (!isErrandNotification(event) || seen.has(event.eventId)) return
+        seen.add(event.eventId)
+        callbacks.current.onErrandUpdate(event)
+        void callbacks.current.refetchErrands()
+        if (event.type === ErrandNotificationTypes.ERRAND_STATUS_CHANGED) {
+          void callbacks.current.refetchErrandDetails(event.errandId)
         }
-
-        // Add to cache (keep bounded)
-        eventIdCacheRef.current.push(event.eventId)
-        if (eventIdCacheRef.current.length > CACHE_SIZE) {
-          eventIdCacheRef.current.shift()
-        }
-
-        // Notify about the update
-        onErrandUpdate(event)
-
-        // Handle by event type
-        if (event.type === ErrandNotificationTypes.ERRAND_CREATED) {
-          // New errand created - refresh lists (may be relevant)
-          void refetchErrands()
-        } else if (event.type === ErrandNotificationTypes.ERRAND_STATUS_CHANGED) {
-          // Errand status changed - refresh lists AND affected open details
-          void refetchErrands()
-          void refetchErrandDetails(event.errandId)
-        } else if (event.type === ErrandNotificationTypes.ERRAND_DELETED) {
-          // Errand deleted - refresh lists AND remove from UI
-          void refetchErrands()
-          // Remove from UI cache if present
-          const el = document.querySelector(`[data-errand-id="${event.errandId}"]`)
-          if (el) el.remove()
-        }
-      } catch (err) {
-        console.error('Failed to parse SSE event:', err)
+      } catch {
+        // Ignore comments and malformed payloads; EventSource handles reconnection.
       }
     }
-
-    source.onerror = (err) => {
-      console.error('SSE connection error:', err)
-      // EventSource manages automatic reconnection with browser-controlled backoff
-    }
-
-    sourceRef.current = source
-
-    return () => {
-      source.close()
-      connectedRef.current = false
-      eventIdCacheRef.current = []
-    }
-  }, [authenticatedSubject, errands.length, refetchErrands, refetchErrandDetails, onErrandUpdate])
-
-  return sourceRef.current
+    return () => source.close()
+  }, [authenticatedSubject])
 }

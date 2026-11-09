@@ -1,6 +1,11 @@
 # AI-assisted files
 
 - `errand-service/frontend/src`
+
+Timestamp: 
+Prompt:
+Usage Scenario:
+
 - `errand-service/frontend/src/components`
 - `errand-service/frontend/src/hooks`
 - `packages/ui/src`

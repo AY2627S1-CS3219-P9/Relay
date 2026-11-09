@@ -87,7 +87,7 @@ delete_ingress_and_wait() {
 capture_db_ids() {
   local name
   for name in User Errand Credit Supplier; do
-    printf -v "DB_${name^^}_ID" '%s' "$(resource_id "${name}Database")"
+    printf -v "DB_$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')_ID" '%s' "$(resource_id "${name}Database")"
   done
 }
 latest_snapshot() {
@@ -109,8 +109,8 @@ write_pending_state() {
     printf 'PAUSE_ACCOUNT_ID=%q\nPAUSE_REGION=%q\nPAUSE_STACK=%q\n' "$account_id" "$aws_region" "$stack_name"
     printf 'S3_BUCKET=%q\nSNAPSHOT_HISTORY=%q\n' "${S3_BUCKET:-}" "${SNAPSHOT_HISTORY:-}"
     for name in User Errand Credit Supplier; do
-      id_var="DB_${name^^}_ID"
-      printf '%s_DATABASE_ID=%q\n' "${name^^}" "${!id_var}"
+      id_var="DB_$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')_ID"
+      printf '%s_DATABASE_ID=%q\n' "$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')" "${!id_var}"
     done
   } > "$tmp"
   mv -f -- "$tmp" "$state_file"
@@ -123,10 +123,10 @@ write_pause_state() {
     printf 'PAUSE_ACCOUNT_ID=%q\nPAUSE_REGION=%q\nPAUSE_STACK=%q\n' "$account_id" "$aws_region" "$stack_name"
     printf 'S3_BUCKET=%q\nSNAPSHOT_HISTORY=%q\n' "${S3_BUCKET:-}" "${SNAPSHOT_HISTORY:-}"
     for name in User Errand Credit Supplier; do
-      local id_var="DB_${name^^}_ID"
-      printf '%s_DATABASE_ID=%q\n' "${name^^}" "${!id_var}"
+      local id_var="DB_$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')_ID"
+      printf '%s_DATABASE_ID=%q\n' "$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')" "${!id_var}"
       snapshot="$(latest_snapshot "${!id_var}")"
-      printf '%s_DATABASE_SNAPSHOT_ID=%q\n' "${name^^}" "$snapshot"
+      printf '%s_DATABASE_SNAPSHOT_ID=%q\n' "$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')" "$snapshot"
     done
   } > "$tmp"
   mv -f -- "$tmp" "$state_file"

@@ -852,6 +852,7 @@ export function RelayFormSurface({
   footer,
   onClose,
   className = '',
+  headerVariant = 'default',
   as = 'section',
   style,
 }: {
@@ -861,6 +862,7 @@ export function RelayFormSurface({
   footer?: ReactNode
   onClose?: () => void
   className?: string
+  headerVariant?: 'default' | 'card'
   as?: 'div' | 'section' | 'aside'
   style?: CSSProperties
 }) {
@@ -870,15 +872,18 @@ export function RelayFormSurface({
       style={style}
       className={`relay-form-surface relay-glass-surface glass-card${className ? ` ${className}` : ''}`}
     >
-      <header className="relay-form-surface-header">
+      <header
+        className={`relay-form-surface-header${headerVariant === 'card' ? ' relay-card-header' : ''}`}
+      >
         <div>
           <h2>{title}</h2>
-          {description && <p>{description}</p>}
+          {description && headerVariant === 'default' && <p>{description}</p>}
         </div>
-        {onClose && (
-          <CloseButton onClick={onClose} />
-        )}
+        {onClose && <CloseButton onClick={onClose} />}
       </header>
+      {description && headerVariant === 'card' && (
+        <p className="relay-card-description">{description}</p>
+      )}
       <div className="relay-form-surface-body">{children}</div>
       {footer && <footer className="relay-form-surface-footer">{footer}</footer>}
     </Element>
