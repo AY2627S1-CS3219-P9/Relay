@@ -12,6 +12,9 @@ const cleanup = (__ENV.LOAD_TEST_CLEANUP ?? 'true') !== 'false'
 const summaryPath = __ENV.K6_SUMMARY_PATH ?? 'load-tests/results/errand-core-summary.json'
 const cloudProjectId = Number(__ENV.K6_CLOUD_PROJECT_ID ?? 0)
 const acceptanceWinners = new Counter('acceptance_winners')
+const createScenarioStarted = new Counter('create_scenario_started')
+const acceptanceRaceStarted = new Counter('acceptance_race_started')
+const creditGuardStarted = new Counter('credit_guard_started')
 const settlementsComplete = new Rate('settlements_complete')
 
 // 404/409/422 are intentional outcomes in the race and credit-guard tests.
@@ -26,6 +29,9 @@ export const options = {
   },
   thresholds: {
     checks: ['rate==1'],
+    create_scenario_started: ['count>0'],
+    acceptance_race_started: ['count>0'],
+    credit_guard_started: ['count>0'],
     acceptance_winners: ['count==1'],
     settlements_complete: ['rate==1'],
   },
@@ -179,6 +185,7 @@ export async function setup() {
 }
 
 export function createScenario(data) {
+  createScenarioStarted.add(1)
   const suffix = `create-${Date.now()}`
   const before = balance(data.requester, 'requester-create-before')
   const created = create(data.requester, data.supplier, suffix)
@@ -198,6 +205,7 @@ export function createScenario(data) {
 }
 
 export function acceptanceRaceScenario(data) {
+  acceptanceRaceStarted.add(1)
   const suffix = `race-${Date.now()}`
   const created = create(data.requester, data.supplier, suffix)
   expect(created, 'race errand is created', (res) => res.status === 201)
@@ -232,6 +240,7 @@ export function acceptanceRaceScenario(data) {
 }
 
 export function creditGuardScenario(data) {
+  creditGuardStarted.add(1)
   const suffix = `credit-${Date.now()}`
   const before = balance(data.requester, 'requester-credit-guard-before')
   const failed = create(data.requester, data.supplier, `${suffix}-insufficient`, 1_000_000_000)

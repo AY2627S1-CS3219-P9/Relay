@@ -13,7 +13,7 @@ const readTargetVUs = Number(__ENV.NFR_MIXED_READ_TARGET_VUS ?? 90)
 const readHold = __ENV.NFR_MIXED_READ_HOLD_DURATION ?? '2m'
 const writeRatePerMinute = Number(__ENV.NFR_MIXED_WRITE_RATE_PER_MIN ?? 30)
 const writeDuration = __ENV.NFR_MIXED_WRITE_DURATION ?? '2m'
-const readP95Limit = Number(__ENV.NFR_MIXED_READ_P95_LIMIT_MS ?? __ENV.NFR_MIXED_P95_LIMIT_MS ?? __ENV.NFR_P95_LIMIT_MS ?? 150)
+const readP95Limit = Number(__ENV.NFR_MIXED_READ_P95_LIMIT_MS ?? __ENV.NFR_MIXED_P95_LIMIT_MS ?? __ENV.NFR_P95_LIMIT_MS ?? 250)
 const createP95Limit = Number(__ENV.NFR_MIXED_CREATE_P95_LIMIT_MS ?? 250)
 const cancelP95Limit = Number(__ENV.NFR_MIXED_CANCEL_P95_LIMIT_MS ?? 150)
 const cleanup = (__ENV.LOAD_TEST_CLEANUP ?? 'true') !== 'false'

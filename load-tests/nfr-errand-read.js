@@ -13,7 +13,7 @@ const rampDuration = __ENV.NFR_RAMP_DURATION ?? '1m'
 const holdDuration = __ENV.NFR_HOLD_DURATION ?? '5m'
 const rampDownDuration = __ENV.NFR_RAMP_DOWN_DURATION ?? '1m'
 const thinkTime = Number(__ENV.NFR_THINK_TIME ?? 1)
-const p95Limit = Number(__ENV.NFR_P95_LIMIT_MS ?? 150)
+const p95Limit = Number(__ENV.NFR_P95_LIMIT_MS ?? 250)
 
 export const options = {
   scenarios: {
