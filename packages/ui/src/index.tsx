@@ -85,3 +85,4 @@ export function ServiceRemotePage({
 
 export { MapSelectionList } from './MapSelectionList'
 export { groupOverlappingPoints } from './map-overlap'
+export { NotificationCard } from './NotificationCard'
