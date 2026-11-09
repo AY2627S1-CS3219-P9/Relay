@@ -54,6 +54,7 @@ export function CreateErrandCard({
   errandApi,
   supplierApi,
   authenticatedSubject,
+  availableCredit,
 }: {
   initialSupplierId?: string
   onClose: () => void
@@ -61,6 +62,7 @@ export function CreateErrandCard({
   errandApi?: ErrandApi
   supplierApi?: SupplierApi
   authenticatedSubject: string
+  availableCredit?: number
 }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
@@ -88,6 +90,11 @@ export function CreateErrandCard({
   })
 
   const handleEstimateCredits = async () => {
+    if (availableCredit === undefined) {
+      setErrorMessage('Your credit balance is still loading. Try again shortly.')
+      return
+    }
+
     // Validate required fields
     if (!form.name.trim()) {
       setErrorMessage('Please fill in the errand name before estimating.')
@@ -120,6 +127,7 @@ export function CreateErrandCard({
           startAt: form.startAt,
           expiresAt: form.expiresAt,
           userId: authenticatedSubject,
+          availableCredit,
         } satisfies EstimateCreditRequest),
       })
 
@@ -143,11 +151,14 @@ export function CreateErrandCard({
         return
       }
 
+      const suggestedCredits = Math.round((data.minCredits + data.maxCredits) / 2)
       setEstimate(data)
       setEstimateStatus('success')
+      if (suggestedCredits > availableCredit) return
+
       setForm((current) => ({
         ...current,
-        creditAmount: String(Math.round((data.minCredits + data.maxCredits) / 2)),
+        creditAmount: String(suggestedCredits),
       }))
     } catch (error) {
       setErrorMessage('Error encountered while estimating credits.')
@@ -431,6 +442,15 @@ export function CreateErrandCard({
                 </div>
               </div>
             )}
+            {estimateStatus === 'success' &&
+              estimate &&
+              availableCredit !== undefined &&
+              availableCredit < estimate.minCredits && (
+                <div className="errand-estimate-pill errand-estimate-pill-balance" role="status">
+                  You have {Math.floor(availableCredit)} credits; the suggested minimum is{' '}
+                  {estimate.minCredits}.
+                </div>
+              )}
             {estimateStatus === 'rate-limited' && (
               <div className="errand-estimate-pill errand-estimate-pill-rate-limited" role="status">
                 Estimation is busy. Try again shortly.
@@ -458,9 +478,14 @@ export function CreateErrandCard({
                   isEstimating ||
                   !form.name.trim() ||
                   !form.description.trim() ||
-                  form.serviceType === ''
+                  form.serviceType === '' ||
+                  availableCredit === undefined
                 }
-                title="Estimate credits based on errand details"
+                title={
+                  availableCredit === undefined
+                    ? 'Waiting for your credit balance'
+                    : 'Estimate credits based on errand details'
+                }
                 className="relay-icon-button errand-estimate-button"
               >
                 <ClockIcon className="errand-estimate-icon" />

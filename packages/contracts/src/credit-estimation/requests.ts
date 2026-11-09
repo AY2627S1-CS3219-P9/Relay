@@ -9,4 +9,5 @@ export type EstimateCreditRequest = {
   startAt: string
   expiresAt: string
   userId: string
+  availableCredit: number
 }

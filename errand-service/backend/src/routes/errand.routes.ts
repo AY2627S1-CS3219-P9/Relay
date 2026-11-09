@@ -10,7 +10,8 @@ export function createErrandRouter(controller: ErrandController): Router {
   router.post('/', controller.create)
 
   router.post('/estimate-credit', async (req, res) => {
-    const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
+    const { name, description, serviceType, instructions, startAt, expiresAt, availableCredit } =
+      req.body
     const user = requireUser(req)
 
     if (
@@ -20,6 +21,9 @@ export function createErrandRouter(controller: ErrandController): Router {
       typeof instructions !== 'string' ||
       typeof startAt !== 'string' ||
       typeof expiresAt !== 'string' ||
+      typeof availableCredit !== 'number' ||
+      !Number.isFinite(availableCredit) ||
+      availableCredit < 0 ||
       !Object.values(ServiceType).includes(serviceType)
     ) {
       res.status(400).json({
@@ -37,6 +41,7 @@ export function createErrandRouter(controller: ErrandController): Router {
       startAt,
       expiresAt,
       userId: user.sub,
+      availableCredit,
     }
     const response = await new CreditEstimationClient().estimateCredit(request)
     res.json(response)

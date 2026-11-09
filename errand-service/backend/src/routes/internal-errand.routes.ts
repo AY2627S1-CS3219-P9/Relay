@@ -14,7 +14,8 @@ export function createInternalErrandRouter(controller: ErrandController): Router
 
   // Credit estimation endpoint - frontend calls this, which proxies to the estimation service
   router.post('/estimate-credit', async (req, res) => {
-    const { name, description, serviceType, instructions, startAt, expiresAt } = req.body
+    const { name, description, serviceType, instructions, startAt, expiresAt, availableCredit } =
+      req.body
     const user = requireUser(req)
 
     if (
@@ -23,12 +24,15 @@ export function createInternalErrandRouter(controller: ErrandController): Router
       typeof serviceType !== 'number' ||
       typeof instructions !== 'string' ||
       typeof startAt !== 'string' ||
-      typeof expiresAt !== 'string'
+      typeof expiresAt !== 'string' ||
+      typeof availableCredit !== 'number' ||
+      !Number.isFinite(availableCredit) ||
+      availableCredit < 0
     ) {
       res.status(400).json({
         code: 'INVALID_INPUT',
         message:
-          'Invalid request body. Expected name, description, serviceType, instructions, startAt, and expiresAt.',
+          'Invalid request body. Expected name, description, serviceType, instructions, startAt, expiresAt, and a nonnegative availableCredit.',
       })
       return
     }
@@ -49,6 +53,7 @@ export function createInternalErrandRouter(controller: ErrandController): Router
       startAt,
       expiresAt,
       userId: user.sub,
+      availableCredit,
     }
     const response = await creditEstimationClient.estimateCredit(request)
     res.json(response)
