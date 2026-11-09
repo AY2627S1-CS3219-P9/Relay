@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Removed old user auth implementation and used new userAuthMiddleware
+ * Author review: Verified correctness.
+ */
+
 import type { RequestHandler } from 'express'
 import { userAuthMiddleware, type AuthenticatedUser } from '@relay/user-auth-backend-middleware'
 import { ErrandErrors } from '@relay/contracts'

@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for authentication endpoints and token cookies
+ * Author review: Verified logic correctness and correct error codes and messages.
+ */
+
 import type { NextFunction, Request, Response } from 'express'
 import { AuthService } from '../services/auth.service.js'
 import { getEnv } from '../config/env.js'

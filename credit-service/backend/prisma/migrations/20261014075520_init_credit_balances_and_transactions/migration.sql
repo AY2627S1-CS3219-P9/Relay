@@ -1,3 +1,8 @@
+-- AI Assistance Disclosure:
+-- Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-14
+-- Scope: Generated the initial credit balance and transaction schema migration.
+-- Author review: Verified correctness and that it matches schema.prisma
+
 -- CreateEnum
 CREATE TYPE "TransactionType" AS ENUM ('INITIAL_ALLOCATION', 'CREDIT_RESERVE', 'CREDIT_RELEASE', 'CREDIT_TRANSFER', 'USER_DELETION');
 

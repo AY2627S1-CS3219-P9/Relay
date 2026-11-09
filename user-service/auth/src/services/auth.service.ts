@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for Cognito authentication flows
+ * Author review: Verified all mappings to Cognito functions are correct, and error codes and messages are suitable.
+ */
+
 import {
   AdminAddUserToGroupCommand,
   AdminGetUserCommand,

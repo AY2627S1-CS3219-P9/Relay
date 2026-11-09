@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for authentication input validation
+ * Author review: Verified schema correctness according to our requirements.
+ */
+
 import { z } from 'zod'
 import { AuthError } from '../types/auth.types.js'
 const bootstrapAdminEmail = (

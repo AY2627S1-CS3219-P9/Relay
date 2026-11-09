@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated credit HTTP and Kafka workflow integration test cases.
+ * Author review: Verified correctness and edge cases are covered.
+ */
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'

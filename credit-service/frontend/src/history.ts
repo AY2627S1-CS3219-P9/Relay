@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of helper functions for transaction history display
+ * Author review: Verified correctness.
+ */
 import type { TransactionRecord } from '@relay/contracts'
 
 export const HISTORY_PAGE_SIZE = 10

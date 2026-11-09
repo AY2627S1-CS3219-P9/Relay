@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of process, handleMessage, handleWithRetry, start, stop.
+ * Author review: Verified correctness and sent events to ensured topic offset will not get stuck.
+ */
 import type { Kafka, Consumer, KafkaMessage, Producer } from 'kafkajs'
 import {
   UserEventTypes,

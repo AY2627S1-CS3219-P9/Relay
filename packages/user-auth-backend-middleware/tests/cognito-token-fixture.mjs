@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated Cognito token test fixtures
+ * Author review: Verified token generation correctness and that tests correctly obtain valid tokens.
+ */
+
 import { createServer } from 'node:http'
 import { createSign, generateKeyPairSync } from 'node:crypto'
 

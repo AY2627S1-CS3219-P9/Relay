@@ -1,3 +1,7 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-16
+# Scope: Generated the credit backend container build and startup configuration.
+# Author review: Verified and ran docker build and did end-to-end testing.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of viewCredit, viewCreditHistory and reserveCredit handlers.
+ * Author review: Verified correctness
+ */
 import type { NextFunction, Request, Response } from 'express'
 import { CreditService } from '../services/credit.service.js'
 import { CreditServiceError } from '../types/credit.types.js'

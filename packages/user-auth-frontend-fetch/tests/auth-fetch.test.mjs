@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated authenticated fetch unit tests
+ * Author review: Verified correctness of mock responses, and that edge cases are covered.
+ */
+
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { authFetch } from '../src/index.ts'

@@ -1,3 +1,9 @@
+<!--
+AI Assistance Disclosure:
+Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+Scope: Generated credit backend setup and API documentation.
+Author review: Verified correctness and improved formatting.
+-->
 # Relay Credit Service Backend
 
 Authenticated credit balance and history API for Relay, backed by Prisma and

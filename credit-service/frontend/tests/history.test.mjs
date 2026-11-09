@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated unit tests for credit history helper functions
+ * Author review: Verified correctness.
+ */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { transactionDisplay } from '../src/history.ts'

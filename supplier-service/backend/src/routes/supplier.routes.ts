@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: added userAuthMiddleware and userAuthAdminMiddleware after user auth changes
+ * Author review: Verified correctness of non-admin and admin endpoints.
+ */
+
 import { Router } from 'express'
 import { userAuthMiddleware, userAuthAdminMiddleware } from '@relay/user-auth-backend-middleware'
 import { SupplierController } from '../controllers/supplier.controller'

@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for authenticated fetch and token refresh
+ * Author review: Verified correctness and tested in browser that user won't get a 401 error display on authorized endpoints even after access token expires.
+ */
+
 type RefreshState = { pending?: Promise<boolean>; generation: number }
 
 const sharedState = globalThis as typeof globalThis & { __relayAuthRefresh?: RefreshState }

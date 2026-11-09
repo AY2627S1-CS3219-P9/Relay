@@ -1,3 +1,9 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of getEnv.
+ * Author review: Verified Zod schema is correct, and that hardcorded values are not production values.
+ */
 import 'dotenv/config'
 import { z } from 'zod'
 

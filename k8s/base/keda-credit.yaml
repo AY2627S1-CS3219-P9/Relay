@@ -27,7 +27,7 @@ spec:
         bootstrapServers: "KEDA_KAFKA_BROKERS"
         consumerGroup: relay-credit-events
         topic: errand-events
-        lagThreshold: "100"
+        lagThreshold: "20"
         offsetResetPolicy: earliest
         sasl: KEDA_KAFKA_SASL
         tls: KEDA_KAFKA_TLS
