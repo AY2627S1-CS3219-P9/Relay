@@ -268,7 +268,6 @@ services:
       # Credit estimation client settings
       CREDIT_ESTIMATION_API_URL: http://credit-estimation-api:3005
       CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
-      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
     depends_on:
