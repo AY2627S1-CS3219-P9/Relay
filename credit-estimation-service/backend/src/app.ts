@@ -4,8 +4,11 @@ import { translateEstimationError } from './types/estimation.types.js'
 import { createEstimationRouter, initializeAIClient } from './routes/estimation.routes.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 import { cleanupAIClient } from './clients/ai.client.js'
+import { assertAllServiceTypesHaveBaselines } from './validators/baseline.validator.js'
 
 export async function createApp() {
+  assertAllServiceTypesHaveBaselines()
+
   const app = express()
 
   app.use(express.json())

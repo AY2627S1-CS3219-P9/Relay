@@ -34,7 +34,7 @@ Estimate credits for an errand.
 
 **Rate Limit:**
 
-- When Redis available: 10 requests per minute per user (configurable via `AI_RATE_LIMIT_REQUESTS_PER_MINUTE`)
+- When Redis available: 20 requests per minute per user (configurable via `AI_RATE_LIMIT_REQUESTS_PER_MINUTE`)
 - When Redis unavailable: 50 requests per minute total for the service (configurable via `AI_FALLBACK_RATE_LIMIT_REQUESTS_PER_MINUTE`)
 
 **Response:**
@@ -104,13 +104,21 @@ REDIS_URL=redis://redis:6379
 
 ## Service Baselines
 
-| Service Type | Base | Min | Max |
-| ------------ | ---- | --- | --- |
-| Food         | 15   | 10  | 30  |
-| Drink        | 10   | 8   | 20  |
-| Shopping     | 20   | 15  | 40  |
-| Printing     | 10   | 8   | 25  |
-| Parcel       | 25   | 15  | 50  |
+| Service Type | Base | Min | Max | Standard Window |
+| ------------ | ---- | --- | --- | --------------- |
+| Food         | 15   | 10  | 30  | 90 minutes      |
+| Drink        | 10   | 8   | 20  | 60 minutes      |
+| Shopping     | 20   | 15  | 40  | 180 minutes     |
+| Printing     | 10   | 8   | 25  | 120 minutes     |
+| Parcel       | 25   | 15  | 50  | 240 minutes     |
+
+The AI estimates errand complexity from the errand textual details. The service then applies a
+deterministic credit adjustment based on the available time window relative to the service's standard window. E.g.
+
+- Half the standard window adds 20% of the service's base credits.
+- Twice the standard window removes 20% of the service's base credits.
+- Adjustments use a smooth logarithmic curve capped at +40% and -30% of the estimated credits.
+- The adjusted range will remain within the global 10-50 credit bounds.
 
 ## Validation
 
@@ -119,8 +127,8 @@ The service validates all input fields:
 - `name`: string, 1-200 characters, no dangerous patterns
 - `description`: string, 1-5000 characters, no dangerous patterns
 - `instructions`: optional string, max 5000 characters
-- `startAt`: optional valid ISO date string
-- `expiresAt`: optional valid ISO date string
+- `startAt`: required valid ISO date string
+- `expiresAt`: required valid ISO date string after both the effective start and current time
 - `serviceType`: integer, must be a valid service type from supplier service
 - `userId`: required string for per-user rate limiting
 

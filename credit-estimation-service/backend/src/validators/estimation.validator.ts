@@ -35,7 +35,10 @@ function containsDangerousPatterns(text: string): boolean {
   return false
 }
 
-export function validateEstimateRequest(request: EstimateCreditRequest): void {
+export function validateEstimateRequest(
+  request: EstimateCreditRequest,
+  now: Date = new Date(),
+): void {
   if (
     typeof request.availableCredit !== 'number' ||
     !Number.isFinite(request.availableCredit) ||
@@ -147,8 +150,9 @@ export function validateEstimateRequest(request: EstimateCreditRequest): void {
 
   for (const field of ['startAt', 'expiresAt'] as const) {
     if (
-      request[field] !== undefined &&
-      (typeof request[field] !== 'string' || Number.isNaN(Date.parse(request[field])))
+      typeof request[field] !== 'string' ||
+      request[field].trim().length === 0 ||
+      Number.isNaN(Date.parse(request[field]))
     ) {
       throw new EstimationServiceError(
         CreditEstimationErrors.INVALID_INPUT,
@@ -157,6 +161,17 @@ export function validateEstimateRequest(request: EstimateCreditRequest): void {
         { [field]: `${field} must be a valid date string` },
       )
     }
+  }
+
+  const startTimestamp = Date.parse(request.startAt)
+  const expiryTimestamp = Date.parse(request.expiresAt)
+  if (expiryTimestamp <= Math.max(startTimestamp, now.getTime())) {
+    throw new EstimationServiceError(
+      CreditEstimationErrors.INVALID_INPUT,
+      'expiresAt must be after the effective start time',
+      400,
+      { expiresAt: 'Deadline must be after the start time and in the future' },
+    )
   }
 
   // Validate service type

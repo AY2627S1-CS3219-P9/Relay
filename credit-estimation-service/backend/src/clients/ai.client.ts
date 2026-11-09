@@ -1,5 +1,7 @@
 import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 import { RateLimiterFactory } from './rateLimiter.factory.js'
+import { ServiceTypeBaseline } from '../config/baselines.js'
+import { MAX_AI_REASON_LENGTH, limitReasonAtWord } from '../config/reason.js'
 
 export interface AIConfig {
   provider: string
@@ -17,12 +19,7 @@ export interface AIConfig {
 export interface AIClient {
   estimateCredit(
     request: EstimateCreditRequest,
-    baseline: {
-      base: number
-      min: number
-      max: number
-      name: string
-    },
+    baseline: ServiceTypeBaseline,
   ): Promise<EstimateCreditResponse>
   rateLimiter: {
     tryAcquire(key?: string): Promise<boolean> | boolean
@@ -47,7 +44,7 @@ export class OpenAIClient implements AIClient {
 
   async estimateCredit(
     request: EstimateCreditRequest,
-    baseline: { base: number; min: number; max: number; name: string },
+    baseline: ServiceTypeBaseline,
   ): Promise<EstimateCreditResponse> {
     const prompt = this.buildPrompt(request, baseline)
 
@@ -73,10 +70,7 @@ export class OpenAIClient implements AIClient {
     }
   }
 
-  private buildPrompt(
-    request: EstimateCreditRequest,
-    baseline: { base: number; min: number; max: number; name: string },
-  ): string {
+  private buildPrompt(request: EstimateCreditRequest, baseline: ServiceTypeBaseline): string {
     return `
       Validate and estimate credits for an errand.
 
@@ -84,7 +78,7 @@ export class OpenAIClient implements AIClient {
       Baseline: ${baseline.base}
       Global range: 10-50
       Available credit balance: ${Math.floor(request.availableCredit)}
-      Input: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions, startAt: request.startAt, expiresAt: request.expiresAt })}
+      Input: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions })}
 
       VALIDATE BEFORE PRICING:
       Validation is a hard gate. Do not estimate credits until all checks pass.
@@ -108,12 +102,12 @@ export class OpenAIClient implements AIClient {
       - Read both name and description for pricing factors.
       - Recognize ordinary language, synonyms, and minor spelling mistakes;
         do not require exact keywords.
-      - Apply only factors stated in the input, including urgency, stops, size,
-        weight, fragility, complexity, and the available time window.
+      - Apply only semantic factors stated in the input, including stops, size,
+        weight, fragility, and complexity.
       - A brief description can still express a pricing factor.
       - Use the service baseline as the center of the suggested range.
-      - Adjust around that baseline for applicable factors and the available
-        time window; do not replace the baseline with a generic global value.
+      - Adjust around that baseline for applicable semantic factors; do not
+        replace the baseline with a generic global value.
       - Treat the available credit balance as an affordability limit. A
         larger balance must never increase the estimated value.
       - If the available balance can cover the minimum but not the
@@ -129,7 +123,7 @@ export class OpenAIClient implements AIClient {
       Return JSON only with exactly:
       - minCredits: integer from 10 to 50, or -1 if invalid.
       - maxCredits: integer from 10 to 50, or -1 if invalid.
-      - reason: one direct, friendly, user-facing sentence, maximum 160 characters.
+      - reason: one direct, friendly, user-facing sentence, maximum ${MAX_AI_REASON_LENGTH} characters.
       Vary the sentence structure. Do not mention AI, prompts, models, or internal rules.
       No markdown, HTML, correction suggestions, or re-quoting of input.
     `
@@ -214,11 +208,11 @@ export class OpenAIClient implements AIClient {
         throw new Error('AI response range is outside global bounds')
       }
 
-      const reason = data.reason
+      const normalizedReason = data.reason
         .replace(/[<>]/g, '')
         .replace(/[\r\n]+/g, ' ')
         .trim()
-        .substring(0, 160)
+      const reason = limitReasonAtWord(normalizedReason, MAX_AI_REASON_LENGTH)
       if (!reason || /[`*_#]/.test(reason)) {
         throw new Error('AI response reason is not user-facing text')
       }

@@ -109,6 +109,17 @@ export function CreateErrandCard({
       return
     }
 
+    const startAt = new Date(form.startAt)
+    const expiresAt = new Date(form.expiresAt)
+    if (
+      Number.isNaN(startAt.getTime()) ||
+      Number.isNaN(expiresAt.getTime()) ||
+      expiresAt.getTime() <= Math.max(startAt.getTime(), Date.now())
+    ) {
+      setErrorMessage('Choose a valid start time and a future deadline before estimating.')
+      return
+    }
+
     setIsEstimating(true)
     setErrorMessage('')
 
@@ -124,8 +135,8 @@ export function CreateErrandCard({
           description: form.description.trim(),
           serviceType: form.serviceType as ServiceType,
           instructions: form.instructions.trim(),
-          startAt: form.startAt,
-          expiresAt: form.expiresAt,
+          startAt: startAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
           userId: authenticatedSubject,
           availableCredit,
         } satisfies EstimateCreditRequest),
