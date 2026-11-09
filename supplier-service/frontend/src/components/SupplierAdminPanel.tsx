@@ -150,6 +150,7 @@ export function SupplierAdminPanel({ api, supplier, onSaved, onDeleted, onClose 
 
   return (
     <RelayFormSurface
+      headerVariant="card"
       as="aside"
       className="supplier-admin-panel relay-mobile-sheet-surface"
       title={editing ? 'Update supplier' : 'Add supplier'}

@@ -39,6 +39,16 @@ export type ErrandViewContext =
       }
     }
   | {
+      /** Open the errand-owned notification history, anchored to the caller's button. */
+      view: 'updates'
+      anchor: {
+        top: number
+        left: number
+        right: number
+        bottom: number
+      }
+    }
+  | {
       view: 'requests'
     }
   | {

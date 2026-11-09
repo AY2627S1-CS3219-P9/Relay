@@ -27,7 +27,6 @@ import {
   SlidingSegmentedControl,
   Spacer,
   StorePlusIcon,
-  UpdatesCard,
   type BubbleAnchor,
 } from '@relay/ui'
 import { ErrandDetailCard } from './components/SupplierErrandPanel'
@@ -60,11 +59,6 @@ export default function App({
   const [userLocation, setUserLocation] = useState<MapPoint>()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier>()
   const [selectedErrand, setSelectedErrand] = useState<SupplierErrandSummary>()
-  const [showUpdates, setShowUpdates] = useState(false)
-  const [updatesAnchor, setUpdatesAnchor] = useState<BubbleAnchor>()
-  const [updates, setUpdates] = useState<import('@relay/contracts').Errand[]>([])
-  const [updatesLoading, setUpdatesLoading] = useState(false)
-  const [updatesError, setUpdatesError] = useState('')
   const [selectedSupplierAnchor, setSelectedSupplierAnchor] = useState<BubbleAnchor>()
   const [nearbySuppliers, setNearbySuppliers] = useState<Supplier[]>()
   const [showFilters, setShowFilters] = useState(false)
@@ -112,29 +106,9 @@ export default function App({
     openCredit({ top, left, right, bottom, width, height })
   }
 
-  function closeUpdates() {
-    setShowUpdates(false)
-    setUpdatesAnchor(undefined)
-  }
-
   function openUpdates(button: HTMLButtonElement) {
     const { top, left, right, bottom } = button.getBoundingClientRect()
-    setUpdatesAnchor({ top, left, right, bottom })
-    setShowUpdates(true)
-    setUpdatesLoading(true)
-    setUpdatesError('')
-    if (!errandApi) {
-      setUpdates([])
-      setUpdatesLoading(false)
-      return
-    }
-    void errandApi
-      .getErrands({ scope: 'mine' })
-      .then(({ errands: loaded }) => setUpdates(loaded))
-      .catch((error: unknown) => {
-        setUpdatesError(error instanceof Error ? error.message : 'Unable to load updates.')
-      })
-      .finally(() => setUpdatesLoading(false))
+    openErrandView({ view: 'updates', anchor: { top, left, right, bottom } })
   }
   function openAdminPanel(mode: 'add' | 'edit', button: HTMLButtonElement) {
     const { top, left, right, bottom } = button.getBoundingClientRect()
@@ -294,6 +268,7 @@ export default function App({
         <SupplierRowButton
           size="map-action"
           className="updates-action"
+          aria-label="Updates"
           onClick={(event) => openUpdates(event.currentTarget)}
         >
           <BellIcon className="supplier-control-icon" />
@@ -350,21 +325,6 @@ export default function App({
           onChange={setFilters}
           onClose={() => setShowFilters(false)}
         />
-      )}
-      {showUpdates && (
-        <BubblePopover
-          anchor={updatesAnchor}
-          maxWidth={405}
-          placement="above"
-          className="supplier-updates-popover"
-        >
-          <UpdatesCard
-            errands={updates}
-            loading={updatesLoading}
-            error={updatesError}
-            onClose={closeUpdates}
-          />
-        </BubblePopover>
       )}
       {(selectedSupplier || nearbySuppliers) && (
         <BubblePopover anchor={selectedSupplierAnchor}>

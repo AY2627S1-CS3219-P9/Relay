@@ -123,11 +123,15 @@ export default function App({
     store: notificationStore,
   } = useNotificationHistory(
     authenticatedSubject,
-    showUpdates || mapActive === false || presentation === 'card',
+    showUpdates || view === 'updates' || mapActive === false || presentation === 'card',
   )
 
   useLayoutEffect(() => {
     const measure = () => {
+      if (errandViewContext?.view === 'updates') {
+        setUpdatesAnchor(errandViewContext.anchor)
+        return
+      }
       const bounds = updatesControlRef.current?.getBoundingClientRect()
       if (bounds) {
         const { top, left, right, bottom } = bounds
@@ -137,7 +141,7 @@ export default function App({
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [popup?.eventId, showUpdates, mapActive, presentation])
+  }, [popup?.eventId, showUpdates, mapActive, presentation, errandViewContext])
 
   useEffect(() => {
     notificationRequestRef.current += 1
@@ -154,7 +158,7 @@ export default function App({
   const role = isRequester ? 'requester' : 'courier'
 
   useEffect(() => {
-    if (!errandApi || view === 'create' || view === 'supplier') return
+    if (!errandApi || view === 'create' || view === 'supplier' || view === 'updates') return
     const load =
       view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
     void load
@@ -219,7 +223,8 @@ export default function App({
 
   useEffect(() => {
     closeMapSelection()
-  }, [view])
+    if (view === 'updates') setUpdatesError('')
+  }, [view, errandViewContext])
 
   function closeRemote() {
     if (presentation === 'card') {
@@ -249,6 +254,7 @@ export default function App({
     notificationRequestRef.current += 1
     setUpdatesLoading(false)
     setShowUpdates(false)
+    if (view === 'updates') closeRemote()
   }
 
   function openUpdates() {
@@ -370,7 +376,7 @@ export default function App({
 
   // Refetch errands from API
   const refetchErrands = useCallback(async () => {
-    if (!errandApi || view === 'create' || view === 'supplier') return
+    if (!errandApi || view === 'create' || view === 'supplier' || view === 'updates') return
     const load =
       view === 'requests' ? errandApi.getErrands({ scope: 'mine' }) : errandApi.getErrands()
     void load
@@ -482,6 +488,59 @@ export default function App({
       />
     </RelayCardAnchor>
   )
+
+  const selectedErrandCard = selectedErrand && (
+    <BubblePopover anchor={selectedErrandAnchor} maxWidth={405} className="errand-detail-popover">
+      <ErrandDetailCard
+        errand={selectedErrand}
+        role={role}
+        onClose={closeMapSelection}
+        onAction={(action) => updateErrand(action, selectedErrand.id)}
+      />
+    </BubblePopover>
+  )
+
+  const updatesCard = (showUpdates || view === 'updates') && !selectedErrand && (
+    <RelayCardAnchor
+      anchor={updatesAnchor}
+      size="small"
+      placement="anchored"
+      preferredSide="top-start"
+      className="errand-updates-popover"
+    >
+      <RelayFormSurface
+        as="aside"
+        headerVariant="card"
+        className="relay-notification-history relay-card-scroll-surface"
+        title="Updates"
+        onClose={closeUpdates}
+      >
+        {updatesLoading && <LoadingState label="Opening errand" />}
+        {updatesError && <ErrorMessage message={updatesError} />}
+        {notifications.length === 0 && <p>No notifications yet.</p>}
+        <div className="relay-notification-history-list">
+          {notifications.map((notification) => (
+            <ErrandNotificationCard
+              key={notification.eventId}
+              notification={notification}
+              confirmRemoval
+              onClose={() => notificationStore.remove(notification.eventId)}
+              onSelect={() => void openNotification(notification)}
+            />
+          ))}
+        </div>
+      </RelayFormSurface>
+    </RelayCardAnchor>
+  )
+
+  if (presentation === 'card' && view === 'updates') {
+    return (
+      <main className="errand-updates-overlay relay-design-system">
+        {selectedErrandCard}
+        {updatesCard}
+      </main>
+    )
+  }
 
   if (presentation === 'card' && createCard) {
     return <main className="errand-create-overlay relay-design-system">{createCard}</main>
@@ -636,52 +695,9 @@ export default function App({
           />
         </BubblePopover>
       )}
-      {selectedErrand && (
-        <BubblePopover
-          anchor={selectedErrandAnchor}
-          maxWidth={405}
-          className="errand-detail-popover"
-        >
-          <ErrandDetailCard
-            errand={selectedErrand}
-            role={role}
-            onClose={closeMapSelection}
-            onAction={(action) => updateErrand(action, selectedErrand.id)}
-          />
-        </BubblePopover>
-      )}
-      {showUpdates && (
-        <RelayCardAnchor
-          anchor={updatesAnchor}
-          size="small"
-          placement="anchored"
-          preferredSide="top-start"
-          className="errand-updates-popover"
-        >
-          <RelayFormSurface
-            as="aside"
-            className="relay-notification-history relay-card-scroll-surface"
-            title="Updates"
-            onClose={closeUpdates}
-          >
-            {updatesLoading && <LoadingState label="Opening errand" />}
-            {updatesError && <ErrorMessage message={updatesError} />}
-            {notifications.length === 0 && <p>No notifications yet.</p>}
-            <div className="relay-notification-history-list">
-              {notifications.map((notification) => (
-                <ErrandNotificationCard
-                  key={notification.eventId}
-                  notification={notification}
-                  confirmRemoval
-                  onClose={() => notificationStore.remove(notification.eventId)}
-                  onSelect={() => void openNotification(notification)}
-                />
-              ))}
-            </div>
-          </RelayFormSurface>
-        </RelayCardAnchor>
-      )}
-      {!showUpdates && popup && mapActive !== false && (
+      {selectedErrandCard}
+      {updatesCard}
+      {!showUpdates && view !== 'updates' && popup && mapActive !== false && (
         <RelayCardAnchor
           key={popup.eventId}
           anchor={updatesAnchor}

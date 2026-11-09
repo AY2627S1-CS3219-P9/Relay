@@ -62,7 +62,7 @@ export default function App({
   if (restoringSession) {
     return presentation === 'card' ? (
       <div className="user-profile-content">
-        <div className="user-profile-card-header">
+        <div className="user-profile-card-header relay-card-header">
           <h1>Profile</h1>
           <IconButton label="Close profile" onClick={closeProfile}>
             ×

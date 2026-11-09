@@ -273,6 +273,7 @@ export function CreateErrandCard({
 
   return (
     <RelayFormSurface
+      headerVariant="card"
       className="create-errand-card relay-mobile-sheet-surface"
       title="Create an errand"
       description="Tell us what you need delivered."

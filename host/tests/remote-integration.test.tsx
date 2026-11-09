@@ -160,3 +160,27 @@ describe('host / remote integration', () => {
     expect(props('errand').mapViewport).toEqual(viewport)
   })
 })
+
+it('routes supplier Updates through the host into an errand overlay and closes back to the supplier map', async () => {
+  await startMarketplace()
+  const viewport = { center: { lat: 1.3, lng: 103.78 }, zoom: 18 }
+  act(() => props('supplier').onMapViewportChange?.(viewport))
+  act(() => props('supplier').openErrandView({ view: 'updates', anchor }))
+  expect(page('supplier').visible).toBe(true)
+  expect(page('errand')).toMatchObject({ visible: true, overlay: true })
+  expect(props('errand')).toMatchObject({
+    presentation: 'card',
+    mapActive: false,
+    errandViewContext: { view: 'updates', anchor },
+    mapViewport: viewport,
+  })
+  expect(props('errand').onMapViewportChange).toBeUndefined()
+  expect(page('errand').overlayClassName).toBeUndefined()
+  act(() => props('errand').navigateTo('supplier'))
+  expect(page('supplier').visible).toBe(true)
+  expect(page('errand')).toMatchObject({ visible: false, overlay: false })
+  expect(props('errand').errandViewContext).toBeUndefined()
+  expect(props('supplier').mapViewport).toEqual(viewport)
+  act(() => props('supplier').openErrandView({ view: 'updates', anchor }))
+  expect(page('errand')).toMatchObject({ visible: true, overlay: true })
+})

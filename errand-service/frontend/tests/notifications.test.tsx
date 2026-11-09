@@ -203,3 +203,42 @@ describe('Updates UI', () => {
     expect(screen.getByText('Errand deleted')).toBeTruthy()
   })
 })
+
+it('shows the same saved Updates history as an overlay without a map and closes through the host', async () => {
+  const appProps = props()
+  const navigateTo = vi.fn()
+  const context = {
+    view: 'updates' as const,
+    anchor: { top: 600, left: 20, right: 120, bottom: 650 },
+  }
+  const { rerender } = render(<App {...appProps} navigateTo={navigateTo} />)
+  await deliver()
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }))
+  rerender(
+    <App
+      {...appProps}
+      navigateTo={navigateTo}
+      presentation="card"
+      mapActive={false}
+      errandViewContext={context}
+    />,
+  )
+  expect(screen.queryByText('Map')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'New request' })).toBeNull()
+  expect(screen.getByText('Accepted → Collected')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'Updates' })).toBeTruthy()
+  expect(document.querySelector('.errand-updates-popover')?.getAttribute('style')).toContain(
+    'left: 20px',
+  )
+  await act(async () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Open Lunch delivery details' })),
+  )
+  expect(screen.getByLabelText('Lunch delivery details')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Close errand details' }))
+  expect(screen.getByRole('heading', { name: 'Updates' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Remove notification for Lunch delivery' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete notification' }))
+  expect(screen.getByText('No notifications yet.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  expect(navigateTo).toHaveBeenCalledWith('supplier')
+})

@@ -532,3 +532,27 @@ Author review: I validated correctness and edited for style. */
     transform: translateY(0) scale(1);
   }
 }
+
+/* Shared title row for marketplace cards, including Credit and Profile. */
+.relay-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.relay-card-header :is(h1, h2) {
+  margin: 0;
+  color: var(--relay-text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+.relay-card-header > .relay-icon-button {
+  flex-shrink: 0;
+}
+.relay-card-description {
+  margin: 8px 0 0;
+  color: var(--relay-text-muted);
+}

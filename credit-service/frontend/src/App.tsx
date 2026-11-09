@@ -126,7 +126,7 @@ export default function App({
         aria-hidden={creditHistoryOpen}
         inert={creditHistoryOpen}
       >
-        <header className="credit-profile-header">
+        <header className="credit-profile-header relay-card-header">
           <h1>Credits</h1>
           <CloseButton label="Close credits" onClick={closeCredit} />
         </header>
@@ -156,7 +156,7 @@ export default function App({
         aria-hidden={!creditHistoryOpen}
         inert={!creditHistoryOpen}
       >
-        <header className="credit-profile-header">
+        <header className="credit-profile-header relay-card-header">
           <div className="credit-history-title">
             <BackButton onClick={showCreditBalance} />
             <h1>Credit history</h1>

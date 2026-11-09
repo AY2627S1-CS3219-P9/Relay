@@ -564,3 +564,9 @@ Author review: I validated correctness and edited for style. */
 .errand-updates-popover {
   z-index: var(--relay-layer-card);
 }
+
+.errand-updates-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
