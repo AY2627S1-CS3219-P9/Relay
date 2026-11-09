@@ -19,4 +19,4 @@ COPY --from=build /app/packages/user-auth-backend-middleware ./packages/user-aut
 COPY --from=build /app/user-service/auth/package.json ./user-service/auth/
 COPY --from=build /app/user-service/auth/dist ./user-service/auth/dist
 EXPOSE 3000
-CMD ["node", "user-service/auth/dist/server.js"]
+CMD ["npx", "tsx", "user-service/auth/dist/server.js"]

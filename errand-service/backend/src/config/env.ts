@@ -21,11 +21,21 @@ export type ErrandEnv = {
   estimationTimeoutMs: number
   internalServiceToken: string
   timeoutMs: number
+  kafkaBrokers: string[]
+  kafkaAuthMode: 'none' | 'scram'
+  kafkaUsername?: string
+  kafkaPassword?: string
+  kafkaUserEventsTopic: string
+  kafkaUserDlqTopic: string
 }
 
 export function getEnv(): ErrandEnv {
   const databaseUrl = process.env.DATABASE_URL
   if (!databaseUrl) throw new Error('DATABASE_URL is required')
+  const kafkaAuthMode = process.env.KAFKA_AUTH_MODE ?? 'none'
+  if (kafkaAuthMode !== 'none' && kafkaAuthMode !== 'scram') {
+    throw new Error('KAFKA_AUTH_MODE must be none or scram')
+  }
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -49,5 +59,14 @@ export function getEnv(): ErrandEnv {
     internalServiceToken:
       process.env.INTERNAL_ERRAND_SERVICE_TOKEN ?? 'local-internal-errand-service-token',
     timeoutMs: positiveInteger(process.env.ERRAND_SERVICE_TIMEOUT_MS, 5000),
+    kafkaBrokers: (process.env.KAFKA_BROKERS ?? 'kafka:9092')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    kafkaAuthMode,
+    kafkaUsername: process.env.KAFKA_USERNAME,
+    kafkaPassword: process.env.KAFKA_PASSWORD,
+    kafkaUserEventsTopic: process.env.KAFKA_TOPIC_USER_EVENTS ?? 'user-events',
+    kafkaUserDlqTopic: process.env.KAFKA_TOPIC_USER_DLQ ?? 'user-events-dlq',
   }
 }

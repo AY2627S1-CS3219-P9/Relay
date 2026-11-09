@@ -130,3 +130,52 @@ describe('ErrandService cancellation', () => {
     expect(repository.cancel).toHaveBeenCalledWith('errand-1', user.sub)
   })
 })
+
+describe('ErrandService acceptance protection', () => {
+  it('rejects acceptance when the requester profile no longer exists', async () => {
+    const repository = {
+      expireOpenErrands: vi.fn().mockResolvedValue(0),
+      findRequesterForAcceptance: vi.fn().mockResolvedValue('deleted-requester'),
+      accept: vi.fn(),
+    } as unknown as ErrandRepository
+    const service = new ErrandService(
+      repository,
+      undefined as never,
+      undefined as never,
+      { getProfile: vi.fn().mockResolvedValue(null) } as never,
+    )
+
+    await expect(service.acceptErrand({ ...user, sub: 'courier-1' }, 'errand-1')).rejects.toMatchObject({
+      code: 'REQUESTER_DELETED',
+      statusCode: 409,
+    })
+    expect(repository.accept).not.toHaveBeenCalled()
+  })
+
+  it('checks the requester profile before accepting a valid errand', async () => {
+    const errand = {
+      id: 'errand-1',
+      requesterSub: 'requester-1',
+      courierSub: 'courier-1',
+      courierProfile: null,
+      status: 'ACCEPTED' as const,
+    }
+    const repository = {
+      expireOpenErrands: vi.fn().mockResolvedValue(0),
+      findRequesterForAcceptance: vi.fn().mockResolvedValue('requester-1'),
+      accept: vi.fn().mockResolvedValue(errand),
+    } as unknown as ErrandRepository
+    const getProfile = vi.fn().mockResolvedValue({ username: 'Requester', profilePictureUrl: null })
+    const service = new ErrandService(
+      repository,
+      undefined as never,
+      undefined as never,
+      { getProfile } as never,
+    )
+
+    await service.acceptErrand({ ...user, sub: 'courier-1' }, 'errand-1')
+
+    expect(getProfile).toHaveBeenCalledWith('requester-1')
+    expect(repository.accept).toHaveBeenCalledWith('errand-1', 'courier-1')
+  })
+})

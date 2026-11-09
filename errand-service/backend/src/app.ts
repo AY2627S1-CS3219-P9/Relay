@@ -12,6 +12,8 @@ import { createErrandRouter } from './routes/errand.routes.js'
 import { internalServiceAuth } from './middleware/internal.middleware.js'
 import { createInternalErrandRouter } from './routes/internal-errand.routes.js'
 import { PendingErrandWorker } from './workers/pending-errand.worker.js'
+import { Kafka, logLevel } from 'kafkajs'
+import { UserDeletionConsumer } from './consumers/user-deletion.consumer.js'
 
 export function createApp(isReady: () => boolean = () => true) {
   const app = express()
@@ -56,18 +58,54 @@ export function createApp(isReady: () => boolean = () => true) {
   return app
 }
 
-export const app = createApp()
+let kafkaReady = process.env.NODE_ENV === 'test'
+export const app = createApp(() => kafkaReady)
 if (process.env.NODE_ENV !== 'test') {
   const env = getEnv()
   const worker = new PendingErrandWorker(new ErrandRepository())
+  const mode = env.kafkaAuthMode
+  const kafka = new Kafka({
+    clientId: 'errand-service',
+    brokers: env.kafkaBrokers,
+    logLevel: logLevel.ERROR,
+    ...(mode === 'scram'
+      ? {
+          ssl: true,
+          sasl: {
+            mechanism: 'scram-sha-512' as const,
+            username: env.kafkaUsername!,
+            password: env.kafkaPassword!,
+          },
+        }
+      : {}),
+  })
+  const userDeletionConsumer = new UserDeletionConsumer(new ErrandRepository(), kafka, env)
+  let stopping = false
+  const startConsumer = async () => {
+    while (!stopping) {
+      try {
+        await userDeletionConsumer.start()
+        kafkaReady = true
+        return
+      } catch (error) {
+        kafkaReady = false
+        console.error('Errand user-deletion consumer failed to start; retrying:', error)
+        await userDeletionConsumer.stop().catch(() => undefined)
+        if (!stopping) await new Promise((resolve) => setTimeout(resolve, 3000))
+      }
+    }
+  }
   worker.start()
+  void startConsumer()
   const server = app.listen(env.port, () =>
     console.log(`Errand Service listening on port ${env.port}`),
   )
   const shutdown = (signal: string) => {
+    stopping = true
+    kafkaReady = false
     console.log(`${signal} received; shutting down Errand Service.`)
     worker.stop()
-    server.close(() => process.exit(0))
+    void userDeletionConsumer.stop().finally(() => server.close(() => process.exit(0)))
   }
   process.once('SIGINT', () => shutdown('SIGINT'))
   process.once('SIGTERM', () => shutdown('SIGTERM'))

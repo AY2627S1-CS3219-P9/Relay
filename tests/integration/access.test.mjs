@@ -72,3 +72,21 @@ test('cross-origin browser login is rejected', async () => {
   const body = await response.json()
   assert.equal(body.error.code, 'FORBIDDEN')
 })
+
+// A missing ingress route often returns host index.html with HTTP 200 instead
+// of an API response. Exercise every public backend boundary without a session.
+for (const path of [
+  '/api/auth/me',
+  '/api/user/me',
+  '/api/supplier',
+  '/api/errands',
+  '/api/credit',
+  '/api/notifications/stream',
+]) {
+  test(`${path} reaches its backend and requires authentication`, async () => {
+    const response = await request(`${shellUrl}${path}`)
+    assert.equal(response.status, 401, `${path} must reach the protected API`)
+    const body = await response.text()
+    assert.doesNotMatch(body, /<!doctype html|id=["']root["']/i)
+  })
+}

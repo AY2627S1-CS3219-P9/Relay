@@ -223,6 +223,17 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3000'
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      COGNITO_ENDPOINT_URL: http://floci:4566
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID?Run floci/docker/up.sh}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID?Run floci/docker/up.sh}
+      COGNITO_ADMIN_GROUP_NAME: ${COGNITO_ADMIN_GROUP_NAME:-AdminGroup}
+      COGNITO_SUPERADMIN_GROUP_NAME: ${COGNITO_SUPERADMIN_GROUP_NAME:-SuperAdminGroup}
+      COOKIE_SECURE: 'false'
+      KAFKA_BROKERS: ${KAFKA_BROKERS?Run floci/docker/up.sh}
+      KAFKA_AUTH_MODE: none
+      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 10s
@@ -256,8 +267,10 @@ services:
       CREDIT_SERVICE_INTERNAL_TOKEN: ${CREDIT_SERVICE_INTERNAL_TOKEN:-local-internal-credit-service-token}
       # Credit estimation client settings
       CREDIT_ESTIMATION_API_URL: http://credit-estimation-api:3005
-      CREDIT_ESTIMATION_SERVICE_TOKEN: ${CREDIT_ESTIMATION_SERVICE_TOKEN:-local-internal-estimation-service-token}
-      ESTIMATION_TIMEOUT_MS: ${ESTIMATION_TIMEOUT_MS:-5000}
+      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
+      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
+      KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
+      KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
     depends_on:
       credit-api:
         condition: service_healthy

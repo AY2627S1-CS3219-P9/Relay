@@ -1,12 +1,31 @@
 import type { Server } from 'node:http'
 import { app, closeAppResources } from './app.js'
 import { getEnv } from './config/env.js'
+import { LocalImageStorage } from './storage/local-image-storage.js'
+import { UserProfileImageDeletionConsumer } from './consumers/user-profile-image.consumer.js'
 
 const env = getEnv()
 let server: Server | undefined
+const profileImageConsumer = new UserProfileImageDeletionConsumer(new LocalImageStorage())
+let consumerStopping = false
+
+async function startProfileImageConsumer(): Promise<void> {
+  while (!consumerStopping) {
+    try {
+      await profileImageConsumer.start()
+      return
+    } catch (error) {
+      console.error('User profile cleanup consumer unavailable; retrying:', error)
+      await profileImageConsumer.stop()
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+    }
+  }
+}
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`${signal} received; shutting down User Service.`)
+  consumerStopping = true
+  await profileImageConsumer.stop()
 
   await new Promise<void>((resolve) => {
     if (!server) {
@@ -23,6 +42,7 @@ async function shutdown(signal: string): Promise<void> {
 server = app.listen(env.port, () => {
   console.log(`User Service listening on port ${env.port}`)
 })
+void startProfileImageConsumer()
 
 process.once('SIGINT', () => void shutdown('SIGINT'))
 process.once('SIGTERM', () => void shutdown('SIGTERM'))

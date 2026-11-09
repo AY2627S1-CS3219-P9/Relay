@@ -34,6 +34,7 @@ app.get('/healthz', (_req, res) => {
 
 app.use('/api/user', createUserRouter(userController))
 app.get('/internal/user/profile/:sub', internalServiceAuth, userController.getProfileBySubject)
+app.get('/internal/user/deletion-status/:sub', internalServiceAuth, userController.getDeletionStatus)
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof UserServiceError) {

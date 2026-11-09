@@ -45,6 +45,7 @@ auth_output="$(docker exec relay-floci-eks cat /app/data/relay-auth.env)"
 COGNITO_USER_POOL_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_USER_POOL_ID=//p')"
 COGNITO_CLIENT_ID="$(printf '%s\n' "$auth_output" | sed -n 's/^COGNITO_CLIENT_ID=//p')"
 [[ -n "$COGNITO_USER_POOL_ID" && -n "$COGNITO_CLIENT_ID" ]]
+export COGNITO_USER_POOL_ID COGNITO_CLIENT_ID
 rds_output="$(docker exec relay-floci-eks cat /app/data/relay-rds.env)"
 rds_value() { printf '%s\n' "$rds_output" | sed -n "s/^$1=//p"; }
 for name in USER ERRAND CREDIT SUPPLIER; do
@@ -65,7 +66,10 @@ done
 docker exec "$node" test -f /etc/rancher/k3s/k3s.yaml
 port="$(docker port "$node" 6443/tcp | head -1 | sed 's/.*://')"
 docker cp "$node:/etc/rancher/k3s/k3s.yaml" floci/eks/.kubeconfig
-sed -i "s|https://127.0.0.1:6443|https://127.0.0.1:$port|" floci/eks/.kubeconfig
+# BSD sed (macOS) and GNU sed use different in-place editing flags.
+kubeconfig_tmp="$(mktemp)"
+sed "s|https://127.0.0.1:6443|https://127.0.0.1:$port|" floci/eks/.kubeconfig > "$kubeconfig_tmp"
+mv "$kubeconfig_tmp" floci/eks/.kubeconfig
 export KUBECONFIG="$PWD/floci/eks/.kubeconfig"
 kubectl wait --for=condition=Ready node --all --timeout=120s
 
@@ -266,7 +270,15 @@ render() {
     sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
     # The emulated single node has much less capacity than AWS Auto Mode.
     # Keep the same 768 MiB limits and Node heap cap, but lower local requests.
-    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g'
+    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g' |
+    # Keep the host and remote frontends at one replica on the local node,
+    # including their HPA bounds so autoscaling cannot restore extra replicas.
+    awk '
+      /^---/ { frontend = 0 }
+      /^metadata: \{ name: (host|supplier-frontend|user-frontend|errand-frontend|credit-frontend),/ { frontend = 1 }
+      frontend && /^  (replicas|minReplicas|maxReplicas):/ { sub(/: [0-9]+/, ": 1") }
+      { print }
+    '
 }
 # Recover clusters from either previous request size, including partial runs.
 # Free a publisher reservation before rolling existing workloads if needed.
@@ -312,13 +324,13 @@ AWS_ACCESS_SERVICE_ACCOUNTS_FILE="$service_accounts" bash floci/eks/inject-aws-a
 kubectl -n relay rollout restart deployment/user-api deployment/errand-api deployment/credit-api deployment/supplier-api deployment/user-event-publisher deployment/errand-event-publisher deployment/credit-estimation-api deployment/errand-notification
 # Pin the upstream core manifest; no Helm installation is required.
 kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.17.3/keda-2.17.3-core.yaml
-kubectl wait --for=condition=Established crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh --timeout=120s
+bash deploy/scripts/wait-for-crds.sh crd/scaledobjects.keda.sh crd/triggerauthentications.keda.sh
 # Keep KEDA's limits intact while reducing local scheduler reservations.
 kubectl -n keda set resources deployment/keda-operator deployment/keda-metrics-apiserver --requests=memory=64Mi
 kubectl -n keda rollout status deployment/keda-operator --timeout=5m
 kubectl -n keda rollout status deployment/keda-metrics-apiserver --timeout=5m
 kubectl -n relay delete hpa credit-api --ignore-not-found
-kubectl apply -f k8s/base/autoscaling.yaml
+render k8s/base/autoscaling.yaml | kubectl apply -f -
 # Floci uses plaintext Kafka; its emulation does not implement MSK SCRAM/TLS.
 sed -e "s|KEDA_KAFKA_BROKERS|$msk_brokers|g" \
     -e 's/KEDA_KAFKA_SASL/none/' -e 's/KEDA_KAFKA_TLS/disable/' \

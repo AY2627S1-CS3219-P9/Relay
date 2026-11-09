@@ -109,6 +109,14 @@ test('release, transfer, and deletion are atomic and idempotent', async () => {
     assert.equal(history.filter((record) => record.type === 'USER_DELETION').length, 1)
     assert.equal(history.find((record) => record.type === 'USER_DELETION').amount, 87.5)
   } finally {
+    await prisma.creditSettlement.deleteMany({
+      where: {
+        OR: [
+          { senderId: { in: [requester, courier, lateUser] } },
+          { receiverId: { in: [requester, courier, lateUser] } },
+        ],
+      },
+    })
     await prisma.transactionRecord.deleteMany({
       where: {
         OR: [

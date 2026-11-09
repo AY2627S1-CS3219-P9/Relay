@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-02
+// Scope: Generated initial implementation, debugged implementation.
+// Author review: I validated correctness and edited for style.
+
 import { useCallback, useEffect, useRef } from 'react'
 import { ErrandNotificationTypes, type Errand, type ErrandNotification } from '@relay/contracts'
 

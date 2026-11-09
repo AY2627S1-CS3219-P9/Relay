@@ -1,4 +1,9 @@
-﻿import { authFetch } from '@relay/user-auth-frontend-fetch'
+﻿// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-09-29
+// Scope: Generated initial implementation, decomposed App.tsx into separate components
+// Author review: I validated correctness and edited for style.
+
+import { authFetch } from '@relay/user-auth-frontend-fetch'
 import type { ApiResult, DemoteAdminToUserRequest, PromoteUserToAdminRequest } from '@relay/contracts/user-auth'
 import { ErrorMessage, RelayButton } from '@relay/ui'
 import { useState, type SubmitEvent } from 'react'

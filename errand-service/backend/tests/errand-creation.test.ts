@@ -4,6 +4,8 @@ import { ErrandService } from '../src/services/errand.service.js'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import type { CreditClient } from '../src/clients/credit.client.js'
 import type { SupplierClient } from '../src/clients/supplier.client.js'
+import type { UserClient } from '../src/clients/user.client.js'
+import { ErrandServiceError } from '../src/types/errand.types.js'
 import { validateCreateErrand } from '../src/validators/errand.validator.js'
 
 const user = {
@@ -31,12 +33,16 @@ function setup() {
   }
   const credit = { reserve: vi.fn().mockResolvedValue(undefined) }
   const supplier = { validateSelection: vi.fn().mockResolvedValue(undefined) }
+  const userClient = {
+    getProfile: vi.fn().mockResolvedValue({ username: 'Requester', profilePictureUrl: null }),
+  }
   const service = new ErrandService(
     repository as unknown as ErrandRepository,
     credit as unknown as CreditClient,
     supplier as unknown as SupplierClient,
+    userClient as unknown as UserClient,
   )
-  return { service, repository, credit, supplier }
+  return { service, repository, credit, supplier, userClient }
 }
 
 describe('errand creation and credit reservation', () => {
@@ -51,8 +57,9 @@ describe('errand creation and credit reservation', () => {
   })
 
   it('reserves credit between pending insert and atomic completion', async () => {
-    const { service, repository, credit, supplier } = setup()
+    const { service, repository, credit, supplier, userClient } = setup()
     await service.createErrand(user, request)
+    expect(userClient.getProfile).toHaveBeenCalledWith(user.sub)
     expect(supplier.validateSelection).toHaveBeenCalledWith({
       supplierId: 'supplier',
       serviceType: 1,
@@ -108,6 +115,33 @@ describe('errand creation and credit reservation', () => {
     ).rejects.toMatchObject({
       statusCode: 403,
     })
+    expect(repository.addPendingErrand).not.toHaveBeenCalled()
+    expect(credit.reserve).not.toHaveBeenCalled()
+  })
+
+  it('requires a requester profile before validating the supplier or reserving credit', async () => {
+    const { service, repository, credit, supplier, userClient } = setup()
+    userClient.getProfile.mockResolvedValue(null)
+
+    await expect(service.createErrand(user, request)).rejects.toMatchObject({
+      code: 'INVALID_ERRAND',
+      statusCode: 400,
+    })
+    expect(supplier.validateSelection).not.toHaveBeenCalled()
+    expect(repository.addPendingErrand).not.toHaveBeenCalled()
+    expect(credit.reserve).not.toHaveBeenCalled()
+  })
+
+  it('propagates User Service unavailability before reserving credit', async () => {
+    const { service, repository, credit, supplier, userClient } = setup()
+    userClient.getProfile.mockRejectedValue(
+      new ErrandServiceError('INTERNAL_ERROR', 'User Service profile lookup is unavailable.', 503),
+    )
+
+    await expect(service.createErrand(user, request)).rejects.toMatchObject({
+      statusCode: 503,
+    })
+    expect(supplier.validateSelection).not.toHaveBeenCalled()
     expect(repository.addPendingErrand).not.toHaveBeenCalled()
     expect(credit.reserve).not.toHaveBeenCalled()
   })

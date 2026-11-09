@@ -28,6 +28,7 @@ describe('account and profile consistency', () => {
         deleteProfile: async () => {
           calls.push('profile')
         },
+        hasPendingDeletion: async () => false,
       } as unknown as UserRepository,
       {
         delete: async () => {
@@ -41,7 +42,59 @@ describe('account and profile consistency', () => {
       },
     )
     await service.deleteUser(admin, 'Alice')
-    expect(calls).toEqual(['identity', 'profile', 'image'])
+    expect(calls).toEqual(['profile', 'identity'])
+  })
+
+  it('commits the deletion event before returning a pending Cognito result', async () => {
+    const calls: string[] = []
+    const service = new UserService(
+      {
+        findByCognitoSub: async () => profile,
+        deleteProfile: async () => { calls.push('profile') },
+        hasPendingDeletion: async () => false,
+      } as unknown as UserRepository,
+      {} as ImageStorage,
+      {
+        deleteAccount: async () => { calls.push('identity'); throw new Error('Cognito unavailable') },
+      },
+    )
+
+    await expect(service.deleteUser(admin, 'Alice')).resolves.toEqual({ status: 'pending' })
+    expect(calls).toEqual(['profile', 'identity'])
+  })
+
+  it('returns pending for a retry while the deletion event remains in the outbox', async () => {
+    const service = new UserService(
+      { findByCognitoSub: async () => null, hasPendingDeletion: async () => true } as unknown as UserRepository,
+      {} as ImageStorage,
+      { deleteAccount: async () => { throw new Error('must not be called') } },
+    )
+
+    await expect(service.deleteUser(admin, 'Alice')).resolves.toEqual({ status: 'pending' })
+  })
+
+  it('treats a concurrent profile deletion as the same pending operation', async () => {
+    const service = new UserService(
+      {
+        findByCognitoSub: async () => profile,
+        deleteProfile: async () => { throw { code: 'P2025' } },
+        hasPendingDeletion: async () => true,
+      } as unknown as UserRepository,
+      {} as ImageStorage,
+      { deleteAccount: async () => { throw new Error('must not be called') } },
+    )
+
+    await expect(service.deleteUser(admin, 'Alice')).resolves.toEqual({ status: 'pending' })
+  })
+
+  it('returns 404 semantics when no profile or deletion event exists', async () => {
+    const service = new UserService(
+      { findByCognitoSub: async () => null, hasPendingDeletion: async () => false } as unknown as UserRepository,
+      {} as ImageStorage,
+      { deleteAccount: async () => {} },
+    )
+
+    await expect(service.deleteUser(admin, 'Alice')).rejects.toMatchObject({ code: 'PROFILE_NOT_FOUND', statusCode: 404 })
   })
 
   it('protects the sole super admin account', async () => {
