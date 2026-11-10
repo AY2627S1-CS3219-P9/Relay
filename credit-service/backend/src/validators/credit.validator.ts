@@ -1,3 +1,9 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
+// Scope: Generated initial implementation, debugged implementation
+// Author review: I validated correctness and edited for style.
+
+
 import type { Request, Response } from 'express'
 import type { ReserveCreditRequest } from '@relay/contracts'
 import { CreditServiceError } from '../types/credit.types.js'

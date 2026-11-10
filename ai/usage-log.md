@@ -24,6 +24,10 @@ See aws-implementation.md and kubernetes-cloudformation.md
 - `k8s/base`
 - `k8s/floci`
 
+See credit-backend-implementation.md
+- `credit-service/backend/src`
+- `credit-service/tests/`
+
 - `credit-service/backend/tests`
 - `errand-service/backend/src`
 - `errand-service/backend/tests`
