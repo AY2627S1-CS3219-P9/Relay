@@ -40,9 +40,6 @@ on:
           - nfr
           - full
 
-  schedule:
-    - cron: '0 18 * * *' # Every day at 18:00 UTC (2 AM SGT)
-
 permissions:
   contents: read
   id-token: write

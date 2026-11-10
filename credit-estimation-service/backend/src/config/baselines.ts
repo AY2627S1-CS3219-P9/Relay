@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-25
+// Scope: Integrated author-defined service-type baselines.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { ServiceType as SupplierServiceType } from '@relay/contracts/supplier'
 
 export type ServiceTypeBaseline = {

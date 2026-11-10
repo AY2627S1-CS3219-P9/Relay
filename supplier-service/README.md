@@ -1,118 +1,83 @@
 # Supplier Service
 
-Microservice for managing campus suppliers.
+Campus supplier catalogue and administration, with a React Module Federation
+frontend and an Express/PostgreSQL backend.
 
-## Architecture
+## Run locally
 
-| Component   | Description                                    |
-| ----------- | ---------------------------------------------- |
-| `frontend/` | Vite + React microfrontend (Module Federation) |
-| `backend/`  | Express.js API server (PostgreSQL)             |
-
-## Local Development
+From the repository root with Node.js 24 and Docker running:
 
 ```bash
-# Start all services (host + all microfrontends + backend APIs)
+npm ci
 npm run dev
-
-# Build all workspaces
-npm run build
-
-# Test
-npm run test
 ```
 
-### Supplier frontend data source
-
-The Supplier frontend uses the backend by default. To work with seeded browser-only data,
-copy `frontend/.env.example` to `frontend/.env.local` and set:
-
-```env
-VITE_SUPPLIER_API_MODE=mock
-```
-
-Set it back to `backend` (or remove the setting) to call `/api/supplier` through the Host
-or frontend proxy. Restart the Supplier Vite server after changing an environment file.
-
-## Docker Deployment
+Open http://localhost:8080. Source development runs Supplier's frontend on
+5001 and API on 3000. The host proxies `/api/supplier` to that API.
+For the complete container deployment, use:
 
 ```bash
-# Start all services
-docker compose up -d
-
-# Stop all services
-docker compose down
+npm run up:compose
+npm run down:compose
 ```
 
-For AWS RDS, the supplier image includes the Amazon RDS CA bundle and the EKS
-deployment sets `DB_SSL_CA_PATH`. The API then requires TLS and verifies the
-database certificate and hostname. Local Compose leaves this setting unset for
-its local PostgreSQL container. `/healthz` checks the database connection;
-`/health` checks that the API process is running.
+The teardown deletes local database data. Floci manages PostgreSQL; there is
+no `supplier-db` Compose service. The launcher discovers its generated database
+host, port, and credentials. See the [local guide](../floci/README.md).
 
-### Services
+### Frontend data source
 
-| Service           | Port | Description                         |
-| ----------------- | ---- | ----------------------------------- |
-| host              | 8080 | Main app, proxies remotes and APIs  |
-| supplier-frontend | 5001 | Supplier microfrontend              |
-| supplier-api      | 3000 | Supplier backend API (internal)     |
-| supplier-db       | 5433 | PostgreSQL for suppliers (internal) |
+The frontend uses the backend by default. For seeded browser-only data, copy
+`frontend/.env.example` to `frontend/.env.local`, set
+`VITE_SUPPLIER_API_MODE=mock`, and restart Vite. Remove that override or set it
+to `backend` to use `/api/supplier` again.
 
-## API Endpoints
+## HTTP API
 
-| Endpoint            | Method | Auth   | Description                          |
-| ------------------- | ------ | ------ | ------------------------------------ |
-| `/api/supplier`     | GET    | Public | List suppliers with optional filters |
-| `/api/supplier/:id` | GET    | Public | Get supplier by ID                   |
-| `/api/supplier`     | POST   | Admin  | Create supplier                      |
-| `/api/supplier/:id` | PUT    | Admin  | Update supplier                      |
-| `/api/supplier/:id` | DELETE | Admin  | Delete supplier                      |
+| Method | Route | Access | Description |
+| --- | --- | --- | --- |
+| GET | `/api/supplier` | Signed-in user | List suppliers with filters |
+| GET | `/api/supplier/:id` | Signed-in user | Get one supplier |
+| POST | `/api/supplier` | Admin or SuperAdmin | Create supplier |
+| PUT | `/api/supplier/:id` | Admin or SuperAdmin | Update supplier |
+| DELETE | `/api/supplier/:id` | Admin or SuperAdmin | Delete supplier |
 
-### Query Parameters
+All public API routes verify the Cognito access and ID cookies locally using
+`@relay/user-auth-backend-middleware`. Reads are authenticated, too.
+Internal supplier lookup routes use `x-supplier-service-token`, matching
+`INTERNAL_SUPPLIER_SERVICE_TOKEN`.
 
-| Parameter      | Type             | Description                                               |
-| -------------- | ---------------- | --------------------------------------------------------- |
-| `status`       | string           | Filter by status: `all`, `operational`, `not-operational` |
-| `serviceTypes` | array of numbers | Filter by service types (OR logic)                        |
+List filters:
 
-Examples:
+| Parameter | Values |
+| --- | --- |
+| `status` | `all`, `operational`, `not-operational` |
+| `serviceTypes` | JSON array of numeric service types; matches any selected type |
 
-- `/api/supplier?status=operational`
-- `/api/supplier?serviceTypes=[0,1]` (Food and Drink)
-- `/api/supplier?status=operational&serviceTypes=[0,2,3]`
+For example: `/api/supplier?status=operational&serviceTypes=[0,2,3]`.
+Operating hours are evaluated using `SUPPLIER_TIMEZONE` (Asia/Singapore by
+default in the deployment configuration).
 
-## Project Structure
+## Database and health
 
+`backend/src/schema.sql` contains the schema, indexes, timestamp trigger, and
+21 active seed inserts, including Octobox. Inserts use `ON CONFLICT DO NOTHING`.
+The `supplier-schema` Compose service and Kubernetes migration Job run
+`backend/migrate.js`. Reapplying the schema does not overwrite existing suppliers.
+
+AWS sets `DB_SSL_CA_PATH` to the RDS CA bundle included in the image, enabling
+TLS and certificate verification. Floci uses local PostgreSQL without that
+RDS certificate setting. `/health` checks process liveness; `/healthz` checks
+the database connection.
+
+## Checks
+
+```bash
+npm run test --workspace=@relay/supplier-backend
+npm run build --workspace=@relay/supplier-backend
+npm run build --workspace=@relay/supplier-frontend
 ```
-supplier-service/
-├── frontend/           # Vite + React microfrontend
-│   ├── src/
-│   │   ├── main.tsx
-│   │   └── App.tsx
-│   └── package.json
-└── backend/            # Express.js backend
-    ├── app.ts          # Server entry
-    ├── db.ts           # PostgreSQL helpers
-    ├── routes.ts       # API routes with session validation
-    ├── tsconfig.json   # TypeScript config
-    ├── Dockerfile      # Backend container definition
-    ├── schema.sql      # Database schema + seed data
-    └── package.json
-```
 
-## Database Schema
-
-See `backend/schema.sql` for the complete schema including:
-
-- `suppliers` table
-- `update_updated_at` trigger
-
-## Seed Data
-
-Seed data is in `backend/schema.sql` (not committed to repo).
-
-To enable seeding on docker compose up, do the following:
-
-1. Edit `backend/schema.sql` and uncomment the `INSERT INTO suppliers` statement (lines 44-65)
-2. Rebuild: `docker compose up -d --build supplier-db supplier-api`
+The current backend tests exercise supplier service/filter behavior with test
+repositories. Database connectivity and seeded catalogue behavior need a running
+local or AWS deployment.

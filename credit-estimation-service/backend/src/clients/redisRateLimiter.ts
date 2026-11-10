@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-08
+// Scope: Implemented the author-designed Redis-backed per-user/global rate limiting.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 /**
  * Redis-backed rolling-window limiter shared by every service instance.
  *

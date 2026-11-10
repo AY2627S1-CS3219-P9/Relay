@@ -7,6 +7,13 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ErrandNotificationTypes, type ErrandNotification } from '@relay/contracts'
 import { isErrandNotification } from '../notificationStore'
 
+// AI Assistance Disclosure (rongkangw):
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-17
+// Scope: Implemented and debugged the frontend SSE subscription/update behavior.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 /** Keep one authenticated stream while using the latest view callbacks. */
 export function useErrandNotifications(
   authenticatedSubject: string | undefined,

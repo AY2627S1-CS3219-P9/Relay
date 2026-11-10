@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-25
+// Scope: Implemented route wiring, validation, and rate-limit middleware for the existing interface.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { Router, type Request, type Response } from 'express'
 import { translateEstimationError } from '../types/estimation.types'
 import { handleEstimateCredit } from '../controllers/estimation.controller'

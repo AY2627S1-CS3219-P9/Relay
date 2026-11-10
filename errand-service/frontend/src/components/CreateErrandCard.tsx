@@ -49,6 +49,13 @@ function defaultDeadlineValue() {
   return formatDateTimeLocal(deadline)
 }
 
+// AI Assistance Disclosure (rongkangw):
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-26
+// Scope: Integrated the estimation request, validation, accept/reject, and fallback with the UI.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 export function CreateErrandCard({
   initialSupplierId,
   onClose,

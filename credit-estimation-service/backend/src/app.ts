@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-26
+// Scope: Scaffolded the estimation application from the author-designed service boundary.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import express, { type ErrorRequestHandler } from 'express'
 import { Redis } from 'ioredis'
 import { getEnv } from './config/env.js'

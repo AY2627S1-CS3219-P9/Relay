@@ -1,3 +1,10 @@
+# AI Assistance Disclosure:
+# Tool: Codex (ChatGPT-5.6 Sol)
+# Date: 2026-10-26
+# Scope: Generated and debugged the estimation service container build.
+# Author review: Reviewed the output and adjusted configuration and integration details to fit project
+# requirements.
+
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

@@ -4,7 +4,7 @@ A microservice for estimating credit values for errands based on their title, de
 
 ## Features
 
-- AI-powered credit estimation using configurable providers (any OpenAI-compatible API)
+- AI credit estimation using the `openai` provider adapter and an OpenAI-compatible chat-completions endpoint
 - Distributed per-user rate limiting
 - Distributed global rate limiting across all service instances
 - Authentication via service token
@@ -23,20 +23,31 @@ Estimate credits for an errand.
   "description": "Description of errand",
   "serviceType": 0,
   "instructions": "Optional instructions",
-  "startAt": "2026-11-08T10:00:00Z",
-  "expiresAt": "2026-11-08T12:00:00Z",
-  "userId": "user-sub-identifier",
+  "startAt": "2030-11-08T10:00:00Z",
+  "expiresAt": "2030-11-08T12:00:00Z",
   "availableCredit": 37
 }
 ```
 
-**Authentication:** Requires `x-credit-estimation-service-token` OR `x-service-token` header
+Use future `startAt`/`expiresAt` values when trying the example.
+
+**Authentication:** Requires `x-credit-estimation-service-token` OR `x-service-token`
+matching `CREDIT_ESTIMATION_SERVICE_TOKEN`, plus `x-user-id` identifying the user
+for rate limiting. The HTTP route reads the user ID from that header, not the
+request body. Browser clients call the authenticated
+`POST /api/errands/estimate-credit` route; Errand supplies the internal token
+and authenticated user's subject. That public route also requires `instructions`
+to be a string (use `""` when none).
 
 **Rate Limit:**
 
 - Per user: 20 requests per minute (configurable via `AI_RATE_LIMIT_REQUESTS_PER_MINUTE`)
 - Across all users and service instances: 300 requests per minute (configurable via `AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE`)
-- When Redis is unavailable, estimation fails closed.
+- Counters are shared through Redis across estimator instances.
+- When Redis is unavailable, estimation fails closed with service-unavailable
+  behavior; it does not fall back to a process-local limiter.
+- Without an initialized AI client, estimates return HTTP 503. There is no
+  keyword-only fallback.
 
 **Response:**
 
@@ -73,14 +84,14 @@ The AI provider and rate limiting are configured via environment variables.
 | Variable                                 | Default                                 | Description                                    |
 | ---------------------------------------- | --------------------------------------- | ---------------------------------------------- |
 | PORT                                     | 3005                                    | Service port                                   |
-| USER_API_URL                             | http://user-api:3000                    | User API URL for session validation            |
-| USER_SERVICE_INTERNAL_TOKEN              | local-internal-user-service-token       | Token for user API auth                        |
-| CREDIT_ESTIMATION_SERVICE_TOKEN          | local-internal-estimation-service-token | Internal service token                         |
+| USER_API_URL                             | http://user-api:3000                    | Retained user-service URL setting            |
+| USER_SERVICE_INTERNAL_TOKEN              | Empty                                   | Retained user-service configuration             |
+| CREDIT_ESTIMATION_SERVICE_TOKEN          | Empty                                   | Required internal service token                 |
 | ESTIMATION_SERVICE_TIMEOUT_MS            | 5000                                    | Request timeout in ms                          |
-| AI_PROVIDER                              | -                                       | AI provider (e.g., openai)                     |
+| AI_PROVIDER                              | Empty                                   | Set to `openai` to initialize the supported adapter |
 | AI_API_KEY                               | -                                       | AI API key (required)                          |
 | AI_MODEL                                 | -                                       | AI model to use                                |
-| AI_ENDPOINT                              | -                                       | AI API endpoint                                |
+| AI_ENDPOINT                              | Empty                                   | Full chat-completions URL, including its path    |
 | AI_ESTIMATION_TIMEOUT_MS                 | 3000                                    | AI request timeout in ms                       |
 | AI_TEMPERATURE                           | 0                                       | AI temperature setting                         |
 | AI_MAX_TOKENS                            | 1000                                    | Max tokens for AI response                     |
@@ -93,7 +104,7 @@ The AI provider and rate limiting are configured via environment variables.
 ```bash
 AI_PROVIDER=openai
 AI_API_KEY=your-api-key
-AI_ENDPOINT=your-endpoint
+AI_ENDPOINT=https://your-provider.example/v1/chat/completions
 AI_MODEL=your-model-id
 AI_ESTIMATION_TIMEOUT_MS=3000
 AI_TEMPERATURE=0
@@ -118,8 +129,13 @@ deterministic credit adjustment based on the available time window relative to t
 
 - Half the standard window adds 20% of the service's base credits.
 - Twice the standard window removes 20% of the service's base credits.
-- Adjustments use a smooth logarithmic curve capped at +40% and -30% of the estimated credits.
-- The adjusted range will remain within the global 10-50 credit bounds.
+- Adjustments use a logarithmic curve capped at +40% and -30% of the service's
+  base credits, rounded to a whole-credit delta.
+- Valid estimates remain within the global 10-50 bounds. If the balance covers
+  the minimum but not maximum, the maximum is capped at the whole-credit balance.
+  If the balance is below the minimum, the range is preserved for the UI to warn.
+- Semantically unsuitable tasks can return `minCredits: -1, maxCredits: -1`
+  with an explanatory reason instead of a priced estimate.
 
 ## Validation
 
@@ -131,6 +147,37 @@ The service validates all input fields:
 - `startAt`: required valid ISO date string
 - `expiresAt`: required valid ISO date string after both the effective start and current time
 - `serviceType`: integer, must be a valid service type from supplier service
-- `userId`: required string for per-user rate limiting
+- `x-user-id` header: required non-empty string for per-user rate limiting
+- `availableCredit`: required finite, nonnegative number
 
-Dangerous patterns (XSS, injection, prompt injection) are rejected.
+The validator rejects a defined set of script and injection-like text patterns;
+this is not a guarantee that every malicious prompt is detected.
+
+## Run and verify
+
+From the repository root, `npm run up:compose` starts the estimator and its Redis
+service. Supply `AI_PROVIDER=openai`, `AI_API_KEY`, `AI_MODEL`, and the full
+`AI_ENDPOINT` in the local Compose configuration before startup. Without provider
+configuration the application can run, but estimation requests return 503.
+
+`npm run dev` runs the estimator from source; ensure Redis is running and export
+`REDIS_URL=redis://localhost:6379` plus provider settings in that shell. The source
+launcher does not start Redis or load estimator-specific `.env` files for you.
+
+Kubernetes currently deploys the estimator but no Redis Service. Configure a
+reachable Redis endpoint explicitly in its runtime environment before testing
+AI estimation there; merely adding `REDIS_URL` to `deploy/relay.aws.env` does not
+inject it into Pods with the current deployment renderer.
+
+`/health` is a process check. `/healthz` currently returns a static success response
+and does not verify Redis connectivity or provider availability. Verify an actual
+estimate as well as health before a demo.
+
+```bash
+npm run lint --workspace=@relay/credit-estimation-backend
+npm run test --workspace=@relay/credit-estimation-backend
+npm run build --workspace=@relay/credit-estimation-backend
+```
+
+For deterministic end-to-end tests using an isolated Redis and mock provider,
+see the [single-instance load-test suite](../load-tests/README.md#local-credit-estimation-single-instance-suite).

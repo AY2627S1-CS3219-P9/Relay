@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-25
+// Scope: Implemented the author-defined provider request, prompt construction, response parsing, and
+// failure handling.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 import { RateLimiterFactory, type RateLimiter } from './rateLimiter.factory.js'
 import { ServiceTypeBaseline } from '../config/baselines.js'

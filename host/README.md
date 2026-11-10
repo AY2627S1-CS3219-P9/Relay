@@ -1,96 +1,60 @@
-# React + TypeScript + Vite
+# Relay host frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React/TypeScript host provides the application shell, navigation, sign-in,
+session refresh, and runtime loading of the four microfrontends. It uses Vite,
+React Compiler, Tailwind, and the Module Federation runtime.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Run commands from the repository root with Node.js 24 and Docker available:
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:8080. This starts infrastructure and the host, remotes,
+APIs, notifications, and event publishers. Authentication runs in Compose.
+For a complete container deployment instead, use `npm run up:compose`.
+See the [local environment guide](../floci/README.md) for setup and cleanup.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+To run only the host after its dependencies are running:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev --workspace=@relay/host
 ```
 
-## Remote contracts
+## Remote loading and routing
 
-The four frontend inputs are defined in
-`packages/contracts/src/frontend/remotes.ts`. `RemotePropsByService` ties each
-frontend service to its props. Backend-only services are excluded from
-`RemoteServiceId`. The host composes each service's props explicitly, and
-`RemotePage` narrows its discriminated union before rendering the typed lazy
-component. The federation loader is the trust boundary for deployed JavaScript;
-TypeScript cannot verify the version of a separately deployed remote.
+`src/remote/RemoteRegistry.ts` registers these same-origin remote entries,
+each exposing `./App`:
 
-The contracts retain the existing flat runtime prop names for independent
-rollouts. Future field renames or grouping should use a compatibility period.
-Supplier uses `supplierApi` consistently with the host; older hosts already
-supply that field. Standalone entry points supply their own dependencies and
-navigation adapters instead of making integrated dependencies optional.
+| Remote | Entry | Source-development port |
+| --- | --- | --- |
+| Supplier | `/remotes/supplier/remoteEntry.js` | 5001 |
+| User | `/remotes/user/remoteEntry.js` | 5002 |
+| Errand | `/remotes/errand/remoteEntry.js` | 5003 |
+| Credit | `/remotes/credit/remoteEntry.js` | 5004 |
 
-Run `npm run test --workspace=@relay/host` for boundary integration coverage.
-The host build also compiles `RemotePage.typecheck.ts`, whose expected errors
-verify invalid service/props pairs and API capability restrictions.
+`vite.config.ts` proxies remote paths and `/api/*` to the corresponding local
+services. The source API ports are Supplier 3000, User 3001, Errand 3002,
+Credit 3003, Auth 3004, and Notifications 3010. Estimation is internal and is
+called by Errand rather than the browser.
+
+In Compose, `config/nginx.conf` serves the built host and proxies remotes and
+APIs through port 8080. In AWS and Floci EKS, ingress routes remotes and public
+APIs directly to their Services; the host serves the remaining frontend paths.
+Use the shared `@relay/user-auth-frontend-fetch` helper for protected requests
+so simultaneous requests share session refresh.
+
+## Checks
+
+```bash
+npm run lint --workspace=@relay/host
+npm run test --workspace=@relay/host
+npm run build --workspace=@relay/host
+```
+
+The Dockerfile builds static assets and serves them with Nginx. `/healthz`
+checks the host only; it does not establish that the APIs, authentication, or
+remote frontends are healthy.

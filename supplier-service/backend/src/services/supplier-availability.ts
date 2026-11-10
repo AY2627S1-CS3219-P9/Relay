@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-10
+// Scope: Implemented the Supplier availability calculation defined by the author at a high level.
+// Author review: Reviewed every output, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { OperatingHours, Supplier } from '@relay/contracts/supplier'
 import { getEnv } from '../config/env.js'
 

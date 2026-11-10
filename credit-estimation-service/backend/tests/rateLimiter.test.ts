@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-03
+// Scope: Generated tests for the initial rate limiter.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SlidingWindowRateLimiter } from '../src/clients/rateLimiter.js'
 
