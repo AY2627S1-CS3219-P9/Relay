@@ -34,7 +34,6 @@ Author review: I validated correctness, edited for domain needs, and amend the c
 - [Server-Sent Events (SSE)](#server-sent-events-sse)
 - [Internal service APIs (not for browsers)](#internal-service-apis-not-for-browsers)
 - [Error code reference](#error-code-reference)
-- [Changelog and maintenance notes](#changelog-and-maintenance-notes)
 
 ## Base URLs
 
