@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express'
-import { getEnv } from '../config/env'
+import { getEnv } from '../config/env.js'
 import { SupplierErrors } from '@relay/contracts/supplier'
-import { SupplierServiceError } from '../types/supplier.types'
+import { SupplierServiceError } from '../types/supplier.types.js'
 
 export const internalServiceAuth: RequestHandler = (req, _res, next) => {
   if (req.header('x-supplier-service-token') !== getEnv().internalServiceToken) {

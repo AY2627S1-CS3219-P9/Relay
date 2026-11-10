@@ -1,6 +1,6 @@
 import { config } from 'dotenv'
 
-config({ path: '.env.test' })
+config({ path: '.env.example' })
 
 // Set default env vars if not provided
 if (!process.env.DATABASE_URL) {

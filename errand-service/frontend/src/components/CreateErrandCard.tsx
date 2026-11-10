@@ -4,7 +4,13 @@
 // Author review: I validated correctness and edited for style.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { ErrandRemoteProps, ServiceType, Supplier } from '@relay/contracts'
+import type {
+  ErrandRemoteProps,
+  EstimateCreditRequest,
+  EstimateCreditResponse,
+  ServiceType,
+  Supplier,
+} from '@relay/contracts'
 import {
   ClockIcon,
   ErrorMessage,
@@ -50,20 +56,28 @@ export function CreateErrandCard({
   onCreated,
   errandApi,
   supplierApi,
+  authenticatedSubject,
+  creditBalance,
 }: {
   initialSupplierId?: string
   onClose: () => void
   onCreated: () => void
   errandApi: ErrandRemoteProps['errandApi']
   supplierApi: ErrandRemoteProps['supplierApi']
+  authenticatedSubject: ErrandRemoteProps['authenticatedSubject']
+  creditBalance: ErrandRemoteProps['creditBalance']
 }) {
+  const availableCredit = creditBalance?.availableCredit
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [isEstimating, setIsEstimating] = useState(false)
-  const [estimatedCredits, setEstimatedCredits] = useState<number | null>(null)
+  const [estimate, setEstimate] = useState<EstimateCreditResponse | null>(null)
+  const [estimateStatus, setEstimateStatus] = useState<
+    'success' | 'rate-limited' | 'invalid' | 'unavailable' | null
+  >(null)
   const [form, setForm] = useState<CreateForm>({
     name: '',
     supplierId: initialSupplierId ?? '',
@@ -80,6 +94,15 @@ export function CreateErrandCard({
   })
 
   const handleEstimateCredits = async () => {
+    if (!authenticatedSubject) {
+      setErrorMessage('Sign in before estimating credits.')
+      return
+    }
+    if (availableCredit === undefined) {
+      setErrorMessage('Your credit balance is still loading. Try again shortly.')
+      return
+    }
+
     // Validate required fields
     if (!form.name.trim()) {
       setErrorMessage('Please fill in the errand name before estimating.')
@@ -94,46 +117,76 @@ export function CreateErrandCard({
       return
     }
 
+    const startAt = new Date(form.startAt)
+    const expiresAt = new Date(form.expiresAt)
+    if (
+      Number.isNaN(startAt.getTime()) ||
+      Number.isNaN(expiresAt.getTime()) ||
+      expiresAt.getTime() <= Math.max(startAt.getTime(), Date.now())
+    ) {
+      setErrorMessage('Choose a valid start time and a future deadline before estimating.')
+      return
+    }
+
     setIsEstimating(true)
     setErrorMessage('')
+    setEstimate(null)
+    setEstimateStatus(null)
 
     try {
-      const response = await fetch('/internal/errands/estimate-credit', {
+      const response = await fetch('/api/errands/estimate-credit', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-errand-service-token': 'local-internal-errand-service-token',
         },
         credentials: 'include',
         body: JSON.stringify({
           name: form.name.trim(),
           description: form.description.trim(),
           serviceType: form.serviceType as ServiceType,
-        }),
+          instructions: form.instructions.trim(),
+          startAt: startAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          userId: authenticatedSubject,
+          availableCredit,
+        } satisfies EstimateCreditRequest),
       })
 
       if (!response.ok) {
-        const errorData = await response.text()
-        setErrorMessage(`Estimation failed: ${response.status} ${errorData}`)
+        const errorData = (await response.json().catch(() => null)) as { code?: string } | null
+        if (errorData?.code === 'CREDIT_ESTIMATION_RATE_LIMITED' || response.status === 429) {
+          setEstimateStatus('rate-limited')
+          setErrorMessage('')
+        } else if (errorData?.code === 'CREDIT_ESTIMATION_UNAVAILABLE' || response.status >= 500) {
+          setEstimateStatus('unavailable')
+          setErrorMessage('')
+        } else {
+          setErrorMessage(`Estimation failed: ${response.status}`)
+        }
         return
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as EstimateCreditResponse
 
-      // data.explanation is not displayed to the user, but it is logged for debugging purposes.
-      if (data.estimatedCredits === -1) {
-        setErrorMessage('Unable to estimate credits for the provided errand details.')
-        setEstimatedCredits(null)
+      if (data.minCredits === -1 || data.maxCredits === -1) {
+        setEstimate(null)
+        setEstimateStatus('invalid')
         return
       }
 
-      setEstimatedCredits(data.estimatedCredits)
+      const suggestedCredits = Math.round((data.minCredits + data.maxCredits) / 2)
+      setEstimate(data)
+      setEstimateStatus('success')
+      if (suggestedCredits > availableCredit) return
+
       setForm((current) => ({
         ...current,
-        creditAmount: String(data.estimatedCredits),
+        creditAmount: String(suggestedCredits),
       }))
-    } catch (error) {
-      setErrorMessage('Error encountered while estimating credits.')
+    } catch {
+      setErrorMessage('')
+      setEstimate(null)
+      setEstimateStatus('unavailable')
     } finally {
       setIsEstimating(false)
     }
@@ -222,6 +275,8 @@ export function CreateErrandCard({
     if (!form.description.trim()) validationErrors.description = 'Enter a description.'
     else if (form.description.trim().length > 5000)
       validationErrors.description = 'Use 5,000 characters or fewer.'
+    if (form.instructions.trim().length > 5000)
+      validationErrors.instructions = 'Use 5,000 characters or fewer.'
     if (!form.creditAmount.trim() || !Number.isInteger(creditAmount) || creditAmount < 0)
       validationErrors.creditAmount = 'Enter a whole number of credits that is 0 or greater.'
     if (!start) validationErrors.startAt = 'Choose a start time.'
@@ -382,20 +437,62 @@ export function CreateErrandCard({
             rows={3}
           />
         </RelayFormField>
-        <label className="errand-field">
-          <span>
-            Instructions <em>Optional</em>
-          </span>
+        <RelayFormField
+          label="Instructions (optional)"
+          error={errorFor('instructions', 'deliveryDetails.instructions')}
+        >
           <textarea
             value={form.instructions}
             onChange={(e) => update('instructions', e.target.value)}
             placeholder="Add any handling or collection instructions."
+            maxLength={5000}
             rows={2}
           />
-        </label>
-        <div className="errand-form-grid errand-reward-grid">
+        </RelayFormField>
+        <div className="errand-reward-grid">
           <div className="errand-field has-input-button">
             <span>Reward credits</span>
+            {estimateStatus === 'success' && estimate && (
+              <div className="errand-estimate-pill" role="status">
+                <span>
+                  Suggested range: {estimate.minCredits}–{estimate.maxCredits} credits
+                </span>
+                <button
+                  type="button"
+                  className="relay-icon-button errand-estimate-help"
+                  aria-label="Why this credit range was suggested"
+                >
+                  ?
+                </button>
+                <div className="errand-estimate-reason" role="tooltip">
+                  {estimate.reason}
+                </div>
+              </div>
+            )}
+            {estimateStatus === 'success' &&
+              estimate &&
+              availableCredit !== undefined &&
+              availableCredit < estimate.minCredits && (
+                <div className="errand-estimate-pill errand-estimate-pill-balance" role="status">
+                  You have {Math.floor(availableCredit)} credits; the suggested minimum is{' '}
+                  {estimate.minCredits}.
+                </div>
+              )}
+            {estimateStatus === 'rate-limited' && (
+              <div className="errand-estimate-pill errand-estimate-pill-rate-limited" role="status">
+                Estimation is busy. Try again shortly.
+              </div>
+            )}
+            {estimateStatus === 'invalid' && (
+              <div className="errand-estimate-pill errand-estimate-pill-invalid" role="status">
+                Unable to estimate credits.
+              </div>
+            )}
+            {estimateStatus === 'unavailable' && (
+              <div className="errand-estimate-pill errand-estimate-pill-invalid" role="alert">
+                Credit estimation is currently unavailable. Enter the reward credits manually.
+              </div>
+            )}
             <div className="errand-credit-input-wrapper">
               <input
                 type="number"
@@ -413,15 +510,25 @@ export function CreateErrandCard({
                   isEstimating ||
                   !form.name.trim() ||
                   !form.description.trim() ||
-                  form.serviceType === ''
+                  form.serviceType === '' ||
+                  !authenticatedSubject ||
+                  availableCredit === undefined
                 }
-                title="Estimate credits based on errand details"
-                className="errand-estimate-button"
+                title={
+                  !authenticatedSubject
+                    ? 'Sign in to estimate credits'
+                    : availableCredit === undefined
+                      ? 'Waiting for your credit balance'
+                      : 'Estimate credits based on errand details'
+                }
+                className="relay-icon-button errand-estimate-button"
               >
                 <ClockIcon className="errand-estimate-icon" />
               </button>
             </div>
           </div>
+        </div>
+        <div className="errand-form-grid">
           <RelayFormField label="Start time" required error={errorFor('startAt')}>
             <input
               type="datetime-local"

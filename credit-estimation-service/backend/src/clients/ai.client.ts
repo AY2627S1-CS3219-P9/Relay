@@ -1,4 +1,7 @@
-import { SlidingWindowRateLimiter } from './rateLimiter.js'
+import { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
+import { RateLimiterFactory, type RateLimiter } from './rateLimiter.factory.js'
+import { ServiceTypeBaseline } from '../config/baselines.js'
+import { MAX_AI_REASON_LENGTH, limitReasonAtWord } from '../config/reason.js'
 
 export interface AIConfig {
   provider: string
@@ -9,100 +12,87 @@ export interface AIConfig {
   maxTokens?: number
   timeoutMs: number
   rateLimitRequestsPerMinute: number
+  globalRateLimitRequestsPerMinute: number
+  redisUrl: string
 }
 
 export interface AIClient {
   estimateCredit(
-    name: string,
-    description: string,
-    baseline: {
-      base: number
-      min: number
-      max: number
-      name: string
-    },
-  ): Promise<{ estimatedCredits: number; explanation: string }>
+    request: EstimateCreditRequest,
+    baseline: ServiceTypeBaseline,
+  ): Promise<EstimateCreditResponse>
+  rateLimiter: {
+    tryAcquire(userId: string): unknown
+    disconnect?(): Promise<void>
+  }
+}
+
+export function buildEstimationPrompt(
+  request: EstimateCreditRequest,
+  baseline: ServiceTypeBaseline,
+): string {
+  return [
+    'TASK: Validate first; price only if all checks pass.',
+    `CONTEXT: service=${baseline.name}; baseline=${baseline.base}; range=10-50; balance=${Math.floor(request.availableCredit)}.`,
+    `INPUT: ${JSON.stringify({ title: request.name, description: request.description, instructions: request.instructions })}`,
+    `VALIDATE title+description jointly. Require: (1) a specific meaningful item/actionable task; (2) a clear ${baseline.name} connection; (3) enough detail to know what is collected/delivered; (4) mutual consistency.`,
+    'Description may clarify ambiguity, not override a clear mismatch; optional details may be missing if the core task is clear.',
+    'Never invent an item/task/service connection; service selection alone proves nothing.',
+    'Reject vague, meaningless, placeholder titles unless description names a real task.',
+    'On failure or uncertain relevance: minCredits=maxCredits=-1',
+    'PRICE valid title+description only. Accept ordinary wording, synonyms, and minor spelling errors; exact keywords unnecessary.',
+    'Use only stated factors (stops, size, weight, fragility, complexity); a brief description may establish one. Never invent factors; item price/newness alone adds none.',
+    'Center range on service baseline and adjust for applicable factors, never use a generic value. An extra factor normally puts max above baseline unless capped at 50.',
+    'Balance is affordability-only and never raises estimates. If it covers min not max, cap maximum at balance; if below min, preserve range and let UI warn.',
+    'Both credits must stay within 10-50; reason mentions only factors actually used.',
+    `OUTPUT JSON only, exactly: minCredits=integer 10-50 or -1 if invalid; maxCredits=integer 10-50 or -1 if invalid; reason=one direct, friendly, user-facing sentence of at most ${MAX_AI_REASON_LENGTH} characters.`,
+    'Vary sentence structure. Never mention AI, prompts, models, or internal rules. No Markdown, HTML, correction suggestions, or input re-quoting.',
+  ].join('\n')
 }
 
 export class OpenAIClient implements AIClient {
   private config: AIConfig
-  private rateLimiter: SlidingWindowRateLimiter
+  public rateLimiter: RateLimiter
 
   constructor(config: AIConfig) {
     this.config = config
-    this.rateLimiter = new SlidingWindowRateLimiter({
+    this.rateLimiter = RateLimiterFactory.create({
+      redisUrl: config.redisUrl,
       windowMs: 60 * 1000,
-      maxRequests: config.rateLimitRequestsPerMinute,
+      perUserMaxRequests: config.rateLimitRequestsPerMinute,
+      globalMaxRequests: config.globalRateLimitRequestsPerMinute,
     })
   }
 
   async estimateCredit(
-    name: string,
-    description: string,
-    baseline: { base: number; min: number; max: number; name: string },
-  ): Promise<{ estimatedCredits: number; explanation: string }> {
-    const prompt = this.buildPrompt(name, description, baseline)
-
+    request: EstimateCreditRequest,
+    baseline: ServiceTypeBaseline,
+  ): Promise<EstimateCreditResponse> {
     try {
-      // Fail fast rate limit check
-      if (!this.rateLimiter.tryAcquire()) {
+      const rateLimit = await this.rateLimiter.tryAcquire(request.userId)
+      if (!rateLimit.allowed) {
+        console.warn('Credit estimation rate limit exceeded', {
+          scope: rateLimit.scope,
+          retryAfterMs: rateLimit.retryAfterMs,
+        })
         throw new Error('RATE_LIMITED')
       }
 
+      const prompt = this.buildPrompt(request, baseline)
       const response = await this.callOpenAI(prompt)
 
-      return this.parseResponse(response, baseline)
+      return this.parseResponse(response)
     } catch (error) {
+      if (error instanceof Error && error.message === 'RATE_LIMITED') {
+        throw error
+      }
       console.error('OpenAI API error:', error)
       throw error
     }
   }
 
-  private buildPrompt(
-    name: string,
-    description: string,
-    baseline: { base: number; min: number; max: number; name: string },
-  ): string {
-    return `
-      Validate and estimate credits for an errand.
-
-      Service: ${baseline.name}
-      Baseline: ${baseline.base}
-      Range: ${baseline.min}-${baseline.max}
-      Input: ${JSON.stringify({ title: name, description })}
-
-      VALIDATE BEFORE PRICING:
-      The title and description must:
-      1. Identify a meaningful task or item.
-      2. Establish relevance to the selected service.
-      3. Be consistent with each other.
-
-      The description may clarify an ambiguous title, but cannot override
-      a clear mismatch. Missing optional details are acceptable.
-      Do not invent actions, reinterpret unrelated content, or assume
-      relevance from the selected service alone.
-      If any check fails or relevance cannot be established, return -1.
-      Never use the baseline as a fallback for invalid input.
-
-      PRICE ONLY VALID REQUESTS:
-      - Read both name and description for pricing factors.
-      - Recognize ordinary language, synonyms, and minor spelling mistakes;
-        do not require exact keywords.
-      - Apply stated urgency, distance, stops, size, weight, fragility,
-        complexity, and environmental difficulty.
-      - A brief description can still express a pricing factor.
-      - Start at baseline and increase proportionally to applicable factors.
-      - If an additional factor applies, credits must exceed baseline,
-        unless baseline already equals the maximum.
-      - Use baseline only when no additional factors are expressed.
-      - Never invent factors. Item price or newness alone adds no credits.
-      - The explanation must reflect the factors used in the estimate.
-
-      Return JSON only with exactly:
-      - estimatedCredits: integer within range, or -1 if invalid.
-      - explanation: maximum 12 words; main pricing reason or brief issue label.
-      No correction suggestions. No re-quoting of input.
-    `
+  private buildPrompt(request: EstimateCreditRequest, baseline: ServiceTypeBaseline): string {
+    return buildEstimationPrompt(request, baseline)
   }
 
   private async callOpenAI(prompt: string): Promise<string> {
@@ -158,28 +148,42 @@ export class OpenAIClient implements AIClient {
     }
   }
 
-  private parseResponse(
-    response: string,
-    baseline: { min: number; max: number },
-  ): { estimatedCredits: number; explanation: string } {
+  private parseResponse(response: string): {
+    minCredits: number
+    maxCredits: number
+    reason: string
+  } {
     try {
       const data = JSON.parse(response)
 
-      if (typeof data.estimatedCredits !== 'number' || typeof data.explanation !== 'string') {
+      if (
+        typeof data.minCredits !== 'number' ||
+        typeof data.maxCredits !== 'number' ||
+        typeof data.reason !== 'string'
+      ) {
         throw new Error('Invalid response format')
       }
 
-      // Check for invalid request marker
-      if (data.estimatedCredits === -1) {
-        return { estimatedCredits: -1, explanation: data.explanation.substring(0, 500) }
+      if (data.minCredits === -1 || data.maxCredits === -1) {
+        return { minCredits: -1, maxCredits: -1, reason: data.reason.substring(0, 160) }
       }
 
-      let estimatedCredits = Math.round(data.estimatedCredits)
-      estimatedCredits = Math.max(baseline.min, Math.min(baseline.max, estimatedCredits))
+      const minCredits = Math.round(data.minCredits)
+      const maxCredits = Math.round(data.maxCredits)
+      if (minCredits < 10 || maxCredits > 50 || minCredits > maxCredits) {
+        throw new Error('AI response range is outside global bounds')
+      }
 
-      const explanation = data.explanation.substring(0, 500)
+      const normalizedReason = data.reason
+        .replace(/[<>]/g, '')
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+      const reason = limitReasonAtWord(normalizedReason, MAX_AI_REASON_LENGTH)
+      if (!reason || /[`*_#]/.test(reason)) {
+        throw new Error('AI response reason is not user-facing text')
+      }
 
-      return { estimatedCredits, explanation }
+      return { minCredits, maxCredits, reason }
     } catch (error) {
       throw new Error('Failed to parse AI response')
     }
@@ -190,12 +194,23 @@ export function createAIClient(config: AIConfig): AIClient {
   return new OpenAIClient(config)
 }
 
-let aiClient: AIClient | undefined
+let aiClientInstance: AIClient | null = null
 
-export function setAIClient(client: AIClient | undefined): void {
-  aiClient = client
+export function getAIClient(): AIClient | null {
+  return aiClientInstance
 }
 
-export function getAIClient(): AIClient | undefined {
-  return aiClient
+export function setAIClient(client: AIClient | null): void {
+  aiClientInstance = client
+}
+
+export async function cleanupAIClient(): Promise<void> {
+  if (aiClientInstance && 'rateLimiter' in aiClientInstance) {
+    const client = aiClientInstance as OpenAIClient
+    const rateLimiter = client.rateLimiter as { disconnect?(): Promise<void> }
+    if (typeof rateLimiter.disconnect === 'function') {
+      await rateLimiter.disconnect()
+    }
+  }
+  aiClientInstance = null
 }

@@ -212,6 +212,8 @@ ScaledObject conditions as well as its HPA during that separate scenario.
   latency limits are operation-specific: 250 ms for reads, 250 ms for create,
   and 150 ms for cancel.
 - `nfr-credit.js`: authenticated credit-balance reads and non-negative balance checks.
+- `nfr-credit-estimation.js`: sustained AI credit-estimation recommendations across three users.
+- `credit-estimation-rate-limit.js`: exact per-user rate-limit boundary behavior.
 - `nfr-supplier.js`: authenticated supplier-query workload.
 
 NFR defaults are bounded by the current Grafana Cloud project limit. The
@@ -226,6 +228,29 @@ Lifecycle and Core are correctness tests, not only latency tests. Their
 summaries must contain nonzero scenario-execution counters, HTTP requests, and
 checks. A Grafana run showing zero requests must not be reported as passing;
 validate it locally with plain `k6 run` before relying on the cloud result.
+
+## Local credit estimation single-instance suite
+
+The local suite runs the sustained estimation NFR and exact per-user
+rate-limit boundary test against one `credit-estimation-api` container. A
+temporary OpenAI-compatible mock makes responses deterministic and avoids paid
+provider calls. A separate temporary Redis instance isolates limiter state and
+is reset between the two scenarios.
+
+Start and provision the local environment first as described above. Then run
+with Docker Desktop running:
+
+```bash
+node load-tests/run-credit-estimation-single-instance.mjs
+```
+
+The single runner creates its Compose override and mock AI server configuration
+in a temporary directory, verifies that exactly one estimator container is
+active, executes both k6 files directly without Grafana Cloud, and restores the
+normal Compose estimator configuration afterward. By default, the sustained
+test runs at 15 requests per minute for three minutes; the boundary test sends
+25 requests and expects exactly 20 successes plus 5 rate-limit responses.
+Summaries are written under `load-tests/results/`.
 
 ## Cleanup
 

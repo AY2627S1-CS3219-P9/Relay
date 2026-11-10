@@ -10,13 +10,13 @@ import type {
   ServiceType,
   ValidateSupplierSelectionRequest,
 } from '@relay/contracts/supplier'
-import { getEnv } from '../config/env'
-import { SupplierService } from '../services/supplier.service'
+import { getEnv } from '../config/env.js'
+import { SupplierService } from '../services/supplier.service.js'
 import {
   validateLocation,
   validateOperatingHours,
   validateServiceTypes,
-} from '../validators/supplier.validator'
+} from '../validators/supplier.validator.js'
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<globalThis.Response> {
   const controller = new AbortController()

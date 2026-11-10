@@ -5,6 +5,7 @@ export type ServiceTypeBaseline = {
   min: number
   max: number
   name: string
+  standardWindowMinutes: number
 }
 
 /** Default baseline for unknown service types */
@@ -13,16 +14,47 @@ export const DEFAULT_BASELINE: ServiceTypeBaseline = {
   min: 15,
   max: 40,
   name: 'Unknown',
+  standardWindowMinutes: 120,
 }
 
 /** Service type baselines configuration - keyed by supplier service type for extensibility */
 export const CREDIT_BASELINES = {
-  [SupplierServiceType.Food]: { base: 15, min: 10, max: 30, name: 'Food' },
-  [SupplierServiceType.Drink]: { base: 10, min: 8, max: 20, name: 'Drink' },
-  [SupplierServiceType.Shopping]: { base: 20, min: 15, max: 40, name: 'Shopping' },
-  [SupplierServiceType.Printing]: { base: 10, min: 8, max: 25, name: 'Printing' },
-  [SupplierServiceType.Parcel]: { base: 25, min: 15, max: 50, name: 'Parcel' },
-} as const
+  [SupplierServiceType.Food]: {
+    base: 15,
+    min: 10,
+    max: 30,
+    name: 'Food',
+    standardWindowMinutes: 90,
+  },
+  [SupplierServiceType.Drink]: {
+    base: 10,
+    min: 8,
+    max: 20,
+    name: 'Drink',
+    standardWindowMinutes: 60,
+  },
+  [SupplierServiceType.Shopping]: {
+    base: 20,
+    min: 15,
+    max: 40,
+    name: 'Shopping',
+    standardWindowMinutes: 180,
+  },
+  [SupplierServiceType.Printing]: {
+    base: 10,
+    min: 8,
+    max: 25,
+    name: 'Printing',
+    standardWindowMinutes: 120,
+  },
+  [SupplierServiceType.Parcel]: {
+    base: 25,
+    min: 15,
+    max: 50,
+    name: 'Parcel',
+    standardWindowMinutes: 240,
+  },
+} as const satisfies Record<SupplierServiceType, ServiceTypeBaseline>
 
 export type CreditBaseline = (typeof CREDIT_BASELINES)[SupplierServiceType]
 
@@ -57,7 +89,14 @@ export function loadBaselinesFromEnv(): Record<number, ServiceTypeBaseline> {
     const envValue = process.env[envKey]
     if (envValue) {
       const [base, min, max] = parseBaseline(envValue)
-      result[serviceType] = { base, min, max, name: serviceType.toString() }
+      const configuredBaseline = getBaselineForServiceType(serviceType)
+      result[serviceType] = {
+        base,
+        min,
+        max,
+        name: configuredBaseline.name,
+        standardWindowMinutes: configuredBaseline.standardWindowMinutes,
+      }
     }
   }
 

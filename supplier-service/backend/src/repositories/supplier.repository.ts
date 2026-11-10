@@ -4,7 +4,7 @@ import {
   createSupplier,
   updateSupplier,
   deleteSupplier,
-} from '../db'
+} from '../db.js'
 import type { Supplier, GetSuppliersFilterParams } from '@relay/contracts/supplier'
 
 export class SupplierRepository {
