@@ -373,7 +373,7 @@ fi
 
 step "Check database migration Jobs"
 migration_sources=(
-  "supplier-schema:supplier-service/backend/migrate.cjs supplier-service/backend/src/schema.sql:$(output SupplierDatabaseEndpoint)"
+  "supplier-schema:supplier-service/backend/migrate.js supplier-service/backend/src/schema.sql:$(output SupplierDatabaseEndpoint)"
   "user-migrate:user-service/backend/prisma:$(output UserDatabaseEndpoint)"
   "errand-migrate:errand-service/backend/prisma:$(output ErrandDatabaseEndpoint)"
   "credit-migrate:credit-service/backend/prisma:$(output CreditDatabaseEndpoint)"

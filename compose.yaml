@@ -124,7 +124,7 @@ services:
       dockerfile: supplier-service/backend/Dockerfile
     environment:
       SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Set SUPPLIER_DATABASE_URL}
-    command: ['node', 'migrate.cjs']
+    command: ['node', 'migrate.js']
     restart: 'no'
 
   supplier-api:

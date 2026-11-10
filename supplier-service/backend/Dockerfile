@@ -17,8 +17,9 @@ WORKDIR /app
 COPY --from=build /app/supplier-service/backend/dist ./dist
 COPY --from=build /app/supplier-service/backend/package.json ./package.json
 COPY supplier-service/backend/src/schema.sql ./schema.sql
-COPY supplier-service/backend/migrate.cjs ./migrate.cjs
+COPY supplier-service/backend/migrate.js ./migrate.js
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/packages/user-auth-backend-middleware ./packages/user-auth-backend-middleware
 EXPOSE 3000
-CMD ["node", "dist/app.js"]
+CMD ["npx", "tsx", "dist/app.js"]
