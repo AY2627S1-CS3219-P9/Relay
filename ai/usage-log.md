@@ -1,11 +1,6 @@
 # AI-assisted files
 
 - `errand-service/frontend/src`
-
-Timestamp: 
-Prompt:
-Usage Scenario:
-
 - `errand-service/frontend/src/components`
 - `errand-service/frontend/src/hooks`
 - `packages/ui/src`
@@ -17,15 +12,18 @@ Usage Scenario:
 - `user-service/frontend/src/components/account`
 - `user-service/frontend/src/components/base-elements`
 - `user-service/frontend/src/user`
-- `credit-service/backend/tests`
+
+See errand-service-backend.md
 - `errand-service/backend/src`
 - `errand-service/backend/tests`
-- `user-service/auth/src/consumers`
-- `user-service/auth/tests`
+
+See user-service-backend.md
 - `user-service/backend/src`
 - `user-service/backend/tests`
 - `user-service/backend/prisma`
-- `supplier-service/backend/src/controllers`
+
+See load-tests.md
 - `load-tests`
-- `.github/workflows`
+
+See docs.md
 - `docs`
