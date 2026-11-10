@@ -27,4 +27,4 @@ scripts:
         pm.expect(pm.response.json().ok).to.be.true;
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

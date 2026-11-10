@@ -27,4 +27,4 @@ scripts:
         pm.expect(json.errand.status).to.eql('ACCEPTED');
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

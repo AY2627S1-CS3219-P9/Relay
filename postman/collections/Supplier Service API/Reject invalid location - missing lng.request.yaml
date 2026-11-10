@@ -41,4 +41,4 @@ scripts:
         pm.expect(json.code).to.eql('INVALID_REQUEST');
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

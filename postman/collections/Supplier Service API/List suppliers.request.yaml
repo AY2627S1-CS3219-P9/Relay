@@ -27,4 +27,4 @@ scripts:
         pm.expect(json.suppliers).to.have.lengthOf.at.least(1);
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

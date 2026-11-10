@@ -47,4 +47,4 @@ scripts:
         pm.collectionVariables.set('supplierId', json.supplier.id);
       }
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

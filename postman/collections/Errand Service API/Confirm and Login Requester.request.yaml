@@ -35,4 +35,4 @@ scripts:
       pm.collectionVariables.set('refreshCookie', refresh);
       pm.collectionVariables.set('requesterSub', json.data.user.subject);
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

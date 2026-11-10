@@ -13,4 +13,4 @@ scripts:
       if(!access||!id)throw new Error('Run the matching login request before this request.');
       pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

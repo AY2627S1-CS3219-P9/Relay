@@ -28,4 +28,4 @@ scripts:
       });
       console.log('SUCCESS: Errand workflow completed!');
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

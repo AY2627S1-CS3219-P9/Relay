@@ -15,5 +15,5 @@ scripts:
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
       pm.test('status PICKED_UP',()=>pm.expect(pm.response.json().errand.status).to.eql('PICKED_UP'));
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }
 order: 7000

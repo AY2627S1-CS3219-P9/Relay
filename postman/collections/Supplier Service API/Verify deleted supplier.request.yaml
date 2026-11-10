@@ -18,4 +18,4 @@ scripts:
         pm.response.to.have.status(404);
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

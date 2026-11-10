@@ -12,4 +12,4 @@ scripts:
     code: |-
       pm.test('HTTP 403',()=>pm.response.to.have.status(403));
       pm.test('EMAIL_NOT_VERIFIED',()=>pm.expect(pm.response.json().error.code).to.eql('EMAIL_NOT_VERIFIED'));
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

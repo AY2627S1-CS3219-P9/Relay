@@ -17,5 +17,5 @@ scripts:
       const b=pm.response.code===200?pm.response.json():null;
       pm.test('balance returned',()=>pm.response.to.have.status(200));
       if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('requesterSub')));pm.test('available = 80',()=>pm.expect(b.availableCredit).to.eql(80));pm.test('reserved = 20',()=>pm.expect(b.reserveCredit).to.eql(20));}
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }
 order: 4000

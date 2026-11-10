@@ -32,4 +32,4 @@ scripts:
         pm.expect(json.errand.courierSub).to.eql(pm.collectionVariables.get('courierSub'));
       });
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

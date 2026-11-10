@@ -17,5 +17,5 @@ scripts:
     code: |-
       pm.test('registration accepted',()=>pm.response.to.have.status(201));
       pm.test('verification required',()=>pm.expect(pm.response.json().data.verificationRequired).to.eql(true));
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }
 order: 1000

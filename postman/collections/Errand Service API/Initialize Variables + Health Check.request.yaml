@@ -51,4 +51,4 @@ scripts:
       pm.collectionVariables.set('courierPassword', 'Test123%')
       pm.collectionVariables.set('expiresAt', '2028-12-31T12:00:00Z')
     language: text/javascript
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

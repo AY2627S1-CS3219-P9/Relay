@@ -15,4 +15,4 @@ scripts:
     code: |-
       pm.test('HTTP 409',()=>pm.response.to.have.status(409));
       pm.test('NOT_ADMIN',()=>pm.expect(pm.response.json().error.code).to.eql('NOT_ADMIN'));
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

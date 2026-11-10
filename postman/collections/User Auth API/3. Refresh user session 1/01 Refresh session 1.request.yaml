@@ -24,4 +24,4 @@ scripts:
       }else{
         pm.test('Refresh token rotated',()=>pm.expect(pm.collectionVariables.get('s1New'+'Refresh')).not.to.eql(pm.collectionVariables.get('s1Old'+'Refresh')));
       }
-settings: { disableCookies: true }
+settings: { disableCookies: true, protocolVersion: auto }

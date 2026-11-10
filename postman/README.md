@@ -16,7 +16,11 @@ collection in order with the default runner settings and no data file.
 
 Both CI workflows install Postman CLI and run each collection against their
 own freshly started environment. The EKS workflow supplies the generated
-CloudFront URL and local CA automatically. For a manual CLI run, for example:
+CloudFront URL and local CA automatically. Application requests use Postman's
+`auto` HTTP version setting: it negotiates HTTP/2 with the local EKS
+CloudFront endpoint and HTTP/1.1 with Compose. Floci SES requests retain their
+normal protocol. Use the Postman desktop app or CLI without an HTTP proxy for
+the local EKS endpoint. For a manual CLI run against Compose, for example:
 
 ```bash
 postman collection run 'postman/collections/User Auth API' \
