@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated implementation of AWS deployment orchestration, SSO setup, and generated configuration
+# Author review: Verified steps are ordered correctly and no critical secrets are stored.
+
+# Secret-bearing commands must not be exposed by inherited shell tracing.
+set +x
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -45,7 +52,9 @@ step "AWS account $(aws sts get-caller-identity --query Account --output text), 
 # Keep user-specific options while replacing generated IDs and endpoints.
 if [[ -f "$env_file" ]]; then
   # shellcheck disable=SC1090
+  set -a
   source "$env_file"
+  set +a
 else
   : > "$env_file"
 fi
@@ -62,6 +71,11 @@ stack_output() {
   aws cloudformation describe-stacks --region "$AWS_REGION" --stack-name "$1" \
     --query "Stacks[0].Outputs[?OutputKey=='$2'].OutputValue" --output text
 }
+# This preflight happens before any CloudFormation deployment.
+source deploy/scripts/ai-secret.sh
+AI_SECRET_ID="${stack_name}/credit-estimation-ai"
+ai_aws() { aws --region "$AWS_REGION" "$@"; }
+ai_secret_preflight strict
 step "Create or update Cognito stack $auth_stack"
 aws cloudformation deploy --region "$AWS_REGION" --stack-name "$auth_stack" --template-file infra/relay-auth.yaml
 step "Create or update profile-image storage stack $storage_stack"

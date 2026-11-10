@@ -1,4 +1,11 @@
 #!/bin/sh
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of Floci infrastructure initialization and service configuration
+# Author review: Verified correctness and implementation alignment, with operations not supported in Floci's Cloudformation done with aws cli.
+
+# Secret-bearing commands must not be exposed by inherited shell tracing.
+set +x
 set -eu
 
 export AWS_ENDPOINT_URL=http://127.0.0.1:4566

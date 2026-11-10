@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated implementation of HTTP/2 request helper for local Floci EKS integration checks
+ * Author review: Verified correctness.
+ */
+
 import { connect } from 'node:http2'
 
 // Floci's HTTPS CloudFront emulator currently returns 502 for HTTP/1.1

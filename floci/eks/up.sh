@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local EKS deployment, resource configuration, and startup recovery
+# Author review: Verified local floci AWS emulation works and closely matches AWS, with differences documented.
+
+# Secret-bearing commands must not be exposed by inherited shell tracing.
+set +x
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# Optional provider values are shared with the AWS deployment.
+if [[ -f deploy/relay.aws.env ]]; then
+  set -a
+  source deploy/relay.aws.env
+  set +a
+fi
 no_cache=0
 for arg in "$@"; do
   case "$arg" in
@@ -11,6 +24,12 @@ done
 if (( no_cache )) && [[ "${REUSE_FLOCI:-0}" == 1 ]]; then
   echo '--no-cache requires restarting Floci EKS; unset REUSE_FLOCI.' >&2
   exit 2
+fi
+
+# Warn before startup; an initialized Floci secret may still supply these values.
+source deploy/scripts/ai-secret.sh
+if ! ai_env_valid; then
+  echo 'Warning: AI provider values are missing from the environment. An existing Floci secret may supply them; otherwise credit estimation will not function.' >&2
 fi
 
 # Compose remains available at localhost:8080; this is a separate Floci instance.
@@ -78,13 +97,22 @@ if (( no_cache )) || [[ "${SKIP_IMAGE_BUILD:-0}" != 1 ]]; then
   if (( no_cache )); then build_options+=(--no-cache); fi
   KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=7004 SUPPLIER_DATABASE_PASSWORD=bootstrap docker compose -f compose.yaml --project-name relay build "${build_options[@]}" host supplier-frontend user-frontend errand-frontend credit-frontend supplier-api user-api user-auth-api errand-api credit-api credit-estimation-api errand-notification user-event-publisher errand-event-publisher
 fi
-images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-credit-estimation-api relay-errand-notification relay-user-event-publisher relay-errand-event-publisher)
+images=(relay-host relay-supplier-frontend relay-user-frontend relay-errand-frontend relay-credit-frontend relay-supplier-api relay-user-api relay-user-auth-api relay-errand-api relay-credit-api relay-credit-estimation-api relay-errand-notification relay-user-event-publisher relay-errand-event-publisher relay-redis)
 floci_aws() {
-  docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 -e AWS_REGION=us-east-1 \
+  docker exec -i -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 -e AWS_REGION=us-east-1 \
     -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test \
     -e AWS_SECRET_ACCESS_KEY=test relay-floci-eks aws "$@"
 }
+AI_SECRET_ID="relay-local-eks/credit-estimation-ai"
+ai_aws() { floci_aws "$@"; }
+ai_secret_preflight quiet
+ai_secret_initialize
+ai_secret_export_values
+
 if (( no_cache )) || [[ "${SKIP_IMAGE_PUSH:-0}" != 1 ]]; then
+  # Mirror the upstream image in local ECR without building a wrapper image.
+  docker pull redis:7-alpine
+  docker tag redis:7-alpine relay-redis:latest
   floci_aws ecr get-login-password | docker login --username AWS --password-stdin localhost:4567
 fi
 for image in "${images[@]}"; do
@@ -275,13 +303,14 @@ render() {
     -e "s|IMAGE_ERRAND_API|${IMAGE_errand_api}|g" \
     -e "s|IMAGE_CREDIT_API|${IMAGE_credit_api}|g" \
     -e "s|IMAGE_CREDIT_ESTIMATION_API|${IMAGE_credit_estimation_api}|g" \
+    -e "s|IMAGE_REDIS|${IMAGE_redis}|g" \
     -e "s|IMAGE_ERRAND_NOTIFICATION|${IMAGE_errand_notification}|g" \
     -e "s|IMAGE_USER_EVENT_PUBLISHER|${IMAGE_user_event_publisher}|g" \
     -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|${IMAGE_errand_event_publisher}|g" "$1" |
     sed -E '/^[[:space:]]+image: localhost:4567\/.*:latest$/ { p; s/^([ ]*)image:.*/\1imagePullPolicy: Always/; }' |
     # The emulated single node has much less capacity than AWS Auto Mode.
     # Keep the same 768 MiB limits and Node heap cap, but lower local requests.
-    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g' |
+    sed -e '/name: DB_SSL_CA_PATH/d' -e 's/memory: 512Mi/memory: 128Mi/g' -e 's/360mb/90mb/g' |
     # Keep the host and remote frontends at one replica on the local node,
     # including their HPA bounds so autoscaling cannot restore extra replicas.
     awk '

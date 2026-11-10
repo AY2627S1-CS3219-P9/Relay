@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local EKS monitoring views and startup handling
+# Author review: Verified that the views all work.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 action="${1:-}"

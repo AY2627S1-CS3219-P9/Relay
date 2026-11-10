@@ -3,9 +3,13 @@ const positiveInteger = (value: string | undefined, fallback: number): number =>
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
-const positiveIntegerOptional = (value: string | undefined, fallback: number): number => {
+const temperature = (value: string | undefined): number => {
+  if (value === undefined || value.trim() === '') return 0
   const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 2) {
+    throw new Error('AI_TEMPERATURE must be a number between 0 and 2')
+  }
+  return parsed
 }
 
 export type EstimationEnv = {
@@ -39,8 +43,8 @@ export function getEnv(): EstimationEnv {
     aiApiKey: process.env.AI_API_KEY || '',
     aiModel: process.env.AI_MODEL || '',
     aiEndpoint: process.env.AI_ENDPOINT || '',
-    aiTemperature: positiveIntegerOptional(process.env.AI_TEMPERATURE, 0),
-    aiMaxTokens: positiveIntegerOptional(process.env.AI_MAX_TOKENS, 1000),
+    aiTemperature: temperature(process.env.AI_TEMPERATURE),
+    aiMaxTokens: positiveInteger(process.env.AI_MAX_TOKENS, 1000),
     aiEstimationTimeoutMs: positiveInteger(process.env.AI_ESTIMATION_TIMEOUT_MS, 3000),
     aiRateLimitRequestsPerMinute: positiveInteger(
       process.env.AI_RATE_LIMIT_REQUESTS_PER_MINUTE,

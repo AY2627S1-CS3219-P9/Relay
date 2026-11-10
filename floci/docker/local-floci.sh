@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-02
+# Scope: Generated implementation of local Floci initialization for Docker Compose
+# Author review: Verified correctness and error messages are clear.
+
 
 set -euo pipefail
 

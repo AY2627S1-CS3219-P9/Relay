@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of AWS infrastructure deployment, image publishing, and Kubernetes rollout
+# Author review: Verified that images match docker compose and kubernetes workload configs, secrets are not exposed, and each stack is deployed in correct order.
+
+# Secret-bearing commands must not be exposed by inherited shell tracing.
+set +x
 set -euo pipefail
 
 # Creates/updates the AWS foundation, publishes the existing Docker images, then
@@ -24,6 +31,12 @@ fi
 set -a
 source "$env_file"
 set +a
+
+# Check before provisioning or modifying any AWS infrastructure.
+source deploy/scripts/ai-secret.sh
+AI_SECRET_ID="${stack_name}/credit-estimation-ai"
+ai_aws() { aws --region "$aws_region" "$@"; }
+ai_secret_preflight strict
 
 required=(COGNITO_ISSUER COGNITO_JWKS_URI COGNITO_CLIENT_ID COGNITO_USER_POOL_ID S3_ENDPOINT S3_PUBLIC_ENDPOINT S3_BUCKET)
 for name in "${required[@]}"; do
@@ -73,6 +86,24 @@ if [[ "$existing_msk_arn" == arn:* ]]; then
   fi
 fi
 
+# A retained or pre-existing secret can be reused by a newly created stack.
+# Keep the resource enabled if this stack already owns it.
+existing_ai_secret_arn=''
+if (( AI_SECRET_EXISTS )); then
+  ai_stack_error="$(mktemp)"
+  if aws cloudformation describe-stack-resource --region "$aws_region" --stack-name "$stack_name" \
+      --logical-resource-id AiProviderSecret >/dev/null 2>"$ai_stack_error"; then
+    :
+  elif grep -qi -e 'does not exist' -e 'not exist' -e 'not found' "$ai_stack_error"; then
+    existing_ai_secret_arn="$(ai_aws secretsmanager describe-secret --secret-id "$AI_SECRET_ID" --query ARN --output text)"
+  else
+    cat "$ai_stack_error" >&2
+    rm -f "$ai_stack_error"
+    exit 1
+  fi
+  rm -f "$ai_stack_error"
+fi
+
 step "Create or update Relay foundation: VPC, EKS, RDS, MSK, and ECR"
 aws cloudformation deploy \
   --region "$aws_region" \
@@ -83,12 +114,17 @@ aws cloudformation deploy \
     "KubernetesVersion=${KUBERNETES_VERSION:?Set KUBERNETES_VERSION in deploy/relay.aws.env}" \
     "ProfileImageBucketName=${S3_BUCKET}" \
     "CognitoUserPoolId=${COGNITO_USER_POOL_ID}" \
+    "ExistingAiProviderSecretArn=$existing_ai_secret_arn" \
     ${snapshot_args[@]+"${snapshot_args[@]}"}
 
 output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$stack_name" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
+
+# Populate only an absent/placeholder secret; keep initialized values on redeploy.
+ai_secret_initialize
+ai_secret_export_values
 
 cluster_name="$(output ClusterName)"
 aws eks update-kubeconfig --region "$aws_region" --name "$cluster_name"
@@ -138,18 +174,26 @@ aws ecr get-login-password --region "$aws_region" |
 build_and_push() {
   local output_name="$1" service="$2"
   shift 2
-  local repository_uri image_uri local_id remote_manifest remote_config remote_digest
+  local repository_uri image_uri local_id remote_manifest remote_config remote_digest source_image
   repository_uri="$(output "$output_name")"
   image_uri="$repository_uri:${IMAGE_TAG:-latest}"
   local build_args=("$@")
   if [[ "${NO_CACHE:-0}" == "1" ]]; then build_args+=(--no-cache); fi
-  echo "Building $service (Docker cache enabled unless NO_CACHE=1)..." >&2
-  KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap \
-    SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=5432 SUPPLIER_DATABASE_PASSWORD=bootstrap \
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 \
-    docker compose -f compose.yaml --env-file "$env_file" --project-name relay-aws-build \
-      build ${build_args[@]+"${build_args[@]}"} "$service" >&2 || return 1
-  local_id="$(docker image inspect "relay-aws-build-$service:latest" --format '{{.Id}}')"
+  if [[ "$service" == redis ]]; then
+    # Redis has no project-specific image layer: mirror the upstream image.
+    echo 'Pulling upstream Redis image...' >&2
+    docker pull --platform linux/amd64 redis:7-alpine >&2 || return 1
+    source_image=redis:7-alpine
+  else
+    echo "Building $service (Docker cache enabled unless NO_CACHE=1)..." >&2
+    KAFKA_BROKERS=bootstrap USER_DATABASE_URL=bootstrap ERRAND_DATABASE_URL=bootstrap CREDIT_DATABASE_URL=bootstrap \
+      SUPPLIER_DATABASE_URL=bootstrap SUPPLIER_DATABASE_PORT=5432 SUPPLIER_DATABASE_PASSWORD=bootstrap \
+      DOCKER_DEFAULT_PLATFORM=linux/amd64 \
+      docker compose -f compose.yaml --env-file "$env_file" --project-name relay-aws-build \
+        build ${build_args[@]+"${build_args[@]}"} "$service" >&2 || return 1
+    source_image="relay-aws-build-$service:latest"
+  fi
+  local_id="$(docker image inspect "$source_image" --format '{{.Id}}')"
   local_id="${local_id#sha256:}"
   remote_manifest="$(aws ecr batch-get-image --region "$aws_region" \
     --repository-name "${repository_uri#"$registry"/}" \
@@ -172,7 +216,7 @@ build_and_push() {
   fi
   if [[ "$remote_config" != "$local_id" ]]; then
     echo "Pushing changed image $service..." >&2
-    docker tag "relay-aws-build-$service:latest" "$image_uri" || return 1
+    docker tag "$source_image" "$image_uri" || return 1
     docker --host "$docker_endpoint" --config "$ecr_docker_config" push "$image_uri" >&2 || return 1
   else
     echo "Skipping unchanged ECR image $service." >&2
@@ -202,6 +246,7 @@ errand_event_publisher_image="$(build_and_push ErrandEventPublisherRepositoryUri
 errand_api_image="$(build_and_push ErrandApiRepositoryUri errand-api)"
 credit_api_image="$(build_and_push CreditApiRepositoryUri credit-api)"
 credit_estimation_image="$(build_and_push CreditEstimationRepositoryUri credit-estimation-api)"
+redis_image="$(build_and_push RedisRepositoryUri redis)"
 errand_notification_image="$(build_and_push ErrandNotificationRepositoryUri errand-notification)"
 # Topic init uses the credit image; the digest-pinned image must exist in ECR.
 aws ecr describe-images --region "$aws_region" \
@@ -212,15 +257,32 @@ step "Read RDS and MSK credentials from Secrets Manager"
 secret_value() {
   aws secretsmanager get-secret-value --region "$aws_region" --secret-id "$(output "$1")" --query SecretString --output text
 }
+secret_field() {
+  printf '%s' "$1" | node -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", chunk => input += chunk);
+    process.stdin.on("end", () => {
+      try {
+        const value = JSON.parse(input)[process.argv[1]];
+        if (typeof value !== "string" || !value) throw new Error();
+        process.stdout.write(value);
+      } catch {
+        console.error("Secret is missing a required field or is invalid JSON.");
+        process.exitCode = 1;
+      }
+    });
+  ' "$2"
+}
 password_from_secret() {
-  node -e 'process.stdout.write(JSON.parse(process.argv[1]).password)' "$1"
+  secret_field "$1" password
 }
 user_password="$(password_from_secret "$(secret_value UserDatabaseSecretArn)")"
 errand_password="$(password_from_secret "$(secret_value ErrandDatabaseSecretArn)")"
 credit_password="$(password_from_secret "$(secret_value CreditDatabaseSecretArn)")"
 supplier_password="$(password_from_secret "$(secret_value SupplierDatabaseSecretArn)")"
 msk_scram_secret="$(secret_value MskScramSecretArn)"
-msk_username="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).username)' "$msk_scram_secret")"
+msk_username="$(secret_field "$msk_scram_secret" username)"
 msk_password="$(password_from_secret "$msk_scram_secret")"
 # Restored snapshots retain their old master password; new CFN secrets do not.
 # Synchronize the master passwords before migration jobs connect.
@@ -391,6 +453,7 @@ sed \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   -e "s|IMAGE_CREDIT_ESTIMATION_API|$credit_estimation_image|g" \
+  -e "s|IMAGE_REDIS|$redis_image|g" \
   -e "s|IMAGE_ERRAND_NOTIFICATION|$errand_notification_image|g" \
   -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
   -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
@@ -426,6 +489,7 @@ sed \
   -e "s|IMAGE_ERRAND_API|$errand_api_image|g" \
   -e "s|IMAGE_CREDIT_API|$credit_api_image|g" \
   -e "s|IMAGE_CREDIT_ESTIMATION_API|$credit_estimation_image|g" \
+  -e "s|IMAGE_REDIS|$redis_image|g" \
   -e "s|IMAGE_ERRAND_NOTIFICATION|$errand_notification_image|g" \
   -e "s|IMAGE_USER_EVENT_PUBLISHER|$user_event_publisher_image|g" \
   -e "s|IMAGE_ERRAND_EVENT_PUBLISHER|$errand_event_publisher_image|g" \
@@ -492,7 +556,7 @@ aws cloudformation deploy \
   --region "$aws_region" \
   --stack-name "$edge_stack" \
   --template-file infra/relay-cloudfront.yaml \
-  --parameter-overrides "LoadBalancerDnsName=$gateway_domain"
+  --parameter-overrides "LoadBalancerDnsName=$gateway_domain" DistributionEnabled=true
 edge_output() {
   aws cloudformation describe-stacks --region "$aws_region" --stack-name "$edge_stack" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text

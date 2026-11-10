@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Updated CI with new npm run compose:up command
+# Author review: Verified correctness and CI was run on GitHub
+
 name: CI
 
 on:

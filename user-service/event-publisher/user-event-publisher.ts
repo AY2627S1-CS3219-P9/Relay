@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated implementation of user outbox event publication and batch scheduling
+ * Author review: Verified event publishing behavior and that ordering within each key is preserved, matching kafka key behavior.
+ */
+
 import { Kafka, logLevel, type Producer } from 'kafkajs'
 import { PrismaClient } from '@relay/user-prisma'
 

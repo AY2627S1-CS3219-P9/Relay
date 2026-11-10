@@ -340,7 +340,7 @@ Author review: I validated correctness and edited for style. */
 }
 .errand-form-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   min-width: 0;
 }
@@ -420,7 +420,7 @@ Author review: I validated correctness and edited for style. */
   position: absolute;
   z-index: 2;
   top: calc(100% + 8px);
-  right: 0;
+  left: 0;
   width: min(280px, calc(100vw - 64px));
   padding: 10px 12px;
   border: 1px solid var(--relay-glass-soft-border);
@@ -436,6 +436,9 @@ Author review: I validated correctness and edited for style. */
 .errand-estimate-pill:hover .errand-estimate-reason,
 .errand-estimate-help:focus-visible + .errand-estimate-reason {
   display: block;
+}
+.errand-estimate-pill .relay-icon-button {
+  --relay-icon-button-scale: 0.8;
 }
 .errand-credit-input-wrapper {
   display: flex;
@@ -482,9 +485,8 @@ Author review: I validated correctness and edited for style. */
   cursor: not-allowed;
 }
 .errand-estimate-icon {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2;
+  width: 20px;
+  height: 20px;
 }
 .errand-form-note {
   margin: -2px 0 0;

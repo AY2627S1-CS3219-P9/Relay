@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated tests for errand acceptance and expiry
+ * Author review: Verified tests and mock values match implementation, and ensured edge cases are covered.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import { ErrandStatus } from '@relay/contracts'

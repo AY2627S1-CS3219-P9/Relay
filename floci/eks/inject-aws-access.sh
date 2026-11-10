@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated implementation of local EKS service-account AWS credential injection
+# Author review: Verified correctness and documented floci behavior difference.
+
 set -euo pipefail
 
 # Floci does not inject IRSA environment variables or projected tokens.

@@ -1,3 +1,10 @@
+<!--
+AI Assistance Disclosure:
+Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+Scope: Generated implementation of local AWS emulation, Kubernetes, and troubleshooting documentation
+Author review: Verified instructions are correct and differences between Floci emulation and AWS are clearly documented.
+-->
+
 # Local deployment and development
 
 Choose one of the three paths below. Both deployment paths use Floci for
@@ -263,3 +270,19 @@ approximately 109 MiB. Local KEDA components request 64 MiB each. Both
 environments retain the 768 MiB limit and 614 MiB Node old-space heap cap. The heap cap is not a limit on total process memory.
 Local scaling therefore does not reproduce AWS memory thresholds exactly.
 Additional AWS EKS nodes may increase costs.
+
+
+### Credit estimation and Redis
+
+Local EKS reads optional AI provider values and tuning settings from
+`deploy/relay.aws.env`. Its CloudFormation stack creates the same four-field
+Secrets Manager JSON secret as AWS. The launcher populates an uninitialized
+secret from the file, reads the secret into Kubernetes, and warns instead of
+failing if provider settings are missing. Floci secret state is local to the
+emulator and does not validate AWS IAM, encryption, or persistence.
+
+The upstream Redis image is pulled and mirrored through Floci ECR. It uses an ephemeral pod volume,
+AOF enabled, and RDB snapshots disabled as in AWS. To fit the local node its
+pod requests and limit are 128 MiB and its maxmemory is 90 MB, rather than
+AWS's 512 MiB and 360 MB. Replacing the pod loses limiter history. The
+estimation pod's readiness checks Redis even when AI credentials are absent.

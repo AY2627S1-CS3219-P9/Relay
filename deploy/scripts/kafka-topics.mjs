@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+ * Scope: Generated implementation of Kafka topic provisioning with MSK authentication
+ * Author review: Verified correctness of kafka config for replicas and partitions, verified that this works on AWS.
+ */
+
 import { Kafka } from 'kafkajs'
 
 const mode = process.env.KAFKA_AUTH_MODE ?? 'none'

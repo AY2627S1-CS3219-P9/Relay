@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Added event publisher pods after event publisher changes
+# Author review: Verified pods are added correctly and are set to 1 replica.
+
 apiVersion: v1
 kind: Service
 metadata: { name: host, namespace: relay }
@@ -327,6 +332,33 @@ spec:
           readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15 }
           resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 500m, memory: 768Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: relay }
+spec: { selector: { app: redis }, ports: [{ port: 6379, targetPort: redis }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis, namespace: relay }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: IMAGE_REDIS
+          securityContext: { allowPrivilegeEscalation: false }
+          command: [redis-server, --appendonly, 'yes', --save, '', --maxmemory, 360mb, --maxmemory-policy, allkeys-lru]
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe: { exec: { command: [redis-cli, ping] }, initialDelaySeconds: 3 }
+          livenessProbe: { exec: { command: [redis-cli, ping] }, initialDelaySeconds: 10 }
+          resources: { requests: { cpu: 100m, memory: 512Mi }, limits: { cpu: 200m, memory: 512Mi } }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
 ---
 apiVersion: v1
 kind: Service

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-04
+# Scope: Generated implementation of local EKS teardown and Floci sidecar cleanup
+# Author review: Verified all containers are stopped safely, and that floci generated containers are also removed.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source floci/common/cleanup.sh

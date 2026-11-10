@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local Compose teardown and Floci sidecar cleanup
+# Author review: Verified that all containers, including RDS and MSK containers created by Floci, are removed.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source floci/common/cleanup.sh

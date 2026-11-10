@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated implementation of local Floci database infrastructure emulation
+# Author review: Verified correctness and that implementation matches aws closely.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Local Floci RDS infrastructure for Relay integration tests.
 Parameters:

@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated implementation of OIDC service-account roles and AWS access policies
+# Author review: Verified correctness of OIDC provider and that allowed actions are mapped to what the user auth and user services do.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS access for Relay S3 and Cognito workloads.
 Parameters:

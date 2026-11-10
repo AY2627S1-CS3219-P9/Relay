@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated implementation of application integration checks and local HTTP/2 transport selection
+ * Author review: Verified correctness.
+ */
+
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { fetchOverHttp2 } from './http2-fetch.mjs'

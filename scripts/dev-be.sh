@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Updated implementation of local backend development startup and Floci endpoint configuration after RDS and MSK changes
+# Author review: Verified correctness of env variables and migration jobs.
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -s floci/docker/.generated.env ]] || { echo 'Run npm run dev-infra first.' >&2; exit 1; }

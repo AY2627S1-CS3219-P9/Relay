@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Updated local development infrastructure startup and Kafka initialization after RDS and MSK changes
+# Author review: Verified correct docker container startup behavior.
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

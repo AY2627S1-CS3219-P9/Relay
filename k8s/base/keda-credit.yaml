@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of credit service KEDA autoscaling with Kafka lag
+# Author review: Verified correctness and decided on kafka consumer offset lag of 100 messages.
+
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata: { name: credit-kafka-auth, namespace: relay }
@@ -27,7 +32,7 @@ spec:
         bootstrapServers: "KEDA_KAFKA_BROKERS"
         consumerGroup: relay-credit-events
         topic: errand-events
-        lagThreshold: "20"
+        lagThreshold: "100"
         offsetResetPolicy: earliest
         sasl: KEDA_KAFKA_SASL
         tls: KEDA_KAFKA_TLS

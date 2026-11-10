@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+ * Scope: Generated tests for notification stream shutdown and subscriber cleanup
+ * Author review: Verified correctness.
+ */
+
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { type ServerResponse } from 'node:http'
 import type { ErrandNotification, ErrandNotificationType } from '@relay/contracts'
