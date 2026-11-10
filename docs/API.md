@@ -1,23 +1,13 @@
 <!--
 AI Assistance Disclosure:
 Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-11-04
-Scope: Drafted the API reference from the codebase, verified against main@5a88d55, main@12b93bf, and main@482cadd.
-Author review: I validated correctness, edited for domain needs, and debugged as necessary.
+Scope: Drafted the API reference from the codebase, verified against.
+Author review: I validated correctness, edited for domain needs, and amend the changes as necessary.
 -->
 
 # Relay API Reference
 
 - **Repository:** [AY2627S1-CS3219-P9/Relay](https://github.com/AY2627S1-CS3219-P9/Relay)
-- **Source snapshot:** `main` at `482cadd` — *Merge pull request #90
-  from javnz1/S4-UserProfile*, read on 2026-11-09. Re-check this
-  document after any later merge that touches `*/backend/src/routes/*`,
-  `*/backend/src/app.ts`, `user-service/auth/src/routes/*`, or
-  `packages/contracts/src/*`.
-- **Current behavior:** Account deletion can return `202 pending`, credit
-  accounts can be closed with pending settlements, profiles are required
-  for errand creation, accepting an errand can return
-  `409 REQUESTER_DELETED`, account deletion can trigger errand transitions,
-  and `GET /internal/user/deletion-status/:sub` is available internally.
 - **Audience:** Relay frontend developers, reviewers, and anyone integrating with
   the Relay backend through the host application. It is not a public third-party API:
   all browser APIs are cookie-authenticated and same-origin through the host.
@@ -78,16 +68,12 @@ to the matching backend. That is why every public path below starts with
 | `/api/notifications/stream` | Errand Notification API (SSE) | `errand-notification-service/backend/` |
 | `/remotes/supplier/`, `/remotes/user/`, `/remotes/errand/`, `/remotes/credit/` | Microfrontends (not APIs) | Service `frontend/` folders, served through the host |
 
-The Credit Estimation API has **no public host route**, and browsers cannot
-reach it through the host at all: host Nginx does not proxy `/internal/*`
-(and the errand creation frontend's direct call to
-`/internal/errands/estimate-credit` never reaches the Errand API — see
-[Internal service APIs](#internal-service-apis-not-for-browsers). All
-`/internal/*` routes are service-to-service only. **This is an active known
-defect, not a planned limitation:** the frontend calls the internal path when
-the user requests a credit estimate, the call falls through to the SPA fallback
-and returns HTML instead of JSON, and it sends a hard-coded local-default
-service token. It should become a proper public route behind cookie auth.
+The Credit Estimation service has no direct public host route. Browser clients
+use the Errand API proxy at `POST /api/errands/estimate-credit`; the Errand API
+authenticates the caller with the normal cookie session and calls the
+Credit Estimation service with its internal service token. The direct
+`/internal/estimation/estimate-credit` service route remains service-to-service
+only (see [Internal service APIs](#internal-service-apis-not-for-browsers)).
 
 ## Authentication
 
@@ -175,7 +161,7 @@ In the middleware, `admin` endpoints accept both `admin` and `super-admin`;
 
 | Role | What it can do via the API |
 | --- | --- |
-| `user` (verified email) | Own profile, suppliers (read), errands (own/visible), own credit balance and history. Credit estimation via the errand endpoint is currently **not reachable from browsers** (see [Internal service APIs](#internal-service-apis-not-for-browsers)). |
+| `user` (verified email) | Own profile, suppliers (read), errands (own/visible), own credit balance and history, and credit estimation through `POST /api/errands/estimate-credit`. |
 | `admin` | Everything a user can do, plus create/update/delete suppliers. |
 | `super-admin` | Everything an admin can do, plus promote/demote admins. A super-admin's own role cannot be changed through promote/demote. |
 
@@ -248,7 +234,7 @@ Common HTTP status mapping (individual endpoints list their own codes):
 | `404 Not Found` | Resource not found or profile not found. For errands, `404` is ambiguous in two different ways: `GET /api/errands/:id` returns the same `404` for a never-existed errand, a deleted errand, and an errand not visible to the caller; `DELETE /api/errands/:id` returns the same `404` for a missing errand and for an errand not in a deletable terminal state (see Errand delete). |
 | `409 Conflict` | State conflict: email already registered, already admin / not admin, duplicate supplier, invalid errand transition (for example, accepting an already-accepted errand). |
 | `422 Unprocessable Entity` | Credit amount invalid or insufficient for an internal reservation (`INVALID_CREDIT_AMOUNT`, `INSUFFICIENT_CREDITS`). |
-| `429 Too Many Requests` | Cognito rate limit surfaced by the Auth API (`RATE_LIMITED`). Credit estimation AI rate limiting falls back to keyword analysis instead of returning `429` to the caller. |
+| `429 Too Many Requests` | Cognito rate limit surfaced by the Auth API (`RATE_LIMITED`), or credit-estimation rate limiting (`CREDIT_ESTIMATION_RATE_LIMITED` through the Errand API; `RATE_LIMITED` on the direct internal service route). |
 | `500 Internal Server Error` | Unexpected failure. `500` bodies use `INTERNAL_ERROR` (or, for Credit, a plain `message` without a code — see the Credit section). |
 | `503 Service Unavailable` | Dependency unavailable: supplier health check DB failure, credit DB check failure, notification or errand Kafka consumer not yet ready, or credit estimation service unavailable via the errand proxy. |
 
@@ -1426,13 +1412,17 @@ leak user subjects.
 ### EstimateCreditResponse
 
 ```json
-{ "estimatedCredits": 15, "explanation": "Food baseline 15 credits, adjusted for …" }
+{
+  "minCredits": 15,
+  "maxCredits": 25,
+  "reason": "Food baseline adjusted for the errand details and time window."
+}
 ```
 
-`explanation` is optional in the contract and is not displayed in the
-current errand creation UI (it is logged for debugging). A value of
-`estimatedCredits: -1` means estimation failed for the input — the
-current UI shows an error in that case instead of using `-1` as a price.
+The UI uses the returned range to suggest the midpoint as the errand's
+credit amount. A response with `minCredits: -1` and `maxCredits: -1` means
+the estimation input could not be evaluated; the UI displays an error rather
+than using `-1` as a price.
 
 ### ErrandNotification (SSE payload)
 
@@ -1462,9 +1452,9 @@ current UI shows an error in that case instead of using `-1` as a price.
 | `3` | Printing |
 | `4` | Parcel |
 
-Unknown service types fall back to a default estimation baseline
-(base 20, min 15, max 40) in the estimation service; supplier validation
-rejects values outside 0–4.
+The estimation service rejects service types outside `0`–`4` with
+`400 INVALID_INPUT`; there is no unknown-type fallback in the current
+implementation.
 
 ### Day (supplier operating hours)
 
@@ -1669,37 +1659,36 @@ Cookie: relay_access=<access-token>; relay_id=<id-token>
 - **Errors:** `400 INVALID_ERRAND` (bad scope/supplier), `401`
   (bad service token or session), `403 FORBIDDEN` (unverified email).
 
-### Estimate credit via errand proxy — not reachable from browsers (known implementation mismatch)
+### Estimate credit via Errand API
 
 ```http
-POST /internal/errands/estimate-credit
-x-errand-service-token: <service-token>
+POST /api/errands/estimate-credit
+Cookie: relay_access=<access-token>; relay_id=<id-token>
 Content-Type: application/json
 
-{ "name": "Pick up bubble tea", "description": "One brown sugar milk tea", "serviceType": 0 }
+{
+  "name": "Pick up bubble tea",
+  "description": "One brown sugar milk tea",
+  "serviceType": 0,
+  "instructions": "Less sweet",
+  "startAt": "2026-11-08T10:00:00.000Z",
+  "expiresAt": "2026-11-08T12:00:00.000Z",
+  "availableCredit": 37
+}
 ```
 
-- **Do not document or call this as a browser API.** Although the
-  errand creation frontend currently calls this path directly from the
-  browser, host Nginx does **not** proxy `/internal/errands`, and the
-  Vite dev proxy does not proxy it either — so the request never
-  reaches the Errand API and falls through to the SPA fallback. The
-  route also requires the `x-errand-service-token` header, and the
-  frontend sends a hard-coded local-default token literal, which fails
-  with `401` against any rotated/production secret. This is an
-  existing implementation mismatch, not merely a doc issue.
-- **Fix:** add a proper public route (for example
-  `POST /api/errands/estimate`) behind the existing cookie auth
-  (`sessionMiddleware`), with the Errand API calling the estimation
-  service server-side using its own service token — and remove the
-  hard-coded token from the frontend.
-- **Validation:** `name` and `description` must be strings,
-  `serviceType` must be a number; otherwise `400 INVALID_INPUT`.
-  The Errand proxy returns `503 SERVICE_UNAVAILABLE` when the
-  estimation service cannot be reached.
-- **Success:** `200`, `{ "estimatedCredits": 15, "explanation": "…" }`.
-  See [EstimateCreditResponse](#estimatecreditresponse) for the `-1`
-  failure value.
+- **Auth:** Requires the normal Relay cookie pair and a verified email.
+- **Validation:** `name`, `description`, `instructions`, `startAt`, and
+  `expiresAt` must be strings; `serviceType` must be a valid integer from
+  `0` to `4`; and `availableCredit` must be a finite nonnegative number.
+  `expiresAt` must be after both `startAt` and the current time. Invalid
+  requests return `400 INVALID_INPUT`.
+- **Success:** `200`, an [EstimateCreditResponse](#estimatecreditresponse).
+- **Errors:** `400 INVALID_INPUT` for invalid request data, `401
+  UNAUTHENTICATED`, `403 FORBIDDEN` for an unverified account, `429
+  CREDIT_ESTIMATION_RATE_LIMITED`, `503 CREDIT_ESTIMATION_UNAVAILABLE`, or
+  `500 INTERNAL_ERROR`.
+- **Used by:** The errand creation frontend before submitting a new errand.
 
 ### Estimate credit (internal, direct)
 
@@ -1708,26 +1697,39 @@ POST /internal/estimation/estimate-credit
 x-credit-estimation-service-token: <service-token>
 Content-Type: application/json
 
-{ "name": "Pick up bubble tea", "description": "One brown sugar milk tea", "serviceType": 0 }
+{
+  "name": "Pick up bubble tea",
+  "description": "One brown sugar milk tea",
+  "serviceType": 0,
+  "instructions": "Less sweet",
+  "startAt": "2026-11-08T10:00:00.000Z",
+  "expiresAt": "2026-11-08T12:00:00.000Z",
+  "userId": "cognito-sub-uuid",
+  "availableCredit": 37
+}
 ```
 
 - **Auth:** Service token only (no user session).
-- **Validation:** `name` max 200 characters, `description` max 5000
-  characters, both non-empty; `serviceType` must be an integer 0–4.
+- **Validation:** `userId` is required; `availableCredit` must be a finite
+  nonnegative number; `name` must be non-empty and at most 200 characters;
+  `description` must be non-empty and at most 5000 characters;
+  `instructions` is optional and at most 5000 characters; `startAt` and
+  `expiresAt` must be valid date strings with `expiresAt` after the effective
+  start time; and `serviceType` must be an integer 0–4.
   Inputs matching dangerous patterns (script tags, `javascript:`,
   `eval(`, `document.`, and similar — see
   `credit-estimation-service/backend/src/validators/estimation.validator.ts`)
   are rejected with `400 INVALID_INPUT`. This is a prompt-injection /
   XSS guard for the AI path, not general input sanitisation.
-- **Behaviour:** If an AI client is configured, it is tried first;
-  on AI failure or AI rate limiting, the service silently falls back
-  to keyword analysis against per-service-type baselines (Food 15
-  [10–30], Drink 10 [8–20], Shopping 20 [15–40], Printing 10 [8–25],
-  Parcel 25 [15–50]; unknown types 20 [15–40]). Keyword fallback
-  adjusts the baseline by `(complexityScore − 5) × 2`, clamped to the
-  baseline min/max and rounded. Baselines can be overridden by
-  environment in deployment; the numbers above are the code defaults.
-- **Success:** `200`, `{ "estimatedCredits": 15, "explanation": "…" }`.
+- **Behaviour:** The configured AI client is called first. AI failures
+  return `503 SERVICE_UNAVAILABLE`; rate-limit failures return `429
+  RATE_LIMITED`. The configured per-service-type baselines are used to
+  construct the AI prompt and to apply the deterministic time-window
+  adjustment. The final range is clamped to the global 10–50 credit bounds,
+  and the maximum is capped by `availableCredit` when the balance covers the
+  minimum but not the maximum. Baseline values can be overridden by
+  deployment environment variables.
+- **Success:** `200`, an [EstimateCreditResponse](#estimatecreditresponse).
 - **Errors:** `400 INVALID_INPUT` (with `fieldErrors`),
   `401 UNAUTHENTICATED`, `429 RATE_LIMITED`,
   `503 SERVICE_UNAVAILABLE`, `500 INTERNAL_ERROR`.
@@ -1838,70 +1840,6 @@ envelope as Auth's `UNAUTHENTICATED`.
 | `TRANSACTION_CONFLICT` | Credit | 409 | Duplicate transaction reference. |
 | `INVALID_INPUT` | Estimation | 400 | Bad name/description/serviceType, or dangerous pattern rejected. |
 | `SERVICE_UNAVAILABLE` | Estimation | 503 | Estimation service unreachable via the errand proxy. |
-
-## Changelog and maintenance notes
-
-- **Current snapshot:** `main@482cadd`. This document describes the
-  currently implemented public and internal paths, request/response shapes,
-  authentication rules, asynchronous credit behavior, and known
-  implementation inconsistencies below.
-- **Known inconsistencies to fix in code, not by editing this doc alone:**
-  1. Error envelopes differ by service (`{ ok, … }` vs bare resource
-     vs `{ success, … }` for `check-auth`; Credit `500` has no `code`).
-  2. Supplier reads return `401 UNAUTHORIZED` for an unverified email
-     while Errand/Credit return `403 FORBIDDEN`.
-  3. Supplier update is `PUT` but behaves like a partial update.
-  4. Credit estimation is not reachable from browsers at all: host
-     Nginx does not proxy `/internal/errands`, and the Vite dev proxy
-     does not proxy it either, and the frontend's direct call to
-     `/internal/errands/estimate-credit` falls through to the SPA
-     fallback — plus it sends a hard-coded local-default service token.
-     It should become a proper public route behind cookie auth.
-  5. Errand `404`s are ambiguous in two different ways:
-     `GET /api/errands/:id` returns the same `404` for a never-existed
-     errand, a deleted errand, and an errand not visible to the caller;
-     `DELETE /api/errands/:id` returns the same `404` for a missing
-     errand and for an errand not in a deletable terminal state —
-     clients cannot distinguish those cases from the code alone.
-  6. Several contract error codes are defined but not returned by any
-     controller in this snapshot (`EMAIL_ALREADY_VERIFIED`,
-     `PASSWORD_REUSED`, `SESSION_EXPIRED`, `CONFLICT` for errands).
-     They are listed as “contract only” above so they are not mistaken
-     for live behaviour.
-  7. Two unmapped errors surface as `500` instead of their intended
-     status: supplier update/delete of a missing supplier, and an
-     errand drop by a non-assigned courier (`ONLY COURIER CAN DROP`
-     is missing from `errand-error-map.ts`).
-  8. Drop-event payload regression (internal/Kafka only): the
-     `ERRAND_STATUS_CHANGED` event for a drop
-     hard-codes `errandStatus: OPEN` even when the errand expired, so
-     an SSE notification derived from it misstates an expired drop as
-     `OPEN` (a second `ERRAND_EXPIRED` event is still emitted). The
-     HTTP response is unaffected.
-  9. Current known gaps in `main@482cadd`: pending errands are not handled on
-     requester deletion; the user-backend Vitest config still includes
-     `test/**/*.test.ts` while the tests live in `tests/`; the 7-day
-     outbox purge still breaks deletion idempotency; releases after
-     deletion park credit in the closed balance instead of the
-     settlement ledger.
-- **How to update this document:** change code and this file in the
-  same pull request; update the source snapshot line at the top;
-  re-run the verification checklist below before merging.
-
-### Verification checklist (for the next editor)
-
-- [ ] Every route in `*/backend/src/routes/*` and
-      `user-service/auth/src/routes/*` appears in the overview table.
-- [ ] Every documented path is reachable through `host/config/nginx.conf`
-      or is explicitly marked internal.
-- [ ] Request/response examples match `packages/contracts/src/*` and the
-      controller that actually serialises the response.
-- [ ] Error codes and statuses match the controller/validator/error-map
-      for that endpoint, not just the contract type.
-- [ ] New enum values are added to
-      [Enumerations](#enumerations).
-- [ ] Breaking changes are called out at the top of this file with the
-      PR number.
 
 ---
 

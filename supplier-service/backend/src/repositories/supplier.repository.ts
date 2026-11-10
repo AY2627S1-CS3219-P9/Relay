@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-09-28
+// Scope: Implemented author-defined Supplier CRUD and filtering repository behavior.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import {
   getSuppliers,
   getSupplierById,

@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-03
+// Scope: Implemented the initial author-defined rate-limit behavior.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements. All design decisions remained author-authored.
+
 export class SlidingWindowRateLimiter {
   private requests: number[] = []
   private readonly windowMs: number

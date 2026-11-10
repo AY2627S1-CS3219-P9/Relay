@@ -1,4 +1,11 @@
 // AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-12
+// Scope: Scaffolded Errand lifecycle wiring and integrated the author-designed notification flow.
+// Author review: Reviewed every output and substantially revised ordering and implementation details for
+// the many author-defined conditions and edge cases.
+
+// AI Assistance Disclosure:
 // Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
 // Scope: Generated initial implementation of the Errand Service application.
 // Author review: I validated correctness, edited for domain needs, and debugged as necessary.

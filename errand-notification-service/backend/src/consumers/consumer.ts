@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Implemented the author-designed Kafka consumer flow
+// flow.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { Kafka, Consumer, EachMessagePayload } from 'kafkajs'
 
 export class ErrandNotificationConsumer {

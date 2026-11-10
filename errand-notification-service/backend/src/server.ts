@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Scaffolded notification service startup and lifecycle handling.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { createServer } from 'http'
 import { Kafka } from 'kafkajs'
 import { createNotificationApp } from './app.js'

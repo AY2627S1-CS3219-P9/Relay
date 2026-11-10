@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-06
+// Scope: Implemented Supplier field validation and duplicate/error handling, check criteria and error messages defined by author.
+// Author review: Reviewed every outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { ServiceType, Day } from '@relay/contracts/supplier'
 
 const HH_MM_REGEX = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/

@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-26
+// Scope: Generated concurrency tests for the author-defined single-courier acceptance behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ErrandRepository, MAX_ERRANDS_PER_COURIER } from '../src/repositories/errand.repository.js'
 import { ErrandStatus } from '@relay/contracts'
