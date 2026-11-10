@@ -19,6 +19,11 @@ See user-service-frontend.md
 - `user-service/frontend/src/components/base-elements`
 - `user-service/frontend/src/user`
 
+See aws-implementation.md and kubernetes-cloudformation.md
+- `infra/`
+- `k8s/base`
+- `k8s/floci`
+
 - `credit-service/backend/tests`
 - `errand-service/backend/src`
 - `errand-service/backend/tests`

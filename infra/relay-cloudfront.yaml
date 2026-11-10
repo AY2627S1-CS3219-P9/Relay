@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-11-06
+# Scope: Generated initial implementation, fixed bugs for deployment configuration
+# Author review: I validated correctness and edited for style.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFront HTTPS entry point for the Relay EKS ALB without a custom domain.
 Parameters:

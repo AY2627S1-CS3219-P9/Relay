@@ -11,7 +11,6 @@ Create the relay namespace.
 
 Create the relay-runtime ConfigMap, include the following runtime settings:
 - Production mode, port 3000, secure cookies and Cognito authentication.
-- Kafka topic names, 12 partitions, replication factor 3, minimum in-sync replicas 2.
 - Internal credit-estimation URL, service timeouts and Singapore timezone.
 
 Load settings through envFrom
@@ -20,7 +19,6 @@ Load settings through envFrom
 
 Documents the expected shape of the relay-runtime Secret:
 - Database connection strings and passwords.
-- Kafka broker addresses and credentials.
 - Cognito configuration.
 - S3 configuration.
 - Relay service tokens
@@ -77,9 +75,9 @@ Define the AWS entry into the application by creating:
 
 Grant the admin user admin@example.com the cluster-admin role.
 
-After you are done, implement the CloudFormation template as follows, and do a test deployment afterwards.
+After you are done, implement the CloudFormation template into parts as follows, and do a test deployment afterwards.
 
-1. infra/relay-eks.yaml: Create the VPC, public/private subnets, NAT gateway, EKS Auto Mode cluster and roles, four private PostgreSQL databases, three MSK brokers, ECR repositories, generated credentials and Metrics Server.
+1. infra/relay-eks.yaml: Create the VPC, public/private subnets, NAT gateway, EKS Auto Mode cluster and roles, four private PostgreSQL databases, ECR repositories, generated credentials and Metrics Server.
 
 2. infra/relay-auth.yaml: Create the Cognito user pool, public app client, verification/password settings and admin groups
 
