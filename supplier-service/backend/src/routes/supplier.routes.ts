@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-09-28
+// Scope: Scaffolded route wiring for the existing Supplier API interfaces and authorization behavior.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { Router } from 'express'
 import { userAuthMiddleware, userAuthAdminMiddleware } from '@relay/user-auth-backend-middleware'
 import { SupplierController } from '../controllers/supplier.controller.js'

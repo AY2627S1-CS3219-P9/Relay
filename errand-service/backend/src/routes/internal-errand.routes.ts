@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-14
+// Scope: Implemented route wiring for the existing Supplier-event and Credit Estimation internal
+// interfaces.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { Router } from 'express'
 import { ErrandController } from '../controllers/errand.controller.js'
 import { CreditEstimationClient } from '../clients/credit-estimation.client.js'

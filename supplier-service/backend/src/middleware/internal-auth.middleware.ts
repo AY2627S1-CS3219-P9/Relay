@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-10
+// Scope: Scaffolded the existing internal authentication behavior referenced
+//  from user service and credit service middleware implementation.
+// Author review: Checked and refined the scaffold.
+
 import type { RequestHandler } from 'express'
 import { getEnv } from '../config/env.js'
 import { SupplierErrors } from '@relay/contracts/supplier'

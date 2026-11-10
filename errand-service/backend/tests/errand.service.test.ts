@@ -1,4 +1,11 @@
 // AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-24
+// Scope: Generated unit tests for author-defined lifecycle transition behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
+// AI Assistance Disclosure:
 // Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-17
 // Scope: Generated initial implementation of the Errand Service tests.
 // Author review: I validated correctness, edited for domain needs, and debugged as necessary.
@@ -150,7 +157,9 @@ describe('ErrandService acceptance protection', () => {
       { getProfile: vi.fn().mockResolvedValue(null) } as never,
     )
 
-    await expect(service.acceptErrand({ ...user, sub: 'courier-1' }, 'errand-1')).rejects.toMatchObject({
+    await expect(
+      service.acceptErrand({ ...user, sub: 'courier-1' }, 'errand-1'),
+    ).rejects.toMatchObject({
       code: 'REQUESTER_DELETED',
       statusCode: 409,
     })

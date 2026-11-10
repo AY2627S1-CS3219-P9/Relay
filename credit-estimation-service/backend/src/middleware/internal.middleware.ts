@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-26
+// Scope: Implemented middleware for the author-defined internal authentication behavior.
+// Referenced middleware implementation from other internal services for consistency.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { getEnv } from '../config/env'
 

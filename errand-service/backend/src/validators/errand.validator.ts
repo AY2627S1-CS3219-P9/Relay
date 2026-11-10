@@ -1,4 +1,11 @@
 // AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-12
+// Scope: Implemented author-defined request validation for lifecycle operations.
+// Author review: Reviewed every output, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements. All design decisions remained author-authored.
+
+// AI Assistance Disclosure:
 // Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
 // Scope: Generated initial implementation of the Errand Service validators.
 // Author review: I validated correctness, edited for domain needs, and debugged as necessary.

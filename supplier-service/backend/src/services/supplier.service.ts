@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-09-28
+// Scope: Implemented author-defined Supplier CRUD and filtering behavior plus the Supplier-to-Errand
+// notification flow and its retry/error handling.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import {
   SupplierErrors,
   type Supplier,
@@ -41,7 +49,6 @@ export class SupplierService {
       }
     }
 
-    // TODO: require serviceType once the Errand create request includes it.
     if (request.serviceType !== undefined && !supplier.serviceTypes.includes(request.serviceType)) {
       return {
         valid: false,

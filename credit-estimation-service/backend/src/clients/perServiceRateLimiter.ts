@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-08
+// Scope: Implemented the author-defined fallback per-service limiter design.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 /**
  * Per-service sliding window rate limiter
  *

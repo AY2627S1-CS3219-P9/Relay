@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-09-27
+// Scope: Scaffolded PostgreSQL connection and query implementation for the existing Supplier design.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { Pool } from 'pg'
 import { readFileSync } from 'node:fs'
 import type { SupplierRow } from './types/supplier.types.js'
@@ -12,7 +19,9 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'relay',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
-  ssl: dbSslCaPath ? { ca: readFileSync(dbSslCaPath, 'utf8'), rejectUnauthorized: true } : undefined,
+  ssl: dbSslCaPath
+    ? { ca: readFileSync(dbSslCaPath, 'utf8'), rejectUnauthorized: true }
+    : undefined,
 })
 
 export async function query<T>(text: string, params?: any[]): Promise<T[]> {

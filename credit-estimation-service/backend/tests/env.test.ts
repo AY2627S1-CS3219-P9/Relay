@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Generated tests for estimation environment parsing and limits.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { afterEach, describe, expect, it } from 'vitest'
 import { getEnv } from '../src/config/env.js'
 
