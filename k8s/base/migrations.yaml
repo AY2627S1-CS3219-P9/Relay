@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-10-28
+# Scope: Generated initial implementation, fixed bugs for deployment configuration
+# Author review: I validated correctness and edited for style.
+
 # Apply after runtime-secret.yaml exists and before workloads.yaml. Each Job runs
 # the Prisma migration exactly once; scaled application Pods do not run migrations.
 apiVersion: batch/v1
