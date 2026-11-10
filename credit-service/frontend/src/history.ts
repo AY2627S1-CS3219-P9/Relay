@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-6.1 Sol), date: 2026-10-17
+// Scope: Generated initial implementation, debugged implementation
+// Author review: I validated correctness and edited for style.
+
 import type { TransactionRecord } from '@relay/contracts'
 
 export const HISTORY_PAGE_SIZE = 10
