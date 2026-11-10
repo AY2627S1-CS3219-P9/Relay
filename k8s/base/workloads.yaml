@@ -140,7 +140,7 @@ spec:
         - name: api
           securityContext: { allowPrivilegeEscalation: false }
           image: IMAGE_SUPPLIER_API
-          command: [node, dist/app.js]
+          command: [node, --import, tsx, dist/app.js]
           ports: [{ name: http, containerPort: 3000 }]
           env:
             - { name: USER_SERVICE_INTERNAL_TOKEN, valueFrom: { secretKeyRef: { name: relay-service-tokens, key: USER_SERVICE_INTERNAL_TOKEN } } }
