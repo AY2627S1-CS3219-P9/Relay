@@ -1,6 +1,6 @@
 import { Pool } from 'pg'
 import { readFileSync } from 'node:fs'
-import type { SupplierRow } from './types/supplier.types'
+import type { SupplierRow } from './types/supplier.types.js'
 import { SupplierErrors, type GetSuppliersFilterParams } from '@relay/contracts'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'

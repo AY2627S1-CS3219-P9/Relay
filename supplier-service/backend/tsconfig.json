@@ -1,22 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "noEmit": true,
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "@relay/contracts": ["../../packages/contracts/src/index.ts"],
-      "@relay/contracts/*": ["../../packages/contracts/src/*"],
-      "@relay/user-auth-backend-middleware": [
-        "../../packages/user-auth-backend-middleware/src/index.ts"
-      ]
-    }
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "tests"]
 }

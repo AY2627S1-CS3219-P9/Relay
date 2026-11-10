@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { userAuthMiddleware, userAuthAdminMiddleware } from '@relay/user-auth-backend-middleware'
-import { SupplierController } from '../controllers/supplier.controller'
+import { SupplierController } from '../controllers/supplier.controller.js'
 
 export function createSupplierRouter(controller: SupplierController) {
   const router = Router()

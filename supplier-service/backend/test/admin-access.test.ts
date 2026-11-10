@@ -1,8 +1,9 @@
-import test from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { SupplierController } from '../src/controllers/supplier.controller'
-import { createSupplierRouter } from '../src/routes/supplier.routes'
+import { SupplierController } from '../src/controllers/supplier.controller.js'
+import { createSupplierRouter } from '../src/routes/supplier.routes.js'
 import { userAuthAdminMiddleware } from '@relay/user-auth-backend-middleware'
+
 const body = {
   name: 'Supplier',
   location: { lat: 1, lng: 103, buildingName: 'Building', floorNumber: 1 },
@@ -20,61 +21,67 @@ function response() {
   res.send = () => res
   return res
 }
-for (const role of ['admin', 'super-admin'] as const) {
-  test(`${role} can create, update and delete suppliers without a profile lookup`, async () => {
-    const calls: string[] = []
+
+describe('admin-access', () => {
+  for (const role of ['admin', 'super-admin'] as const) {
+    it(`${role} can create, update and delete suppliers without a profile lookup`, async () => {
+      const calls: string[] = []
+      const controller = new SupplierController({
+        createSupplier: async () => {
+          calls.push('create')
+          return { id: 's1' }
+        },
+        updateSupplier: async () => {
+          calls.push('update')
+          return { id: 's1' }
+        },
+        deleteSupplier: async () => {
+          calls.push('delete')
+        },
+      } as never)
+      const req = {
+        user: { sub: 'subject', email: 'admin@example.com', emailVerified: true, role },
+        body,
+        params: { id: 's1' },
+      }
+      const next = (error: unknown) => {
+        throw error
+      }
+      await controller.createSupplier(req as never, response() as never, next)
+      await controller.updateSupplier(req as never, response() as never, next)
+      await controller.deleteSupplier(req as never, response() as never, next)
+      assert.deepEqual(calls, ['create', 'update', 'delete'])
+    })
+  }
+
+  it('supplier mutation routes require Cognito admin middleware', () => {
+    const router = createSupplierRouter(new SupplierController({} as never))
+    const mutations = router.stack.filter(
+      (layer) =>
+        layer.route && ['post', 'put', 'delete'].some((method) => layer.route.methods[method]),
+    )
+    assert.equal(mutations.length, 3)
+    for (const layer of mutations)
+      assert.equal(layer.route.stack[0].handle, userAuthAdminMiddleware)
+  })
+
+  it('unverified users cannot access suppliers', async () => {
     const controller = new SupplierController({
-      createSupplier: async () => {
-        calls.push('create')
-        return { id: 's1' }
-      },
-      updateSupplier: async () => {
-        calls.push('update')
-        return { id: 's1' }
-      },
-      deleteSupplier: async () => {
-        calls.push('delete')
+      getAllSuppliers: async () => {
+        throw new Error('must not read')
       },
     } as never)
-    const req = {
-      user: { sub: 'subject', email: 'admin@example.com', emailVerified: true, role },
-      body,
-      params: { id: 's1' },
-    }
-    const next = (error: unknown) => {
-      throw error
-    }
-    await controller.createSupplier(req as never, response() as never, next)
-    await controller.updateSupplier(req as never, response() as never, next)
-    await controller.deleteSupplier(req as never, response() as never, next)
-    assert.deepEqual(calls, ['create', 'update', 'delete'])
+    const res = response()
+    await controller.getAllSuppliers(
+      {
+        user: { sub: 'subject', email: 'u@example.com', emailVerified: false, role: 'user' },
+        query: {},
+      } as never,
+      res as never,
+      (e) => {
+        throw e
+      },
+    )
+    assert.equal(res.statusCode, 401)
   })
-}
-test('supplier mutation routes require Cognito admin middleware', () => {
-  const router = createSupplierRouter(new SupplierController({} as never))
-  const mutations = router.stack.filter(
-    (layer) =>
-      layer.route && ['post', 'put', 'delete'].some((method) => layer.route.methods[method]),
-  )
-  assert.equal(mutations.length, 3)
-  for (const layer of mutations) assert.equal(layer.route.stack[0].handle, userAuthAdminMiddleware)
-})
-test('unverified users cannot access suppliers', async () => {
-  const controller = new SupplierController({
-    getAllSuppliers: async () => {
-      throw new Error('must not read')
-    },
-  } as never)
-  const res = response()
-  await controller.getAllSuppliers(
-    {
-      user: { sub: 'subject', email: 'u@example.com', emailVerified: false, role: 'user' },
-      query: {},
-    } as never,
-    res as never,
-    (e) => {
-      throw e
-    },
-  )
-  assert.equal(res.statusCode, 401)
 })

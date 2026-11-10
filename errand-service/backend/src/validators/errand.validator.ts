@@ -20,7 +20,12 @@ const deliveryDetailsSchema = z.object({
     .trim()
     .min(1)
     .max(5000, 'Description must be no more than 5000 characters'),
-  instructions: z.string().trim().min(1).optional(),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000, 'Instructions must be no more than 5000 characters')
+    .optional(),
 })
 
 const createErrandSchema = z

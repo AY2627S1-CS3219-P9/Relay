@@ -1,14 +1,14 @@
 import express from 'express'
-import { SupplierController } from './controllers/supplier.controller'
-import { SupplierService } from './services/supplier.service'
-import { SupplierRepository } from './repositories/supplier.repository'
-import { createSupplierRouter } from './routes/supplier.routes'
-import { createInternalSupplierRouter } from './routes/internal-supplier.routes'
-import { internalServiceAuth } from './middleware/internal-auth.middleware'
-import { getEnv } from './config/env'
+import { SupplierController } from './controllers/supplier.controller.js'
+import { SupplierService } from './services/supplier.service.js'
+import { SupplierRepository } from './repositories/supplier.repository.js'
+import { createSupplierRouter } from './routes/supplier.routes.js'
+import { createInternalSupplierRouter } from './routes/internal-supplier.routes.js'
+import { internalServiceAuth } from './middleware/internal-auth.middleware.js'
+import { getEnv } from './config/env.js'
 import { SupplierErrors } from '@relay/contracts/supplier'
-import { SupplierServiceError } from './types/supplier.types'
-import { query } from './db'
+import { SupplierServiceError } from './types/supplier.types.js'
+import { query } from './db.js'
 
 const repository = new SupplierRepository()
 const service = new SupplierService(repository)
