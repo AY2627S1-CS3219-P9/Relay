@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-09-27
+// Scope: Scaffolded the Supplier application wiring from the author-defined service structure.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import express from 'express'
 import { SupplierController } from './controllers/supplier.controller.js'
 import { SupplierService } from './services/supplier.service.js'

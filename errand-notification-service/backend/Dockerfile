@@ -1,3 +1,9 @@
+# AI Assistance Disclosure:
+# Tool: Codex (ChatGPT-5.6 Sol)
+# Date: 2026-11-02
+# Scope: Generated the notification service container build.
+# Author review: Reviewed the output and adjusted configuration to fit project requirements.
+
 FROM node:22-alpine AS build
 
 WORKDIR /app

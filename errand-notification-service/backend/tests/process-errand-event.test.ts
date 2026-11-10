@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Generated tests for event validation, mapping, actor exclusion, and recipients.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { ServerResponse } from 'node:http'
 import { ErrandNotificationTypes } from '@relay/contracts'

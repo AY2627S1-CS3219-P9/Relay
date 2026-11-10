@@ -1,3 +1,10 @@
+# AI Assistance Disclosure:
+# Tool: Codex (ChatGPT-5.6 Sol)
+# Date: 2026-10-12
+# Scope: Generated and debugged the Errand backend container build.
+# Author review: Reviewed the output and adjusted configuration details to fit project
+# requirements. 
+
 FROM node:22-alpine AS build
 
 WORKDIR /app

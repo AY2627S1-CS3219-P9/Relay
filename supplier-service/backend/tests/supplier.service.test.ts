@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-08
+// Scope: Generated tests for Supplier CRUD/service behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import type { Supplier } from '@relay/contracts'

@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-17
+// Scope: Implemented author-defined pending/expiry processing and event/outbox publication behavior.
+// Author review: Reviewed and refined the AI-assisted integration required by backend changes; the
+// processing and event behavior remained author-defined.
+
 import { ErrandRepository } from '../repositories/errand.repository.js'
 
 export class PendingErrandWorker {

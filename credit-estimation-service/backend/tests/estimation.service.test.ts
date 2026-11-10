@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-07
+// Scope: Generated tests for author-defined estimation orchestration and failure behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import type { EstimateCreditRequest } from '@relay/contracts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanupAIClient, setAIClient } from '../src/clients/ai.client'

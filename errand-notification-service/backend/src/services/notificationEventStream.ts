@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Implemented the author-designed SSE subscription flow, timeout, failure, and cleanup behavior defined at a high level.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { type ServerResponse } from 'node:http'
 import type { ErrandNotification } from '@relay/contracts'
 

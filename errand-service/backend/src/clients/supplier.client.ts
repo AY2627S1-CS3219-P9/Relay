@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-17
+// Scope: Implemented the existing Supplier validation used during errand creation.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type {
   ValidateSupplierSelectionRequest,
   ValidateSupplierSelectionResponse,

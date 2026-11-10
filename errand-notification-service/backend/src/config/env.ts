@@ -1,3 +1,9 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Implemented parsing for author-defined topic and id requirements
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
 export interface NotificationEnv {
   port: number
   kafkaBrokers: string

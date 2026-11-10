@@ -1,4 +1,12 @@
 // AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-12
+// Scope: Implemented author-defined lifecycle persistence and locks, transactional outbox blocks, and
+// Supplier-related errand update/delete methods.
+// Author review: Reviewed every output and substantially revised transition ordering and edge-case
+// details. Atomicity was implemented by the author.
+
+// AI Assistance Disclosure:
 // Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
 // Scope: Generated initial implementation of the Errand Service repository.
 // Author review: I validated correctness, edited for domain needs, and debugged as necessary.

@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-08
+// Scope: Implemented construction/fallback selection for the author limiter design.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { DistributedRateLimiter, type RateLimitDecision } from './redisRateLimiter.js'
 
 export type RateLimiter = {

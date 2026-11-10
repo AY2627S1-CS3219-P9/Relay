@@ -1,3 +1,9 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Implemented validation for baseline coverage of all service types.
+// Author review: Reviewed outputs and corrected phrasing and syntax.
+
 import { ServiceType } from '@relay/contracts/supplier'
 import { CREDIT_BASELINES, type ServiceTypeBaseline } from '../config/baselines.js'
 

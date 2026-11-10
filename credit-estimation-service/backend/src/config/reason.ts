@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Integrated author-defined explanation and output truncation limits
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 export const MAX_REASON_LENGTH = 160
 
 export const SHORT_TIME_EXPLANATION = 'Shorter availability also increased the suggested range.'

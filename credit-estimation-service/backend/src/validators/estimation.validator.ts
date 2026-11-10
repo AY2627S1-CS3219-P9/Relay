@@ -1,3 +1,11 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-25
+// Scope: Defined validation for the author-defined estimation request interface, including input sanitization and error handling.
+// Error handling messages were author-defined.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import { CreditEstimationErrors, EstimateCreditRequest, ServiceType } from '@relay/contracts'
 import { EstimationServiceError } from '../types/estimation.types'
 

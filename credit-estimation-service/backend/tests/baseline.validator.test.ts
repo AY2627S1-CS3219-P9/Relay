@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Generated tests for baseline coverage validation.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { ServiceType } from '@relay/contracts/supplier'
 import { describe, expect, it } from 'vitest'
 import { CREDIT_BASELINES, type ServiceTypeBaseline } from '../src/config/baselines'

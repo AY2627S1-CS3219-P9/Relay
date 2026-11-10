@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-24
+// Scope: Generated integration tests for the author-designed outbox flow.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { describe, expect, it } from 'vitest'
 import { PrismaClient } from '@relay/errand-prisma'
 import type { CreateErrandRequest } from '@relay/contracts'

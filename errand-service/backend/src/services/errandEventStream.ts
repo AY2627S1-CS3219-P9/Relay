@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-17
+// Scope: Implemented the earlier author-designed Errand SSE stream behavior.
+// Author review: Reviewed every output, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements. All design decisions remained author-authored.
+
 import { type ServerResponse } from 'node:http'
 
 export interface ErrandEvent {
