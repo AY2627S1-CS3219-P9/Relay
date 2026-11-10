@@ -111,6 +111,12 @@ through the same browser origin.
 | `npm run dev-fe` | Starts Vite for the host on port 8080 and the supplier/user/errand/credit remotes on ports 5001–5004. |
 | `npm run dev-be` | Loads `.generated.env`, selects host-accessible database/Kafka endpoints, and sets local Cognito, S3, AWS, internal-service, and event-topic settings. Prepares user/errand/credit schemas and starts the supplier/user/errand/credit APIs on ports 3000–3003, estimation on 3005, notifications on 3010, and both event publishers. |
 
+Credit estimation needs AI provider settings and Redis. `dev-infra` starts only
+its listed dependencies, not the Compose Redis service. Start a reachable Redis
+instance and export its host URL (for example `REDIS_URL=redis://localhost:6379`)
+and provider settings before `npm run dev`. See the
+[estimation guide](../credit-estimation-service/README.md#run-and-verify).
+
 Press Ctrl+C to stop source processes. Compose infrastructure remains running;
 remove it and its database data when finished:
 
@@ -262,4 +268,16 @@ emulated node can schedule the application and KEDA; its 85% target is
 approximately 109 MiB. Local KEDA components request 64 MiB each. Both
 environments retain the 768 MiB limit and 614 MiB Node old-space heap cap. The heap cap is not a limit on total process memory.
 Local scaling therefore does not reproduce AWS memory thresholds exactly.
+The API policies use CPU 65% and memory 85%, with 1-4 replicas (estimation 1-3).
+They do not override HPA scale-up/down behavior; default downscale stabilization
+is five minutes. Credit also uses a Kafka lag target of 100 messages per replica.
 Additional AWS EKS nodes may increase costs.
+
+Local Headlamp uses its eight-hour cluster-admin token; the optional
+`npm run headlamp -- start` helper for an AWS context uses a one-hour read-only
+token instead. Neither dashboard login requires Cognito. Use
+`--kubeconfig floci/eks/.kubeconfig` on manual local inspection commands to avoid
+accidentally inspecting the AWS cluster.
+
+Like AWS, local EKS currently has no Redis deployment for estimation. Configure
+one explicitly before testing that feature; Compose already includes Redis.

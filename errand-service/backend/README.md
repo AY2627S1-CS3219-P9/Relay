@@ -1,5 +1,31 @@
 # Errand Service backend
 
+Express/PostgreSQL API for errand creation, browsing, acceptance, pickup,
+delivery, confirmation, cancellation, and courier drop. All public
+`/api/errands` routes require Cognito authentication. The authenticated
+`POST /api/errands/estimate-credit` route delegates to Credit Estimation.
+
+## Development and checks
+
+From the repository root, run `npm ci` once, then `npm run dev` with Docker
+running. This loads Floci's generated endpoints, prepares the errand schema,
+and runs this API on port 3002 plus its separate publisher. Use
+`npm run up:compose` instead for the full container environment. See the
+[local guide](../../floci/README.md).
+
+```bash
+npm run lint --workspace=@relay/errand-backend
+npm run build --workspace=@relay/errand-backend
+npm run test --workspace=@relay/errand-backend
+```
+
+Tests require the configured PostgreSQL test database. Set
+`ERRAND_TEST_DATABASE_URL` to the intended disposable database; defaults in the
+package/test configuration are not discovered Floci endpoints. Audit commands
+below also require the intended database, User API, and internal token settings.
+
+## Transactional outbox
+
 Errand state changes and their Kafka events are written to errand_event_outbox
 in the same PostgreSQL transaction. The errand repository builds the distinct payload for
 each lifecycle event. The pending-errand worker runs every five seconds and
@@ -10,8 +36,10 @@ acknowledges it. A failed send leaves the row pending for retry. The publisher
 removes published rows older than seven days during its minute-by-minute cleanup.
 Unpublished rows are never deleted by this cleanup.
 
-Before enabling or deploying requester-deletion acceptance protection, run the
-profile audit:
+## Profile audit and account deletion
+
+Requester-deletion acceptance protection is already implemented. To audit
+historical profile-less errands before rollout or remediation, run:
 
 ```bash
 npm run audit:profileless --workspace=@relay/errand-backend
