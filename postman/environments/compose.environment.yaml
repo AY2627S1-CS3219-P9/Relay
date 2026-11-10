@@ -13,3 +13,8 @@ values:
     value: 'http://localhost:4566'
     enabled: true
     type: default
+  - key: deployment_target
+    value: compose
+    enabled: true
+    type: default
+    description: Selects deployment-specific cookie expectations.

@@ -9,7 +9,9 @@ or Floci EKS. Select the matching environment:
   on startup. Trust `floci/eks/.floci-ca.pem` in Postman for local HTTPS.
 
 Both environments set `target_env=development`, which enables the existing
-Floci-specific authentication expectations. Each request disables the cookie
+Floci-specific authentication expectations. The `deployment_target` value
+selects cookie checks: Compose expects cookies without `Secure` for HTTP,
+while EKS requires `Secure` for HTTPS. Each request disables the cookie
 jar: sign-in scripts store tokens in collection variables and protected
 requests send the selected identity's explicit Cookie header. Run each entire
 collection in order with the default runner settings and no data file.

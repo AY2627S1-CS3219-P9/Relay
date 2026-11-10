@@ -13,3 +13,8 @@ values:
     value: 'https://localhost:4567'
     enabled: true
     type: default
+  - key: deployment_target
+    value: eks
+    enabled: true
+    type: default
+    description: Selects deployment-specific cookie expectations.

@@ -393,8 +393,4 @@ services:
       retries: 5
 
 volumes:
-  user-postgres-data:
-  errand-postgres-data:
-  credit-postgres-data:
-  kafka-data:
   redis-data:
