@@ -74,7 +74,14 @@ if (process.env.NODE_ENV !== 'test') {
     brokers: env.kafkaBrokers,
     logLevel: logLevel.ERROR,
     ...(mode === 'scram'
-      ? { ssl: true, sasl: { mechanism: 'scram-sha-512' as const, username: env.kafkaUsername!, password: env.kafkaPassword! } }
+      ? {
+          ssl: true,
+          sasl: {
+            mechanism: 'scram-sha-512' as const,
+            username: env.kafkaUsername!,
+            password: env.kafkaPassword!,
+          },
+        }
       : {}),
   })
   const userDeletionConsumer = new UserDeletionConsumer(new ErrandRepository(), kafka, env)
@@ -95,7 +102,9 @@ if (process.env.NODE_ENV !== 'test') {
   }
   worker.start()
   void startConsumer()
-  const server = app.listen(env.port, () => console.log(`Errand Service listening on port ${env.port}`))
+  const server = app.listen(env.port, () =>
+    console.log(`Errand Service listening on port ${env.port}`),
+  )
   const shutdown = (signal: string) => {
     stopping = true
     kafkaReady = false

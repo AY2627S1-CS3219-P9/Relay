@@ -1,5 +1,5 @@
 import type { OperatingHours, Supplier } from '@relay/contracts/supplier'
-import { getEnv } from '../config/env'
+import { getEnv } from '../config/env.js'
 
 const dayByShortName: Record<string, number> = {
   Sun: 6,

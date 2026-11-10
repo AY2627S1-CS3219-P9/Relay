@@ -5,8 +5,8 @@ import {
   type ValidateSupplierSelectionRequest,
   type ValidateSupplierSelectionResponse,
 } from '@relay/contracts/supplier'
-import { SupplierRepository } from '../repositories/supplier.repository'
-import { isSupplierActive } from './supplier-availability'
+import { SupplierRepository } from '../repositories/supplier.repository.js'
+import { isSupplierActive } from './supplier-availability.js'
 
 export class SupplierService {
   constructor(private readonly repository: SupplierRepository) {}

@@ -19,10 +19,12 @@ export type EstimationEnv = {
   aiApiKey: string
   aiModel: string
   aiEndpoint: string
-  aiTemperature?: number
-  aiMaxTokens?: number
+  aiTemperature: number
+  aiMaxTokens: number
   aiEstimationTimeoutMs: number
   aiRateLimitRequestsPerMinute: number
+  aiGlobalRateLimitRequestsPerMinute: number
+  redisUrl: string
 }
 
 export function getEnv(): EstimationEnv {
@@ -44,5 +46,10 @@ export function getEnv(): EstimationEnv {
       process.env.AI_RATE_LIMIT_REQUESTS_PER_MINUTE,
       20,
     ),
+    aiGlobalRateLimitRequestsPerMinute: positiveInteger(
+      process.env.AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE,
+      300,
+    ),
+    redisUrl: process.env.REDIS_URL || 'redis://redis:6379',
   }
 }

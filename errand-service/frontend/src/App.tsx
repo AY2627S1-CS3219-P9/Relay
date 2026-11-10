@@ -485,6 +485,8 @@ export default function App({
         }}
         errandApi={errandApi}
         supplierApi={supplierApi}
+        authenticatedSubject={authenticatedSubject}
+        creditBalance={creditBalance}
       />
     </RelayCardAnchor>
   )

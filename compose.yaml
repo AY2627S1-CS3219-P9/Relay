@@ -124,7 +124,7 @@ services:
       dockerfile: supplier-service/backend/Dockerfile
     environment:
       SUPPLIER_DATABASE_URL: ${SUPPLIER_DATABASE_URL:?Set SUPPLIER_DATABASE_URL}
-    command: ['node', 'migrate.cjs']
+    command: ['node', 'migrate.js']
     restart: 'no'
 
   supplier-api:
@@ -256,16 +256,18 @@ services:
       PORT: '3000'
       DATABASE_URL: ${ERRAND_DATABASE_URL:?Set ERRAND_DATABASE_URL}
       USER_API_URL: http://user-api:3000
-      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
+      USER_SERVICE_INTERNAL_TOKEN: ${USER_SERVICE_INTERNAL_TOKEN:-local-internal-user-service-token}
       SUPPLIER_API_URL: http://supplier-api:3000
-      SUPPLIER_SERVICE_TIMEOUT_MS: '5000'
-      INTERNAL_SUPPLIER_SERVICE_TOKEN: local-internal-supplier-service-token
-      ERRAND_SERVICE_TIMEOUT_MS: '5000'
+      SUPPLIER_SERVICE_TIMEOUT_MS: ${SUPPLIER_SERVICE_TIMEOUT_MS:-5000}
+      INTERNAL_SUPPLIER_SERVICE_TOKEN: ${INTERNAL_SUPPLIER_SERVICE_TOKEN:-local-internal-supplier-service-token}
+      ERRAND_SERVICE_TIMEOUT_MS: ${ERRAND_SERVICE_TIMEOUT_MS:-5000}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_ERRAND_EVENTS: ${KAFKA_TOPIC_ERRAND_EVENTS:-errand-events}
       CREDIT_API_URL: http://credit-api:3000
-      CREDIT_SERVICE_INTERNAL_TOKEN: local-internal-credit-service-token
+      CREDIT_SERVICE_INTERNAL_TOKEN: ${CREDIT_SERVICE_INTERNAL_TOKEN:-local-internal-credit-service-token}
+      # Credit estimation client settings
       CREDIT_ESTIMATION_API_URL: http://credit-estimation-api:3005
       CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
-      KAFKA_BROKERS: ${KAFKA_BROKERS:?Run floci/docker/up.sh}
       KAFKA_TOPIC_USER_EVENTS: ${KAFKA_TOPIC_USER_EVENTS:-user-events}
       KAFKA_TOPIC_USER_DLQ: ${KAFKA_TOPIC_USER_DLQ:-user-events-dlq}
     depends_on:
@@ -323,24 +325,48 @@ services:
       NODE_ENV: production
       PORT: '3005'
       USER_API_URL: http://user-api:3000
-      USER_SERVICE_INTERNAL_TOKEN: local-internal-user-service-token
-      CREDIT_ESTIMATION_SERVICE_TOKEN: local-internal-estimation-service-token
-      ESTIMATION_SERVICE_TIMEOUT_MS: '5000'
-      AI_PROVIDER: '${AI_PROVIDER:-}'
+      USER_SERVICE_INTERNAL_TOKEN: ${USER_SERVICE_INTERNAL_TOKEN:-local-internal-user-service-token}
+      CREDIT_ESTIMATION_SERVICE_TOKEN: ${CREDIT_ESTIMATION_SERVICE_TOKEN:-local-internal-estimation-service-token}
+      ESTIMATION_SERVICE_TIMEOUT_MS: ${ESTIMATION_SERVICE_TIMEOUT_MS:-5000}
+      AI_PROVIDER: ${AI_PROVIDER:-}
       AI_API_KEY: ${AI_API_KEY:-}
-      AI_MODEL: '${AI_MODEL:-}'
-      AI_ENDPOINT: '${AI_ENDPOINT:-}'
-      AI_TEMPERATURE: '${AI_TEMPERATURE:-}'
-      AI_MAX_TOKENS: '${AI_MAX_TOKENS:-}'
-      AI_ESTIMATION_TIMEOUT_MS: '${AI_ESTIMATION_TIMEOUT_MS:-}'
+      AI_MODEL: ${AI_MODEL:-}
+      AI_ENDPOINT: ${AI_ENDPOINT:-}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-1000}
+      AI_ESTIMATION_TIMEOUT_MS: ${AI_ESTIMATION_TIMEOUT_MS:-3000}
+      AI_RATE_LIMIT_REQUESTS_PER_MINUTE: ${AI_RATE_LIMIT_REQUESTS_PER_MINUTE:-20}
+      AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE: ${AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE:-300}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     depends_on:
       user-api:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3005/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${REDIS_MEMORY_RESERVATION:-256M}
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEMORY:-512mb} --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
 
   errand-notification:
     build:
@@ -365,3 +391,10 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+volumes:
+  user-postgres-data:
+  errand-postgres-data:
+  credit-postgres-data:
+  kafka-data:
+  redis-data:

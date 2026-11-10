@@ -1,18 +1,18 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SlidingWindowRateLimiter } from '../src/clients/rateLimiter.js'
 
-function mockDateNow(time: number) {
+function setTime(time: number) {
   vi.useFakeTimers()
   vi.setSystemTime(time)
 }
 
-function restoreDateNow() {
-  vi.useRealTimers()
-}
-
 describe('SlidingWindowRateLimiter', () => {
   beforeEach(() => {
-    restoreDateNow()
+    vi.useRealTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('allows up to maxRequests within window', () => {
@@ -28,7 +28,7 @@ describe('SlidingWindowRateLimiter', () => {
   })
 
   it('resets after window expires', () => {
-    mockDateNow(0)
+    setTime(0)
     const limiter = new SlidingWindowRateLimiter({ maxRequests: 3, windowMs: 1000 })
 
     // Exhaust the limit
@@ -47,7 +47,7 @@ describe('SlidingWindowRateLimiter', () => {
   })
 
   it('sliding window removes old requests', () => {
-    mockDateNow(0)
+    setTime(0)
     const limiter = new SlidingWindowRateLimiter({ maxRequests: 3, windowMs: 1000 })
 
     // Make 3 requests at t=0
@@ -56,13 +56,13 @@ describe('SlidingWindowRateLimiter', () => {
     expect(limiter.tryAcquire()).toBe(true)
     expect(limiter.tryAcquire()).toBe(false)
 
-    // Move time forward by 500ms
+    // Move time forward by 500ms - requests still within window
     vi.setSystemTime(500)
     expect(limiter.tryAcquire()).toBe(false)
 
-    // Move time forward by 600ms (total 1100ms), all 3 old requests should have expired
-    // (window starts at 100, all requests at t=0 are before 100)
-    vi.setSystemTime(1100)
+    // Move time forward by 1000ms (total 1000ms) - oldest request expires
+    // windowStart = 1000 - 1000 = 0, so request at t=0 is now outside window
+    vi.setSystemTime(1000)
     expect(limiter.tryAcquire()).toBe(true) // Should succeed now (1st)
     expect(limiter.tryAcquire()).toBe(true) // 2nd
     expect(limiter.tryAcquire()).toBe(true) // 3rd

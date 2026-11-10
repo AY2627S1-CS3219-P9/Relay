@@ -57,6 +57,7 @@ Resources:
         Uri: !Sub 'http://${LoadBalancerDnsName}/relay/{proxy}'
         RequestParameters: { 'integration.request.path.proxy': 'method.request.path.proxy' }
         ResponseTransferMode: STREAM
+        TimeoutInMillis: 900000
   Deployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn: [RootMethod, ProxyMethod]

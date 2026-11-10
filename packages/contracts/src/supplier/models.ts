@@ -5,7 +5,7 @@ export type Location = {
   floorNumber: number
 }
 
-export const ServiceType = {
+export const ServiceType: { [key: string]: number } = {
   Food: 0,
   Drink: 1,
   Shopping: 2,

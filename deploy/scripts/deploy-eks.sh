@@ -308,6 +308,8 @@ estimation_result="$(kubectl -n relay create secret generic relay-estimation-con
   --from-literal=AI_TEMPERATURE="${AI_TEMPERATURE:-}" \
   --from-literal=AI_MAX_TOKENS="${AI_MAX_TOKENS:-}" \
   --from-literal=AI_ESTIMATION_TIMEOUT_MS="${AI_ESTIMATION_TIMEOUT_MS:-}" \
+  --from-literal=AI_RATE_LIMIT_REQUESTS_PER_MINUTE="${AI_RATE_LIMIT_REQUESTS_PER_MINUTE:-20}" \
+  --from-literal=AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE="${AI_GLOBAL_RATE_LIMIT_REQUESTS_PER_MINUTE:-300}" \
   --dry-run=client -o yaml | kubectl apply -f -)"
 printf '%s\n' "$estimation_result"
 estimation_changed=0
@@ -371,7 +373,7 @@ fi
 
 step "Check database migration Jobs"
 migration_sources=(
-  "supplier-schema:supplier-service/backend/migrate.cjs supplier-service/backend/src/schema.sql:$(output SupplierDatabaseEndpoint)"
+  "supplier-schema:supplier-service/backend/migrate.js supplier-service/backend/src/schema.sql:$(output SupplierDatabaseEndpoint)"
   "user-migrate:user-service/backend/prisma:$(output UserDatabaseEndpoint)"
   "errand-migrate:errand-service/backend/prisma:$(output ErrandDatabaseEndpoint)"
   "credit-migrate:credit-service/backend/prisma:$(output CreditDatabaseEndpoint)"
