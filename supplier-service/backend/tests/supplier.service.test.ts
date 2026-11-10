@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
+import assert from 'node:assert/strict'
 import type { Supplier } from '@relay/contracts'
 import { SupplierService } from '../src/services/supplier.service'
 import { isSupplierActive } from '../src/services/supplier-availability'

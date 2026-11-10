@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
+import assert from 'node:assert/strict'
 import { buildSupplierFilter } from '../src/db'
 
 describe('buildSupplierFilter', () => {
