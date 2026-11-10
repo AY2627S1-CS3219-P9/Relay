@@ -30,3 +30,4 @@ scripts:
         pm.expect(json.message).to.include('Errand was not in expected state: OPEN.');
       });
     language: text/javascript
+settings: { disableCookies: true }

@@ -15,4 +15,4 @@ scripts:
     code: |-
       pm.test('HTTP 403',()=>pm.response.to.have.status(403));
       pm.test('FORBIDDEN',()=>pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));
-settings: {}
+settings: { disableCookies: true }

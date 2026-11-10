@@ -28,5 +28,5 @@ scripts:
           pm.test('zero reserved credits',()=>pm.expect(b.reserveCredit).to.eql(0));
         }
       }
-settings: {}
+settings: { disableCookies: true }
 order: 2000

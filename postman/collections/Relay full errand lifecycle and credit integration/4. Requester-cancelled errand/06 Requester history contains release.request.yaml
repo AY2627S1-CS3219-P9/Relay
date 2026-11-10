@@ -19,5 +19,5 @@ scripts:
       const records=pm.response.json().records;
       pm.test('records returned',()=>pm.expect(records).to.be.an('array'));
       pm.test('CREDIT_RELEASE recorded for errand',()=>pm.expect(records.some(r=>r.reference?.id===pm.collectionVariables.get('cancelId')&&r.type==='CREDIT_RELEASE')).to.eql(true));
-settings: {}
+settings: { disableCookies: true }
 order: 6000

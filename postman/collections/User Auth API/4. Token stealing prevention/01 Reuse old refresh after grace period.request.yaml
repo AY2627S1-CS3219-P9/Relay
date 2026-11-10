@@ -17,4 +17,4 @@ scripts:
         pm.test('Stolen refresh token rejected',()=>pm.response.to.have.status(401));
         if(pm.response.code===401)pm.test('INVALID_CREDENTIALS',()=>pm.expect(pm.response.json().error?.code).to.eql('INVALID_CREDENTIALS'));
       }
-settings: {}
+settings: { disableCookies: true }

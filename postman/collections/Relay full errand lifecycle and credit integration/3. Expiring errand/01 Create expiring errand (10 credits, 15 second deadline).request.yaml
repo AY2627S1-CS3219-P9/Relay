@@ -22,5 +22,5 @@ scripts:
       pm.test('HTTP 201',()=>pm.response.to.have.status(201));
       pm.collectionVariables.set('expiryId',pm.response.json().errand.id);
       pm.test('opens after reserve',()=>pm.expect(pm.response.json().errand.status).to.eql('OPEN'));
-settings: {}
+settings: { disableCookies: true }
 order: 1000

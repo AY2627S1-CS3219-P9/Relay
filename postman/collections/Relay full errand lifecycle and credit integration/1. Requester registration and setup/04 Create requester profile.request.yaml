@@ -16,5 +16,5 @@ scripts:
       pm.request.headers.upsert({key:'Cookie',value:selectedSession});
   - type: afterResponse
     code: pm.response.to.have.status(200);
-settings: {}
+settings: { disableCookies: true }
 order: 5000

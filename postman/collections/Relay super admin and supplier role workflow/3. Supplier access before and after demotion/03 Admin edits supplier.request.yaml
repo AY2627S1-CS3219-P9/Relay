@@ -18,5 +18,5 @@ scripts:
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
       pm.test('supplier edited',()=>pm.expect(pm.response.json().supplier.isOperational).to.eql(false));
-settings: {}
+settings: { disableCookies: true }
 order: 4000

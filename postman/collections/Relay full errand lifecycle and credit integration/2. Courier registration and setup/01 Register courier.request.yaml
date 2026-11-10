@@ -14,5 +14,5 @@ scripts:
       pm.collectionVariables.set('courierName','relaycourier'+s);
   - type: afterResponse
     code: pm.response.to.have.status(201);
-settings: {}
+settings: { disableCookies: true }
 order: 1000

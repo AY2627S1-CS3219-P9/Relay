@@ -30,3 +30,4 @@ scripts:
         pm.expect(json.message).to.include('Errand is already accepted by a courier.');
       });
     language: text/javascript
+settings: { disableCookies: true }

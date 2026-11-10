@@ -20,3 +20,4 @@ scripts:
         pm.response.to.have.status(200);
       });
     language: text/javascript
+settings: { disableCookies: true }

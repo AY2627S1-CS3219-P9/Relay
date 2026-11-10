@@ -42,7 +42,6 @@ scripts:
       pm.collectionVariables.set('supplierId_instachef', '');
 
       // Init other variables
-      pm.collectionVariables.set('baseUrl', 'http://localhost:8080');
       const runId = Date.now() + Math.floor(Math.random() * 1000000);
       pm.collectionVariables.set('requesterEmail', 'e' + runId + 'r@u.nus.edu')
       pm.collectionVariables.set('requesterUsername', 'requester' + runId)
@@ -52,3 +51,4 @@ scripts:
       pm.collectionVariables.set('courierPassword', 'Test123%')
       pm.collectionVariables.set('expiresAt', '2028-12-31T12:00:00Z')
     language: text/javascript
+settings: { disableCookies: true }

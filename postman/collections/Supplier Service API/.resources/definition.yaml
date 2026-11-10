@@ -10,7 +10,6 @@ variables:
   supplierId3: ''
   adminEmail: admin@example.com
   adminPassword: Admin123%
-  baseUrl: http://localhost:8080
   supplierId5: ''
   supplierName: ''
   supplierName2: ''

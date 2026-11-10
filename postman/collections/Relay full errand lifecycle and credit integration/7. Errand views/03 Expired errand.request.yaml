@@ -16,5 +16,5 @@ scripts:
       const e=pm.response.code===200?pm.response.json().errand:null;
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
       if(e)pm.test('status EXPIRED',()=>pm.expect(e.status).to.eql('EXPIRED'));
-settings: {}
+settings: { disableCookies: true }
 order: 3000

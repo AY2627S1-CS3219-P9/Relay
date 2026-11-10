@@ -8,5 +8,5 @@ scripts:
       const m=pm.response.json().messages.filter(x=>x.Destination.ToAddresses.includes(pm.collectionVariables.get('courierEmail'))).pop();
       pm.expect(m).to.exist;
       pm.collectionVariables.set('courierCode',m.Body.text_part.match(/\b\d{6}\b/)[0]);
-settings: {}
+settings: { disableCookies: true }
 order: 2000

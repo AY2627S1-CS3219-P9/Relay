@@ -18,5 +18,5 @@ scripts:
     code: |-
       pm.response.to.have.status(201);
       pm.collectionVariables.set('supplierId',pm.response.json().supplier.id);
-settings: {}
+settings: { disableCookies: true }
 order: 10000

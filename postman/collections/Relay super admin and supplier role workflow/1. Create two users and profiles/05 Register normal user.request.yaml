@@ -9,5 +9,5 @@ body:
 scripts:
   - type: afterResponse
     code: pm.test('HTTP 201',()=>pm.response.to.have.status(201));
-settings: {}
+settings: { disableCookies: true }
 order: 6000

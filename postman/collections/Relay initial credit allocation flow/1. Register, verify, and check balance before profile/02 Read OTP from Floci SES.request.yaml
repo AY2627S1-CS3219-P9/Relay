@@ -10,5 +10,5 @@ scripts:
       const match=message?.Body?.text_part?.match(/\b\d{6}\b/);
       pm.test('six-digit OTP found',()=>pm.expect(match).to.exist);
       if(match)pm.collectionVariables.set('verificationCode',match[0]);
-settings: {}
+settings: { disableCookies: true }
 order: 2000

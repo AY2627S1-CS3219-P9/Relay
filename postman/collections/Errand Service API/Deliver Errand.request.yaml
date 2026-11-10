@@ -27,3 +27,4 @@ scripts:
         pm.expect(json.errand.status).to.eql('DELIVERED');
       });
     language: text/javascript
+settings: { disableCookies: true }

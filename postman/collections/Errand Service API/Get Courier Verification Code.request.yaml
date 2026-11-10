@@ -1,6 +1,6 @@
 $kind: http-request
 description: Fetch verification code from SES mock
-url: http://localhost:4566/_aws/ses
+url: '{{flociUrl}}/_aws/ses'
 method: GET
 scripts:
   - type: afterResponse
@@ -15,3 +15,4 @@ scripts:
       if (code) pm.collectionVariables.set('courierVerificationCode', code);
     language: text/javascript
 order: 8044
+settings: { disableCookies: true }

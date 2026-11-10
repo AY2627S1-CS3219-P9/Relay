@@ -15,5 +15,5 @@ scripts:
       const refreshCookie=pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value.split(';')[0]).find(x=>x.startsWith('relay_refresh='));
       pm.test('Cognito access, ID and refresh cookies returned',()=>{pm.expect(pm.collectionVariables.get('adminCookie')).to.match(/^relay_access=[^;]+; relay_id=[^;]+$/);pm.expect(refreshCookie).to.match(/^relay_refresh=[^;]+$/);});
       if(refreshCookie)pm.collectionVariables.set('adminRefreshCookie',refreshCookie);
-settings: {}
+settings: { disableCookies: true }
 order: 1000

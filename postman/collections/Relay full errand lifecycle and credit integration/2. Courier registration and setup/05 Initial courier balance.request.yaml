@@ -24,5 +24,5 @@ scripts:
       pm.test('balance returned',()=>pm.response.to.have.status(200));
       if(b){pm.test('correct user',()=>pm.expect(b.userId).to.eql(pm.collectionVariables.get('courierSub')));pm.test('available = 100',()=>pm.expect(b.availableCredit).to.eql(100));pm.test('reserved = 0',()=>pm.expect(b.reserveCredit).to.eql(0));}
       }
-settings: {}
+settings: { disableCookies: true }
 order: 6000

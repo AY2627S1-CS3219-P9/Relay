@@ -33,3 +33,4 @@ scripts:
         pm.collectionVariables.set('supplierId_instachef', instachefSupplier.id);
       }
     language: text/javascript
+settings: { disableCookies: true }
