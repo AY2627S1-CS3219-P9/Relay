@@ -58,3 +58,4 @@ scripts:
         pm.expect(json.errand.status).to.eql('OPEN');
       });
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

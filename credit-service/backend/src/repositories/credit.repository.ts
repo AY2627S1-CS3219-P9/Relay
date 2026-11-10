@@ -1,8 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
-// Scope: Generated initial implementation, debugged implementation
-// Author review: I validated correctness and edited for style.
-
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of referenceOf, referenceWithType, nonnegativeAmount, findBalance, findHistory, findReservation, allocateInitialCredit, reserveCredit, closeUnreservedCredit, releaseCredit, transferCredit and deleteUserCredit.
+ * Author review: Verified correctness and that trasaction atomicity is strictly maintained. Also checked credit error codes and messages.
+ */
 import { PrismaClient, Prisma } from '@relay/credit-prisma'
 import type {
   AllocateInitialCreditCommand,

@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-10-28
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of EKS networking, RDS, MSK, ECR, and AWS security configuration
+# Author review: Verified implementation matches proposed plan, and images match docker compose setup.
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
@@ -16,6 +16,10 @@ Parameters:
     Type: String
     Default: relay
     AllowedPattern: '^[a-z][a-z0-9-]{1,20}$'
+  ExistingAiProviderSecretArn:
+    Type: String
+    Default: ''
+    Description: Reuse an existing AI provider secret when the stack does not own it.
   KubernetesVersion:
     Type: String
     Description: A currently supported EKS Kubernetes version in the target Region.
@@ -46,6 +50,7 @@ Parameters:
     AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
 
 Conditions:
+  CreateAiProviderSecret: !Equals [!Ref ExistingAiProviderSecretArn, '']
   RestoreUserDatabase: !Not [!Equals [!Ref UserDatabaseSnapshotId, '']]
   RestoreErrandDatabase: !Not [!Equals [!Ref ErrandDatabaseSnapshotId, '']]
   RestoreCreditDatabase: !Not [!Equals [!Ref CreditDatabaseSnapshotId, '']]
@@ -363,6 +368,15 @@ Resources:
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - { IpProtocol: tcp, FromPort: 9096, ToPort: 9096, CidrIp: 10.40.0.0/16 }
+  AiProviderSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: CreateAiProviderSecret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${AWS::StackName}/credit-estimation-ai'
+      Tags: [{ Key: 'relay:managed', Value: !Ref 'AWS::StackName' }]
+      SecretString: '{"AI_PROVIDER":"REPLACE_ME","AI_API_KEY":"REPLACE_ME","AI_MODEL":"REPLACE_ME","AI_ENDPOINT":"REPLACE_ME"}'
   MskScramKey:
     Type: AWS::KMS::Key
     Properties:
@@ -406,6 +420,9 @@ Resources:
     Properties:
       ClusterArn: !Ref MskCluster
       SecretArnList: [!Ref MskScramSecret]
+  RedisRepository:
+    Type: AWS::ECR::Repository
+    Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/redis', ImageScanningConfiguration: { ScanOnPush: true } }
   UserAuthRepository:
     Type: AWS::ECR::Repository
     Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/user-auth-api', ImageScanningConfiguration: { ScanOnPush: true } }
@@ -450,6 +467,8 @@ Resources:
     Properties: { EmptyOnDelete: true, RepositoryName: !Sub '${ProjectName}/errand-notification', ImageScanningConfiguration: { ScanOnPush: true } }
 
 Outputs:
+  AiProviderSecretArn: { Value: !If [CreateAiProviderSecret, !Ref AiProviderSecret, !Ref ExistingAiProviderSecretArn] }
+  RedisRepositoryUri: { Value: !GetAtt RedisRepository.RepositoryUri }
   UserServiceTokenArn: { Value: !Ref UserServiceToken }
   SupplierServiceTokenArn: { Value: !Ref SupplierServiceToken }
   CreditServiceTokenArn: { Value: !Ref CreditServiceToken }

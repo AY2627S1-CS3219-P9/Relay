@@ -94,8 +94,8 @@ export class OpenAIClient implements AIClient {
       if (error instanceof Error && error.message === 'RATE_LIMITED') {
         throw error
       }
-      console.error('OpenAI API error:', error)
-      throw error
+      console.error('AI estimation request failed')
+      throw new Error('AI estimation request failed')
     }
   }
 
@@ -129,19 +129,14 @@ export class OpenAIClient implements AIClient {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        const errorData = await response.text()
-        console.error(
-          `OpenAI API error response (${response.status}):`,
-          errorData.substring(0, 500),
-        )
-        throw new Error(`OpenAI API error: ${response.status} ${errorData}`)
+        // Provider responses can echo credentials or request data; log only the status.
+        throw new Error(`OpenAI API error: ${response.status}`)
       }
 
       const contentType = response.headers.get('content-type')
       if (contentType && !contentType.includes('application/json')) {
-        const bodyText = await response.text()
-        console.error(`Non-JSON response (${contentType}):`, bodyText.substring(0, 500))
-        throw new Error(`Expected JSON, got ${contentType}`)
+        // Do not log untrusted response headers or bodies.
+        throw new Error('Expected a JSON response from the AI provider')
       }
 
       const data = await response.json()
@@ -152,7 +147,13 @@ export class OpenAIClient implements AIClient {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('OpenAI API timeout')
       }
-      throw error
+      if (error instanceof Error &&
+          (/^OpenAI API error: [0-9]{3}$/.test(error.message) ||
+           error.message === 'Expected a JSON response from the AI provider')) {
+        throw error
+      }
+      // Network and JSON parsing errors can contain URLs or provider content.
+      throw new Error('AI provider request failed')
     }
   }
 

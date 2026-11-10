@@ -125,11 +125,11 @@ export class DistributedRateLimiter {
         scope,
         retryAfterMs: Math.max(0, Number(result[2]) || 0),
       }
-    } catch (error) {
-      console.error('Redis rate limiter error:', error)
+    } catch {
+      console.error('Redis rate limiter unavailable')
       // Estimation is optional and invokes a paid API. If the shared limiter
       // cannot be enforced, fail closed instead of allowing unbounded calls.
-      throw error
+      throw new Error('Redis rate limiter unavailable')
     }
   }
 

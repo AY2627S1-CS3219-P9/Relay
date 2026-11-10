@@ -27,6 +27,7 @@ scripts:
         pm.expect(json.code).to.eql('FORBIDDEN');
       });
       pm.test('Error message is correct', () => {
-        pm.expect(json.message).to.include('requester');
+        pm.expect(json.message).to.eql('You (a requestor) cannot accept your own errand.');
       });
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

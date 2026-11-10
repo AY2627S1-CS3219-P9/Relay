@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local Compose startup and generated AWS service configuration
+# Author review: Verified Floci correctly provisions RDS and MSK containers and services use the correct environment variables.
+
+# Secret-bearing commands must not be exposed by inherited shell tracing.
+set +x
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 no_cache=0

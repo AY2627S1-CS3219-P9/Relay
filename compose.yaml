@@ -363,10 +363,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${REDIS_MEMORY_LIMIT:-512M}
+          cpus: '0.2'
+          memory: 512M
         reservations:
-          memory: ${REDIS_MEMORY_RESERVATION:-256M}
-    command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEMORY:-512mb} --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+          cpus: '0.1'
+          memory: 512M
+    command: [redis-server, --appendonly, 'yes', --save, '', --maxmemory, 360mb, --maxmemory-policy, allkeys-lru]
 
   errand-notification:
     build:
@@ -393,8 +395,4 @@ services:
       retries: 5
 
 volumes:
-  user-postgres-data:
-  errand-postgres-data:
-  credit-postgres-data:
-  kafka-data:
   redis-data:

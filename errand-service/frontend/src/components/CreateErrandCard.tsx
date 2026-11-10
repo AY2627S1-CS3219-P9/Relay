@@ -12,7 +12,6 @@ import type {
   Supplier,
 } from '@relay/contracts'
 import {
-  ClockIcon,
   ErrorMessage,
   LoadingState,
   RelayButton,
@@ -530,7 +529,16 @@ export function CreateErrandCard({
                 }
                 className="relay-icon-button errand-estimate-button"
               >
-                <ClockIcon className="errand-estimate-icon" />
+                {/* AI icon by Icons8: https://icons8.com/icon/ET5veKixlQKy/ai */}
+                <svg
+                  className="errand-estimate-icon"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="m17.469 9.286-2.156-.957a7.14 7.14 0 0 1-3.683-3.801l-.82-1.974c-.152-.367-.481-.55-.81-.55s-.658.183-.81.55l-.819 1.974a7.14 7.14 0 0 1-3.684 3.801l-2.156.957c-.708.314-.708 1.344 0 1.658l2.226.988a7.13 7.13 0 0 1 3.631 3.678l.809 1.852c.155.356.479.534.803.534s.648-.178.804-.534l.809-1.852a7.14 7.14 0 0 1 3.631-3.678l2.226-.988c.707-.314.707-1.344-.001-1.658M10 14.34a9.1 9.1 0 0 0-4.408-4.225A9.1 9.1 0 0 0 10 5.78a9.08 9.08 0 0 0 4.408 4.334A9.1 9.1 0 0 0 10 14.34m8.713 6.785-.247.565a.506.506 0 0 1-.934 0l-.247-.565a4.36 4.36 0 0 0-2.219-2.249l-.76-.337a.53.53 0 0 1 0-.962l.717-.319a4.36 4.36 0 0 0 2.251-2.324l.253-.611a.506.506 0 0 1 .941 0l.253.611a4.36 4.36 0 0 0 2.251 2.324l.717.319a.53.53 0 0 1 0 .962l-.76.337a4.37 4.37 0 0 0-2.216 2.249" />
+                </svg>
               </button>
             </div>
           </div>

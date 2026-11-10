@@ -18,5 +18,5 @@ scripts:
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
       pm.test('profile created',()=>pm.expect(pm.response.json().data.profileCreated).to.eql(true));
-settings: {}
+settings: { disableCookies: true, protocolVersion: auto }
 order: 10000

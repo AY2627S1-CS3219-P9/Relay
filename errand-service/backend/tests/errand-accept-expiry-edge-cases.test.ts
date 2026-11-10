@@ -1,9 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: OpenCode (Qwen3-Coder-Next)
-// Date: 2026-10-28
-// Scope: Generated edge-case tests for acceptance and expiry behavior.
-// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
-// tested the intended behavior. Corrected tests where necessary.
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated tests for errand acceptance and expiry
+ * Author review: Verified tests and mock values match implementation, and ensured edge cases are covered.
+ */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'

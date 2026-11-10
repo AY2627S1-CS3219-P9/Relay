@@ -1,9 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
-// Scope: Generated initial implementation, debugged implementation
-// Author review: I validated correctness and edited for style.
-
-
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of findReservation, allocateInitialCredit, closeUnreservedCredit, reserveCredit, releaseCredit, transferCredit, deleteUserCredit, viewCredit, findBalance, viewCreditHistory.
+ * Author review: Verified correctness.
+ */
 import type {
   ViewCreditRequest,
   ViewCreditResponse,

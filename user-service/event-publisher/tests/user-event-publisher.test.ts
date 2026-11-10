@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated user event publisher tests
+ * Author review: Verified test correctness.
+ */
+
 import { describe, expect, it, vi } from 'vitest'
 import { UserEventPublisher } from '../user-event-publisher.js'
 

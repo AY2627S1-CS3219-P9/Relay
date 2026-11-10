@@ -25,3 +25,4 @@ scripts:
         pm.expect(json.suppliers).to.be.an('array').and.empty;
       });
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

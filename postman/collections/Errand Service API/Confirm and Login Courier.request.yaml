@@ -35,3 +35,4 @@ scripts:
       pm.collectionVariables.set('refreshCookieCourier', refresh);
       pm.collectionVariables.set('courierSub', json.data.user.subject);
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for auth service Express setup
+ * Author review: Verified correctness.
+ */
+
 import express, { type ErrorRequestHandler } from 'express'
 import { createAuthRouter } from './routes/auth.routes.js'
 import { AuthError } from './types/auth.types.js'

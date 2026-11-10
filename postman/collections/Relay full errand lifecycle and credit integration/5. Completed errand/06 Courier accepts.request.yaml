@@ -15,5 +15,5 @@ scripts:
     code: |-
       pm.test('HTTP 200',()=>pm.response.to.have.status(200));
       pm.test('status ACCEPTED',()=>pm.expect(pm.response.json().errand.status).to.eql('ACCEPTED'));
-settings: {}
+settings: { disableCookies: true, protocolVersion: auto }
 order: 6000

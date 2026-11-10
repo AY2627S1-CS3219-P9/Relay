@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for auth service configuration.
+ * Author review: Verified correctness and ensured no critical secrets are written here.
+ */
+
 import 'dotenv/config'
 
 export type AuthEnv = {

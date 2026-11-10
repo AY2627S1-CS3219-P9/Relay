@@ -1,8 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
-// Scope: Generated initial implementation, debugged implementation
-// Author review: I validated correctness and edited for style.
-
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of createApp.
+ * Author review: Verified format matches other services and the backend endpoints all work.
+ */
 import express, { type ErrorRequestHandler } from 'express'
 import { CreditRepository, prisma } from './repositories/credit.repository.js'
 import { CreditService } from './services/credit.service.js'

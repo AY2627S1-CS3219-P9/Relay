@@ -6,6 +6,7 @@
 // details to fit project requirements.
 
 import express, { type ErrorRequestHandler } from 'express'
+import { Redis } from 'ioredis'
 import { getEnv } from './config/env.js'
 import { translateEstimationError } from './types/estimation.types.js'
 import { createEstimationRouter, initializeAIClient } from './routes/estimation.routes.js'
@@ -24,12 +25,25 @@ export async function createApp() {
     res.json({ status: 'ok' })
   })
 
-  app.get('/healthz', (_req, res) => {
-    res.json({ status: 'ok', redis: 'connected' })
+  const env = getEnv()
+  // A dedicated, bounded connection keeps readiness independent of AI setup.
+  const redisHealth = new Redis(env.redisUrl, {
+    lazyConnect: true,
+    connectTimeout: 1000,
+    maxRetriesPerRequest: 0,
+    enableOfflineQueue: false,
+  })
+  redisHealth.on('error', () => {})
+  app.get('/healthz', async (_req, res) => {
+    try {
+      if (await redisHealth.ping() !== 'PONG') throw new Error('Unexpected Redis response')
+      res.json({ status: 'ok', redis: 'connected' })
+    } catch {
+      res.status(503).json({ status: 'unavailable', redis: 'disconnected' })
+    }
   })
 
   // Initialize AI client once at startup
-  const env = getEnv()
   await initializeAIClient(env)
 
   // Internal routes only (authenticated via service token)
@@ -51,11 +65,11 @@ export async function createApp() {
 
   app.use(errorHandler)
 
-  return { app, env }
+  return { app, env, redisHealth }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { app, env } = await createApp()
+  const { app, env, redisHealth } = await createApp()
   const port = env.port
 
   const server = app.listen(port, () => {
@@ -70,6 +84,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         else resolve(null)
       })
     })
+    redisHealth.disconnect()
     await cleanupAIClient()
     process.exit(0)
   }

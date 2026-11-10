@@ -1,8 +1,8 @@
 // AI Assistance Disclosure:
-// Tool: OpenCode (Qwen3-Coder-Next)
-// Date: 2026-11-02
+// Tool: OpenCode (Qwen3-Coder-Next), ChatGPT (model: GPT-6 Sol)
+// Date: 2026-11-02, 2026-11-05
 // Scope: Generated tests for SSE subscription, publication, timeout, and cleanup behavior.
-// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly, generated tests for notification stream shutdown and subscriber cleanup
 // tested the intended behavior. Corrected tests where necessary.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'

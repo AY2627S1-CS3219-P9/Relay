@@ -1,8 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: ChatGPT (model: GPT-6.1 Sol), date: 2026-10-17
-// Scope: Generated initial implementation, debugged implementation
-// Author review: I validated correctness and edited for style.
-
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of all Credit Service UIs and frontend functions
+ * Author review: Tested locally on browser, ensured functions all connect correctly to backend
+ */
 import { authFetch } from '@relay/user-auth-frontend-fetch'
 import '@relay/ui/styles.css'
 import './styles.css'

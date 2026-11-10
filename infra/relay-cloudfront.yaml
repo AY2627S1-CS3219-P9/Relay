@@ -1,11 +1,16 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-11-06
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of CloudFront HTTPS distribution and API Gateway origin configuration
+# Author review: Verified correctness and increase Cloudfront price class to include Singapore as a location.
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFront HTTPS entry point for the Relay EKS ALB without a custom domain.
 Parameters:
+  DistributionEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Disable while paused to retain the distribution and domain without serving requests.
   LoadBalancerDnsName:
     Type: String
     Description: DNS name reported by the Relay Kubernetes Ingress.
@@ -24,6 +29,7 @@ Parameters:
     Type: Number
     Default: 80
 Conditions:
+  EnableDistribution: !Equals [!Ref DistributionEnabled, 'true']
   UseAwsGatewayPolicy: !Equals [!Ref UseAwsApiGatewayPolicy, 'true']
 Resources:
   RelayOriginRequestPolicy:
@@ -42,7 +48,7 @@ Resources:
     Properties:
       DistributionConfig:
         Comment: Relay local-domain-free HTTPS entry point
-        Enabled: true
+        Enabled: !If [EnableDistribution, true, false]
         HttpVersion: http2
         PriceClass: PriceClass_200
         Origins:

@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-11-06
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of Kafka topic initialization Job configuration
+# Author review: Verified kafka topics are correctly initialized in floci eks and on deployment.
 
 apiVersion: batch/v1
 kind: Job

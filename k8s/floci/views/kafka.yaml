@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local Kafka monitoring view
+# Author review: Verified correctness and that local kafbat view works.
+
 apiVersion: v1
 kind: Service
 metadata: { name: relay-kafka-ui, namespace: relay }

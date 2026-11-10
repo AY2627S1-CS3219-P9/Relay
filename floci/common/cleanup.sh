@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-04
+# Scope: Generated implementation of cleanup of Floci-created local infrastructure
+# Author review: Verified that floci-created containers are correctly deleted without deleting other containers.
+
 set -euo pipefail
 
 # Floci also creates sidecars such as an ECR registry outside Compose.

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of AWS resource discovery and lifecycle helpers
+# Author review: Verified correctness.
+
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
@@ -12,6 +17,17 @@ access_stack="${stack_name}-aws-access"
 state_file="deploy/.${stack_name}-pause.env"
 account_id="$(aws sts get-caller-identity --query Account --output text)"
 aws_call() { aws --region "$aws_region" "$@"; }
+confirm_lifecycle_action() {
+  local answer
+  if [[ ! -t 0 ]]; then
+    echo 'An interactive terminal is required for confirmation. No changes were made.' >&2
+    return 1
+  fi
+  if ! read -r -p 'Type CONFIRM to continue: ' answer || [[ "$answer" != CONFIRM ]]; then
+    echo 'Confirmation not received. No changes were made.' >&2
+    return 1
+  fi
+}
 stack_exists() {
   local status
   status="$(aws_call cloudformation describe-stacks --stack-name "$1" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)"
@@ -158,9 +174,18 @@ read_pause_state() {
     [[ -n "${!key:-}" ]] || { echo "Missing $key in pause manifest." >&2; exit 1; }
   done
 }
+# Keep the distribution and domain, but stop serving requests while its origin is absent.
+pause_edge() {
+  if stack_exists "$edge_stack"; then
+    printf 'Disabling CloudFront distribution in %s while preserving its domain.\n' "$edge_stack"
+    aws_call cloudformation deploy --stack-name "$edge_stack" \
+      --template-file infra/relay-cloudfront.yaml \
+      --parameter-overrides DistributionEnabled=false
+  fi
+}
 # Removes all active resources in the EKS stack; Snapshot policies preserve DB data.
 pause_compute() {
-  delete_stack "$edge_stack"
+  pause_edge
   delete_stack "${stack_name}-gateway"
   if stack_exists "$stack_name" && [[ "$(stack_status "$stack_name")" == DELETE_FAILED ]]; then
     read_pending_state

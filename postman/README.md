@@ -1,18 +1,35 @@
 # Postman collections
 
-Start the local Compose environment from the repository root with
-`npm run up:compose` before running collections. This provisions Cognito, database,
-S3, and Kafka settings through Floci. The mailbox used by OTP requests is at
-http://localhost:4566/_aws/ses. See the [local guide](../floci/README.md).
+The collections under `postman/collections` run against either local Compose
+or Floci EKS. Select the matching environment:
 
-Use a Postman client that supports the checked-in v3 YAML collection format.
-The files are not Newman v2 JSON exports. These instructions target local
-Compose; AWS does not expose Floci's OTP mailbox, and AWS load-test provisioning
-is documented in the [load-test guide](../load-tests/README.md#aws-provisioning).
+- **compose** uses `http://localhost:8080` and Floci at `http://localhost:4566`.
+- **eks** uses Floci at `https://localhost:4567`. Set its `baseUrl` to the
+  local CloudFront URL printed by `npm run up:eks`; the domain is generated
+  on startup. Trust `floci/eks/.floci-ca.pem` in Postman for local HTTPS.
 
-The v3 collections under `postman/collections` use the Compose host at `http://localhost:8080` by default. Run requests in order. Sign-in stores Cognito `relay_access`, `relay_id`, and `relay_refresh` values in collection variables. Protected requests send only the selected identity's access and ID cookies. The existing service and integration collections omit token refresh; the dedicated **User Auth API** collection tests it.
+Both environments set `target_env=development`, which enables the existing
+Floci-specific authentication expectations. The `deployment_target` value
+selects cookie checks: Compose expects cookies without `Secure` for HTTP,
+while EKS requires `Secure` for HTTPS. Each request disables the cookie
+jar: sign-in scripts store tokens in collection variables and protected
+requests send the selected identity's explicit Cookie header. Run each entire
+collection in order with the default runner settings and no data file.
 
-For the six service and integration collections, select **No environment** and no data file. For **User Auth API**, select the **Development** environment containing `target_env=development`. The collections include their own waits; use no Runner delay and default cookie handling. Reimport the latest files before running. If a manual demo pauses for more than 15 minutes, sign in again before continuing. Check the sent `Cookie` header in the Postman Console if a request is unexpectedly unauthorized; each protected request should have one access and one ID cookie for the same user.
+Both CI workflows install Postman CLI and run each collection against their
+own freshly started environment. The EKS workflow supplies the generated
+CloudFront URL and local CA automatically. Application requests use Postman's
+`auto` HTTP version setting: it negotiates HTTP/2 with the local EKS
+CloudFront endpoint and HTTP/1.1 with Compose. Floci SES requests retain their
+normal protocol. Use the Postman desktop app or CLI without an HTTP proxy for
+the local EKS endpoint. For a manual CLI run against Compose, for example:
 
-All seven v3 collections are under `postman/collections`. Each registration flow generates fresh users on every run and reads its OTP by matching the recipient email in Floci SES. The Supplier Service API generates fresh supplier names on every run. Other collections' variables do not override collection variables; avoid adding environment variables with the same names. Run each collection from its first request so its initialization scripts clear old tokens and IDs.
-The **User Auth API** collection covers registration, two sessions, refresh, token reuse, logout, password changes, and admin operations. With `target_env=development`, the token rotation and reuse checks assert Floci's observed behavior and print console warnings: Floci returns the same refresh token and accepts reuse after the grace period. Other environment values retain strict security assertions.
+```bash
+postman collection run 'postman/collections/User Auth API' \
+  --environment postman/environments/compose.environment.yaml
+```
+
+Each registration flow creates fresh users, and some collections create
+suppliers and errands. OTPs are read from Floci SES by recipient email. The
+**User Auth API** collection checks refresh, logout and admin operations;
+Floci's refresh-token rotation limitations are identified in its assertions.

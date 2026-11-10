@@ -1,7 +1,14 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Updated CI with new npm run compose:up command
+# Author review: Verified correctness and CI was run on GitHub
+
 name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -83,6 +90,19 @@ jobs:
           export KAFKA_TOPIC_USER_EVENTS=user-events KAFKA_TOPIC_USER_DLQ=user-events-dlq
           export KAFKA_TOPIC_ERRAND_EVENTS=errand-events KAFKA_TOPIC_ERRAND_DLQ=errand-events-dlq
           npm test
+
+      - name: Install Postman CLI
+        run: curl -fsSL https://dl-cli.pstmn.io/install/unix.sh | sh
+
+      - name: Run Postman collections against Compose
+        shell: bash
+        run: |
+          set -euo pipefail
+          for collection in postman/collections/*/; do
+            [[ -f "${collection}.resources/definition.yaml" ]] || continue
+            echo "Running Postman collection: $collection"
+            postman collection run "$collection" --environment postman/environments/compose.environment.yaml
+          done
 
       - name: Collect Compose diagnostics
         if: failure()

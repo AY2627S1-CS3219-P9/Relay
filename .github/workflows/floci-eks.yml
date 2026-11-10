@@ -1,7 +1,14 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local EKS CI
+# Author review: Verified correctness and CI was run on GitHub
+
 name: Floci EKS CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -107,6 +114,29 @@ jobs:
             exit 1
           fi
           npm run test:services
+
+      - name: Install Postman CLI
+        run: curl -fsSL https://dl-cli.pstmn.io/install/unix.sh | sh
+
+      - name: Run Postman collections against Floci EKS
+        shell: bash
+        run: |
+          set -euo pipefail
+          domain="$(docker exec -e AWS_ENDPOINT_URL=http://127.0.0.1:4566 \
+            -e AWS_DEFAULT_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+            relay-floci-eks aws cloudformation describe-stacks --stack-name relay-local-edge \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionDomainName`].OutputValue' --output text)"
+          [[ "$domain" == *.cloudfront.localhost.floci.io ]]
+          export NO_PROXY="localhost,127.0.0.1,.localhost.floci.io"
+          export no_proxy="$NO_PROXY"
+          for collection in postman/collections/*/; do
+            [[ -f "${collection}.resources/definition.yaml" ]] || continue
+            echo "Running Postman collection: $collection"
+            postman collection run "$collection" \
+              --environment postman/environments/eks.environment.yaml \
+              --env-var "baseUrl=https://$domain" \
+              --ssl-extra-ca-certs "$GITHUB_WORKSPACE/floci/eks/.floci-ca.pem"
+          done
 
       - name: Collect Kubernetes and Floci diagnostics
         if: failure()

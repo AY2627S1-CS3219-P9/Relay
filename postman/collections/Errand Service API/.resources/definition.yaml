@@ -24,4 +24,3 @@ variables:
   courierSub: ''
   requesterSub2: ''
   expiresAt: 2026-12-12T12:00:00.000Z
-  baseUrl: http://localhost:8080

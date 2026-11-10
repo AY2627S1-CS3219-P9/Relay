@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for auth service startup
+ * Author review: Verified correctness
+ */
+
 import { app } from './app.js'
 import { getEnv } from './config/env.js'
 import { CognitoUserDeletionGateway, UserDeletionConsumer } from './consumers/user-deletion.consumer.js'

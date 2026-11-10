@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for authentication routes
+ * Author review: Verified all endpoints have correct middleware and correct role access.
+ */
+
 import { Router } from 'express'
 import { AuthController } from '../controllers/auth.controller.js'
 import {

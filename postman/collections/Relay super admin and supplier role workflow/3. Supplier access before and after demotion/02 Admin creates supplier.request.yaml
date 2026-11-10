@@ -18,5 +18,5 @@ scripts:
     code: |-
       pm.test('HTTP 201',()=>pm.response.to.have.status(201));
       const s=pm.response.json().supplier; pm.test('supplier ID',()=>pm.expect(s.id).to.be.a('string').and.not.empty); if(s.id)pm.collectionVariables.set('supplierId',s.id);
-settings: {}
+settings: { disableCookies: true, protocolVersion: auto }
 order: 3000

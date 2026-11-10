@@ -31,3 +31,4 @@ scripts:
       pm.collectionVariables.set('idCookie', id);
       pm.collectionVariables.set('refreshCookie', refresh);
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

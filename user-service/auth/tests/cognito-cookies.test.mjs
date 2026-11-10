@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated Cognito authentication and cookie tests
+ * Author review: Verified correctness.
+ */
+
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { AuthController } from '../dist/controllers/auth.controller.js'

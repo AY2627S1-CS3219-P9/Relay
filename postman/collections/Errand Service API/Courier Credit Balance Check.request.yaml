@@ -1,6 +1,6 @@
 $kind: http-request
 description: ''
-url: http://localhost:8080/api/credit
+url: '{{baseUrl}}/api/credit'
 method: GET
 headers:
   Cookie: relay_access={{sessionCookieCourier}}; relay_id={{idCookieCourier}}
@@ -13,3 +13,4 @@ scripts:
       if(!access||!id)throw new Error('Run the matching login request before this request.');
       pm.request.headers.upsert({key:'Cookie',value:'relay_access='+access+'; relay_id='+id});
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

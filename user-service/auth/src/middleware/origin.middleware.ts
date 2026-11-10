@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for authentication request origin checks
+ * Author review: Verified correctness and correct error codes.
+ */
+
 import type { RequestHandler } from 'express'
 export const requireSameOrigin: RequestHandler = (req, res, next) => {
   const origin = req.header('origin')

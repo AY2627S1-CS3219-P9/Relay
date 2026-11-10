@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated implementation for Cognito token verification and authorization middleware
+ * Author review: Verified logic correctness and that invalid tokens are rejected.
+ */
+
 import type { RequestHandler } from 'express'
 import { JwtVerifier } from 'aws-jwt-verify'
 import { validateCognitoJwtFields } from 'aws-jwt-verify/cognito-verifier'

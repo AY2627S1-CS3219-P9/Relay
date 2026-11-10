@@ -1,8 +1,9 @@
-// AI Assistance Disclosure:
-// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
-// Scope: Generated initial implementation, debugged implementation
-// Author review: I validated correctness and edited for style.
-
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-17
+ * Scope: Generated implementation of server startup and consumer initialization.
+ * Author review: Verified kafka consumer behavior and correctness, and tested server startup with docker
+ */
 import type { Server } from 'node:http'
 import { Kafka, logLevel } from 'kafkajs'
 import { app, closeAppResources } from './app.js'

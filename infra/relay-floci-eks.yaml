@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-11-06
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-04
+# Scope: Generated implementation of local Floci EKS infrastructure emulation of AI secrets for credit estimation service
+# Author review: Verified correctness and that local kubernetes cluster is created and working.
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Local Floci EKS cluster using the VPC and subnets from relay-floci-db.yaml.
@@ -19,6 +19,11 @@ Parameters:
   SubnetBId:
     Type: String
 Resources:
+  AiProviderSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/credit-estimation-ai'
+      SecretString: '{"AI_PROVIDER":"REPLACE_ME","AI_API_KEY":"REPLACE_ME","AI_MODEL":"REPLACE_ME","AI_ENDPOINT":"REPLACE_ME"}'
   ClusterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -37,5 +42,6 @@ Resources:
       ResourcesVpcConfig:
         SubnetIds: [!Ref SubnetAId, !Ref SubnetBId]
 Outputs:
+  AiProviderSecretArn: { Value: !Ref AiProviderSecret }
   ClusterName: { Value: !Ref Cluster }
   ClusterEndpoint: { Value: !GetAtt Cluster.Endpoint }

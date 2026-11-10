@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+ * Scope: Generated main.ts and startup and shutdown functions
+ * Author review: Verified correctness.
+ */
+
 import { Kafka } from 'kafkajs'
 import { ErrandEventPublisher } from './errand-event-publisher.js'
 import { ErrandRepository } from '../backend/src/repositories/errand.repository.js'

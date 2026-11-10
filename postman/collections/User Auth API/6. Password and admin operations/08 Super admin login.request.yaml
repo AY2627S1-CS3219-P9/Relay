@@ -19,4 +19,4 @@ scripts:
       }
 
       pm.test('super admin role',()=>pm.expect(pm.response.json().data.user.role).to.eql('super-admin'));
-settings: {}
+settings: { disableCookies: true, protocolVersion: auto }

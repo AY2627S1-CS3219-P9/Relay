@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of local Headlamp Kubernetes dashboard
+# Author review: Verified that headlamp connects to local eks cluster correctly.
+
 apiVersion: v1
 kind: ServiceAccount
 metadata: { name: relay-headlamp, namespace: relay }

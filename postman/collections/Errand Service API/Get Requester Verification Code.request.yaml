@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: http://localhost:4566/_aws/ses
+url: '{{flociUrl}}/_aws/ses'
 order: 4000
 description: Fetch verification code from SES mock
 scripts:
@@ -15,3 +15,4 @@ scripts:
       pm.test('Requester OTP for current run found', () => pm.expect(code, `No OTP for ${email}`).to.exist);
       if (code) pm.collectionVariables.set('requesterVerificationCode', code);
     language: text/javascript
+settings: { disableCookies: true }

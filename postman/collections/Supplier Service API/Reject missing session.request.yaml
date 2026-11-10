@@ -1,6 +1,6 @@
 $kind: http-request
 method: GET
-url: 'http://127.0.0.1:8080/api/supplier'
+url: '{{baseUrl}}/api/supplier'
 order: 22000
 scripts:
   - type: afterResponse
@@ -9,3 +9,4 @@ scripts:
         pm.response.to.have.status(401);
       });
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

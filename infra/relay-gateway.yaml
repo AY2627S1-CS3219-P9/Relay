@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-10-28
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+# Scope: Generated implementation of API Gateway streaming proxy and private ALB integration
+# Author review: Verified API Gateway uses correct VPC links, and that it purely acts as a proxy with correct settings and timeouts.
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Regional streaming REST proxy and VPC link for the Relay private ALB.

@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+ * Scope: Generated implementation of MSK user registration and event publication smoke checks
+ * Author review: Verified test implementation and expected outputs match actual behavior.
+ */
+
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'

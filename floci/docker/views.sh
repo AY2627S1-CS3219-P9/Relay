@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-04
+# Scope: Generated implementation of optional local Compose monitoring views
+# Author review: Verified each view work and are able to view databases or kafbat.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 action="${1:-}"

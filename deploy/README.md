@@ -1,3 +1,10 @@
+<!--
+AI Assistance Disclosure:
+Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+Scope: Generated documentation of AWS deployment, operation, and troubleshooting
+Author review: Proofread generated documentation and ensured correctness, removed some unnecessary sections.
+-->
+
 # Relay AWS deployment
 
 This guide describes the checked-in sandbox deployment. Run commands from the
@@ -489,13 +496,18 @@ Run these commands from the repository root with the same AWS account and region
 used for deployment. Install and configure AWS CLI and `kubectl` first. The
 scripts only act on the named Relay stacks and their recorded resources.
 
+
+Both pause and full teardown require an interactive terminal. Review the account, region, stack and listed effects, then type exactly `CONFIRM` to proceed. Full teardown also requires the `--confirm-delete-all-data` argument.
+
 ```bash
 export AWS_REGION=ap-southeast-1
-bash deploy/scripts/pause-aws.sh relay
+bash deploy/scripts/pause-aws.sh relay  # Review the preview and type CONFIRM
 bash deploy/deploy.sh relay
 ```
 
-Pause deletes the CloudFront edge, API Gateway/VPC Link, and AWS access stacks and the EKS stack, including its EKS
+Pause disables and retains the CloudFront distribution and its domain. The application is unavailable while paused; redeployment re-enables the same distribution and updates its origin to the new API Gateway. CloudFront and other retained resources can still incur charges.
+
+Pause deletes the API Gateway/VPC Link and AWS access stacks and the EKS stack, including its EKS
 control plane, auto mode nodes, ALB, NAT gateway, ECR repositories, and RDS
 instances and the MSK Provisioned cluster. CloudFormation creates four final RDS snapshots. The script records
 their IDs and the retained S3 bucket in `deploy/.relay-pause.env`; **keep this
@@ -665,19 +677,24 @@ the internal cluster service. Ingress routes `/api/notifications/stream` directl
 to notification; Compose uses Host Nginx for that path. Estimation is not exposed
 as its own public route.
 
-Credit estimation requires an AI provider; there is no keyword-analysis fallback.
-Set `AI_PROVIDER=openai`, `AI_API_KEY`, `AI_MODEL`, and `AI_ENDPOINT` (the full
-chat-completions URL) in the ignored `deploy/relay.aws.env`. The deployer writes
-these into `relay-estimation-config`, consumed only by the estimation workload.
-Its internal service token comes from `relay-service-tokens`.
+Credit estimation requires an OpenAI-compatible provider and Redis for its
+shared rate limiter. Before the first AWS deployment, set `AI_PROVIDER=openai`,
+`AI_API_KEY`, `AI_MODEL`, and `AI_ENDPOINT` in the ignored
+`deploy/relay.aws.env`. The deployer checks for an initialized
+`<stack-name>/credit-estimation-ai` Secrets Manager JSON secret before
+creating any stacks. It initializes missing placeholder values from the local
+file, then reads the secret into the Kubernetes `relay-estimation-config`
+Secret. Once initialized, AWS Secrets Manager is authoritative: edit the
+secret there to rotate values, then rerun deployment. The AI secret is
+retained on pause and removed on full teardown if Relay created it. A
+pre-existing secret is left intact by teardown.
 
-The estimator also requires Redis for distributed rate limiting. The current
-Kubernetes manifests do not deploy Redis or inject a `REDIS_URL` override from
-the env file. Provision a reachable Redis service and explicitly configure its
-URL in the estimator's runtime environment before testing estimates on EKS.
-The default URL is `redis://redis:6379`. Missing AI or Redis configuration makes
-estimates unavailable even if the current static `/healthz` response succeeds.
-See the [estimation guide](../credit-estimation-service/README.md).
+Redis runs as a single in-cluster pod with an ephemeral data volume, 512 MiB
+memory limit and 360 MB maxmemory. It uses AOF and disables RDB snapshots;
+pod replacement loses its recent rate-limit history. The estimation
+readiness endpoint checks Redis connectivity. Redis eviction or replacement
+can reset limiter state, and Redis unavailability makes estimation fail closed.
+
 
 One notification pod starts by default and can scale to four. Each pod uses
 its own Kafka consumer group so each sees every errand event and can deliver

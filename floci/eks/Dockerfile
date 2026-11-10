@@ -1,3 +1,8 @@
+# AI Assistance Disclosure:
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated implementation of local EKS Floci image and infrastructure bootstrap
+# Author review: Verified correctness.
+
 FROM floci/floci:latest-compat
 USER root
 RUN microdnf install -y jq && microdnf clean all

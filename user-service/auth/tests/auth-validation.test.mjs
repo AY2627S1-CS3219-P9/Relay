@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-10-28
+ * Scope: Generated authentication input validation tests
+ * Author review: Verified edge cases are covered.
+ */
+
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 

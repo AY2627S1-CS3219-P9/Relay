@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+ * Scope: Generated MSK errand expiry smoke tests
+ * Author review: Verified errand expiry and credit release behavior matches actual implementation.
+ */
+
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 

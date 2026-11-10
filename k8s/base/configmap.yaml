@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-10-28
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-05
+# Scope: Generated Kafka topic settings
+# Author review: Verified correctness.
 
 apiVersion: v1
 kind: ConfigMap

@@ -1,3 +1,10 @@
+/*
+ * AI Assistance Disclosure:
+ * Tool: ChatGPT (model: GPT-6.1 Terra), date: 2026-11-06
+ * Scope: Generated implementation of errand outbox event publication and batch scheduling
+ * Author review: Verified event publishing behavior and that ordering within each key is preserved, matching kafka key behavior.
+ */
+
 import type { ErrandEvent, ErrandEventType, ErrandEventPayload } from '@relay/contracts'
 import type { Kafka, Producer } from 'kafkajs'
 import { ErrandRepository } from '../backend/src/repositories/errand.repository.js'

@@ -1,6 +1,6 @@
 $kind: http-request
 description: ''
-url: http://localhost:8080/api/credit
+url: '{{baseUrl}}/api/credit'
 method: GET
 headers:
   Cookie: relay_access={{sessionCookie}}; relay_id={{idCookie}}
@@ -30,3 +30,4 @@ scripts:
         });
       }
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }

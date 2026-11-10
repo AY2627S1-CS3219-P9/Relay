@@ -1,7 +1,7 @@
 # AI Assistance Disclosure:
-# Tool: ChatGPT (model: GPT 6.1 Sol), date: 2026-10-28
-# Scope: Generated initial implementation, fixed bugs for deployment configuration
-# Author review: I validated correctness and edited for style.
+# Tool: ChatGPT (model: GPT-6 Sol), date: 2026-11-04
+# Scope: Remove user-provided S3 bucket name
+# Author review: Verified AWS does auto-generate a unique bucket name and that it is outputted.
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Relay private profile-image bucket.

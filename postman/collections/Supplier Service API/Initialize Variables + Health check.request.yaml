@@ -29,3 +29,4 @@ scripts:
       pm.collectionVariables.set('supplierName5', 'Different Name Same LatLng ' + runId);
       pm.collectionVariables.set('supplierUpdatedName', 'Postman Test Supplier Updated ' + runId);
     language: text/javascript
+settings: { disableCookies: true, protocolVersion: auto }
