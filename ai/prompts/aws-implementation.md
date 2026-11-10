@@ -68,3 +68,4 @@ If you are unsure, check the existing deploy/scripts/deploy.sh as a reference. E
 After you are done, add a CI step where you run the local eks.sh to test local deployment.
 
 # Usage Scenario:
+Created initial implementation and debugged edge cases
