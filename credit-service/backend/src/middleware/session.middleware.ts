@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-14
+// Scope: Generated initial implementation, debugged implementation
+// Author review: I validated correctness and edited for style.
+
 import type { RequestHandler } from 'express'
 import { userAuthMiddleware } from '@relay/user-auth-backend-middleware'
 import { CreditServiceError } from '../types/credit.types.js'

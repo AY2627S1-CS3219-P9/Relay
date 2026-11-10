@@ -1,3 +1,8 @@
+// AI Assistance Disclosure:
+// Tool: ChatGPT (model: GPT-6.1 Sol), date: 2026-10-17
+// Scope: Generated initial implementation, debugged implementation
+// Author review: I validated correctness and edited for style.
+
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'

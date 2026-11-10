@@ -38,7 +38,16 @@ microservice (`user-service/`, `supplier-service/`, `errand-service/`,
 ├── supplier-service/
 ├── errand-service/
 ├── credit-service/
-├── <n2h-service>/
+├── credit-estimation-service/
+├── errand-notification-service/
+├── host/                   # Application shell
+├── packages/               # Shared contracts, UI, auth, Prisma clients
+├── floci/                  # Local environment launchers
+├── infra/                  # CloudFormation templates
+├── k8s/                    # Kubernetes manifests
+├── deploy/                 # AWS deployment and lifecycle scripts
+├── load-tests/
+├── postman/
 └── README.md
 ```
 
@@ -63,9 +72,9 @@ From the repository root, run `AWS_PROFILE=user AWS_REGION=ap-southeast-1 bash d
 
 Choose one startup path only.
 
-Run commands from the repository root with Docker running and Docker Compose available. 
+Run commands from the repository root with Docker running and Docker Compose available.
 Use Node.js 24 and run `npm ci` once.
-Review the local settings in `.env.development` before starting. 
+Review the local settings in `.env.development` before starting.
 
 On Windows, use WSL with Linux Node/npm (`source ~/.nvm/nvm.sh` if needed).
 
@@ -298,8 +307,9 @@ allocates 100 credits once. Floci's verification mailbox is at
 http://localhost:4566/_aws/ses.
 
 Run the signup, SES code lookup, verification, and profile creation sequence
-using the Postman collection in `tests/integration/new-user-allocation.postman_collection.json`
-with Newman: `npx newman run tests/integration/new-user-allocation.postman_collection.json`.
+using **Relay new-user allocation e2e** under `postman/collections`.
+These are Postman v3 YAML collections, not Newman v2 JSON exports; see the
+[Postman guide](postman/README.md) for runner settings.
 Start credit Prisma Studio with `npm run views:compose -- credit` and open
 http://localhost:5557 to inspect the new balance.
 
@@ -307,3 +317,23 @@ http://localhost:5557 to inspect the new balance.
 AWS uses three-broker MSK Provisioned with TLS and SCRAM for user and errand events. The local Compose and
 Floci EKS environments use Floci's MSK emulation (a Redpanda sidecar).
 See [deployment event broker differences](deploy/README.md#event-broker-targets).
+
+## Component guides and verification
+
+- [Host frontend](host/README.md)
+- [Supplier](supplier-service/README.md), [User profiles](user-service/backend/README.md),
+  and [User Auth](user-service/auth/README.md)
+- [Errand](errand-service/README.md) and [Credit](credit-service/README.md)
+- [Credit estimation](credit-estimation-service/README.md)
+- [Load tests and Headlamp](load-tests/README.md)
+
+Run `npm run lint` and `npm run build` for workspace checks. `npm test` includes
+workspace and service integration tests and needs configured databases, Kafka,
+and application dependencies; see CI's generated-environment setup in
+`.github/workflows/ci.yml`. Deployment configuration checks can run independently
+with `node --test tests/deployment/*.test.mjs`.
+
+Credit estimation requires an AI provider and Redis. Compose includes Redis;
+source development needs a reachable Redis endpoint, and the current Kubernetes
+manifests do not provision one. Missing provider/Redis configuration can leave
+ordinary application flows working while estimate requests return 503.

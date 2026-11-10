@@ -4,7 +4,7 @@ This guide describes the checked-in sandbox deployment. Run commands from the
 repository root in Bash (`bash` if your terminal uses Zsh). Deployment creates
 billable AWS resources.
 
-- CloudFormation provisions the VPC, EKS Auto Mode cluster, ECR repositories,
+- CloudFormation provisions the VPC, EKS Auto Mode cluster,
   four private PostgreSQL databases, their credentials, fourteen ECR repositories, and the Metrics Server
   add-on required by CPU autoscalers. A separate CloudFront stack supplies a
   trusted HTTPS hostname without a custom domain. MSK Provisioned provides
@@ -397,9 +397,10 @@ kubectl -n relay get deployments -w
 
 The loaded API should gain healthy replicas within its configured range while
 requests keep succeeding. Stop traffic and allow time for scale-down
-stabilization. Supplier, Errand, and Credit call User for authentication, so User
-may also scale. Database, host-proxy, and Kafka bottlenecks may limit throughput
-even when more API replicas are available.
+stabilization. Public APIs verify Cognito cookies locally. Errand also calls
+User for profile/deletion checks and Supplier/Credit for business operations,
+so related workloads can see load. Database, ingress, and Kafka bottlenecks may
+limit throughput even when more API replicas are available.
 
 ## Troubleshoot kubectl and infrastructure
 
@@ -414,11 +415,13 @@ kubectl config current-context
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
 ```
 
-If the cluster exists, refresh its connection from the current stack output
-using the `stack_output` helper defined above:
+If the cluster exists, refresh its connection from the current stack output:
 
 ```bash
-CLUSTER_NAME="$(stack_output "$STACK_NAME" ClusterName)"
+STACK_NAME=relay # Replace if your deployment uses another stack name.
+CLUSTER_NAME="$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+  --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)"
 aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" \
   --query 'cluster.{Status:status,Endpoint:endpoint}' --output table
 aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION" \
@@ -454,13 +457,15 @@ rollback states before starting another deployment.
 - Each API database is a separate small, single-AZ RDS instance. This preserves
   the current service data boundaries but is a cost-conscious learning setup,
   not a highly available database design.
-- Both private subnets share one NAT gateway. The network is not designed for
+- The three private subnets share one NAT gateway. The network is not designed for
   NAT availability-zone failover.
-- Internal service tokens currently use demo values in the ConfigMap. Move
-  these to managed Secrets and configure rotation before production use.
-- Errand notifications use process-local subscribers, and User/Errand outbox
-  publishers do not claim rows across replicas. Validate notification delivery
-  and duplicate-event handling when running multiple API replicas.
+- Service tokens come from Secrets Manager and are injected through
+  `relay-service-tokens`. Rotation still requires redeployment; dual-token
+  overlap is not implemented.
+- Notification subscribers are process-local, but each notification Pod has
+  its own Kafka consumer group for fan-out. Streams are best effort. User/Errand
+  outbox publishers run as separate single-replica workloads; do not increase
+  publisher replicas without a row-claiming design.
 - The deployment script does not run application tests, load tests, or browser
   smoke tests. Successful rollouts alone do not verify application correctness.
 
@@ -656,15 +661,23 @@ after the edge update alone. `PriceClass_200` may increase CloudFront charges.
 
 AWS and Floci EKS include credit-estimation-api (ClusterIP port 3005) and
 errand-notification (ClusterIP port 3010). Errand API calls estimation through
-the cluster service name, and Host Nginx proxies /api/notifications/stream to
-notification. Neither service needs a separate public ingress path.
+the internal cluster service. Ingress routes `/api/notifications/stream` directly
+to notification; Compose uses Host Nginx for that path. Estimation is not exposed
+as its own public route.
 
-Credit estimation uses keyword analysis unless an AI provider is configured.
-To enable its optional AI provider on AWS, set AI_PROVIDER, AI_API_KEY, AI_MODEL,
-and optional AI_ENDPOINT in the ignored deploy/relay.aws.env file. The deployer
-writes these to a dedicated relay-estimation-config Secret mounted only by the
-estimation workload. The internal service token still follows the other demo
-tokens in the runtime ConfigMap.
+Credit estimation requires an AI provider; there is no keyword-analysis fallback.
+Set `AI_PROVIDER=openai`, `AI_API_KEY`, `AI_MODEL`, and `AI_ENDPOINT` (the full
+chat-completions URL) in the ignored `deploy/relay.aws.env`. The deployer writes
+these into `relay-estimation-config`, consumed only by the estimation workload.
+Its internal service token comes from `relay-service-tokens`.
+
+The estimator also requires Redis for distributed rate limiting. The current
+Kubernetes manifests do not deploy Redis or inject a `REDIS_URL` override from
+the env file. Provision a reachable Redis service and explicitly configure its
+URL in the estimator's runtime environment before testing estimates on EKS.
+The default URL is `redis://redis:6379`. Missing AI or Redis configuration makes
+estimates unavailable even if the current static `/healthz` response succeeds.
+See the [estimation guide](../credit-estimation-service/README.md).
 
 One notification pod starts by default and can scale to four. Each pod uses
 its own Kafka consumer group so each sees every errand event and can deliver
@@ -690,10 +703,8 @@ image build time. The migration Jobs and publishers invoke already installed
 Prisma or tsx through npx. Third-party view image entrypoints are not controlled
 by this repository and should be checked during local testing.
 
-The IAM policy simulator reported the sampled API Gateway, CloudFormation,
-CloudFront, EC2 and EKS load-balancing actions allowed for the current sandbox
-roles. Simulation does not create the resources and cannot guarantee every
-resource-specific condition, service-linked role, quota, or organization control.
+Deployment success depends on the selected identity's resource-specific
+permissions, service-linked roles, quotas, and organization controls.
 After deploying, verify the private ALB security group and exercise login,
 cookies, frontend assets, authenticated APIs, uploads and SSE through CloudFront.
 

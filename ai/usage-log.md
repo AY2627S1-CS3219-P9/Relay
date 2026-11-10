@@ -1,17 +1,34 @@
 # AI-assisted files
 
+See errand-service-frontend.md, supplier-service-frontend.md, user-service-frontend.md
+- `packages/ui/src`
+
+See errand-service-frontend.md
 - `errand-service/frontend/src`
 - `errand-service/frontend/src/components`
 - `errand-service/frontend/src/hooks`
-- `packages/ui/src`
+
+See supplier-service-frontend.md
 - `supplier-service/frontend/src`
 - `supplier-service/frontend/src/components`
 - `supplier-service/frontend/src/mockSupplierApi`
+
+See user-service-frontend.md
 - `user-service/frontend/src/app`
 - `user-service/frontend/src/components`
 - `user-service/frontend/src/components/account`
 - `user-service/frontend/src/components/base-elements`
 - `user-service/frontend/src/user`
+
+See aws-implementation.md and kubernetes-cloudformation.md
+- `infra/`
+- `k8s/base`
+- `k8s/floci`
+
+See credit-backend-implementation.md
+- `credit-service/backend/src`
+- `credit-service/tests/`
+- `credit-service/backend/tests`
 
 See errand-service-backend.md
 - `errand-service/backend/src`

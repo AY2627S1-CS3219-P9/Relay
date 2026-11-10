@@ -12,13 +12,15 @@ Grafana Cloud runs use `--local-execution`: Grafana stores and displays metrics,
 ## Prerequisites
 
 - Docker Desktop running
-- Node.js installed
-- AWS CLI and `kubectl` for AWS testing
+- Node.js 24 and workspace dependencies installed (`npm ci`)
+- Bash for environment startup; on Windows use WSL with Linux Node/npm
+- PowerShell 7 (`pwsh`) for `Invoke-K6Cloud.ps1`, including on macOS/Linux
+- AWS CLI for AWS provisioning; `kubectl` for Kubernetes/Headlamp checks
 - Grafana Cloud k6 token, stack ID, and project ID for streaming
 
 ## Local Compose setup and provisioning
 
-Start the local environment from Git Bash or WSL, from the repository root.
+Start the local environment from Bash (macOS/Linux or WSL), from the repository root.
 The Floci launcher must run first because it generates the required local
 Cognito, database, S3, and Kafka configuration:
 
@@ -37,7 +39,9 @@ discover the generated settings in `floci/docker/.generated.env`.
 
 The local provisioner creates three disposable users, verifies them through Floci SES, creates profiles, waits for credit allocation, selects the operational `Octobox` supplier, and creates one open fixture errand.
 
-The provisioner runs directly on Windows, so it must use `localhost`:
+The provisioner runs on your host, so it must use `localhost`; k6 runs inside
+Docker and uses `host.docker.internal`. The PowerShell examples below work in
+PowerShell 7 on Windows, macOS, and Linux:
 
 ```powershell
 $env:BASE_URL = 'http://localhost:8080'
@@ -59,8 +63,8 @@ results.
 Verify the local services before provisioning:
 
 ```powershell
-curl.exe -i http://localhost:8080/healthz
-curl.exe -i http://localhost:4566/_aws/ses
+Invoke-WebRequest http://localhost:8080/healthz
+Invoke-WebRequest http://localhost:4566/_aws/ses
 ```
 
 If provisioning reports `fetch failed`, ensure `$env:BASE_URL` is
@@ -124,9 +128,12 @@ $env:K6_CLOUD_PROJECT_ID = 'your-grafana-k6-project-id'
 Load the reusable runner:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-. .\load-tests\Invoke-K6Cloud.ps1
+. ./load-tests/Invoke-K6Cloud.ps1
 ```
+
+On macOS/Linux, enter `pwsh` from your terminal before running these commands.
+On Windows only, if script execution is blocked, use
+`Set-ExecutionPolicy -Scope Process Bypass` in that PowerShell session first.
 
 The helper reads test configuration from the file passed through `-EnvFile`,
 adds the Docker host gateway, runs k6 with `--local-execution`, and streams
@@ -172,10 +179,45 @@ finished to avoid unnecessary AWS charges.
 
 ## Observe autoscaling with Headlamp
 
-Start the optional dashboard from Bash with `npm run headlamp -- start`, using
-the AWS cluster context. Open http://localhost:9082, paste the printed token,
-and select namespace `relay`. Run `npm run headlamp -- check` in another Bash
-terminal first; CPU/memory metrics must be numeric and KEDA must be available.
+Run the following from the repository root in Bash. For AWS, configure your
+profile and region, then add and select the deployed cluster's Kubernetes
+context. Replace `relay-sso` and the cluster name `relay` if yours differ:
+
+```bash
+export AWS_PROFILE=relay-sso
+export AWS_REGION=ap-southeast-1
+aws sso login --profile "$AWS_PROFILE"
+aws eks update-kubeconfig --region "$AWS_REGION" --name relay --alias relay-aws
+kubectl config get-contexts
+kubectl config use-context relay-aws
+kubectl config current-context
+kubectl -n relay get pods
+npm run headlamp -- start relay-aws
+```
+
+`update-kubeconfig` also selects the context; the explicit `use-context` command
+shows how to switch back to it later. The Headlamp helper uses the current
+context by default, or the context passed after the action as shown above.
+If `KUBECONFIG` is set, these commands use that file; make sure it points to
+your intended AWS configuration rather than `floci/eks/.kubeconfig`.
+
+Open http://localhost:9082, paste the printed token, and select cluster `main`
+and namespace `relay`. Keep the startup terminal open. In another Bash terminal
+with the same AWS profile, region, and kubeconfig, check autoscaling prerequisites:
+
+```bash
+npm run headlamp -- check relay-aws
+```
+
+CPU/memory metrics must be numeric and KEDA must be available. For local Floci
+EKS, use the existing launcher instead; it automatically selects the generated
+`floci/eks/.kubeconfig`, so no global context switch is needed:
+
+```bash
+npm run views:eks -- headlamp
+```
+
+The local EKS environment must already be running (`npm run up:eks`).
 See the [deployment guide](../deploy/README.md#observe-autoscaling-in-headlamp)
 for setup, permissions, and cleanup.
 
@@ -260,7 +302,12 @@ For local Compose:
 $env:BASE_URL = 'http://localhost:8080'
 $env:LOAD_TEST_ENV_FILE = 'load-tests/.env.generated'
 node load-tests/cleanup-test-data.mjs
-docker compose down --volumes --remove-orphans
+```
+
+Then remove the local environment and Floci-managed database volumes from Bash:
+
+```bash
+npm run down:compose
 ```
 
 For AWS, use the CloudFront URL and AWS-generated environment:
@@ -284,10 +331,14 @@ snapshots, S3 objects, or AWS stacks.
   CloudFront distribution through the AWS CLI, uses `provision-aws-test-data.mjs`,
   and runs against that CloudFront endpoint.
 
-For both targets, k6 executes locally on the GitHub runner and streams metrics
-to Grafana Cloud. Pull requests always run only the local browse smoke test.
-Manual runs can select `smoke`, `lifecycle`, `core`, `nfr`, or `full`. Summaries
-and diagnostics are uploaded, and local Compose is cleaned up after failures.
+For both targets, k6 executes on the GitHub runner. Non-PR runs stream metrics
+to Grafana Cloud; pull requests run only the local browse smoke test without
+cloud credentials. The workflow also runs the full listed suite locally on
+matching `main` pushes and daily at 18:00 UTC (02:00 Singapore time).
+Manual runs can select `smoke`, `lifecycle`, `core`, `nfr`, or `full`. The estimator
+single-instance suite is separate and is not included in those workflow suites.
+Summaries and diagnostics are uploaded, and local Compose is cleaned up after
+failures.
 
 Configure these repository secrets for non-PR cloud runs:
 

@@ -6,9 +6,11 @@ PostgreSQL. The source folders follow the User Service backend layout.
 ## Database
 
 - `CreditBalance` / `credit_balances`: one record per user, with available and
-  reserved credit balances and an automatically updated timestamp.
+  reserved credit balances, ACTIVE/CLOSED status, and an updated timestamp.
 - `TransactionRecord` / `transaction_records`: transaction reference, timestamp,
   sender, receiver, transaction type, and amount.
+- `CreditSettlement` / `credit_settlements`: transfer settlement records with
+  CREDITED or PENDING status, retained when a courier account closes.
 
 The transaction reference is persisted as the canonical `service:id:type` key
 from `@relay/contracts`. Its primary key prevents duplicate references. The API
@@ -19,38 +21,46 @@ User identifiers are strings, matching the contracts. Transaction history has no
 foreign key to balance records, so deleting a balance does not delete history.
 Prisma also maintains its standard `_prisma_migrations` metadata table.
 
-Like the User Service, this backend uses the default generated `@prisma/client`.
-Each Docker image generates its own client. For local development in the shared
-workspace, generate the client for the service you are working on before building.
+This backend imports its isolated Prisma client through `@relay/credit-prisma`.
+`prisma:generate` writes it to `packages/credit-prisma/generated`, so generating
+another service's client does not overwrite Credit's client.
 
 ## Docker
 
-From the repository root, start only this API and database:
+From the repository root, start the complete environment with Floci:
 
 ```sh
-docker compose up -d --build --wait credit-api credit-postgres
+npm run up:compose
 ```
 
-The database uses the named `credit-postgres-data` volume and is available on
-localhost port 5435. The API uses port 3000 inside the Compose network. Startup
-runs `prisma migrate deploy` before starting Express. `/health` and `/healthz`
-query both models and return HTTP 503 if their tables or columns cannot be read.
+Floci provisions the credit PostgreSQL database and Kafka broker. There are no
+`credit-postgres` or `kafka` Compose services. The launcher discovers their
+endpoints and credentials before starting the application. Compose exposes
+Credit directly at localhost:3002; normal browser traffic uses
+http://localhost:8080/api/credit. API container port is 3000.
+
+Startup runs `prisma migrate deploy` before Express. `/health` checks process
+liveness; `/healthz` checks database models and returns 503 on failure.
 
 ```sh
-docker compose exec credit-api wget -qO- http://127.0.0.1:3000/health
+docker compose exec credit-api wget -qO- http://127.0.0.1:3000/healthz
 docker compose exec credit-api npx prisma migrate status --schema=credit-service/backend/prisma/schema.prisma
 ```
 
-## Local development
+## Source development
 
-Copy `.env.example` to `.env` in this backend folder. From the repository root:
+Use `npm run dev` from the repository root after `npm ci`. It loads Floci's
+generated host endpoints, prepares the database, and starts Credit on port
+3003. See the [local guide](../../floci/README.md).
+
+For isolated commands, first export the required settings from
+`.env.example`, replacing database and broker values with the discovered ones.
+Then run from the repository root:
 
 ```sh
-npm install
-npm run prisma:generate --workspace @relay/credit-backend
-npm run prisma:migrate --workspace @relay/credit-backend -- --name your_change
-npm run build --workspace @relay/credit-backend
-npm run dev --workspace @relay/credit-backend
+npm run prisma:generate --workspace=@relay/credit-backend
+npm run prisma:migrate --workspace=@relay/credit-backend -- --name your_change
+npm run build --workspace=@relay/credit-backend
 ```
 
 ## HTTP API
@@ -61,9 +71,10 @@ npm run dev --workspace @relay/credit-backend
 | GET    | `/api/credit/history?offset={number}` | `{ records: TransactionRecord[] }` (up to 100)            |
 | POST   | `/internal/credit/reserve`            | `CreditBalance & { status: 'RESERVE_SUCCESS' }`           |
 
-The two read routes forward the browser's Cookie header and the configured internal
-user-service token to `POST /internal/user/session/validate` on User Service.
-The validated Cognito subject selects the user's records. An optional `userId`
+The two read routes verify the browser's Cognito access and ID cookies locally
+through the shared middleware and require a verified email. They do not call
+User Service for session validation. The validated Cognito subject selects the
+user's records. An optional `userId`
 query parameter must match that subject; another user's ID returns 403.
 Responses use the credit contract directly, without User Service's
 `{ ok, data }` envelope. Dates are serialized as ISO strings.
@@ -86,31 +97,37 @@ Request `offset=100`, `offset=200`, and so on to load later batches. Invalid
 offsets return `INVALID_REQUEST` (400). No transactions returns
 `{ records: [] }`. Missing or invalid authentication returns
 `UNAUTHENTICATED` (401), invalid userId input returns `INVALID_REQUEST` (400),
-and User Service failures/timeouts return 503.
+and an unverified email returns `FORBIDDEN` (403).
 
-Configure `USER_API_URL`, `USER_API_TIMEOUT` (milliseconds), and
-`USER_SERVICE_INTERNAL_TOKEN`. The token must match User Service's
-`INTERNAL_USER_SERVICE_TOKEN`. Compose configures the same local token used by
-Supplier Service. User Service must be running for authenticated requests;
-credit database health checks remain independent. The host proxies `/api/credit`
-with the browser cookie to this API.
+Configure Cognito issuer/JWKS/client settings for cookie verification, database
+and Kafka settings, and `CREDIT_SERVICE_INTERNAL_TOKEN` for internal reservations.
+`USER_API_URL`, `USER_API_TIMEOUT`, and `USER_SERVICE_INTERNAL_TOKEN` remain in
+configuration but are not used by the public read-route authentication middleware.
+Compose's host proxies `/api/credit`; Kubernetes ingress routes it directly.
 
 ## Tests
 
-With the credit database running, generate the client and build before testing:
+With the local environment running, load its generated endpoints and run the
+test script (which generates the client and builds automatically):
 
 ```sh
-cp credit-service/backend/.env.example credit-service/backend/.env && docker compose up -d --wait credit-postgres kafka kafka-init && npm run test --workspace @relay/credit-backend
+# After npm run up:compose, load generated local endpoints in Bash:
+set -a
+source floci/docker/.generated.env
+set +a
+export CREDIT_TEST_DATABASE_URL="$CREDIT_DATABASE_URL_HOST"
+export KAFKA_BROKERS="$KAFKA_BROKERS_HOST"
+export KAFKA_AUTH_MODE=none
+npm run test --workspace=@relay/credit-backend
 ```
 
 The test script generates the Prisma client, applies pending migrations, builds
-`dist/`, and then runs the HTTP, command, and Kafka integration tests. Local
-host processes use Kafka's published listener at `localhost:29092`.
+`dist/`, and then runs the HTTP, command, and Kafka integration tests. Use the
+generated host broker endpoint; a fixed `localhost:29092` listener is not assumed.
 
-Integration tests use the configured real credit database and an HTTP test
-server implementing the User Service session-validation boundary. Fixtures use
-unique IDs and are removed afterward. Tests cover authentication forwarding,
-expired sessions, outages/timeouts, ownership checks, balance serialization,
+Integration tests use the configured credit database and test authentication
+fixtures. Fixtures use unique IDs and are removed afterward. Tests cover
+Cognito-cookie authentication, ownership checks, balance serialization,
 history filtering/ordering, reservation validation and idempotency, concurrent
 spending, and the Kafka registration-to-transfer workflow.
 
@@ -123,8 +140,9 @@ allocates 100 available credits and 0 reserved credits, with one
 `INITIAL_ALLOCATION` transaction from `SYSTEM` to that user.
 
 The `user:<cognitoSub>:INITIAL_ALLOCATION` reference makes replay safe.
-Kafbat UI is available at http://localhost:8081; Prisma Studio for credit
-is available at http://localhost:5556 when started in the credit container.
+Start Kafbat UI with `npm run views:compose -- kafka` at http://localhost:8081.
+Start Credit Prisma Studio with `npm run views:compose -- credit` at
+http://localhost:5557.
 
 ## Errand outcomes and user deletion
 
@@ -146,9 +164,13 @@ conflicting event goes to the DLQ. Duplicate events with the same outcome
 are idempotent. Credit Service checks the requester and requires a courier
 for completed errands. If DLQ publication fails, the source event is retried.
 
-A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` removes the balance and
-leaves a history record for the remaining total. A delayed registration event
-cannot recreate a deleted balance. `kafka-init` creates `user-events`,
+A `UserDeleted` event on `KAFKA_TOPIC_USER_EVENTS` marks the balance CLOSED
+and records its total in a USER_DELETION transaction; it does not delete the
+balance or ledger history. Existing credited courier settlements become PENDING.
+A later completion addressed to a closed courier records a pending settlement
+rather than adding available credit. Reserved requester funds remain available
+to resolve in-flight errands. A delayed registration event cannot reactivate
+the deleted user's account. `kafka-init` creates `user-events`,
 `user-events-dlq`, `errand-events`, and `errand-events-dlq` before APIs start.
 Malformed, duplicate, out-of-order, and failed credit operations from user
 messages are copied to `KAFKA_TOPIC_USER_DLQ` with an `error` code. Credit
