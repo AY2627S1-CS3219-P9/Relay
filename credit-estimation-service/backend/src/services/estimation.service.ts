@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-25
+// Scope: Implemented author-defined estimation flow, baseline clamping, and failure behavior, using author-defined values
+// Author review: Reviewed every output, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 import { CreditEstimationErrors } from '@relay/contracts'
 import { EstimationServiceError } from '../types/estimation.types'

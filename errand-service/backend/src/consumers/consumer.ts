@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-17
+// Scope: Implemented consumption of the existing event types using the author-defined flow, referencing credit service consumer implementation.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { Kafka, Consumer, EachMessagePayload } from 'kafkajs'
 
 export class ErrandConsumer {

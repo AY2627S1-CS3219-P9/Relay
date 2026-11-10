@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-24
+// Scope: Formatted the author-defined mapping from internal errand errors to user readable error messages and status codes.
+// Author review: The errors were defined manually by the author, AI only assisted with implementing the
+// mapping. The output was reviewed and corrected for minor syntax.
+
 import { ErrandErrors } from '@relay/contracts'
 
 /** Maps internal repository error messages to API error responses */

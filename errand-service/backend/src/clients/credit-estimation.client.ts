@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-26
+// Scope: Implemented the existing Errand-to-Estimation internal client and failure mapping.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { EstimateCreditRequest, EstimateCreditResponse } from '@relay/contracts'
 import { ErrandErrors } from '@relay/contracts'
 import { getEnv } from '../config/env.js'

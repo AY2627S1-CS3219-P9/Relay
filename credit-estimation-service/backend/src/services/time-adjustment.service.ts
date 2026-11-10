@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Implemented the author-defined available-duration credit adjustment formula.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import type { ServiceTypeBaseline } from '../config/baselines'
 
 const MIN_ADJUSTMENT_PERCENT = -0.3

@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Generated tests for request validation and prompt-safety behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { describe, expect, it } from 'vitest'
 import type { EstimateCreditRequest } from '@relay/contracts'
 import { validateEstimateRequest } from '../src/validators/estimation.validator'

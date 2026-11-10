@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-02
+// Scope: Scaffolded the notification application from the author-designed service boundary.
+// Author review: Reviewed outputs, corrected phrasing and syntax, and adjusted implementation
+// details to fit project requirements.
+
 import express, { type Request, type Response } from 'express'
 import { randomUUID } from 'node:crypto'
 import { ErrandNotificationEventStream } from './services/notificationEventStream.js'

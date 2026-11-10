@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-28
+// Scope: Generated edge-case tests for acceptance and expiry behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior. Corrected tests where necessary.
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ErrandRepository } from '../src/repositories/errand.repository.js'
 import { ErrandStatus } from '@relay/contracts'

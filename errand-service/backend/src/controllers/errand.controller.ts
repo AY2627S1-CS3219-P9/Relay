@@ -1,4 +1,12 @@
 // AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-12
+// Scope: Scaffolded author-defined courier lifecycle handling flow, the Supplier-event receiver, and
+// notification-related lifecycle integration.
+// Author review: Reviewed every output and substantially revised ordering and implementation details for
+// the many author-defined conditions and edge cases.
+
+// AI Assistance Disclosure:
 // Tool: ChatGPT (model: GPT-5.6 Luna), date: 2026-10-11
 // Scope: Generated initial implementation of the Errand Service controller.
 // Author review: I validated correctness, edited for domain needs, and debugged as necessary.
@@ -10,9 +18,7 @@ import { validateCreateErrand, validateSupplierErrandView } from '../validators/
 import { ErrandErrors, SupplierEventErrors } from '@relay/contracts'
 
 export class ErrandController {
-  constructor(
-    private readonly service: ErrandService,
-  ) {}
+  constructor(private readonly service: ErrandService) {}
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

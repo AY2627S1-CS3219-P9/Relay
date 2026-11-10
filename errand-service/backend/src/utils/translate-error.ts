@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-10-24
+// Scope: Implemented translation of known persistence errors into the existing domain errors.
+// Author review: All errors were author-defined; AI assisted only with the translation implementation.
+// The output was reviewed and corrected.
+
 import { ERRAND_ERROR_MAP } from '../constants/errand-error-map'
 import { ErrandServiceError } from '../types/errand.types'
 

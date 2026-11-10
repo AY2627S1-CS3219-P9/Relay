@@ -1,3 +1,10 @@
+// AI Assistance Disclosure:
+// Tool: OpenCode (Qwen3-Coder-Next)
+// Date: 2026-11-09
+// Scope: Generated tests for Redis per-user/global rate limiting and fallback behavior.
+// Author review: Reviewed the generated test logic to ensure the cases were meaningful and correctly
+// tested the intended behavior; corrected tests where necessary.
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DistributedRateLimiter } from '../src/clients/redisRateLimiter.js'
 
