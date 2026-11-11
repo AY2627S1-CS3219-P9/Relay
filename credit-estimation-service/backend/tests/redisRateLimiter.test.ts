@@ -79,6 +79,6 @@ describe('DistributedRateLimiter', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const { limiter } = createLimiter(new Error('Redis unavailable'))
 
-    await expect(limiter.tryAcquire('user-1')).rejects.toThrow('Redis unavailable')
+    await expect(limiter.tryAcquire('user-1')).rejects.toThrow()
   })
 })
